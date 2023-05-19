@@ -480,6 +480,13 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
    ModuleBase::GlobalFunc::OUTP(ofs, "sccut", sccut, "Maximal step size for lambda in eV/uB");
    ModuleBase::GlobalFunc::OUTP(ofs, "sc_file", sc_file, "file name for parameters used in non-collinear spin-constrained DFT (json format)");
 
+<<<<<<< HEAD
     ofs.close();
+=======
+   ofs << "\n#Parameters (22.beyond dft)" << std::endl;
+   ModuleBase::GlobalFunc::OUTP(ofs, "beyonddft_method", beyonddft_method, "the method for solving excited state. e.g. lr-tddft");
+   ModuleBase::GlobalFunc::OUTP(ofs, "nstates", nstates, "the number of 2-particle states to be solved");
+   ofs.close();
+>>>>>>> 7d4fe3b32 (add operator=(T&&) in Grid_Technique and its 4 base classes)
     return;
 }

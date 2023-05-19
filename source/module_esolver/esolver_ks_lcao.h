@@ -95,10 +95,9 @@ namespace ModuleESolver
         void dpks_cal_e_delta_band(const std::vector<std::vector<TK>>& dm) const;
         void dpks_cal_projected_DM(const std::vector<std::vector<TK>>& dm) const;
 #endif
-
+        template <typename FPTYPE, typename Device>
+        friend class ESolver_LRTD;
     };
-
-
 
 }
 #endif

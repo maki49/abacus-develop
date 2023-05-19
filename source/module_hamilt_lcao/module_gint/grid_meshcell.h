@@ -24,6 +24,11 @@ class Grid_MeshCell: public Grid_MeshK
 	Grid_MeshCell();
 	~Grid_MeshCell();
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Grid_MeshCell& operator=(Grid_MeshCell&& rhs);
+
 	void set_grid_dim(
 			const int &ncx_in,
 			const int &ncy_in,

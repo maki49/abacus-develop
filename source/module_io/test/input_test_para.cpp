@@ -378,7 +378,9 @@ TEST_F(InputParaTest,Bcast)
         EXPECT_EQ(INPUT.out_bandgap,0);
         EXPECT_EQ(INPUT.out_mat_t,0);
 
-	}
+        EXPECT_EQ(INPUT.beyonddft_method, "none");
+        EXPECT_EQ(INPUT.nstates, 0);
+    }
 }
 
 TEST_F(InputParaTest,Init)

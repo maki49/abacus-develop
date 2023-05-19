@@ -19,6 +19,11 @@ class Gint
 
     ~Gint();
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Gint& operator=(Gint&& rhs);
+    
     // the unified interface to grid integration
 	void cal_gint(Gint_inout *inout);
 
@@ -65,6 +70,11 @@ class Gint
     int nbxx;
     int ny, nplane, startz_current; // from rhopw
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Gint& operator=(Gint&& rhs);
+    
     //------------------------------------------------------
     // in gint_vl.cpp 
     //------------------------------------------------------

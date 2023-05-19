@@ -3329,3 +3329,24 @@ These variables are used to control the usage of deltaspin functionality.
 - **Default**: none
 
 [back to top](#full-list-of-input-keywords)
+<<<<<<< HEAD
+=======
+
+## Beyond DFT
+
+These parameters are used to solve the excited states using. e.g. lr-tddft
+
+### beyonddft_method
+
+- **Type**: String
+- **Description**: The method to solve the excited states. Currently, only `lr-tddft` is supported.
+- **Default**: none
+
+### nstates
+
+- **Type**: Integer
+- **Description**:  The number of 2-particle states to be solved
+- **Default**: 0
+
+[back to top](#full-list-of-input-keywords)
+>>>>>>> 7d4fe3b32 (add operator=(T&&) in Grid_Technique and its 4 base classes)

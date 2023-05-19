@@ -614,6 +614,11 @@ void Input::Default(void)
     alpha_trial = 0.01;
     sccut = 3.0;
     sc_file = "none";
+    //==========================================================
+    //    beyond-dft   
+    //==========================================================
+    beyonddft_method = "none";
+    nstates = 0;
     return;
 }
 
