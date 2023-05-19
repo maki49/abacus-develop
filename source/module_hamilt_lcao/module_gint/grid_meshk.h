@@ -35,6 +35,15 @@ class Grid_MeshK
 	Grid_MeshK();
 	~Grid_MeshK();
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Grid_MeshK& operator=(Grid_MeshK&& rhs);
+
+	void cal_extended_cell(const int &dxe, const int &dye, const int &dze);
+
+	private:
+
 };
 
 #endif

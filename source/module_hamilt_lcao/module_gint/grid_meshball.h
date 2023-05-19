@@ -24,6 +24,11 @@ class Grid_MeshBall : public Grid_BigCell
 	Grid_MeshBall();
 	~Grid_MeshBall();	
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Grid_MeshBall& operator=(Grid_MeshBall&& rhs);
+
 	// used in index2normal
 	int* index_ball;
 

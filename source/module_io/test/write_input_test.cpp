@@ -115,6 +115,9 @@ TEST_F(write_input, General1)
                                    "charge density and wavefunction. 0: output only when ion steps are finished"));
     EXPECT_THAT(output, testing::HasSubstr("evice                         cpu #the computing device for ABACUS"));
     EXPECT_THAT(output, testing::HasSubstr(""));
+
+    EXPECT_THAT(output, testing::HasSubstr("beyonddft_method        none #the method for solving excited state. e.g. lr-tddft"));
+    EXPECT_THAT(output, testing::HasSubstr("nstates        0 #the number of 2-particle states to be solved"));
     ifs.close();
     remove("write_input_test.log");
 }

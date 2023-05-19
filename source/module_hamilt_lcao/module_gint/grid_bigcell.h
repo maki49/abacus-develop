@@ -19,6 +19,11 @@ class Grid_BigCell: public Grid_MeshCell
 
 	protected:
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Grid_BigCell& operator=(Grid_BigCell&& rhs);
+    
 	//---------------------------------
 	void init_big_latvec(void);
 

@@ -75,6 +75,11 @@ class Grid_Technique : public Grid_MeshBall
 	Grid_Technique();
 	~Grid_Technique();
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Grid_Technique& operator=(Grid_Technique&& rhs);
+    
 	void set_pbc_grid(
 			const int &ncx_in,
 			const int &ncy_in,

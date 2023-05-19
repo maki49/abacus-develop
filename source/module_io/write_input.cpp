@@ -497,12 +497,14 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
    ModuleBase::GlobalFunc::OUTP(ofs, "alpha_trial", alpha_trial, "Initial trial step size for lambda in eV/uB^2");
    ModuleBase::GlobalFunc::OUTP(ofs, "sccut", sccut, "Maximal step size for lambda in eV/uB");
    ModuleBase::GlobalFunc::OUTP(ofs, "sc_file", sc_file, "file name for parameters used in non-collinear spin-constrained DFT (json format)");
-    
+
     ofs << "\n#Parameters (23.Quasiatomic Orbital analysis)" << std::endl;
     ModuleBase::GlobalFunc::OUTP(ofs, "qo_switch", qo_switch, "0: no QO analysis; 1: QO analysis");
     ModuleBase::GlobalFunc::OUTP(ofs, "qo_basis", qo_basis, "type of QO basis function: hydrogen: hydrogen-like basis, pswfc: read basis from pseudopotential");
     ModuleBase::GlobalFunc::OUTP(ofs, "qo_thr", qo_thr, "accuracy for evaluating cutoff radius of QO basis function");
-  
-    ofs.close();
+
+   ofs << "\n#Parameters (22.beyond dft)" << std::endl;
+   ModuleBase::GlobalFunc::OUTP(ofs, "nstates", nstates, "the number of 2-particle states to be solved");
+   ofs.close();
     return;
 }
