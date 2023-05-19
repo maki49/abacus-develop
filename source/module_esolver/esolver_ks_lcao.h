@@ -122,6 +122,7 @@ class ESolver_KS_LCAO : public ESolver_KS<TK> {
     void dpks_cal_projected_DM(
         const elecstate::DensityMatrix<TK, double>* dm) const;
 #endif
+    template <typename FPTYPE, typename Device>
+    friend class ESolver_LRTD;
 };
 } // namespace ModuleESolver
-#endif

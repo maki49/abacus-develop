@@ -9,8 +9,11 @@ class Grid_MeshBall : public Grid_BigCell
 		Grid_MeshBall();
 		~Grid_MeshBall();
 		// cartesian coordinates of meshball.
-		std::vector<std::vector<double>> meshball_positions;	
-	
+        std::vector<std::vector<double>> meshball_positions;
+
+        /// move operator for the next ESolver to directly use its infomation
+        Grid_MeshBall& operator=(Grid_MeshBall&& rhs);
+
 	protected:
 		// number of meshcells in meshball.
 		int meshball_ncells=0;

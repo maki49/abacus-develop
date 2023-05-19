@@ -15,8 +15,11 @@ class Grid_BigCell: public Grid_MeshCell
 		int nat;
 		// save the relative cartesian position
 		// to bigcell of each atom.
-		std::vector<std::vector<double>> tau_in_bigcell;
-	
+        std::vector<std::vector<double>> tau_in_bigcell;
+
+        /// move operator for the next ESolver to directly use its infomation
+        Grid_BigCell& operator=(Grid_BigCell&& rhs);
+
 	protected:
 		// get the max radius of all orbitals
 		// which will use to generate grid expansion,
@@ -35,9 +38,6 @@ class Grid_BigCell: public Grid_MeshCell
 		int nxyze;
 		
 		std::vector<int> index_atom;
-
-		// save the position of base vector of bigcell.
-		std::vector<double> bigcell_vec1;
 		std::vector<double> bigcell_vec2;
 		std::vector<double> bigcell_vec3;
 

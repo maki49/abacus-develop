@@ -17,6 +17,11 @@ class Gint {
   public:
     ~Gint();
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Gint& operator=(Gint&& rhs);
+    
     // the unified interface to grid integration
     void cal_gint(Gint_inout* inout);
 
@@ -85,6 +90,10 @@ class Gint {
     void cpu_force_interface(Gint_inout* inout);
 
     void cpu_force_meta_interface(Gint_inout* inout);
+    
+    ///  move operator for the next ESolver to directly use its infomation
+    Gint& operator=(Gint&& rhs);
+    
     //------------------------------------------------------
     // in gint_vl.cpp
     //------------------------------------------------------

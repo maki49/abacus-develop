@@ -19,7 +19,10 @@ class Grid_MeshK
 		std::vector<int> num_ucell_para;
 
 		// calculate the index of unitcell.
-		int cal_Rindex(const int &u1, const int &u2, const int &u3)const;
+        int cal_Rindex(const int& u1, const int& u2, const int& u3)const;
+
+        /// move operator for the next ESolver to directly use its infomation
+        Grid_MeshK& operator=(Grid_MeshK&& rhs);
 
 	protected:
 		// the max and the min unitcell.
