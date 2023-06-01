@@ -1,4 +1,4 @@
-#include "lr_util.hpp"
+#include "utils/lr_util.h"
 #include "module_hamilt_lcao/module_gint/gint_gamma.h"
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
@@ -24,11 +24,27 @@ Gint& Gint::operator=(Gint&& rhs)
     this->nbz = rhs.nbz;
     this->ncxyz = rhs.ncxyz;
     this->nbz_start = rhs.nbz_start;
+    this->bx = rhs.bx;
+    this->by = rhs.by;
+    this->bz = rhs.bz;
+    this->bxyz = rhs.bxyz;
+    this->nbxx = rhs.nbxx;
+    this->ny = rhs.ny;
+    this->nplane = rhs.nplane;
+    this->startz_current = rhs.startz_current;
     rhs.nbx = 0;
     rhs.nby = 0;
     rhs.nbz = 0;
     rhs.ncxyz = 0;
     rhs.nbz_start = 0;
+    rhs.bx = 0;
+    rhs.by = 0;
+    rhs.bz = 0;
+    rhs.bxyz = 0;
+    rhs.nbxx = 0;
+    rhs.ny = 0;
+    rhs.nplane = 0;
+    rhs.startz_current = 0;
     
     if (this->pvpR_reduced != nullptr) d2<double>(this->pvpR_reduced, GlobalV::NSPIN);  //nspin*gridt.nnrg
     if (this->pvdpRx_reduced != nullptr) d2<double>(this->pvdpRx_reduced, GlobalV::NSPIN);

@@ -11,7 +11,7 @@
 
 #include "module_esolver/esolver_ks_lcao.h" //for the move constructor
 
-#include "lr_util.hpp"
+#include "utils/lr_util.h"
 
 // tmp 
 #include "module_hamilt_lcao/hamilt_lcaodft/record_adj.h"
@@ -46,7 +46,7 @@ namespace ModuleESolver
         virtual void Run(int istep, UnitCell& ucell) override;
         virtual void postprocess() override {};
 
-        virtual double cal_Energy()  override {};
+        virtual double cal_Energy()  override { return 0.0; };
         virtual void cal_Force(ModuleBase::matrix& force) override {};
         virtual void cal_Stress(ModuleBase::matrix& stress) override {};
 
@@ -66,17 +66,20 @@ namespace ModuleESolver
         ModuleBase::matrix eig_ks;
         // energy of ground state is in pelec->ekb
 
-        // excited state info
-        std::shared_ptr<psi::Psi<FPTYPE, Device>> X = nullptr;
+        /// @brief Excited state info. size: nstates*nks*nocc*nvirt
+        std::vector<psi::Psi<FPTYPE, Device>> X;
         //psi::Psi<FPTYPE, Device>* AX = nullptr;
+        /// global index map between (i,c) and ix
+        ModuleBase::matrix iciv2ix;
+        std::vector<std::pair<int, int>> ix2iciv;
 
-        size_t n_occ;
-        size_t n_unocc;
-        size_t n_basis;
+        size_t nocc;
+        size_t nvirt;
+        size_t nbasis;
         /// n_occ*n_unocc, the basis size of electron-hole pair representation
-        size_t n_pairs;
+        size_t npairs;
         /// how many 2-particle states to be solved
-        size_t n_states = 1;
+        size_t nstates = 1;
         size_t nks = 1; //gamma_only now
 
         // basis info (currently use GlobalC)
@@ -90,7 +93,13 @@ namespace ModuleESolver
         Gint_Gamma gint_g;
         Gint_k gint_k;
 
+        /// @brief variables for parallel distribution of KS orbitals
+        Parallel_2D paraC_;
+        /// @brief variables for parallel distribution of excited states
+        Parallel_2D paraX_;
+
         void init_X();
+        void setup_2d_division(int nb, int gr, int gc);
 
     };
 }
