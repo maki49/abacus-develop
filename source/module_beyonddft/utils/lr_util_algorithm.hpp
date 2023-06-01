@@ -1,7 +1,3 @@
-#pragma once
-#include <cstddef>
-#include "module_cell/unitcell.h"
-#include "module_base/constants.h"
 namespace LR_Util
 {
     template <typename T>
@@ -29,19 +25,5 @@ namespace LR_Util
             delete[] p3;
         }
     };
-    
-    template <typename TCell>
-    const size_t cal_nelec(const TCell& ucell)
-    {
-        size_t nelec = 0;
-        for (size_t it = 0; it < ucell.ntype; ++it)
-            nelec += ucell.atoms[it].ncpp.zv * ucell.atoms[it].na;
-        return nelec;
-    }
-    const size_t cal_nocc(size_t nelec)
-    {
-        return nelec / ModuleBase::DEGSPIN;
-    }
-
-    
+ 
 }

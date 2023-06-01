@@ -37,7 +37,7 @@ namespace ModuleESolver
         Structure_Factor sf;
         K_Vectors kv;
 
-      private:
+    private:
         void print_rhofft(Input& inp, std::ofstream &ofs);
     };
 }

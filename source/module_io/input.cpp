@@ -2225,6 +2225,18 @@ bool Input::Read(const std::string &fn)
         else if (strcmp("sc_file", word) == 0){
             read_value(ifs, sc_file);
         }
+        //----------------------------------------------------------------------------------
+        // beyond dft
+        //----------------------------------------------------------------------------------
+        else if (strcmp("beyonddft_method", word) == 0)
+        {
+            read_value(ifs, beyonddft_method);
+        }
+        else if (strcmp("nstates", word) == 0)
+        {
+            read_value(ifs, nstates);
+        }
+            //----------------------------------------------------------------------------------
         else
         {
             // xiaohui add 2015-09-15
@@ -3423,6 +3435,11 @@ void Input::Bcast()
     Parallel_Common::bcast_double(alpha_trial);
     Parallel_Common::bcast_double(sccut);
 
+    //----------------------------------------------------------------------------------
+    //    beyond dft
+    //----------------------------------------------------------------------------------
+    Parallel_Common::bcast_string(beyonddft_method);
+    Parallel_Common::bcast_int(nstates);
     return;
 }
 #endif

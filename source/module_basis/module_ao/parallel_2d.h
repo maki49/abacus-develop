@@ -15,6 +15,8 @@ public:
     Parallel_2D();
     ~Parallel_2D();
 
+    Parallel_2D& operator=(Parallel_2D&& rhs);
+    
     /// local size (nloc = nrow * ncol)
     int nrow;
     int ncol;
