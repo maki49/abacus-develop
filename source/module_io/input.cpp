@@ -2352,6 +2352,18 @@ bool Input::Read(const std::string& fn)
         else if (strcmp("qo_screening_coeff", word) == 0){
             read_value2stdvector(ifs, qo_screening_coeff);
         }
+        //----------------------------------------------------------------------------------
+        // beyond dft
+        //----------------------------------------------------------------------------------
+        else if (strcmp("beyonddft_method", word) == 0)
+        {
+            read_value(ifs, beyonddft_method);
+        }
+        else if (strcmp("nstates", word) == 0)
+        {
+            read_value(ifs, nstates);
+        }
+            //----------------------------------------------------------------------------------
         else
         {
             // xiaohui add 2015-09-15
@@ -3707,6 +3719,7 @@ void Input::Bcast()
     Parallel_Common::bcast_double(alpha_trial);
     Parallel_Common::bcast_double(sccut);
 
+<<<<<<< HEAD
     Parallel_Common::bcast_bool(qo_switch);
     Parallel_Common::bcast_string(qo_basis);
     Parallel_Common::bcast_double(qo_thr);
@@ -3718,6 +3731,13 @@ void Input::Bcast()
         qo_screening_coeff.resize(ntype);
         Parallel_Common::bcast_double(qo_screening_coeff.data(), ntype);
     }
+=======
+    //----------------------------------------------------------------------------------
+    //    beyond dft
+    //----------------------------------------------------------------------------------
+    Parallel_Common::bcast_string(beyonddft_method);
+    Parallel_Common::bcast_int(nstates);
+>>>>>>> a5f6f4c5c (X-index: diagonal arrangement and tests)
     return;
 }
 #endif
