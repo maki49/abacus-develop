@@ -11,8 +11,6 @@
 
 #include "module_esolver/esolver_ks_lcao.h" //for the move constructor
 
-#include "utils/lr_util.h"
-
 // tmp 
 #include "module_hamilt_lcao/hamilt_lcaodft/record_adj.h"
 #include "module_hamilt_lcao/module_gint/gint_gamma.h"
@@ -81,6 +79,7 @@ namespace ModuleESolver
         /// how many 2-particle states to be solved
         size_t nstates = 1;
         size_t nks = 1; //gamma_only now
+        size_t nspin = 1;
 
         // basis info (currently use GlobalC)
         // LCAO_Orbitals orb;
@@ -99,7 +98,7 @@ namespace ModuleESolver
         Parallel_2D paraX_;
 
         void init_X();
-        void setup_2d_division(int nb, int gr, int gc);
+
 
     };
 }

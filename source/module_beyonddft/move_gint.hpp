@@ -1,4 +1,4 @@
-#include "utils/lr_util.h"
+#include "utils/lr_util_algorithms.hpp"
 #include "module_hamilt_lcao/module_gint/gint_gamma.h"
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
