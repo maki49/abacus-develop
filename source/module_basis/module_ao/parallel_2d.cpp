@@ -347,15 +347,15 @@ Parallel_2D& Parallel_2D::operator=(Parallel_2D&& rhs)
     this->coord[0] = rhs.coord[0];
     this->coord[1] = rhs.coord[1];
     this->testpb = rhs.testpb;
-    this->row_set = std::move(rhs.row_set);
-    this->col_set = std::move(rhs.col_set);
+    this->local2global_row_ = std::move(rhs.local2global_row_);
+    this->local2global_col_ = std::move(rhs.local2global_col_);
 
-    if (this->trace_loc_row) delete[] this->trace_loc_row;
-    this->trace_loc_row = rhs.trace_loc_row;
-    rhs.trace_loc_row = nullptr;
-    if (this->trace_loc_col) delete[] this->trace_loc_col;
-    this->trace_loc_col = rhs.trace_loc_col;
-    rhs.trace_loc_col = nullptr;
+    if (this->global2local_row_) delete[] this->global2local_row_;
+    this->global2local_row_ = rhs.global2local_row_;
+    rhs.global2local_row_ = nullptr;
+    if (this->global2local_col_) delete[] this->global2local_col_;
+    this->global2local_col_ = rhs.global2local_col_;
+    rhs.global2local_col_ = nullptr;
 #ifdef __MPI
     this->blacs_ctxt = rhs.blacs_ctxt;
     this->comm_2D = rhs.comm_2D;
