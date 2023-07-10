@@ -1,26 +1,21 @@
+#pragma once
 #include <cstddef>
-
-#include <algorithm>
-#include "module_cell/unitcell.h"
+#include <vector>
+#include <utility>
 #include "module_base/constants.h"
-
-
+#include "module_base/matrix.h"
 
 namespace LR_Util
 {
     template <typename TCell>
-    const size_t cal_nelec(const TCell& ucell)
-    {
+    const size_t cal_nelec(const TCell& ucell) {
         size_t nelec = 0;
         for (size_t it = 0; it < ucell.ntype; ++it)
             nelec += ucell.atoms[it].ncpp.zv * ucell.atoms[it].na;
         return nelec;
     }
 
-    const size_t cal_nocc(size_t nelec)
-    {
-        return nelec / ModuleBase::DEGSPIN;
-    }
+    const size_t cal_nocc(size_t nelec) { return nelec / ModuleBase::DEGSPIN; }
 
     std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>>
         set_ix_map_diagonal(bool mode, int nc, int nv)
@@ -30,8 +25,8 @@ namespace LR_Util
         std::vector<std::pair<int, int>> ix2iciv(npairs);
         int ic = nc - 1, iv = 0;    //start：leftup
         if (mode == 0)  // leftdown->rightup
-        { 
-            for (int ix = 0;ix < npairs-1;++ix)
+        {
+            for (int ix = 0;ix < npairs - 1;++ix)
             {
                 // 1. set value
                 iciv2ix(ic, iv) = ix;
@@ -48,7 +43,7 @@ namespace LR_Util
         }
         else    //rightup->leftdown
         {
-            for (int ix = 0;ix < npairs-1;++ix)
+            for (int ix = 0;ix < npairs - 1;++ix)
             {
                 // 1. set value
                 iciv2ix(ic, iv) = ix;
@@ -66,9 +61,8 @@ namespace LR_Util
         //final set: rightdown
         assert(ic == 0);
         assert(iv == nv - 1);
-        iciv2ix(ic, iv) = npairs-1;
-        ix2iciv[npairs-1] = std::make_pair(ic, iv);
+        iciv2ix(ic, iv) = npairs - 1;
+        ix2iciv[npairs - 1] = std::make_pair(ic, iv);
         return std::make_pair(std::move(iciv2ix), std::move(ix2iciv));
     }
-
 }

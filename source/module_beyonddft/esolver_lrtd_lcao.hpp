@@ -1,5 +1,7 @@
 #include "esolver_lrtd_lcao.h"
 #include "move_gint.hpp"
+#include "utils/lr_util_algorithms.hpp"
+#include "utils/lr_util_physics.hpp"
 #include <memory>
 
 template<typename FPTYPE, typename Device>
@@ -93,10 +95,12 @@ void ModuleESolver::ESolver_LRTD<FPTYPE, Device>::init_X()
     //Psi.nbasis = npairs, Psi.nbands = nstates.
 
     // setup ParaX
-    this->setup_2d_division(1, this->nocc, this->nvirt);
+
+    int nsk = (nspin == 4) ? this->nks : this->nks * this->nspin;
+    LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc);//nvirt - row, nocc - col 
     for (int i = 0; i < this->nstates; i++)
     {
-        this->X.emplace_back(this->nks, this->paraX_.get_row_size(), this->paraX_.get_col_size());
+        this->X.emplace_back(nsk, this->paraX_.get_row_size(), this->paraX_.get_col_size());
         X[i].zero_out();
     }
     
@@ -121,27 +125,6 @@ void ModuleESolver::ESolver_LRTD<FPTYPE, Device>::init_X()
         int row_global = std::get<0>(ix2iciv[i]);
         int col_global = std::get<1>(ix2iciv[i]);
         if (this->paraX_.in_this_processor(row_global, col_global))
-            X[i](this->paraX_.trace_loc_row[row_global], this->paraX_.trace_loc_col[col_global]) = static_cast<FPTYPE>(1.0);
+            X[i](this->paraX_.global2local_row(row_global), this->paraX_.global2local_col(col_global)) = static_cast<FPTYPE>(1.0);
     }
-}
-
-template<typename FPTYPE, typename Device>
-void ModuleESolver::ESolver_LRTD<FPTYPE, Device>::setup_2d_division(int nb, int gr, int gc)
-{
-    ModuleBase::TITLE("ESolver_LRTD", "setup_2d_division");
-    this->paraX_.set_block_size(nb);
-#ifdef __MPI
-    int nprocs, myrank;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    this->paraX_.set_proc_dim(nprocs);
-    this->paraX_.mpi_create_cart(MPI_COMM_WORLD);
-    this->paraX_.set_local2global(gr, gc, GlobalV::ofs_running, GlobalV::ofs_warning);
-    this->paraX_.set_desc(gr, gc, this->paraX_.get_row_size());
-    this->paraX_.set_global2local(gr, gc, true, GlobalV::ofs_running);
-#else
-    this->paraX_.set_proc_dim(1);
-    this->paraX_.set_serial(gr, gc);
-    this->paraX_.set_global2local(gr, gc, false, GlobalV::ofs_running);
-#endif
 }

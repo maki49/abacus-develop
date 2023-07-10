@@ -3,6 +3,7 @@
 #include <vector>
 #include <utility>
 #include "module_base/matrix.h"
+#include "module_basis/module_ao/parallel_2d.h"
 
 namespace LR_Util
 {
@@ -47,8 +48,12 @@ namespace LR_Util
     /// @param size2
     template <typename T>
     void delete_p3(T*** p3, size_t size1, size_t size2);
+
+
+    void setup_2d_division(Parallel_2D& pv, int nb, int gr, int gc);
+
+#ifdef __MPI
+    template <typename T>
+    void gather_2d_block(const Parallel_2D& pv, const T* submat, T* fullmat);
+#endif
 }
-
-
-#include "lr_util_algorithm.hpp"
-#include "lr_util_physics.hpp"
