@@ -409,6 +409,9 @@
     - [pexsi\_mu\_guard](#pexsi_mu_guard)
     - [pexsi\_elec\_thr](#pexsi_elec_thr)
     - [pexsi\_zero\_thr](#pexsi_zero_thr)
+  - [Beyond DFT](#beyond-dft)
+    - [nstates](#nstates)
+    - [xc\_kernel](#xc_kernel)
 
 [back to top](#full-list-of-input-keywords)
 
@@ -3784,4 +3787,18 @@ These parameters are used to solve the excited states using. e.g. lr-tddft
 - **Description**:  The number of 2-particle states to be solved
 - **Default**: 0
 
+<<<<<<< HEAD
 [back to top](#full-list-of-input-keywords)
+<<<<<<< HEAD
+=======
+>>>>>>> 7d4fe3b32 (add operator=(T&&) in Grid_Technique and its 4 base classes)
+=======
+### xc_kernel
+
+- **Type**: String
+- **Description**: The exchange-correlation kernel used in the calculation. Currently, only `LDA` is supported.
+- **Default**: LDA
+
+[back to top](#full-list-of-input-keywords)
+>>>>>>> ab3506693 (Framework: kernel, pot, operator, hamilt)
+>>>>>>> 8316c5c67 (Framework: kernel, pot, operator, hamilt)

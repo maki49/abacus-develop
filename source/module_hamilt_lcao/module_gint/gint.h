@@ -21,7 +21,9 @@ class Gint {
     /// @param rhs
     /// @return *this
     Gint& operator=(Gint&& rhs);
-    
+
+    hamilt::HContainer<double>* get_hRGint() const { return hRGint; }
+
     // the unified interface to grid integration
     void cal_gint(Gint_inout* inout);
 

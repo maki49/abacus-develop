@@ -64,6 +64,18 @@ Gint& Gint::operator=(Gint&& rhs)
     rhs.pvdpRz_reduced = nullptr;
     rhs.pvpR_grid = nullptr;
 
+    this->gridt = rhs.gridt;
+    rhs.gridt = nullptr;
+
+    // move hR after refactor
+    this->hRGint = rhs.hRGint;
+    rhs.hRGint = nullptr;
+    this->hRGintCd = rhs.hRGintCd;
+    rhs.hRGintCd = nullptr;
+    this->DMRGint = std::move(rhs.DMRGint);
+    this->DMRGint_full = rhs.DMRGint_full;
+    rhs.DMRGint_full = nullptr;
+
     return *this;
 }
 
@@ -326,5 +338,38 @@ Grid_Technique& Grid_Technique::operator=(Grid_Technique&& rhs)
     this->nB2 = rhs.nB2;
     this->nB3 = rhs.nB3;
     this->nbox = rhs.nbox;
+    return *this;
+}
+
+#include "module_cell/klist.h"
+K_Vectors& K_Vectors::operator=(K_Vectors&& rhs)
+{
+    std::cout << "moving kv" << std::endl;
+    if (this == &rhs)return *this;
+    this->kvec_c = std::move(rhs.kvec_c);
+    this->kvec_d = std::move(rhs.kvec_d);
+    this->kvec_d_ibz = std::move(rhs.kvec_d_ibz);
+    this->wk = std::move(rhs.wk);
+    this->wk_ibz = std::move(rhs.wk_ibz);
+    this->ngk = std::move(rhs.ngk);
+    this->isk = std::move(rhs.isk);
+    this->ibz2bz = std::move(rhs.ibz2bz);
+    this->nks = rhs.nks;
+    this->nkstot = rhs.nkstot;
+    this->nkstot_ibz = rhs.nkstot_ibz;
+    this->nkstot_full = rhs.nkstot_full;
+
+    this->nspin = rhs.nspin;
+    this->kc_done = rhs.kc_done;
+    this->kd_done = rhs.kd_done;
+    this->k_kword = rhs.k_kword;
+    this->k_nkstot = rhs.k_nkstot;
+    this->is_mp = rhs.is_mp;
+
+    for (int i = 0;i < 3;++i)
+    {
+        this->nmp[i] = rhs.nmp[i];
+        this->koffset[i] = rhs.koffset[i];
+    }
     return *this;
 }

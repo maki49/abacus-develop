@@ -702,7 +702,8 @@ target_link_libraries(
   vdw
   parameter
   device
-  container)
+  container
+  lr)
 if(ENABLE_LCAO)
   target_link_libraries(
     ${ABACUS_BIN_NAME}

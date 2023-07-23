@@ -16,8 +16,7 @@ add_subdirectory(module_io)
 add_subdirectory(module_relax)
 add_subdirectory(module_ri)
 add_subdirectory(module_parameter)
-add_subdirectory(module_beyonddft/density)
-add_subdirectory(module_beyonddft/utils)
+add_subdirectory(module_beyonddft)
 
 add_library(
     driver

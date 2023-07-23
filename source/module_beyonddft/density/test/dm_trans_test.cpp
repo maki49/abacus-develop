@@ -23,7 +23,8 @@ public:
     std::vector<matsize> sizes{
         {2, 14, 9, 4},
         {2, 20, 10, 7}
-    };  //why failed for 3, 9 cores? (-nan)
+    };
+    int nstate = 2;
     std::ofstream ofs_running;
     int my_rank;
 #ifdef __MPI
@@ -41,26 +42,56 @@ public:
 
     void set_ones(double* data, int size) { for (int i = 0;i < size;++i) data[i] = 1.0; };
     void set_int(double* data, int size) { for (int i = 0;i < size;++i) data[i] = static_cast<double>(i + 1); };
+    void set_int(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(i + 1, -i - 1); };
     void set_rand(double* data, int size) { for (int i = 0;i < size;++i) data[i] = double(rand()) / double(RAND_MAX) * 10.0 - 5.0; };
-    void check_eq(double* data1, double* data2, int size) { for (int i = 0;i < size;++i) EXPECT_DOUBLE_EQ(data1[i], data2[i]); };
+    void set_rand(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(rand(), rand()) / double(RAND_MAX) * 10.0 - 5.0; };
+    void check_eq(double* data1, double* data2, int size) { for (int i = 0;i < size;++i) EXPECT_NEAR(data1[i], data2[i], 1e-10); };
+    void check_eq(std::complex<double>* data1, std::complex<double>* data2, int size)
+    {
+        for (int i = 0;i < size;++i)
+        {
+            EXPECT_NEAR(data1[i].real(), data2[i].real(), 1e-10);
+            EXPECT_NEAR(data1[i].imag(), data2[i].imag(), 1e-10);
+        }
+    };
 };
 
 TEST_F(DMTransTest, DoubleSerial)
 {
-
     for (auto s : this->sizes)
     {
-        int size_c = s.nsk * (s.nocc + s.nvirt) * s.naos;
-        int size_X = s.nsk * s.nocc * s.nvirt;
-        psi::Psi<double, psi::DEVICE_CPU> c(s.nsk, s.nocc + s.nvirt, s.naos);
-        psi::Psi<double, psi::DEVICE_CPU> X(s.nsk, s.nocc, s.nvirt);
-        // set_rand(c.get_pointer(), size_c);
-        // set_rand(X.get_pointer(), size_X);
-        set_int(c.get_pointer(), size_c);
-        set_int(X.get_pointer(), size_X);
-        std::vector<ModuleBase::matrix> dm_for = hamilt::cal_dm_trans_forloop_serial(X, c);
-        std::vector<ModuleBase::matrix> dm_blas = hamilt::cal_dm_trans_blas(X, c);
-        for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_for[isk].c, dm_blas[isk].c, s.naos * s.naos);
+        psi::Psi<double, psi::DEVICE_CPU> X(s.nsk, nstate, s.nocc * s.nvirt, nullptr, false);
+        set_rand(X.get_pointer(), nstate * s.nsk * s.nocc * s.nvirt);
+        for (int istate = 0;istate < nstate;++istate)
+        {
+            int size_c = s.nsk * (s.nocc + s.nvirt) * s.naos;
+            psi::Psi<double, psi::DEVICE_CPU> c(s.nsk, s.nocc + s.nvirt, s.naos);
+            set_rand(c.get_pointer(), size_c);
+            X.fix_b(istate);
+            std::vector<container::Tensor> dm_for = hamilt::cal_dm_trans_forloop_serial(X, c, s.nocc, s.nvirt);
+            std::vector<container::Tensor> dm_blas = hamilt::cal_dm_trans_blas(X, c, s.nocc, s.nvirt);
+            for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_for[isk].data<double>(), dm_blas[isk].data<double>(), s.naos * s.naos);
+        }
+
+    }
+}
+TEST_F(DMTransTest, ComplexSerial)
+{
+    for (auto s : this->sizes)
+    {
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> X(s.nsk, nstate, s.nocc * s.nvirt, nullptr, false);
+        set_rand(X.get_pointer(), nstate * s.nsk * s.nocc * s.nvirt);
+        for (int istate = 0;istate < nstate;++istate)
+        {
+            int size_c = s.nsk * (s.nocc + s.nvirt) * s.naos;
+            psi::Psi<std::complex<double>, psi::DEVICE_CPU> c(s.nsk, s.nocc + s.nvirt, s.naos);
+            set_rand(c.get_pointer(), size_c);
+            X.fix_b(istate);
+            std::vector<container::Tensor> dm_for = hamilt::cal_dm_trans_forloop_serial(X, c, s.nocc, s.nvirt);
+            std::vector<container::Tensor> dm_blas = hamilt::cal_dm_trans_blas(X, c, s.nocc, s.nvirt);
+            for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_for[isk].data<std::complex<double>>(), dm_blas[isk].data<std::complex<double>>(), s.naos * s.naos);
+        }
+
     }
 }
 
@@ -73,10 +104,11 @@ TEST_F(DMTransTest, DoubleParallel)
         // X: nvirt*nocc in para2d, nocc*nvirt in psi (row-para and constructed: nvirt)
         Parallel_2D px;
         LR_Util::setup_2d_division(px, s.nb, s.nvirt, s.nocc);
-        psi::Psi<double, psi::DEVICE_CPU> X(s.nsk, px.get_col_size(), px.get_row_size());   //for pblas, col first??
+        psi::Psi<double, psi::DEVICE_CPU> X(s.nsk, nstate, px.get_local_size(), nullptr, false);
         Parallel_2D pc;
         LR_Util::setup_2d_division(pc, s.nb, s.naos, s.nocc + s.nvirt, px.comm_2D, px.blacs_ctxt);
         psi::Psi<double, psi::DEVICE_CPU> c(s.nsk, pc.get_col_size(), pc.get_row_size());
+        Parallel_2D pmat;
 
         EXPECT_EQ(px.dim0, pc.dim0);
         EXPECT_EQ(px.dim1, pc.dim1);
@@ -84,47 +116,105 @@ TEST_F(DMTransTest, DoubleParallel)
         EXPECT_GE(s.nocc, px.dim1);
         EXPECT_GE(s.naos, pc.dim0);
 
-        //set values
-        for (int isk = 0;isk < s.nsk;++isk)
+        set_rand(X.get_pointer(), nstate * s.nsk * px.get_local_size());        //set X and X_full
+        psi::Psi<double, psi::DEVICE_CPU> X_full(s.nsk, nstate, s.nocc * s.nvirt, nullptr, false);        // allocate X_full
+        for (int istate = 0;istate < nstate;++istate)
         {
-            X.fix_k(isk);
-            set_rand(X.get_pointer(), px.get_local_size());
-            c.fix_k(isk);
-            set_rand(c.get_pointer(), pc.get_local_size());
-        }
-
-
-        Parallel_2D pmat;
-        std::vector<ModuleBase::matrix> dm_pblas_loc = hamilt::cal_dm_trans_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
-
-        // gather dm and output
-        std::vector<ModuleBase::matrix> dm_gather(s.nsk);
-        for (int isk = 0;isk < s.nsk;++isk)
-        {
-            dm_gather[isk].create(s.naos, s.naos);
-            LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].c, dm_gather[isk].c, false, s.naos, s.naos);
-        }
-
-        // compare to global matrix
-        psi::Psi<double, psi::DEVICE_CPU> X_full(s.nsk, s.nocc, s.nvirt);
-        psi::Psi<double, psi::DEVICE_CPU> c_full(s.nsk, s.nocc + s.nvirt, s.naos);
-        for (int isk = 0;isk < s.nsk;++isk)
-        {
-            X.fix_k(isk);
-            X_full.fix_k(isk);
-            LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
-            c.fix_k(isk);
-            c_full.fix_k(isk);
-            LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
-        }
-
-        if (my_rank == 0)
-        {
-            std::vector<ModuleBase::matrix> dm_full = hamilt::cal_dm_trans_blas(X_full, c_full);
+            X.fix_b(istate);
+            X_full.fix_b(istate);
             for (int isk = 0;isk < s.nsk;++isk)
-                for (int i = 0;i < s.naos;++i)
-                    for (int j = 0;j < s.naos;++j)
-                        EXPECT_NEAR(dm_full[isk](i, j), dm_gather[isk](i, j), 1e-10);
+            {
+                X.fix_k(isk);
+                X_full.fix_k(isk);
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
+            }
+        }
+        for (int istate = 0;istate < nstate;++istate)
+        {
+            c.fix_k(0);
+            set_rand(c.get_pointer(), s.nsk * pc.get_local_size()); // set c 
+
+            X.fix_b(istate);
+            X_full.fix_b(istate);
+
+            std::vector<container::Tensor> dm_pblas_loc = hamilt::cal_dm_trans_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
+
+            // gather dm and output
+            std::vector<container::Tensor> dm_gather(s.nsk, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
+            for (int isk = 0;isk < s.nsk;++isk)
+                LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<double>(), dm_gather[isk].data<double>(), false, s.naos, s.naos);
+
+            // compare to global matrix
+            psi::Psi<double, psi::DEVICE_CPU> c_full(s.nsk, s.nocc + s.nvirt, s.naos);
+            for (int isk = 0;isk < s.nsk;++isk)
+            {
+                c.fix_k(isk);
+                c_full.fix_k(isk);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+            }
+            if (my_rank == 0)
+            {
+                std::vector<container::Tensor> dm_full = hamilt::cal_dm_trans_blas(X_full, c_full, s.nocc, s.nvirt);
+                for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_full[isk].data<double>(), dm_gather[isk].data<double>(), s.naos * s.naos);
+            }
+        }
+    }
+}
+TEST_F(DMTransTest, ComplexParallel)
+{
+    for (auto s : this->sizes)
+    {
+        // c: nao*nbands in para2d, nbands*nao in psi  (row-para and constructed: nao)
+        // X: nvirt*nocc in para2d, nocc*nvirt in psi (row-para and constructed: nvirt)
+        Parallel_2D px;
+        LR_Util::setup_2d_division(px, s.nb, s.nvirt, s.nocc);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> X(s.nsk, nstate, px.get_local_size(), nullptr, false);
+        Parallel_2D pc;
+        LR_Util::setup_2d_division(pc, s.nb, s.naos, s.nocc + s.nvirt, px.comm_2D, px.blacs_ctxt);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> c(s.nsk, pc.get_col_size(), pc.get_row_size());
+        Parallel_2D pmat;
+
+        set_rand(X.get_pointer(), nstate * s.nsk * px.get_local_size());        //set X and X_full
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> X_full(s.nsk, nstate, s.nocc * s.nvirt, nullptr, false);        // allocate X_full
+        for (int istate = 0;istate < nstate;++istate)
+        {
+            X.fix_b(istate);
+            X_full.fix_b(istate);
+            for (int isk = 0;isk < s.nsk;++isk)
+            {
+                X.fix_k(isk);
+                X_full.fix_k(isk);
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
+            }
+        }
+        for (int istate = 0;istate < nstate;++istate)
+        {
+            c.fix_k(0);
+            set_rand(c.get_pointer(), s.nsk * pc.get_local_size()); // set c 
+
+            X.fix_b(istate);
+            X_full.fix_b(istate);
+
+            std::vector<container::Tensor> dm_pblas_loc = hamilt::cal_dm_trans_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
+
+            // gather dm and output
+            std::vector<container::Tensor> dm_gather(s.nsk, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
+            for (int isk = 0;isk < s.nsk;++isk)
+                LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>(), false, s.naos, s.naos);
+
+            // compare to global matrix
+            psi::Psi<std::complex<double>, psi::DEVICE_CPU> c_full(s.nsk, s.nocc + s.nvirt, s.naos);
+            for (int isk = 0;isk < s.nsk;++isk)
+            {
+                c.fix_k(isk);
+                c_full.fix_k(isk);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+            }
+            if (my_rank == 0)
+            {
+                std::vector<container::Tensor> dm_full = hamilt::cal_dm_trans_blas(X_full, c_full, s.nocc, s.nvirt);
+                for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_full[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>(), s.naos * s.naos);
+            }
         }
     }
 }
