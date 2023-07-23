@@ -5,7 +5,9 @@
 #include "module_io/print_info.h"
 #include "module_io/winput.h"
 #include "module_md/run_md.h"
+#ifdef __LCAO
 #include "module_beyonddft/esolver_lrtd_lcao.hpp"
+#endif
 extern "C"
 {
 #include "module_base/blacs_connector.h"
@@ -77,26 +79,22 @@ void Driver::driver_run()
     p_esolver->postprocess();
     ModuleESolver::clean_esolver(p_esolver);
 
+#ifdef __LCAO
     //---------beyond DFT: set up the next ESolver---------
     if (INPUT.beyonddft_method == "lr-tddft")
     {
         std::cout << "setting up the esolver for excited state" << std::endl;
-        ModuleESolver::ESolver_KS_LCAO* p_esolver_lcao_tmp = dynamic_cast<ModuleESolver::ESolver_KS_LCAO*>(p_esolver);
+        // ModuleESolver::ESolver_KS_LCAO* p_esolver_lcao_tmp = dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver);
         ModuleESolver::ESolver* p_esolver_lr = nullptr;
         if (INPUT.gamma_only)
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, psi::DEVICE_CPU>(std::move(*p_esolver_lcao_tmp));
+            p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, double, psi::DEVICE_CPU>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver)), INPUT, GlobalC::ucell);
         else
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, psi::DEVICE_CPU>(std::move(*p_esolver_lcao_tmp));
-
-        std::cout << "before set tmp null" << std::endl;
-        p_esolver_lcao_tmp = nullptr;
-        std::cout << "after set tmp null" << std::endl;
+            p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double, psi::DEVICE_CPU>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
 
         std::cout << "before clean ks" << std::endl;
         ModuleESolver::clean_esolver(p_esolver);
         std::cout << "after clean ks" << std::endl;
 
-        p_esolver_lr->Init(INPUT, GlobalC::ucell);
         p_esolver_lr->Run(0, GlobalC::ucell);
 
         std::cout << "before clean lr" << std::endl;
@@ -109,6 +107,7 @@ void Driver::driver_run()
     if (INPUT.basis_type == "lcao")
         Cblacs_exit(1); // clean up blacs after all the esolvers are cleaned up without closing MPI
     std::cout << "befor end" << std::endl;
+#endif
     ModuleBase::timer::tick("Driver", "driver_line");
     return;
 }

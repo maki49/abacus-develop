@@ -380,6 +380,7 @@ TEST_F(InputTest, Default)
     EXPECT_EQ(INPUT.sc_file, "none");
     EXPECT_EQ(INPUT.beyonddft_method, "none");
     EXPECT_EQ(INPUT.nstates, 0);
+    EXPECT_EQ(INPUT.xc_kernel, "LDA");
 }
 
 TEST_F(InputTest, Read)

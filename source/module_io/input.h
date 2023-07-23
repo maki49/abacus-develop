@@ -579,6 +579,14 @@ class Input
     // whether to use PAW
     //==========================================================
     bool use_paw = false;
+    
+    //==========================================================
+    //Beyond DFT
+    //==========================================================
+    std::string beyonddft_method; // the method for solving excited state. e.g. lr-tddft
+    int n_unocc;    // the number of unoccupied bands to form the 2-particle states
+    int nstates;      // the number of 2-particle states to be solved
+    std::string xc_kernel; // xc kernel for LR-TDDFT
 
   private:
     //==========================================================

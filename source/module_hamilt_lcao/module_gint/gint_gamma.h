@@ -39,7 +39,7 @@ class Gint_Gamma : public Gint
     // in gint_gamma_env.cpp 
     //------------------------------------------------------
 	// calcualte the envelope function
-	void cal_env(const double* wfc, double* rho);
+    void cal_env(const double* wfc, double* rho);
 
     //------------------------------------------------------
     // in veff_lcao.cpp
@@ -48,9 +48,6 @@ class Gint_Gamma : public Gint
     void transfer_pvpR(hamilt::HContainer<double>* hR);
 
 private:
-
-    double***  DM;   //pointer to LOC.DM
-
     ///------------------------------------------------------
     /// in gint_gamma_vl.cpp 
     ///------------------------------------------------------
@@ -64,6 +61,8 @@ private:
         double* vl_2d,
         std::function<void(const int&, const int&, const double&, double*)> setfunc);
 
+private:
+    double*** DM = nullptr;   //pointer to LOC.DM
     ///===============================
     /// Use MPI_Alltoallv to convert a grid distributed matrix
     /// to 2D - block cyclic distributed matrix.

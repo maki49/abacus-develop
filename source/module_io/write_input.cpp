@@ -486,6 +486,7 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
    ofs << "\n#Parameters (22.beyond dft)" << std::endl;
    ModuleBase::GlobalFunc::OUTP(ofs, "beyonddft_method", beyonddft_method, "the method for solving excited state. e.g. lr-tddft");
    ModuleBase::GlobalFunc::OUTP(ofs, "nstates", nstates, "the number of 2-particle states to be solved");
+   ModuleBase::GlobalFunc::OUTP(ofs, "xc_kernel", xc_kernel, "xc kernel for LR-TDDFT. default: LDA");
    ofs.close();
 >>>>>>> 7d4fe3b32 (add operator=(T&&) in Grid_Technique and its 4 base classes)
     return;

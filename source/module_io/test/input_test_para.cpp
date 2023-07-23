@@ -380,6 +380,7 @@ TEST_F(InputParaTest,Bcast)
 
         EXPECT_EQ(INPUT.beyonddft_method, "none");
         EXPECT_EQ(INPUT.nstates, 0);
+        EXPECT_EQ(INPUT.xc_kernel, "LDA");
     }
 }
 

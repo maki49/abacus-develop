@@ -916,4 +916,20 @@ TEST_F(write_input, Deltaspin22)
     EXPECT_THAT(output, testing::HasSubstr("sccut                          3 #Maximal step size for lambda in eV/uB"));
     remove("write_input_test.log");
 }
+
+TEST_F(write_input, BeyondDFT23)
+{
+    INPUT.Default();
+    INPUT.Read("./support/witestfile");
+    std::string output_file = "write_input_test.log";
+    INPUT.Print(output_file);
+    int a = access("write_input_test.log", 00);
+    EXPECT_EQ(a, 0);
+    std::ifstream ifs("write_input_test.log");
+    std::string output((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    EXPECT_THAT(output, testing::HasSubstr("beyonddft_method        none #the method for solving excited state. e.g. lr-tddft"));
+    EXPECT_THAT(output, testing::HasSubstr("nstates        0 #the number of 2-particle states to be solved"));
+    EXPECT_THAT(output, testing::HasSubstr("xc_kernel        LDA #xc kernel for LR-TDDFT. default: LDA"));
+}
+
 #undef private

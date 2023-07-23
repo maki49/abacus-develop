@@ -40,7 +40,10 @@ private:
 	using TatomR = std::array<double,Ndim>;		// tmp
 
 public:
-	Exx_LRI( const Exx_Info::Exx_Info_RI &info_in ) :info(info_in){}
+    Exx_LRI(const Exx_Info::Exx_Info_RI& info_in) :info(info_in) {}
+    Exx_LRI operator=(const Exx_LRI&) = delete;
+    Exx_LRI operator=(Exx_LRI&&);
+
 
 	void init(const MPI_Comm &mpi_comm_in, const K_Vectors &kv_in);
 	void cal_exx_force();

@@ -619,6 +619,7 @@ void Input::Default(void)
     //==========================================================
     beyonddft_method = "none";
     nstates = 0;
+    xc_kernel = "LDA";
     return;
 }
 
@@ -2236,7 +2237,11 @@ bool Input::Read(const std::string &fn)
         {
             read_value(ifs, nstates);
         }
-            //----------------------------------------------------------------------------------
+        else if (strcmp("xc_kernel", word) == 0)
+        {
+            read_value(ifs, xc_kernel);
+        }
+        //----------------------------------------------------------------------------------
         else
         {
             // xiaohui add 2015-09-15
