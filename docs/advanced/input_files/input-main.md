@@ -385,6 +385,9 @@
     - [qo\_strategy](#qo_strategy)
     - [qo\_screening\_coeff](#qo_screening_coeff)
     - [qo\_thr](#qo_thr)
+  - [Beyond DFT](#beyond-dft)
+    - [nstates](#nstates)
+    - [xc\_kernel](#xc_kernel)
 
 [back to top](#full-list-of-input-keywords)
 
@@ -3639,4 +3642,18 @@ These parameters are used to solve the excited states using. e.g. lr-tddft
 - **Description**:  The number of 2-particle states to be solved
 - **Default**: 0
 
+<<<<<<< HEAD
 [back to top](#full-list-of-input-keywords)
+<<<<<<< HEAD
+=======
+>>>>>>> 7d4fe3b32 (add operator=(T&&) in Grid_Technique and its 4 base classes)
+=======
+### xc_kernel
+
+- **Type**: String
+- **Description**: The exchange-correlation kernel used in the calculation. Currently, only `LDA` is supported.
+- **Default**: LDA
+
+[back to top](#full-list-of-input-keywords)
+>>>>>>> ab3506693 (Framework: kernel, pot, operator, hamilt)
+>>>>>>> 8316c5c67 (Framework: kernel, pot, operator, hamilt)

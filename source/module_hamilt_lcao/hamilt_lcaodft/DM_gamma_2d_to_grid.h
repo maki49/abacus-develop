@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include "module_base/matrix.h"
 #ifdef __MPI
@@ -12,14 +13,14 @@ public:
     DMgamma_2dtoGrid();
     ~DMgamma_2dtoGrid();
 #ifdef __MPI
-    int setAlltoallvParameter(MPI_Comm comm_2D, int nbasis, int blacs_ctxt, int nblk, const int& loc_grid_dim, const int* global2local_grid);
+    int setAlltoallvParameter(MPI_Comm comm_2D, const int nbasis, const int blacs_ctxt, const int nblk, const int& loc_grid_dim, const int* global2local_grid);
 #endif
     void cal_dk_gamma_from_2D(
-        std::vector<ModuleBase::matrix>& dm_gamma_2d,
+        const std::vector<ModuleBase::matrix>& dm_gamma_2d,
         double*** dm_gamma_grid,
-        int& nspin,
-        int& nbasis,
-        int& loc_grid_dim,
+        const int& nspin,
+        const int& nbasis,
+        const int& loc_grid_dim,
         std::ofstream& ofs_running);
 private:
     // Buffer parameters for tranforming 2D block-cyclic distributed DM matrix 

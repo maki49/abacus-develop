@@ -684,6 +684,7 @@ target_link_libraries(${ABACUS_BIN_NAME}
     vdw
     device
     container
+    lr
 )
 
 if(ENABLE_PAW)

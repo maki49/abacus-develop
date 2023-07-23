@@ -39,7 +39,7 @@ class Gint_Gamma : public Gint
     // in gint_gamma_env.cpp 
     //------------------------------------------------------
 	// calcualte the envelope function
-	void cal_env(const double* wfc, double* rho);
+    void cal_env(const double* wfc, double* rho);
 
     //------------------------------------------------------
     // in veff_lcao.cpp

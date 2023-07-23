@@ -10,35 +10,38 @@
 #include <memory>
 
 #include "module_esolver/esolver_ks_lcao.h" //for the move constructor
-
-// tmp 
 #include "module_hamilt_lcao/hamilt_lcaodft/record_adj.h"
 #include "module_hamilt_lcao/module_gint/gint_gamma.h"
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
-
+#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
+#include "module_beyonddft/hamilt_casida.hpp"
+#ifdef __EXX
+// #include <RI/physics/Exx.h>
+#include "module_ri/Exx_LRI.h"
+#endif
 namespace ModuleESolver
 {
-    template<typename FPTYPE, typename Device = psi::DEVICE_CPU>
+    template<typename T, typename TR = double, typename Device = psi::DEVICE_CPU>
+    // template<typename T, typename Texx = T, typename Device = psi::DEVICE_CPU>
     class ESolver_LRTD : public ESolver_FP
     {
     public:
-        /// @brief a constructor from ground state info
-        ESolver_LRTD(psi::Psi<FPTYPE, Device>&& psi_in, ModuleBase::matrix&& eig_in)
-            : psi_ks(&psi_in) {
-            if (this->pelec == nullptr) this->pelec = new elecstate::ElecStateLCAO;
-            this->pelec->ekb = eig_in;
-        }
         /// @brief  a move constructor from ESolver_KS_LCAO
-        ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO&& ks_sol);
+        ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol, Input& inp, UnitCell& ucell);
         ESolver_LRTD() {}
         ~ESolver_LRTD() {
-            if (this->pelec != nullptr) delete this->pelec;
-            // if (this->X != nullptr) delete this->X;
+            delete this->p_hamilt;
+            delete this->phsol;
+            delete this->pot;
+            delete this->psi_ks;
+            delete this->X;
+            delete this->AX;
         }
 
         ///input: input, call, basis(LCAO), psi(ground state), elecstate
-        virtual void Init(Input& inp, UnitCell& cell) override;
+        // initialize sth. independent of the ground state
+        virtual void Init(Input& inp, UnitCell& cell) override {};
 
         virtual void init_after_vc(Input& inp, UnitCell& cell) override {};
         virtual void Run(int istep, UnitCell& ucell) override;
@@ -50,26 +53,25 @@ namespace ModuleESolver
 
     protected:
 
-        UnitCell* p_ucell = nullptr;
-        Input* p_input = nullptr;
+        const UnitCell* p_ucell = nullptr;
+        const Input* p_input = nullptr;
 
-        std::unique_ptr<hamilt::Hamilt<FPTYPE, Device>> phamilt = nullptr;
-        std::unique_ptr<hsolver::HSolver<FPTYPE, Device>> phsol = nullptr;
-        // in Operator: 
-        //mutable psi::Psi<FPTYPE, Device>* hpsi = nullptr;
+        hamilt::HamiltCasidaLR<T, Device>* p_hamilt = nullptr;  //opsd problem first to use base calss
+        hsolver::HSolver<T, Device>* phsol = nullptr;
+        // not to use ElecState because 2-particle state is quite different from 1-particle state.
+        // implement a independent one (ExcitedState) to pack physical properties if needed.
+        // put the components of ElecState here: 
+        elecstate::PotHxcLR* pot = nullptr;
 
         // ground state info 
         //pelec in  ESolver_FP
-        const psi::Psi<FPTYPE, Device>* psi_ks = nullptr;
+        const psi::Psi<T, Device>* psi_ks = nullptr;
         ModuleBase::matrix eig_ks;
         // energy of ground state is in pelec->ekb
 
-        /// @brief Excited state info. size: nstates*nks*nocc*nvirt
-        std::vector<psi::Psi<FPTYPE, Device>> X;
-        //psi::Psi<FPTYPE, Device>* AX = nullptr;
-        /// global index map between (i,c) and ix
-        ModuleBase::matrix iciv2ix;
-        std::vector<std::pair<int, int>> ix2iciv;
+        /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
+        psi::Psi<T, Device>* X;
+        psi::Psi<T, Device>* AX;
 
         size_t nocc;
         size_t nvirt;
@@ -86,19 +88,30 @@ namespace ModuleESolver
         // adj info 
         Record_adj ra;
         // grid parallel info (no need for 2d-block distribution)?
-        Grid_Technique gridt;
+        // Grid_Technique gridt;
         // grid integration method(will be moved to OperatorKernelHxc)
         ModulePW::PW_Basis_Big bigpw;
         Gint_Gamma gint_g;
         Gint_k gint_k;
+        K_Vectors kv;
 
         /// @brief variables for parallel distribution of KS orbitals
         Parallel_2D paraC_;
         /// @brief variables for parallel distribution of excited states
         Parallel_2D paraX_;
+        /// @brief variables for parallel distribution of matrix in AO representation
+        Parallel_2D paraMat_;
 
+        /// move to hsolver::updatePsiK
         void init_X();
 
+#ifdef __EXX
+        // using TA = int;
+        // using Tcell = int;
+        // static constexpr std::size_t Ndim = 3;
+        // RI::Exx<TA, Tcell, Ndim, Texx>* exx_lri;
+        std::shared_ptr<Exx_LRI<double>> exx_lri_double = nullptr;
+#endif
 
     };
 }

@@ -649,6 +649,7 @@ void Input::Default(void)
     //    beyond-dft   
     //==========================================================
     nstates = 0;
+    xc_kernel = "LDA";
     return;
 }
 
@@ -2363,7 +2364,11 @@ bool Input::Read(const std::string& fn)
         {
             read_value(ifs, nstates);
         }
-            //----------------------------------------------------------------------------------
+        else if (strcmp("xc_kernel", word) == 0)
+        {
+            read_value(ifs, xc_kernel);
+        }
+        //----------------------------------------------------------------------------------
         else
         {
             // xiaohui add 2015-09-15
@@ -3719,7 +3724,6 @@ void Input::Bcast()
     Parallel_Common::bcast_double(alpha_trial);
     Parallel_Common::bcast_double(sccut);
 
-<<<<<<< HEAD
     Parallel_Common::bcast_bool(qo_switch);
     Parallel_Common::bcast_string(qo_basis);
     Parallel_Common::bcast_double(qo_thr);
@@ -3731,13 +3735,11 @@ void Input::Bcast()
         qo_screening_coeff.resize(ntype);
         Parallel_Common::bcast_double(qo_screening_coeff.data(), ntype);
     }
-=======
     //----------------------------------------------------------------------------------
     //    beyond dft
     //----------------------------------------------------------------------------------
     Parallel_Common::bcast_string(beyonddft_method);
     Parallel_Common::bcast_int(nstates);
->>>>>>> a5f6f4c5c (X-index: diagonal arrangement and tests)
     return;
 }
 #endif

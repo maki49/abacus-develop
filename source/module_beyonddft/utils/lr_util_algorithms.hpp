@@ -78,23 +78,73 @@ namespace LR_Util
         }
     };
 
+    container::Tensor mat2ten_double(ModuleBase::matrix& m)
+    {
+        container::Tensor t(DAT::DT_DOUBLE, DEV::CpuDevice, { m.nr, m.nc });
+        for (int i = 0;i < t.NumElements();++i)t.data<double>()[i] = m.c[i];
+        return t;
+    }
+    std::vector<container::Tensor> mat2ten_double(std::vector<ModuleBase::matrix>& m)
+    {
+        std::vector<container::Tensor> t;
+        for (int i = 0;i < m.size();++i) t.push_back(mat2ten_double(m[i]));
+        return t;
+    }
+    ModuleBase::matrix ten2mat_double(container::Tensor& t)
+    {
+        ModuleBase::matrix m(t.shape().dims()[0], t.shape().dims()[1]);
+        for (int i = 0;i < t.NumElements();++i)m.c[i] = t.data<double>()[i];
+        return m;
+    }
+    std::vector<ModuleBase::matrix> ten2mat_double(std::vector<container::Tensor>& t)
+    {
+        std::vector<ModuleBase::matrix> m;
+        for (int i = 0;i < t.size();++i) m.push_back(ten2mat_double(t[i]));
+        return m;
+    }
+    container::Tensor mat2ten_complex(ModuleBase::ComplexMatrix& m)
+    {
+        container::Tensor t(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { m.nr, m.nc });
+        for (int i = 0;i < t.NumElements();++i)t.data<std::complex<double>>()[i] = m.c[i];
+        return t;
+    }
+    std::vector<container::Tensor> mat2ten_complex(std::vector<ModuleBase::ComplexMatrix>& m)
+    {
+        std::vector<container::Tensor> t;
+        for (int i = 0;i < m.size();++i) t.push_back(mat2ten_complex(m[i]));
+        return t;
+    }
+    ModuleBase::ComplexMatrix ten2mat_complex(container::Tensor& t)
+    {
+        ModuleBase::ComplexMatrix m(t.shape().dims()[0], t.shape().dims()[1]);
+        for (int i = 0;i < t.NumElements();++i)m.c[i] = t.data<std::complex<double>>()[i];
+        return m;
+    }
+    std::vector<ModuleBase::ComplexMatrix> ten2mat_complex(std::vector<container::Tensor>& t)
+    {
+        std::vector<ModuleBase::ComplexMatrix> m;
+        for (int i = 0;i < t.size();++i) m.push_back(ten2mat_complex(t[i]));
+        return m;
+    }
+
     // for the first matrix in the commutator
     void setup_2d_division(Parallel_2D& pv, int nb, int gr, int gc)
     {
         ModuleBase::TITLE("ESolver_LRTD", "setup_2d_division");
+        std::ofstream ofs("");
         pv.set_block_size(nb);
 #ifdef __MPI
         int nprocs;
         MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
         pv.set_proc_dim(nprocs);
         pv.mpi_create_cart(MPI_COMM_WORLD);
-        pv.set_local2global(gr, gc, GlobalV::ofs_running, GlobalV::ofs_warning);
+        pv.set_local2global(gr, gc, ofs, ofs);
         pv.set_desc(gr, gc, pv.get_row_size());
-        pv.set_global2local(gr, gc, true, GlobalV::ofs_running);
+        pv.set_global2local(gr, gc, true, ofs);
 #else
         pv.set_proc_dim(1);
         pv.set_serial(gr, gc);
-        pv.set_global2local(gr, gc, false, GlobalV::ofs_running);
+        pv.set_global2local(gr, gc, false, ofs);
 #endif
     };
 
@@ -104,6 +154,7 @@ namespace LR_Util
         const MPI_Comm& comm_2D_in, const int& blacs_ctxt_in)
     {
         ModuleBase::TITLE("ESolver_LRTD", "setup_2d_division");
+        std::ofstream ofs("");
         pv.set_block_size(nb);
 
         int nprocs, myrank;
@@ -111,9 +162,9 @@ namespace LR_Util
         pv.set_proc_dim(nprocs);
         pv.comm_2D = comm_2D_in;
         pv.blacs_ctxt = blacs_ctxt_in;
-        pv.set_local2global(gr, gc, GlobalV::ofs_running, GlobalV::ofs_warning);
+        pv.set_local2global(gr, gc, ofs, ofs);
         pv.set_desc(gr, gc, pv.get_row_size(), false);
-        pv.set_global2local(gr, gc, true, GlobalV::ofs_running);
+        pv.set_global2local(gr, gc, true, ofs);
     };
 #endif
 

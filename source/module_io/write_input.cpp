@@ -505,6 +505,7 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
 
    ofs << "\n#Parameters (22.beyond dft)" << std::endl;
    ModuleBase::GlobalFunc::OUTP(ofs, "nstates", nstates, "the number of 2-particle states to be solved");
+   ModuleBase::GlobalFunc::OUTP(ofs, "xc_kernel", xc_kernel, "xc kernel for LR-TDDFT. default: LDA");
    ofs.close();
     return;
 }
