@@ -12,3 +12,8 @@ AddTest(
   LIBS base ${math_libs} device symmetry
   SOURCES symmetry_test.cpp symmetry_test_symtrz.cpp
 )
+AddTest(
+  TARGET symmetry_exx
+  LIBS base ${math_libs} device
+  SOURCES ../symmetry_exx.cpp symmetry_exx_test.cpp
+)

@@ -48,7 +48,11 @@ public:
             const ModuleBase::Matrix3 &latvec);
     //get global index for ik
     inline int getik_global(const int& ik) const;
-
+#ifdef __EXX
+    /// @brief equal k points to each ibz-kpont, corresponding to a certain symmetry operations. 
+    /// dim: [iks_ibz][isym][kvec_d]
+    std::vector<std::map<int, ModuleBase::Vector3<double>>> kstars;
+#endif
 private:
     int nspin;
     bool kc_done;

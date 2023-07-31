@@ -739,7 +739,8 @@ void K_Vectors::ibz_kpoint(const ModuleSymmetry::Symmetry &symm, bool use_symm,s
 		//std::cout << "\n kpoint = " << i << std::endl;
 		//std::cout << "\n kvec_d = " << kvec_d[i].x << " " << kvec_d[i].y << " " << kvec_d[i].z;
         bool already_exist = false;
-		int exist_number = -1;
+        int exist_number = -1;
+        int isym = 0;
 
         for (int j = 0; j < nrotkm; ++j)
         {
@@ -780,7 +781,8 @@ void K_Vectors::ibz_kpoint(const ModuleSymmetry::Symmetry &symm, bool use_symm,s
 						// so the weight need to +1;
 
                         this->wk_ibz[k] += weight;
-						exist_number = k;
+                        exist_number = k;
+                        isym = j;
                         break;
                     }
                 }
@@ -797,14 +799,21 @@ void K_Vectors::ibz_kpoint(const ModuleSymmetry::Symmetry &symm, bool use_symm,s
 
 			//the weight should be averged k-point weight.
             this->wk_ibz[nkstot_ibz] = weight;
-
+#ifdef __EXX
+            if (isym < symm.nrotk)
+                this->kstars[nkstot_ibz].insert(std::make_pair(0, kvec_d[i]));
+#endif
 			//ibz2bz records the index of origin k points.
             this->ibz2bz[nkstot_ibz] = i;
             ++nkstot_ibz;
         }
 		else //mohan fix bug 2010-1-30
-		{
-//			std::cout << "\n\n already exist ! ";
+        {
+#ifdef __EXX
+            if (isym < symm.nrotk)
+                this->kstars[exist_number].insert(std::make_pair(isym, kvec_d[i]));
+#endif
+            //			std::cout << "\n\n already exist ! ";
 
 //			std::cout << "\n kvec_rot = " << kvec_rot.x << " " << kvec_rot.y << " " << kvec_rot.z;
 //			std::cout << "\n kvec_d_ibz = " << kvec_d_ibz[exist_number].x

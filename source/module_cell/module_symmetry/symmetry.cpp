@@ -865,7 +865,9 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
     bool no_diff = 0;
     ModuleBase::Vector3<double> trans(2.0, 2.0, 2.0);
     s_flag = 0;
-
+#ifdef __EXX
+    std::vector<int> f1(this->nat, 0);  //ordering-map before rotatation
+#endif
     for (int it = 0; it < ntype; it++)
     {
 		//------------------------------------
@@ -883,7 +885,10 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
 
         //order original atomic positions for current species
         this->atom_ordering_new(pos + istart[it] * 3, na[it], index + istart[it]);
-         //for( int iat =0 ; iat < ucell.nat ; iat++)
+#ifdef __EXX
+        if (this->firstsort) for (int ia = istart[it]; ia < istart[it] + na[it]; ++ia) f1[ia] = index[ia];   // save the ordering-map before rotation
+#endif
+        //for( int iat =0 ; iat < ucell.nat ; iat++)
          //std::cout << " newpos_now2 = " << newpos[3*iat] << " " << newpos[3*iat+1] << " " << newpos[3*iat+2] << std::endl;
 
         //Rotate atoms of current species
@@ -918,7 +923,9 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
         //order rotated atomic positions for current species
         this->atom_ordering_new(rotpos + istart[it] * 3, na[it], index + istart[it]);
     }
-
+#ifdef __EXX
+    this->firstsort = false;
+#endif
 	/*
 	GlobalV::ofs_running << " ============================================= " << std::endl;
 	GlobalV::ofs_running << " Matrix S " << std::endl;
@@ -1034,6 +1041,12 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
         gtrans.x = trans.x;
         gtrans.y = trans.y;
         gtrans.z = trans.z;
+#ifdef __EXX
+        // now this->index stores the ordering-map after symmetry operation: f2
+        // we can calculate the atom-index-map of group operation: g=f2^{-1}f1
+        std::vector<int> invf2 = this->symexx.invmap(this->index, this->nat);
+        this->symexx.isym_iat_rotiat.push_back(this->symexx.mapmul(f1.data(), invf2.data(), this->nat));
+#endif
     }
     return;
 }
