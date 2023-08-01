@@ -145,8 +145,8 @@ extern "C"
 	void zhegs2_(int *itype, char *uplo, int *n, std::complex<double> *a, int *lda, std::complex<double> *b, int *ldb, int *info);
 
     // copies a into b
-	void dlacpy_(char *uplo, int *m, int *n, double* a, int *lda, double *b, int *ldb);
-	void zlacpy_(char *uplo, int *m, int *n, std::complex<double>* a, int *lda, std::complex<double> *b, int *ldb);
+    void dlacpy_(const char* uplo, const int* m, const  int* n, double* a, const int* lda, double* b, const int* ldb);
+    void zlacpy_(const char* uplo, const int* m, const int* n, std::complex<double>* a, const int* lda, std::complex<double>* b, const int* ldb);
 
     // generates a real elementary reflector H of order n, such that
     //   H * ( alpha ) = ( beta ),   H is unitary.

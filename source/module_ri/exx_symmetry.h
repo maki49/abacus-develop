@@ -1,4 +1,3 @@
-#ifdef __EXX
 #pragma once
 #include <vector>
 #include "module_basis/module_ao/parallel_orbitals.h"
@@ -34,16 +33,24 @@ namespace ExxSym
     /// @param nbands [in] global number of bands
     /// @param pv [in] parallel orbitals (for both matrix and wavefunction)
     /// @param col_inside [in] whether the matrix is column-major (major means memory continuity)
-    /// @return 
-    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik(
+    /// @return c_k: wavefunction of each k in kstars[ikibz]
+#ifdef __MPI
+    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik_scalapack(
         const int& ikibz,
-        const std::vector<std::complex<double>>& psi_ikibz,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ikibz,
         const std::vector<std::complex<double>>& sloc_ikibz,
         const std::vector<std::vector<std::complex<double>>>& sloc_ik,
         const int& nbasis,
         const int& nbands,
-        const Parallel_Orbitals& pv,
-        const bool col_inside);
+        const Parallel_Orbitals& pv);
+#endif
+    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik_lapack(
+        const int& ikibz,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ikibz,
+        const std::vector<std::complex<double>>& sloc_ikibz,
+        const std::vector<std::vector<std::complex<double>>>& sloc_ik,
+        const int& nbasis,
+        const int& nbands);
 
     std::vector<std::complex<double>> get_full_smat(
         const std::vector<std::complex<double>>& locmat,
@@ -51,4 +58,3 @@ namespace ExxSym
         const Parallel_2D& p2d,
         const bool col_inside);
 }
-#endif
