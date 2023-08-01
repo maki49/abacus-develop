@@ -18,6 +18,7 @@ if (ENABLE_LIBRI)
         exx_abfs-pca.cpp
         exx_opt_orb-print.cpp
         exx_opt_orb.cpp
+        exx_symmetry.cpp
     )
   endif()
   add_library(

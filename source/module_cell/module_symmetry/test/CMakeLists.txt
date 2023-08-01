@@ -2,6 +2,7 @@ remove_definitions(-D__LCAO)
 remove_definitions(-D__DEEPKS)
 remove_definitions(-D__CUDA)
 remove_definitions(-D__ROCM)
+remove_definitions(-D__EXX)
 AddTest(
   TARGET symmetry_analysis
   LIBS base ${math_libs} device symmetry
@@ -11,9 +12,4 @@ AddTest(
   TARGET symmetry_symtrz
   LIBS base ${math_libs} device symmetry
   SOURCES symmetry_test.cpp symmetry_test_symtrz.cpp
-)
-AddTest(
-  TARGET symmetry_exx
-  LIBS base ${math_libs} device
-  SOURCES ../symmetry_exx.cpp symmetry_exx_test.cpp
 )

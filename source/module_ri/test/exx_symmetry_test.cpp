@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
-#include "../symmetry_exx.h"
+#include "module_cell/module_symmetry/symmetry.h"
+#include "../exx_symmetry.h"
 #include <map>
 #include <tuple>
 
@@ -20,7 +21,7 @@ TEST_F(SymExxTest, invmap)
 {
     for (auto c : invmap_cases)
     {
-        std::vector<int> invf = SymExx::invmap(c.first.data(), c.first.size());
+        std::vector<int> invf = ModuleSymmetry::Symmetry::invmap(c.first.data(), c.first.size());
         EXPECT_EQ(invf, c.second);
     }
 }
@@ -29,7 +30,7 @@ TEST_F(SymExxTest, mapmul)
 {
     for (auto c : mapmul_cases)
     {
-        std::vector<int> f2f1 = SymExx::mapmul(std::get<0>(c).data(), std::get<1>(c).data(), std::get<0>(c).size());
+        std::vector<int> f2f1 = ModuleSymmetry::Symmetry::mapmul(std::get<0>(c).data(), std::get<1>(c).data(), std::get<0>(c).size());
         EXPECT_EQ(f2f1, std::get<2>(c));
     }
 }

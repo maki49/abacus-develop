@@ -4,7 +4,6 @@ add_library(
     symm_other.cpp
     symmetry_basic.cpp
     symmetry.cpp
-    symmetry_exx.cpp
 )
 
 if(ENABLE_COVERAGE)

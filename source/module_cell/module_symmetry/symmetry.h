@@ -3,9 +3,6 @@
 
 #include "module_cell/unitcell.h"
 #include "symmetry_basic.h"
-#ifdef __EXX
-#include "module_cell/module_symmetry/symmetry_exx.h"
-#endif
 
 namespace ModuleSymmetry
 {
@@ -122,8 +119,21 @@ public:
     void hermite_normal_form(const ModuleBase::Matrix3& s, ModuleBase::Matrix3& H, ModuleBase::Matrix3& b) const;
 
 #ifdef __EXX
-    SymExx symexx;
     bool firstsort = true;
+    /// @brief size: atom index map corresponding to each symmetry operation. size: [nrotk][nat]
+    std::vector<std::vector<int>> isym_iat_rotiat;
+    static std::vector<int> invmap(const int* map, const int& size)
+    {
+        std::vector<int> invf(size);
+        for (size_t i = 0; i < size; ++i) invf[map[i]] = i;
+        return invf;
+    }
+    static std::vector<int> mapmul(const int* map1, const int* map2, const int& size)
+    {
+        std::vector<int> f2f1(size);    // f1 first
+        for (size_t i = 0; i < size; ++i) f2f1[i] = map2[map1[i]];
+        return f2f1;
+    }
 #endif
 
 

@@ -13,9 +13,13 @@ extern "C"
 		const int *m, const int *n, const int *mb, const int *nb, const int *irsrc, const int *icsrc, 
 		const int *ictxt, const int *lld, int *info);
 
-	void pdpotrf_(char *uplo, int *n, double *a, int *ia, int *ja, int *desca, int *info);
+    void pdpotrf_(const char* uplo, const int* n, double* a, const int* ia, const int* ja, const int* desca, int* info);
 //	void pzpotrf_(char *uplo, int *n, double _Complex *a, int *ia, int *ja, int *desca, int *info);
-	void pzpotrf_(char *uplo, int *n, std::complex<double> *a, int *ia, int *ja, int *desca, int *info);
+    void pzpotrf_(const char* uplo, const int* n, std::complex<double>* a, const int* ia, const int* ja, const int* desca, int* info);
+
+    void pdpotri_(const char* uplo, const int* n, double* a, const int* ia, const int* ja, const int* desca, int* info);
+
+    void pzpotri_(const char* uplo, const int* n, std::complex<double>* a, const int* ia, const int* ja, const int* desca, int* info);
 
 	void pdtran_(int *m , int *n ,
 		double *alpha , double *a , int *ia , int *ja , int *desca ,

@@ -1044,8 +1044,8 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
 #ifdef __EXX
         // now this->index stores the ordering-map after symmetry operation: f2
         // we can calculate the atom-index-map of group operation: g=f2^{-1}f1
-        std::vector<int> invf2 = this->symexx.invmap(this->index, this->nat);
-        this->symexx.isym_iat_rotiat.push_back(this->symexx.mapmul(f1.data(), invf2.data(), this->nat));
+        std::vector<int> invf2 = Symmetry::invmap(this->index, this->nat);
+        this->isym_iat_rotiat.push_back(Symmetry::mapmul(f1.data(), invf2.data(), this->nat));
 #endif
     }
     return;
