@@ -10,35 +10,33 @@
 
 namespace ExxSym
 {
-    std::vector<std::vector<std::complex<double>>> rearange_smat(
-        const int ikibz,
+    std::vector<std::vector<std::complex<double>>> cal_Sk_rot(
         const std::vector<std::complex<double>> sloc_ikibz,
         const int nbasis,
         const Parallel_2D& p2d,
         std::vector<std::vector<int>>& isym_iat_rotiat,
-        std::vector<std::map<int, ModuleBase::Vector3<double>>> kstars,
-        const UnitCell& ucell)
+        std::map<int, ModuleBase::Vector3<double>> kstar_ibz,
+        const UnitCell& ucell,
+        const bool col_inside)
     {
+        ModuleBase::TITLE("ExxSym", "cal_Sk_rot");
         // add title
         std::vector<std::vector<std::complex<double>>> kvd_sloc; //result
-
-        //1. get the full smat
+        //get the full smat
         // note: the globalfunc-major means outside, while scalapack's major means inside
-        bool col_inside = !ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER();
+        // bool col_inside = !ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER();
         //sfull is symmetric but sloc not, so row/col major should be considered
         std::vector<std::complex<double>> sfull_ikbz = get_full_smat(sloc_ikibz, nbasis, p2d,
             col_inside);
-
-        //2. get invmap: iat1 to iat0
-        std::vector<int> isym_rotiat_iat = ModuleSymmetry::Symmetry::invmap(isym_iat_rotiat[0].data(), ucell.nat);
-
-        for (auto& isym_kvecd : kstars[ikibz])
+        for (auto& isym_kvecd : kstar_ibz)
         {
             int isym = isym_kvecd.first;
+            //get invmap : iat1 to iat0
+            std::vector<int> rotiat_iat = ModuleSymmetry::Symmetry::invmap(isym_iat_rotiat[isym].data(), ucell.nat);
             // 1 symmetry operation - may more than one kvec_d ?? check it !!!
             // ModuleBase::Vector3<double> kvds = isym_kvecd.second;
             // set rearanged sloc_ik
-            std::vector<std::complex<double>> sloc_ik(p2d.get_local_size(), 0);
+            std::vector<std::complex<double>> sloc_ik(p2d.get_local_size());
             for (int mu = 0;mu < p2d.get_row_size();++mu)
             {
                 int gr = p2d.local2global_row(mu);
@@ -47,7 +45,7 @@ namespace ExxSym
                     int gc = p2d.local2global_col(nu);
                     int iat1 = ucell.iwt2iat[gc];
                     int iw = ucell.iwt2iw[gc];//orb-index of iat1, the same as iat0
-                    int iat0 = isym_rotiat_iat[iat1];   //g(iat0)=iat1
+                    int iat0 = rotiat_iat[iat1];   //g(iat0)=iat1
                     assert(ucell.iat2it[iat1] == ucell.iat2it[iat0]);//check for the same it
                     int gc0 = ucell.iat2iwt[iat0] + iw;
                     if (col_inside)
@@ -67,6 +65,7 @@ namespace ExxSym
         const Parallel_2D& p2d,
         const bool col_inside)
     {
+        ModuleBase::TITLE("ExxSym", "get_full_mat");
 #ifdef __MPI
         std::vector<std::complex<double>> fullmat(nbasis * nbasis, 0);
         if (col_inside)
@@ -92,6 +91,7 @@ namespace ExxSym
         const int& nbasis,
         const int& nbands)
     {
+        ModuleBase::TITLE("ExxSym", "restore_psik_lapack");
         int nkstar = sloc_ik.size();
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> c_k(nkstar, nbands, nbasis);
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> tmpSc(1, nbands, nbasis);
@@ -146,6 +146,7 @@ namespace ExxSym
         const int& nbands,
         const Parallel_Orbitals& pv)
     {
+        ModuleBase::TITLE("ExxSym", "restore_psik_scalapack");
         int nkstar = sloc_ik.size();
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> c_k(nkstar, pv.ncol_bands, pv.get_row_size());
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> tmpSc(1, pv.ncol_bands, pv.get_row_size());
@@ -197,5 +198,4 @@ namespace ExxSym
         return c_k;
     }
 #endif
-
 }

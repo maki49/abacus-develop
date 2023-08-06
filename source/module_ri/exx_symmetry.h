@@ -1,9 +1,9 @@
 #pragma once
 #include <vector>
 #include "module_basis/module_ao/parallel_orbitals.h"
-#include "module_cell/unitcell.h"
+#include "module_base/vector3.h"
 #include "module_psi/psi.h"
-
+#include "module_cell/unitcell.h"
 namespace ExxSym
 {
     /// @brief Rearrange the $\nu$ index of overlap matrices of ibz-kpoints $S_{\mu,\nu}(gk)$ according to the symmetry operations
@@ -12,17 +12,17 @@ namespace ExxSym
     /// @param nbasis [in] global number of basis
     /// @param p2d [in]2d parallel info
     /// @param isym_iat_rotiat [in] atom index map corresponding to each symmetry operation
-    /// @param kstars [in] symmetry-equal k points to each ibz-kpont: [iksibz][isym][kvec_d]
+    /// @param kstar_ibz [in] symmetry-equal k points to current ibz-kpont: [isym][kvec_d]
     /// @param ucell [in] unitcell
     /// @return local S(k) for each k in kstars[ikibz]
-    std::vector<std::vector<std::complex<double>>> rearange_smat(
-        const int ikibz,
+    std::vector<std::vector<std::complex<double>>>cal_Sk_rot(
         const std::vector<std::complex<double>> sloc_ikibz,
         const int nbasis,
         const Parallel_2D& p2d,
         std::vector<std::vector<int>>& isym_iat_rotiat,
-        std::vector<std::map<int, ModuleBase::Vector3<double>>> kstars,
-        const UnitCell& ucell);
+        std::map<int, ModuleBase::Vector3<double>> kstar_ibz,
+        const UnitCell& ucell,
+        const bool col_inside);
 
     /// @brief restore c_k from c_gk: $c_k=\tilde{S}^{-1}(k)S(gk)c_{gk}$
     /// @param ikibz  [in] ibz-kpoint index

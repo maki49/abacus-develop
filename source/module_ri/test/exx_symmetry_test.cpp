@@ -1,10 +1,23 @@
 #include "gtest/gtest.h"
-#include "module_cell/module_symmetry/symmetry.h"
 #include "../exx_symmetry.h"
+#include "module_cell/setup_nonlocal.h"
 #include <map>
 #include <tuple>
-
-
+Magnetism::Magnetism() {}
+Magnetism::~Magnetism() {}
+InfoNonlocal::InfoNonlocal() {}
+InfoNonlocal::~InfoNonlocal() {}
+UnitCell::UnitCell() {
+    iat2it = nullptr;
+    iwt2iat = nullptr;
+    iwt2iw = nullptr;
+}
+UnitCell::~UnitCell()
+{
+    delete[] iat2it;
+    delete[] iwt2iat;
+    delete[] iwt2iw;
+}
 class SymExxTest : public testing::Test
 {
 protected:
@@ -12,7 +25,8 @@ protected:
     int my_rank = 0;
     std::ofstream ofs_running;
     Parallel_Orbitals pv;
-
+    UnitCell ucell;
+    int nbasis = 0;
     //cases
     std::map<std::vector<int>, std::vector<int>> invmap_cases = {
         {{3, 2, 1, 0}, {3, 2, 1, 0}},
@@ -76,6 +90,49 @@ protected:
                     else
                         sl[j * lr + i] = sg[pv.local2global_col(j) * gr + pv.local2global_row(i)];
     }
+    static std::vector<int> invmap(const int* map, const int& size)
+    {
+        std::vector<int> invf(size);
+        for (size_t i = 0; i < size; ++i) invf[map[i]] = i;
+        return invf;
+    }
+    static std::vector<int> mapmul(const int* map1, const int* map2, const int& size)
+    {
+        std::vector<int> f2f1(size);    // f1 first
+        for (size_t i = 0; i < size; ++i) f2f1[i] = map2[map1[i]];
+        return f2f1;
+    }
+    void setup_cell_index(UnitCell& ucell, std::vector<std::pair<int, int>>& na_nw)
+    {
+        ucell.ntype = na_nw.size();
+        // set nat and nbasis
+        ucell.nat = 0;
+        this->nbasis = 0;
+        for (auto& aw : na_nw) { ucell.nat += aw.first; this->nbasis += aw.first * aw.second; }
+
+        ucell.iat2it = new int[ucell.nat];
+        ucell.iat2iwt.resize(ucell.nat);
+        ucell.iwt2iat = new int[this->nbasis];
+        ucell.iwt2iw = new int[this->nbasis];
+        // set index maps
+        int iat = 0;
+        int iwt = 0;
+        for (int it = 0; it < ucell.ntype; ++it)
+            for (int ia = 0; ia < na_nw[it].first; ++ia)
+            {
+                ucell.iat2it[iat] = it;
+                ucell.iat2iwt[iat] = iwt;
+                for (int iw = 0; iw < na_nw[it].second; ++iw)
+                {
+                    ucell.iwt2iat[iwt] = iat;
+                    ucell.iwt2iw[iwt] = iw;
+                    ++iwt;
+                }
+                ++iat;
+            }
+        assert(iat == ucell.nat);
+        assert(iwt == this->nbasis);
+    }
 #ifdef __MPI
     void SetUp() override
     {
@@ -96,7 +153,7 @@ TEST_F(SymExxTest, invmap)
 {
     for (auto c : invmap_cases)
     {
-        std::vector<int> invf = ModuleSymmetry::Symmetry::invmap(c.first.data(), c.first.size());
+        std::vector<int> invf = invmap(c.first.data(), c.first.size());
         EXPECT_EQ(invf, c.second);
     }
 }
@@ -105,11 +162,50 @@ TEST_F(SymExxTest, mapmul)
 {
     for (auto c : mapmul_cases)
     {
-        std::vector<int> f2f1 = ModuleSymmetry::Symmetry::mapmul(std::get<0>(c).data(), std::get<1>(c).data(), std::get<0>(c).size());
+        std::vector<int> f2f1 = mapmul(std::get<0>(c).data(), std::get<1>(c).data(), std::get<0>(c).size());
         EXPECT_EQ(f2f1, std::get<2>(c));
     }
 }
 
+TEST_F(SymExxTest, cal_Sk_rot)
+{
+    // case
+    std::vector<std::pair<int, int>> atoms = { {2, 1}, {3, 3} };
+    std::vector<std::vector<int>> isym_iat_rotiat = { {0, 1, 2, 3, 4}, {0,1,3,4,2}, {0,1,4,2,3}, {1,0,2,3,4}, {1,0,3,4,2}, {1,0,4,2,3} };
+    ModuleBase::Vector3<double> kvd(0, 0, 0);   //only one ibzkpt and its coordinate is  important in this function
+    std::map<int, ModuleBase::Vector3<double>> kstar_ibz = { {0, kvd}, {1, kvd}, {2, kvd}, {3, kvd}, {4, kvd}, {5, kvd} };
+
+    // set ucell and 2d division
+    UnitCell ucell;
+    this->setup_cell_index(ucell, atoms);
+
+    EXPECT_EQ(ucell.nat, 5);
+    EXPECT_EQ(this->nbasis, 11);
+    int ikibz = 0;
+    this->set2d(nbasis, nbasis);
+    // generate global symmitric matrix and copy to local
+    std::vector<std::complex<double>> sfull_gk(nbasis * nbasis);
+    this->set_int_posisym(sfull_gk.data(), nbasis, 0);
+    std::vector<std::complex<double>> sloc_gk(pv.get_local_size());
+    this->copy_from_global(sfull_gk.data(), sloc_gk.data(), nbasis, nbasis, pv.get_row_size(), pv.get_col_size(), false, false);
+
+    // run (row-major)
+    std::vector<std::vector<std::complex<double>>> sloc_ks = ExxSym::cal_Sk_rot(sloc_gk, nbasis, pv, isym_iat_rotiat, kstar_ibz, ucell, false, ofs_running);
+    // check
+    for (int isym = 0;isym < isym_iat_rotiat.size();++isym)
+    {
+        std::vector<std::complex<double>> sfull_ik = ExxSym::get_full_smat(sloc_ks[isym], nbasis, pv, false);
+        for (int i = 0;i < pv.get_row_size();i++)
+        {
+            int iwt0 = pv.local2global_row(i);
+            int iat0 = ucell.iwt2iat[iwt0];
+            int iw = ucell.iwt2iw[iwt0];
+            int iat1 = isym_iat_rotiat[isym][iat0];
+            int iwt1 = ucell.iat2iwt[iat1] + iw;
+            EXPECT_EQ(sfull_gk[iwt0 * nbasis + iwt0], sfull_ik[iwt1 * nbasis + iwt0]);
+        }
+    }
+}
 #ifdef __MPI
 TEST_F(SymExxTest, restore_psik)
 {
@@ -126,7 +222,6 @@ TEST_F(SymExxTest, restore_psik)
         // generate global symmitric matrix and copy to local
         std::vector<std::complex<double>> sfull_gk(nbasis * nbasis);
         this->set_int_posisym(sfull_gk.data(), nbasis, nkstar);
-
         std::vector<std::complex<double>> sloc_gk(pv.get_local_size());
         this->copy_from_global(sfull_gk.data(), sloc_gk.data(), nbasis, nbasis, pv.get_row_size(), pv.get_col_size(), false, false);
 
