@@ -239,13 +239,13 @@ TEST_F(SymExxTest, restore_psik)
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_loc_gk(1, pv.ncol_bands, pv.get_row_size());
         this->copy_from_global(psi_full_gk.get_pointer(), psi_loc_gk.get_pointer(), nbasis, nbands, pv.get_row_size(), pv.ncol_bands, false, false);
 
-        // run
+        // run 1
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_loc_ks(nkstar, pv.ncol_bands, pv.get_row_size());
         ExxSym::restore_psik_scalapack(ikibz, 0, psi_loc_gk, sloc_gk, sloc_ks, nbasis, nbands, pv, &psi_loc_ks);
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_full_ks(nkstar, nbands, nbasis);
         ExxSym::restore_psik_lapack(ikibz, 0, psi_full_gk, sfull_gk, sfull_ks, nbasis, nbands, &psi_full_ks);
 
-        // check
+        // check 1
         for (int ik = 0;ik < nkstar;ik++)
         {
             psi_loc_ks.fix_k(ik);
@@ -253,6 +253,30 @@ TEST_F(SymExxTest, restore_psik)
             for (int i = 0;i < pv.ncol_bands;i++)
                 for (int j = 0;j < pv.get_row_size();j++)
                     EXPECT_NEAR(psi_loc_ks(i, j).real(), psi_full_ks(pv.local2global_col(i), pv.local2global_row(j)).real(), 1e-10);
+        }
+        // run 2 
+        std::vector<std::vector<std::complex<double>>> invSk_Sgk_full = ExxSym::cal_invSkrot_Sgk_lapack(ikibz, sfull_gk, sfull_ks, nbasis);
+        std::vector<std::vector<std::complex<double>>> invSk_Sgk_loc = ExxSym::cal_invSkrot_Sgk_scalapack(ikibz, sloc_gk, sloc_ks, nbasis, pv);
+        for (int ik = 0;ik < nkstar;ik++)
+            for (int i = 0;i < pv.get_col_size();i++)
+                for (int j = 0;j < pv.get_row_size();j++)
+                    EXPECT_NEAR(invSk_Sgk_full[ik][pv.local2global_col(i) * nbasis + pv.local2global_row(j)].real(), invSk_Sgk_loc[ik][i * pv.get_row_size() + j].real(), 1e-10);
+
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_loc_ks_2(nkstar, pv.ncol_bands, pv.get_row_size());
+        ExxSym::restore_psik_scalapack(ikibz, 0, psi_loc_gk, invSk_Sgk_loc, nbasis, nbands, pv, &psi_loc_ks_2);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_full_ks_2(nkstar, nbands, nbasis);
+        ExxSym::restore_psik_lapack(ikibz, 0, psi_full_gk, invSk_Sgk_full, nbasis, nbands, &psi_full_ks_2);
+        for (int ik = 0;ik < nkstar;ik++)
+        {
+            psi_full_ks_2.fix_k(ik);
+            psi_loc_ks_2.fix_k(ik);
+            psi_full_ks.fix_k(ik);
+            for (int j = 0;j < pv.get_row_size();j++)
+                for (int i = 0;i < pv.ncol_bands;i++)
+                {
+                    EXPECT_NEAR(psi_full_ks_2(pv.local2global_col(i), pv.local2global_row(j)).real(), psi_full_ks(pv.local2global_col(i), pv.local2global_row(j)).real(), 1e-10);
+                    EXPECT_NEAR(psi_loc_ks_2(i, j).real(), psi_full_ks(pv.local2global_col(i), pv.local2global_row(j)).real(), 1e-10);
+                }
         }
     }
 }

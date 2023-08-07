@@ -83,7 +83,7 @@ namespace ExxSym
         return fullmat;
     }
 
-    psi::Psi<std::complex<double>, psi::DEVICE_CPU> ExxSym::restore_psik(
+    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik(
         const int& nkstot_full,
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ibz,
         const std::vector<std::vector<std::complex<double>>>& sloc_ibz,
@@ -118,7 +118,7 @@ namespace ExxSym
         psi::Psi<std::complex<double>, psi::DEVICE_CPU>* psi_full)
     {
         ModuleBase::TITLE("ExxSym", "restore_psik_lapack");
-        int nkstar = sloc_ik.size();
+        psi_ikibz.fix_k(ikibz);
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> tmpSc(1, nbands, nbasis);
         // only col_maj is considered now 
         // 1. S(gk)c_gk
@@ -160,6 +160,71 @@ namespace ExxSym
         }
     }
 
+    std::vector<std::vector<std::complex<double>>> cal_invSkrot_Sgk_lapack(
+        const int& ikibz,
+        const std::vector<std::complex<double>>& sloc_ikibz,
+        const std::vector<std::vector<std::complex<double>>>& sloc_ik,
+        const int& nbasis)
+    {
+        ModuleBase::TITLE("ExxSym", "cal_invSkrot_Sgk_lapack");
+        std::vector<std::vector<std::complex<double>>> invSkrot_Sgk;    //result
+        for (auto sk : sloc_ik)
+        {
+            std::vector<std::complex<double>> invSkrot_Sgk_ik(sloc_ikibz.size());
+            // 2.1 S^{-1}(k)
+            char uplo = 'U';
+            int info = -1;
+            zpotrf_(&uplo, &nbasis, sk.data(), &nbasis, &info);
+            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when factorizing S(k).(info=" + std::to_string(info) + ").");
+            zpotri_(&uplo, &nbasis, sk.data(), &nbasis, &info);
+            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when calculating inv(S(k)).(info=" + std::to_string(info) + ").");
+            //transpose and copy the upper triangle
+            std::vector<std::complex<double>> invsk(sk.size());
+            std::vector<std::complex<double>> ones(sk.size(), 0);
+            for (int i = 0;i < nbasis;i++) ones[i * nbasis + i] = std::complex<double>(1, 0);
+            char t = 'T';
+            std::complex<double> alpha = 1.0;
+            std::complex<double> beta = 0.0;
+            zgemm_(&t, &t, &nbasis, &nbasis, &nbasis, &alpha, sk.data(), &nbasis, ones.data(), &nbasis, &beta, invsk.data(), &nbasis);
+            zlacpy_(&uplo, &nbasis, &nbasis, sk.data(), &nbasis, invsk.data(), &nbasis);
+
+            //2.2 S^{-1}(k) * S(gk)c_{gk}
+            char transa = 'N';
+            char transb = 'N';
+            zgemm_(&transa, &transb, &nbasis, &nbasis, &nbasis,
+                &alpha, invsk.data(), &nbasis, sloc_ikibz.data(), &nbasis,
+                &beta, invSkrot_Sgk_ik.data(), &nbasis);
+
+            invSkrot_Sgk.push_back(invSkrot_Sgk_ik);
+        }
+        return invSkrot_Sgk;
+    }
+    void restore_psik_lapack(
+        const int& ikibz,
+        const int& ikfull_start,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ikibz,
+        const std::vector<std::vector<std::complex<double>>>& invSkrot_Sgk,
+        const int& nbasis,
+        const int& nbands,
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>* psi_full)
+    {
+        ModuleBase::TITLE("ExxSym", "restore_psik_lapack");
+        psi_ikibz.fix_k(ikibz);
+        for (int ik = 0;ik < invSkrot_Sgk.size();++ik)
+        {
+            psi_full->fix_k(ikfull_start + ik);
+
+            //[S^{-1}(k) * S(gk)]c_{gk}
+            char transa = 'N';
+            char transb = 'N';
+            std::complex<double> alpha = 1.0;
+            std::complex<double> beta = 0.0;
+            zgemm_(&transa, &transb, &nbasis, &nbands, &nbasis,
+                &alpha, invSkrot_Sgk[ik].data(), &nbasis, psi_ikibz.get_pointer(), &nbasis,
+                &beta, psi_full->get_pointer(), &nbasis);
+        }
+    }
+
 #ifdef __MPI
     void restore_psik_scalapack(
         const int& ikibz,
@@ -173,7 +238,7 @@ namespace ExxSym
         psi::Psi<std::complex<double>, psi::DEVICE_CPU>* psi_full)
     {
         ModuleBase::TITLE("ExxSym", "restore_psik_scalapack");
-        int nkstar = sloc_ik.size();
+        psi_ikibz.fix_k(ikibz);
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> tmpSc(1, pv.ncol_bands, pv.get_row_size());
         // only col_maj is considered now 
         // 1. S(gk)c_gk
@@ -219,6 +284,81 @@ namespace ExxSym
                 tmpSc.get_pointer(), &i1, &i1, pv.desc_wfc, &beta,
                 psi_full->get_pointer(), &i1, &i1, pv.desc_wfc);
             ++ik;
+        }
+    }
+    std::vector<std::vector<std::complex<double>>> cal_invSkrot_Sgk_scalapack(
+        const int& ikibz,
+        const std::vector<std::complex<double>>& sloc_ikibz,
+        const std::vector<std::vector<std::complex<double>>>& sloc_ik,
+        const int& nbasis,
+        const Parallel_2D& pv)
+    {
+        ModuleBase::TITLE("ExxSym", "cal_invSkrot_Sgk_scalapack");
+        std::vector<std::vector<std::complex<double>>> invSkrot_Sgk;    //result
+        for (auto sk : sloc_ik)
+        {
+            std::vector<std::complex<double>> invSkrot_Sgk_ik(sloc_ikibz.size());
+            // 2.1 S^{-1}(k)
+            char uplo = 'U';
+            int info = -1;
+            int i1 = 1;
+            pzpotrf_(&uplo, &nbasis, sk.data(), &i1, &i1, pv.desc, &info);
+            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when factorizing S(k).(info=" + std::to_string(info) + ").");
+            pzpotri_(&uplo, &nbasis, sk.data(), &i1, &i1, pv.desc, &info);
+            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when calculating inv(S(k)).(info=" + std::to_string(info) + ").");
+            //transpose and copy the upper triangle
+            std::vector<std::complex<double>> invsk(sk.size());
+            std::vector<std::complex<double>> ones(sk.size(), 0);   //row-major
+            for (int i = 0;i < nbasis;++i)
+                if (pv.in_this_processor(i, i))
+                    ones[pv.global2local_col(i) * pv.get_row_size() + pv.global2local_row(i)] = std::complex<double>(1, 0);
+            char t = 'T';
+            std::complex<double> alpha = 1.0;
+            std::complex<double> beta = 0.0;
+            pzgemm_(&t, &t, &nbasis, &nbasis, &nbasis,
+                &alpha, sk.data(), &i1, &i1, pv.desc,
+                ones.data(), &i1, &i1, pv.desc, &beta,
+                invsk.data(), &i1, &i1, pv.desc);
+            pzlacpy_(&uplo, &nbasis, &nbasis, sk.data(), &i1, &i1, pv.desc, invsk.data(), &i1, &i1, pv.desc);
+
+            //2.2 S^{-1}(k) * S(gk)
+            char transa = 'N';
+            char transb = 'N';
+            pzgemm_(&transa, &transb, &nbasis, &nbasis, &nbasis,
+                &alpha, invsk.data(), &i1, &i1, pv.desc,
+                sloc_ikibz.data(), &i1, &i1, pv.desc, &beta,
+                invSkrot_Sgk_ik.data(), &i1, &i1, pv.desc);
+
+            invSkrot_Sgk.push_back(invSkrot_Sgk_ik);
+        }
+        return invSkrot_Sgk;
+    }
+    void restore_psik_scalapack(
+        const int& ikibz,
+        const int& ikfull_start,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ikibz,
+        const std::vector<std::vector<std::complex<double>>>& invSkrot_Sgk,
+        const int& nbasis,
+        const int& nbands,
+        const Parallel_Orbitals& pv,
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>* psi_full)
+    {
+        ModuleBase::TITLE("ExxSym", "restore_psik_scalapack");
+        psi_ikibz.fix_k(ikibz);
+        for (int ik = 0;ik < invSkrot_Sgk.size();++ik)
+        {
+            psi_full->fix_k(ikfull_start + ik);
+
+            //[S^{-1}(k) * S(gk)]c_{gk}
+            char transa = 'N';
+            char transb = 'N';
+            std::complex<double> alpha = 1.0;
+            std::complex<double> beta = 0.0;
+            int i1 = 1;
+            pzgemm_(&transa, &transb, &nbasis, &nbands, &nbasis,
+                &alpha, invSkrot_Sgk[ik].data(), &i1, &i1, pv.desc,
+                psi_ikibz.get_pointer(), &i1, &i1, pv.desc_wfc, &beta,
+                psi_full->get_pointer(), &i1, &i1, pv.desc_wfc);
         }
     }
 #endif
