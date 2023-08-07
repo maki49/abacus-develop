@@ -190,7 +190,7 @@ TEST_F(SymExxTest, cal_Sk_rot)
     this->copy_from_global(sfull_gk.data(), sloc_gk.data(), nbasis, nbasis, pv.get_row_size(), pv.get_col_size(), false, false);
 
     // run (row-major)
-    std::vector<std::vector<std::complex<double>>> sloc_ks = ExxSym::cal_Sk_rot(sloc_gk, nbasis, pv, isym_iat_rotiat, kstar_ibz, ucell, false, ofs_running);
+    std::vector<std::vector<std::complex<double>>> sloc_ks = ExxSym::cal_Sk_rot(sloc_gk, nbasis, pv, isym_iat_rotiat, kstar_ibz, ucell, false);
     // check
     for (int isym = 0;isym < isym_iat_rotiat.size();++isym)
     {
@@ -240,8 +240,10 @@ TEST_F(SymExxTest, restore_psik)
         this->copy_from_global(psi_full_gk.get_pointer(), psi_loc_gk.get_pointer(), nbasis, nbands, pv.get_row_size(), pv.ncol_bands, false, false);
 
         // run
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_loc_ks = ExxSym::restore_psik_scalapack(ikibz, psi_loc_gk, sloc_gk, sloc_ks, nbasis, nbands, pv);
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_full_ks = ExxSym::restore_psik_lapack(ikibz, psi_full_gk, sfull_gk, sfull_ks, nbasis, nbands);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_loc_ks(nkstar, pv.ncol_bands, pv.get_row_size());
+        ExxSym::restore_psik_scalapack(ikibz, 0, psi_loc_gk, sloc_gk, sloc_ks, nbasis, nbands, pv, &psi_loc_ks);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_full_ks(nkstar, nbands, nbasis);
+        ExxSym::restore_psik_lapack(ikibz, 0, psi_full_gk, sfull_gk, sfull_ks, nbasis, nbands, &psi_full_ks);
 
         // check
         for (int ik = 0;ik < nkstar;ik++)

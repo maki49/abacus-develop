@@ -14,8 +14,8 @@ namespace ExxSym
         const std::vector<std::complex<double>> sloc_ikibz,
         const int nbasis,
         const Parallel_2D& p2d,
-        std::vector<std::vector<int>>& isym_iat_rotiat,
-        std::map<int, ModuleBase::Vector3<double>> kstar_ibz,
+        const std::vector<std::vector<int>>& isym_iat_rotiat,
+        const std::map<int, ModuleBase::Vector3<double>>& kstar_ibz,
         const UnitCell& ucell,
         const bool col_inside)
     {
@@ -83,17 +83,42 @@ namespace ExxSym
         return fullmat;
     }
 
-    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik_lapack(
+    psi::Psi<std::complex<double>, psi::DEVICE_CPU> ExxSym::restore_psik(
+        const int& nkstot_full,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ibz,
+        const std::vector<std::vector<std::complex<double>>>& sloc_ibz,
+        const std::vector<std::vector<std::vector<std::complex<double>>>>& sloc_full,
+        const int& nbasis,
+        const int& nbands,
+        const Parallel_Orbitals& pv)
+    {
+        ModuleBase::TITLE("ExxSym", "restore_psik");
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_full(nkstot_full, pv.ncol_bands, pv.get_row_size());
+        int ikfull_start = 0;
+        for (int ik_ibz = 0;ik_ibz < psi_ibz.get_nk();++ik_ibz)
+        {
+#ifdef __MPI
+            restore_psik_scalapack(ik_ibz, ikfull_start, psi_ibz, sloc_ibz[ik_ibz], sloc_full[ik_ibz], nbasis, nbands, pv, &psi_full);
+#else
+            restore_psik_lapack(ik_ibz, ikfull_start, psi_ibz, sloc_ibz[ik_ibz], sloc_full[ik_ibz], nbasis, nbands, &psi_full);
+#endif
+            ikfull_start += sloc_full[ik_ibz].size();
+        }
+        return psi_full;
+    }
+
+    void restore_psik_lapack(
         const int& ikibz,
+        const int& ikfull_start,
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ikibz,
         const std::vector<std::complex<double>>& sloc_ikibz,
         const std::vector<std::vector<std::complex<double>>>& sloc_ik,
         const int& nbasis,
-        const int& nbands)
+        const int& nbands,
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>* psi_full)
     {
         ModuleBase::TITLE("ExxSym", "restore_psik_lapack");
         int nkstar = sloc_ik.size();
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU> c_k(nkstar, nbands, nbasis);
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> tmpSc(1, nbands, nbasis);
         // only col_maj is considered now 
         // 1. S(gk)c_gk
@@ -110,7 +135,7 @@ namespace ExxSym
         int ik = 0;
         for (auto sk : sloc_ik)// copy, not reference: sk will be replaced by S^{-1}(k) after 2.1 (sk is const)
         {
-            c_k.fix_k(ik);
+            psi_full->fix_k(ikfull_start + ik);
 
             // 2.1 S^{-1}(k)
             char uplo = 'U';
@@ -130,25 +155,25 @@ namespace ExxSym
             //2.2 S^{-1}(k) * S(gk)c_{gk}
             zgemm_(&transa, &transb, &nbasis, &nbands, &nbasis,
                 &alpha, invsk.data(), &nbasis, tmpSc.get_pointer(), &nbasis,
-                &beta, c_k.get_pointer(), &nbasis);
+                &beta, psi_full->get_pointer(), &nbasis);
             ++ik;
         }
-        return c_k;
     }
 
 #ifdef __MPI
-    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik_scalapack(
+    void restore_psik_scalapack(
         const int& ikibz,
+        const int& ikfull_start,
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ikibz,
         const std::vector<std::complex<double>>& sloc_ikibz,
         const std::vector<std::vector<std::complex<double>>>& sloc_ik,
         const int& nbasis,
         const int& nbands,
-        const Parallel_Orbitals& pv)
+        const Parallel_Orbitals& pv,
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>* psi_full)
     {
         ModuleBase::TITLE("ExxSym", "restore_psik_scalapack");
         int nkstar = sloc_ik.size();
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU> c_k(nkstar, pv.ncol_bands, pv.get_row_size());
         psi::Psi<std::complex<double>, psi::DEVICE_CPU> tmpSc(1, pv.ncol_bands, pv.get_row_size());
         // only col_maj is considered now 
         // 1. S(gk)c_gk
@@ -166,7 +191,7 @@ namespace ExxSym
         int ik = 0;
         for (auto sk : sloc_ik)// copy, not reference: sk will be replaced by S^{-1}(k) after 2.1 (sk is const)
         {
-            c_k.fix_k(ik);
+            psi_full->fix_k(ikfull_start + ik);
 
             // 2.1 S^{-1}(k)
             char uplo = 'U';
@@ -192,10 +217,9 @@ namespace ExxSym
             pzgemm_(&transa, &transb, &nbasis, &nbands, &nbasis,
                 &alpha, invsk.data(), &i1, &i1, pv.desc,
                 tmpSc.get_pointer(), &i1, &i1, pv.desc_wfc, &beta,
-                c_k.get_pointer(), &i1, &i1, pv.desc_wfc);
+                psi_full->get_pointer(), &i1, &i1, pv.desc_wfc);
             ++ik;
         }
-        return c_k;
     }
 #endif
 }
