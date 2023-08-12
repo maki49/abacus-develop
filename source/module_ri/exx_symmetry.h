@@ -11,7 +11,7 @@ namespace ExxSym
     /// @param sloc_ikibz [in] local overlap matrices of current ibz-kpoint: S(gk)
     /// @param nbasis [in] global number of basis
     /// @param p2d [in]2d parallel info
-    /// @param isym_iat_rotiat [in] atom index map corresponding to each symmetry operation
+    /// @param isym_rotiat_iat [in] inversion of atom index map corresponding to each symmetry operation
     /// @param kstar_ibz [in] symmetry-equal k points to current ibz-kpont: [isym][kvec_d]
     /// @param ucell [in] unitcell
     /// @param col_inside [in] whether the matrix is column-major (major means memory continuity)
@@ -20,7 +20,7 @@ namespace ExxSym
         const std::vector<std::complex<double>> sloc_ikibz,
         const int nbasis,
         const Parallel_2D& p2d,
-        const std::vector<std::vector<int>>& isym_iat_rotiat,
+        const std::vector<std::vector<int>>& isym_rotiat_iat,
         const std::map<int, ModuleBase::Vector3<double>>& kstar_ibz,
         const UnitCell& ucell,
         const bool col_inside);
@@ -39,6 +39,14 @@ namespace ExxSym
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ibz,
         const std::vector<std::vector<std::complex<double>>>& sloc_ibz,
         const std::vector<std::vector<std::vector<std::complex<double>>>>& sloc_full,
+        const int& nbasis,
+        const int& nbands,
+        const Parallel_Orbitals& pv);
+    ///@param invSkrot_Sgk [in] $\tilde{S}^{-1}(k)S(gk)$ for all the ibz-kpoints gk
+    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik(
+        const int& nkstot_full,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ibz,
+        const std::vector<std::vector<std::vector<std::complex<double>>>>& invSkrot_Sgk,
         const int& nbasis,
         const int& nbands,
         const Parallel_Orbitals& pv);

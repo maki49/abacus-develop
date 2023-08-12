@@ -54,7 +54,7 @@ void Symmetry::analy_sys(const UnitCell &ucell, std::ofstream &ofs_running)
     this->index = new int [nat + 2];
     ModuleBase::GlobalFunc::ZEROS(na, ntype);
     ModuleBase::GlobalFunc::ZEROS(istart, ntype);
-    ModuleBase::GlobalFunc::ZEROS(index, nat+2);
+    ModuleBase::GlobalFunc::ZEROS(index, nat + 2);
 
     // atom positions
     // used in checksym.
@@ -852,6 +852,16 @@ void Symmetry::getgroup(int &nrot, int &nrotk, std::ofstream &ofs_running)
             gtrans[i].z = 0;
         }
     }
+#ifdef __EXX
+    // output the inverse map of each symmetry operation
+    ofs_running << "ISYM: new atom index after symmetry operation" << std::endl;
+    for (int isym = 0;isym < nrotk;++isym)
+    {
+        ofs_running << isym << ":  ";
+        for (int iat = 0;iat < this->nat;++iat) ofs_running << isym_rotiat_iat[isym][iat] << " ";
+        ofs_running << std::endl;
+    }
+#endif
     return;
 }
 
@@ -865,9 +875,6 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
     bool no_diff = 0;
     ModuleBase::Vector3<double> trans(2.0, 2.0, 2.0);
     s_flag = 0;
-#ifdef __EXX
-    std::vector<int> f1(this->nat, 0);  //ordering-map before rotatation
-#endif
     for (int it = 0; it < ntype; it++)
     {
 		//------------------------------------
@@ -880,16 +887,9 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
             this->check_boundary(pos[j*3+1]);
             this->check_boundary(pos[j*3+2]);
         }
-         //for( int iat =0 ; iat < ucell.nat ; iat++)
-         //std::cout << " newpos_now1 = " << newpos[3*iat] << " " << newpos[3*iat+1] << " " << newpos[3*iat+2] << std::endl;
 
-        //order original atomic positions for current species
-        this->atom_ordering_new(pos + istart[it] * 3, na[it], index + istart[it]);
-#ifdef __EXX
-        if (this->firstsort) for (int ia = istart[it]; ia < istart[it] + na[it]; ++ia) f1[ia] = index[ia];   // save the ordering-map before rotation
-#endif
-        //for( int iat =0 ; iat < ucell.nat ; iat++)
-         //std::cout << " newpos_now2 = " << newpos[3*iat] << " " << newpos[3*iat+1] << " " << newpos[3*iat+2] << std::endl;
+        //order original atomic positions for current species:
+        //done in pricell, no need here
 
         //Rotate atoms of current species
         for (int j = istart[it]; j < istart[it] + na[it]; ++j)
@@ -923,9 +923,6 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
         //order rotated atomic positions for current species
         this->atom_ordering_new(rotpos + istart[it] * 3, na[it], index + istart[it]);
     }
-#ifdef __EXX
-    this->firstsort = false;
-#endif
 	/*
 	GlobalV::ofs_running << " ============================================= " << std::endl;
 	GlobalV::ofs_running << " Matrix S " << std::endl;
@@ -1043,9 +1040,12 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
         gtrans.z = trans.z;
 #ifdef __EXX
         // now this->index stores the ordering-map after symmetry operation: f2
-        // we can calculate the atom-index-map of group operation: g=f2^{-1}f1
-        std::vector<int> invf2 = Symmetry::invmap(this->index, this->nat);
-        this->isym_iat_rotiat.push_back(Symmetry::mapmul(f1.data(), invf2.data(), this->nat));
+        // we can calculate the atom-index-map of group operation: g=f2^{-1}
+        // but here we calculate g^{-1}=f2
+        for (int it = 0; it < ntype; it++)
+            for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
+                this->index[ia] += istart[it];  //adjust index by type-offset
+        this->isym_rotiat_iat.push_back(Symmetry::invmap(this->index, this->nat));
 #endif
     }
     return;
@@ -1072,6 +1072,7 @@ void Symmetry::pricell(double* pos)
 
         //order original atomic positions for current species
         this->atom_ordering_new(pos + istart[it] * 3, na[it], index + istart[it]);
+
         //copy pos to rotpos
         for (int j = istart[it]; j < istart[it] + na[it]; ++j)
         {

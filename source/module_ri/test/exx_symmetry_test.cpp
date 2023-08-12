@@ -171,7 +171,7 @@ TEST_F(SymExxTest, cal_Sk_rot)
 {
     // case
     std::vector<std::pair<int, int>> atoms = { {2, 1}, {3, 3} };
-    std::vector<std::vector<int>> isym_iat_rotiat = { {0, 1, 2, 3, 4}, {0,1,3,4,2}, {0,1,4,2,3}, {1,0,2,3,4}, {1,0,3,4,2}, {1,0,4,2,3} };
+    std::vector<std::vector<int>> isym_rotiat_iat = { {0, 1, 2, 3, 4}, {0,1,3,4,2}, {0,1,4,2,3}, {1,0,2,3,4}, {1,0,3,4,2}, {1,0,4,2,3} };
     ModuleBase::Vector3<double> kvd(0, 0, 0);   //only one ibzkpt and its coordinate is  important in this function
     std::map<int, ModuleBase::Vector3<double>> kstar_ibz = { {0, kvd}, {1, kvd}, {2, kvd}, {3, kvd}, {4, kvd}, {5, kvd} };
 
@@ -190,9 +190,9 @@ TEST_F(SymExxTest, cal_Sk_rot)
     this->copy_from_global(sfull_gk.data(), sloc_gk.data(), nbasis, nbasis, pv.get_row_size(), pv.get_col_size(), false, false);
 
     // run (row-major)
-    std::vector<std::vector<std::complex<double>>> sloc_ks = ExxSym::cal_Sk_rot(sloc_gk, nbasis, pv, isym_iat_rotiat, kstar_ibz, ucell, false);
+    std::vector<std::vector<std::complex<double>>> sloc_ks = ExxSym::cal_Sk_rot(sloc_gk, nbasis, pv, isym_rotiat_iat, kstar_ibz, ucell, false);
     // check
-    for (int isym = 0;isym < isym_iat_rotiat.size();++isym)
+    for (int isym = 0;isym < isym_rotiat_iat.size();++isym)
     {
         std::vector<std::complex<double>> sfull_ik = ExxSym::get_full_smat(sloc_ks[isym], nbasis, pv, false);
         for (int i = 0;i < pv.get_row_size();i++)
@@ -200,7 +200,7 @@ TEST_F(SymExxTest, cal_Sk_rot)
             int iwt0 = pv.local2global_row(i);
             int iat0 = ucell.iwt2iat[iwt0];
             int iw = ucell.iwt2iw[iwt0];
-            int iat1 = isym_iat_rotiat[isym][iat0];
+            int iat1 = isym_rotiat_iat[isym][iat0];
             int iwt1 = ucell.iat2iwt[iat1] + iw;
             EXPECT_EQ(sfull_gk[iwt0 * nbasis + iwt0], sfull_ik[iwt1 * nbasis + iwt0]);
         }

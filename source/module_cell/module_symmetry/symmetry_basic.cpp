@@ -1059,15 +1059,21 @@ void Symmetry_Basic::atom_ordering_new(double *posi, const int natom, int *subin
 		while(ix_right<natom && equal(tmpx[ix_right],tmpx[i])) ++ix_right;
 		int nxequal=ix_right-i;
 		if(nxequal>1)	//need a new sort
-		{
-			subindex[0] = 0;
+        {
+            std::vector<int>tmpindex(nxequal, 0);
 			for(int j=0; j<nxequal; ++j)
 			{
 				weighted_func[j]=1/epsilon*tmpy[i+j]+tmpz[i+j];
 			}
-			ModuleBase::heapsort(nxequal, weighted_func, subindex);
-			this->order_atoms(&posi[i*3], nxequal, subindex);
-		}
+            ModuleBase::heapsort(nxequal, weighted_func, tmpindex.data());
+            this->order_atoms(&posi[i * 3], nxequal, tmpindex.data());
+            //rearange subindex using tmpindex
+            for (int j = 0; j < nxequal; ++j)
+            {
+                tmpindex[j] = subindex[i + tmpindex[j]];
+                subindex[i + j] = tmpindex[j];
+            }
+        }
 		i=ix_right;
 	}
 	

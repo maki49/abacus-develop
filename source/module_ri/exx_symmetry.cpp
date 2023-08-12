@@ -14,7 +14,7 @@ namespace ExxSym
         const std::vector<std::complex<double>> sloc_ikibz,
         const int nbasis,
         const Parallel_2D& p2d,
-        const std::vector<std::vector<int>>& isym_iat_rotiat,
+        const std::vector<std::vector<int>>& isym_rotiat_iat,
         const std::map<int, ModuleBase::Vector3<double>>& kstar_ibz,
         const UnitCell& ucell,
         const bool col_inside)
@@ -32,7 +32,7 @@ namespace ExxSym
         {
             int isym = isym_kvecd.first;
             //get invmap : iat1 to iat0
-            std::vector<int> rotiat_iat = ModuleSymmetry::Symmetry::invmap(isym_iat_rotiat[isym].data(), ucell.nat);
+            std::vector<int> rotiat_iat = ModuleSymmetry::Symmetry::invmap(isym_rotiat_iat[isym].data(), ucell.nat);
             // 1 symmetry operation - may more than one kvec_d ?? check it !!!
             // ModuleBase::Vector3<double> kvds = isym_kvecd.second;
             // set rearanged sloc_ik
@@ -103,6 +103,29 @@ namespace ExxSym
             restore_psik_lapack(ik_ibz, ikfull_start, psi_ibz, sloc_ibz[ik_ibz], sloc_full[ik_ibz], nbasis, nbands, &psi_full);
 #endif
             ikfull_start += sloc_full[ik_ibz].size();
+        }
+        return psi_full;
+    }
+
+    psi::Psi<std::complex<double>, psi::DEVICE_CPU> restore_psik(
+        const int& nkstot_full,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& psi_ibz,
+        const std::vector<std::vector<std::vector<std::complex<double>>>>& invSkrot_Sgk,
+        const int& nbasis,
+        const int& nbands,
+        const Parallel_Orbitals& pv)
+    {
+        ModuleBase::TITLE("ExxSym", "restore_psik");
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU> psi_full(nkstot_full, pv.ncol_bands, pv.get_row_size());
+        int ikfull_start = 0;
+        for (int ik_ibz = 0;ik_ibz < psi_ibz.get_nk();++ik_ibz)
+        {
+#ifdef __MPI
+            restore_psik_scalapack(ik_ibz, ikfull_start, psi_ibz, invSkrot_Sgk[ik_ibz], nbasis, nbands, pv, &psi_full);
+#else
+            restore_psik_lapack(ik_ibz, ikfull_start, psi_ibz, invSkrot_Sgk[ik_ibz], nbasis, nbands, &psi_full);
+#endif
+            ikfull_start += invSkrot_Sgk[ik_ibz].size();
         }
         return psi_full;
     }

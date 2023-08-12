@@ -25,6 +25,7 @@ public:
     int nks;						// number of k points in this pool(processor, up+dw)
     int nkstot;						// total number of k points
     int nkstot_ibz;
+    int nkstot_full;    /// number of k points in full k mesh
 
     int nmp[3];						// Number of Monhorst-Pack
 
@@ -48,11 +49,11 @@ public:
             const ModuleBase::Matrix3 &latvec);
     //get global index for ik
     inline int getik_global(const int& ik) const;
-#ifdef __EXX
+
     /// @brief equal k points to each ibz-kpont, corresponding to a certain symmetry operations. 
     /// dim: [iks_ibz][isym][kvec_d]
     std::vector<std::map<int, ModuleBase::Vector3<double>>> kstars;
-#endif
+
 private:
     int nspin;
     bool kc_done;
