@@ -33,8 +33,6 @@ namespace ExxSym
             int isym = isym_kvecd.first;
             //get invmap : iat1 to iat0
             std::vector<int> rotiat_iat = ModuleSymmetry::Symmetry::invmap(isym_rotiat_iat[isym].data(), ucell.nat);
-            // 1 symmetry operation - may more than one kvec_d ?? check it !!!
-            // ModuleBase::Vector3<double> kvds = isym_kvecd.second;
             // set rearanged sloc_ik
             std::vector<std::complex<double>> sloc_ik(p2d.get_local_size());
             for (int mu = 0;mu < p2d.get_row_size();++mu)
@@ -195,27 +193,23 @@ namespace ExxSym
         {
             std::vector<std::complex<double>> invSkrot_Sgk_ik(sloc_ikibz.size());
             // 2.1 S^{-1}(k)
-            char uplo = 'U';
             int info = -1;
-            zpotrf_(&uplo, &nbasis, sk.data(), &nbasis, &info);
-            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when factorizing S(k).(info=" + std::to_string(info) + ").");
-            zpotri_(&uplo, &nbasis, sk.data(), &nbasis, &info);
-            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when calculating inv(S(k)).(info=" + std::to_string(info) + ").");
-            //transpose and copy the upper triangle
-            std::vector<std::complex<double>> invsk(sk.size());
-            std::vector<std::complex<double>> ones(sk.size(), 0);
-            for (int i = 0;i < nbasis;i++) ones[i * nbasis + i] = std::complex<double>(1, 0);
-            char t = 'T';
-            std::complex<double> alpha = 1.0;
-            std::complex<double> beta = 0.0;
-            zgemm_(&t, &t, &nbasis, &nbasis, &nbasis, &alpha, sk.data(), &nbasis, ones.data(), &nbasis, &beta, invsk.data(), &nbasis);
-            zlacpy_(&uplo, &nbasis, &nbasis, sk.data(), &nbasis, invsk.data(), &nbasis);
+            std::vector<int> ipiv(nbasis);
+            zgetrf_(&nbasis, &nbasis, sk.data(), &nbasis, ipiv.data(), &info);
+            int ispec = 1;
+            int N234 = -1;
+            int NB = ilaenv_(&ispec, "ZGETRI", "N", &nbasis, &N234, &N234, &N234);
+            int lwork = NB * nbasis;
+            std::vector<std::complex<double>> work(lwork);
+            zgetri_(&nbasis, sk.data(), &nbasis, ipiv.data(), work.data(), &lwork, &info);
 
             //2.2 S^{-1}(k) * S(gk)c_{gk}
             char transa = 'N';
             char transb = 'N';
+            std::complex<double> alpha(1.0, 0.0);
+            std::complex<double> beta(0.0, 0.0);
             zgemm_(&transa, &transb, &nbasis, &nbasis, &nbasis,
-                &alpha, invsk.data(), &nbasis, sloc_ikibz.data(), &nbasis,
+                &alpha, sk.data(), &nbasis, sloc_ikibz.data(), &nbasis,
                 &beta, invSkrot_Sgk_ik.data(), &nbasis);
 
             invSkrot_Sgk.push_back(invSkrot_Sgk_ik);
@@ -322,33 +316,28 @@ namespace ExxSym
         {
             std::vector<std::complex<double>> invSkrot_Sgk_ik(sloc_ikibz.size());
             // 2.1 S^{-1}(k)
-            char uplo = 'U';
             int info = -1;
             int i1 = 1;
-            pzpotrf_(&uplo, &nbasis, sk.data(), &i1, &i1, pv.desc, &info);
-            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when factorizing S(k).(info=" + std::to_string(info) + ").");
-            pzpotri_(&uplo, &nbasis, sk.data(), &i1, &i1, pv.desc, &info);
-            if (info != 0) ModuleBase::WARNING_QUIT("restore_psik", "Error when calculating inv(S(k)).(info=" + std::to_string(info) + ").");
-            //transpose and copy the upper triangle
-            std::vector<std::complex<double>> invsk(sk.size());
-            std::vector<std::complex<double>> ones(sk.size(), 0);   //row-major
-            for (int i = 0;i < nbasis;++i)
-                if (pv.in_this_processor(i, i))
-                    ones[pv.global2local_col(i) * pv.get_row_size() + pv.global2local_row(i)] = std::complex<double>(1, 0);
-            char t = 'T';
-            std::complex<double> alpha = 1.0;
-            std::complex<double> beta = 0.0;
-            pzgemm_(&t, &t, &nbasis, &nbasis, &nbasis,
-                &alpha, sk.data(), &i1, &i1, pv.desc,
-                ones.data(), &i1, &i1, pv.desc, &beta,
-                invsk.data(), &i1, &i1, pv.desc);
-            pzlacpy_(&uplo, &nbasis, &nbasis, sk.data(), &i1, &i1, pv.desc, invsk.data(), &i1, &i1, pv.desc);
+            std::vector<int> ipiv(pv.get_local_size());
+            pzgetrf_(&nbasis, &nbasis, sk.data(), &i1, &i1, pv.desc, ipiv.data(), &info);
+            int lwork = -1;
+            int liwork = -1;
+            std::vector<std::complex<double>> work(1, 0);
+            std::vector<int> iwork(1, 0);
+            pzgetri_(&nbasis, sk.data(), &i1, &i1, pv.desc, ipiv.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
+            lwork = work[0].real();
+            liwork = iwork[0];
+            work.resize(lwork);
+            iwork.resize(liwork);
+            pzgetri_(&nbasis, sk.data(), &i1, &i1, pv.desc, ipiv.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
 
             //2.2 S^{-1}(k) * S(gk)
             char transa = 'N';
             char transb = 'N';
+            std::complex<double> alpha(1.0, 0.0);
+            std::complex<double> beta(0.0, 0.0);
             pzgemm_(&transa, &transb, &nbasis, &nbasis, &nbasis,
-                &alpha, invsk.data(), &i1, &i1, pv.desc,
+                &alpha, sk.data(), &i1, &i1, pv.desc,
                 sloc_ikibz.data(), &i1, &i1, pv.desc, &beta,
                 invSkrot_Sgk_ik.data(), &i1, &i1, pv.desc);
 

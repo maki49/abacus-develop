@@ -156,6 +156,9 @@ extern "C"
 
     // solve a tridiagonal linear system
     void dgtsv_(int* N, int* NRHS, double* DL, double* D, double* DU, double* B, int* LDB, int* INFO);
+
+    /// to choose a problem-dependent parameter for the local environment
+    const int ilaenv_(const int* ispec, const char* name, const char* opts, const int* n1, const int* n2, const int* n3, const int* n4);
 }
 
 #ifdef GATHER_INFO

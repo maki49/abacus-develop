@@ -185,7 +185,7 @@ TEST_F(SymExxTest, cal_Sk_rot)
     this->set2d(nbasis, nbasis);
     // generate global symmitric matrix and copy to local
     std::vector<std::complex<double>> sfull_gk(nbasis * nbasis);
-    this->set_int_posisym(sfull_gk.data(), nbasis, 0);
+    this->set_rand(sfull_gk.data(), nbasis);
     std::vector<std::complex<double>> sloc_gk(pv.get_local_size());
     this->copy_from_global(sfull_gk.data(), sloc_gk.data(), nbasis, nbasis, pv.get_row_size(), pv.get_col_size(), false, false);
 
