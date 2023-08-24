@@ -115,7 +115,7 @@ public:
 	//convert n translation-vectors from va on basis {a1, a2, a3} to vb on basis {b1, b2, b3}
 	void gtrans_convert(const ModuleBase::Vector3<double>* va, ModuleBase::Vector3<double>* vb, 
 			const int n, const ModuleBase::Matrix3 &a, const ModuleBase::Matrix3 &b)const;
-	void gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap);
+    void gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap) const;
     void hermite_normal_form(const ModuleBase::Matrix3& s, ModuleBase::Matrix3& H, ModuleBase::Matrix3& b) const;
 
     /// size: atom index map corresponding to each symmetry operation. size: [nrotk][nat]
@@ -125,6 +125,12 @@ public:
         std::vector<int> invf(size);
         for (size_t i = 0; i < size; ++i) invf[map[i]] = i;
         return invf;
+    }
+    static std::vector<int> mapmul(const int* map1, const int* map2, const int& size)
+    {
+        std::vector<int> f2f1(size);    // f1 first
+        for (size_t i = 0; i < size; ++i) f2f1[i] = map2[map1[i]];
+        return f2f1;
     }
 
 private:

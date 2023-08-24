@@ -4,26 +4,25 @@
 #include "module_base/vector3.h"
 #include "module_psi/psi.h"
 #include "module_cell/unitcell.h"
+#include "module_hamilt_lcao/module_gint/gint_k.h"
+#include "module_cell/module_symmetry/symmetry.h"
 namespace ExxSym
 {
-    /// @brief Rearrange the $\nu$ index of overlap matrices of ibz-kpoints $S_{\mu,\nu}(gk)$ according to the symmetry operations
-    /// @param ikibz [in] ibz-kpoint index
-    /// @param sloc_ikibz [in] local overlap matrices of current ibz-kpoint: S(gk)
+    /// @brief Rearrange the $\nu$ index of a matrix $S_{\mu,\nu}(k)$ to its rotated matrix $S_{\mu,\nu}(gk)$
     /// @param nbasis [in] global number of basis
     /// @param p2d [in]2d parallel info
-    /// @param isym_rotiat_iat [in] inversion of atom index map corresponding to each symmetry operation
-    /// @param kstar_ibz [in] symmetry-equal k points to current ibz-kpont: [isym][kvec_d]
     /// @param ucell [in] unitcell
     /// @param col_inside [in] whether the matrix is column-major (major means memory continuity)
-    /// @return local S(k) for each k in kstars[ikibz]
-    std::vector<std::vector<std::complex<double>>>cal_Sk_rot(
-        const std::vector<std::complex<double>> sloc_ikibz,
-        const int nbasis,
+    /// @param iat_rotiat [in]  atom index map of the symmetry operation g: g(iat0)=iat1
+    /// @param sloc_ikibz [in] input matrix S(k) (local)
+    /// @return S(gk) (local)
+    std::vector<std::complex<double>> rearrange_col(
+        const int& nbasis,
         const Parallel_2D& p2d,
-        const std::vector<std::vector<int>>& isym_rotiat_iat,
-        const std::map<int, ModuleBase::Vector3<double>>& kstar_ibz,
         const UnitCell& ucell,
-        const bool col_inside);
+        const bool col_inside,
+        const std::vector<int>& iat_rotiat,
+        const std::vector<std::complex<double>>& sloc_in);
 
 
     /// @brief restore c_k from c_gk: $c_k=\tilde{S}^{-1}(k)S(gk)c_{gk}$ for all the ibz-kpoints gk
@@ -69,7 +68,7 @@ namespace ExxSym
     /// @param ikibz  [in] ibz-kpoint index
     /// @param ikfull_start [in] start index of k in all the kstars
     /// @param psi_ikibz [in] c_gk: wavefunction of ibz-kpoint
-    /// @param sloc_ik [in] $S^{-1}(k)S(gk)$ of each k in current kstar
+    /// @param sloc_ik $\nu$-rearranged local overlap matrices of each k in current kstar : S(k)
     /// @param nbasis [in] global number of basis
     /// @param nbands [in] global number of bands
     /// @param pv [in] parallel orbitals (for both matrix and wavefunction)

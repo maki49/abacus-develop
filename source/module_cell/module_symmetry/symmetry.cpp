@@ -867,7 +867,11 @@ void Symmetry::getgroup(int &nrot, int &nrotk, std::ofstream &ofs_running)
 
 void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtrans, double* pos)
 {
-	//----------------------------------------------
+#ifdef __EXX
+    std::vector<int> f2_rot(nat);
+    std::vector<int> f2_trans(nat);
+#endif
+    //----------------------------------------------
     // checks whether a point group symmetry element 
 	// is a valid symmetry operation on a supercell
 	//----------------------------------------------
@@ -934,6 +938,12 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
 	GlobalV::ofs_running << " rotpos" << std::endl;
 	print_pos(rotpos, nat);
 	*/
+#ifdef __EXX
+    // record the order map of rotation
+    for (int it = 0; it < ntype; it++)
+        for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
+            f2_rot[ia] = this->index[ia] + istart[it];  //adjust index by type-offset
+#endif
 
     ModuleBase::Vector3<double> diff;
 
@@ -1019,6 +1029,12 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
             trans.x = gtrans.x;
             trans.y = gtrans.y;
             trans.z = gtrans.z;
+#ifdef __EXX
+            // record the order map of translation
+            for (int it = 0; it < ntype; it++)
+                for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
+                    f2_trans[ia] = this->index[ia] + istart[it];  //adjust index by type-offset
+#endif
         }
 
         //restore the original rotated coordinates by subtracting "gtrans"
@@ -1041,11 +1057,9 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
 #ifdef __EXX
         // now this->index stores the ordering-map after symmetry operation: f2
         // we can calculate the atom-index-map of group operation: g=f2^{-1}
-        // but here we calculate g^{-1}=f2
-        for (int it = 0; it < ntype; it++)
-            for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
-                this->index[ia] += istart[it];  //adjust index by type-offset
-        this->isym_rotiat_iat.push_back(Symmetry::invmap(this->index, this->nat));
+        // but here we calculate g^{-1}=f2 to restore S(k) from S(gk), where gk is in IBZ
+        std::vector<int> f2 = Symmetry::mapmul(f2_rot.data(), f2_trans.data(), this->nat);
+        this->isym_rotiat_iat.push_back(Symmetry::invmap(f2.data(), this->nat));
 #endif
     }
     return;
@@ -1806,7 +1820,7 @@ void Symmetry::gtrans_convert(const ModuleBase::Vector3<double>* va, ModuleBase:
           vb[i]=va[i]*a*bi;
     }
 }
-void Symmetry::gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap)
+void Symmetry::gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap)const
 {
     ModuleBase::Matrix3 eig(1, 0, 0, 0, 1, 0, 0, 0, 1);
     ModuleBase::Matrix3 tmp;

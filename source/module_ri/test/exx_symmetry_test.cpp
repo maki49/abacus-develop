@@ -167,7 +167,7 @@ TEST_F(SymExxTest, mapmul)
     }
 }
 
-TEST_F(SymExxTest, cal_Sk_rot)
+TEST_F(SymExxTest, rearrange_col)
 {
     // case
     std::vector<std::pair<int, int>> atoms = { {2, 1}, {3, 3} };
@@ -190,7 +190,9 @@ TEST_F(SymExxTest, cal_Sk_rot)
     this->copy_from_global(sfull_gk.data(), sloc_gk.data(), nbasis, nbasis, pv.get_row_size(), pv.get_col_size(), false, false);
 
     // run (row-major)
-    std::vector<std::vector<std::complex<double>>> sloc_ks = ExxSym::cal_Sk_rot(sloc_gk, nbasis, pv, isym_rotiat_iat, kstar_ibz, ucell, false);
+    std::vector<std::vector<std::complex<double>>> sloc_ks;
+    for (auto& isym_kvecd : kstar_ibz)
+        sloc_ks.push_back(ExxSym::rearrange_col(nbasis, pv, ucell, false, isym_rotiat_iat[isym_kvecd.first], sloc_gk));
     // check
     for (int isym = 0;isym < isym_rotiat_iat.size();++isym)
     {

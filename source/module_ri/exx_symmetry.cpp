@@ -1,7 +1,6 @@
 #include "exx_symmetry.h"
 #include <utility>
 #include "module_psi/psi.h"
-#include "module_cell/module_symmetry/symmetry.h"
 #ifdef __MPI
 #include <mpi.h>
 #include "module_base/scalapack_connector.h"
@@ -10,51 +9,40 @@
 
 namespace ExxSym
 {
-    std::vector<std::vector<std::complex<double>>> cal_Sk_rot(
-        const std::vector<std::complex<double>> sloc_ikibz,
-        const int nbasis,
+    std::vector<std::complex<double>> rearrange_col(
+        const int& nbasis,
         const Parallel_2D& p2d,
-        const std::vector<std::vector<int>>& isym_rotiat_iat,
-        const std::map<int, ModuleBase::Vector3<double>>& kstar_ibz,
         const UnitCell& ucell,
-        const bool col_inside)
+        const bool col_inside,
+        const std::vector<int>& iat_rotiat, //g, g(iat0)=iat1
+        const std::vector<std::complex<double>>& sloc_in)
     {
-        ModuleBase::TITLE("ExxSym", "cal_Sk_rot");
-        // add title
-        std::vector<std::vector<std::complex<double>>> kvd_sloc; //result
-        //get the full smat
+        // set rearanged sloc_ik
+        std::vector<std::complex<double>> sloc_out(p2d.get_local_size());    // result
         // note: the globalfunc-major means outside, while scalapack's major means inside
         // bool col_inside = !ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER();
         //sfull is symmetric but sloc not, so row/col major should be considered
-        std::vector<std::complex<double>> sfull_ikbz = get_full_smat(sloc_ikibz, nbasis, p2d,
-            col_inside);
-        for (auto& isym_kvecd : kstar_ibz)
+        std::vector<std::complex<double>> sfull_in = get_full_smat(sloc_in, nbasis, p2d, col_inside);
+        //get g^{-1} : iat1 to iat0
+        std::vector<int> rotiat_iat = ModuleSymmetry::Symmetry::invmap(iat_rotiat.data(), ucell.nat);
+        for (int mu = 0;mu < p2d.get_row_size();++mu)
         {
-            int isym = isym_kvecd.first;
-            //get invmap : iat1 to iat0
-            std::vector<int> rotiat_iat = ModuleSymmetry::Symmetry::invmap(isym_rotiat_iat[isym].data(), ucell.nat);
-            // set rearanged sloc_ik
-            std::vector<std::complex<double>> sloc_ik(p2d.get_local_size());
-            for (int mu = 0;mu < p2d.get_row_size();++mu)
+            int gr = p2d.local2global_row(mu);
+            for (int nu = 0;nu < p2d.get_col_size();++nu)
             {
-                int gr = p2d.local2global_row(mu);
-                for (int nu = 0;nu < p2d.get_col_size();++nu)
-                {
-                    int gc = p2d.local2global_col(nu);
-                    int iat1 = ucell.iwt2iat[gc];
-                    int iw = ucell.iwt2iw[gc];//orb-index of iat1, the same as iat0
-                    int iat0 = rotiat_iat[iat1];   //g(iat0)=iat1
-                    assert(ucell.iat2it[iat1] == ucell.iat2it[iat0]);//check for the same it
-                    int gc0 = ucell.iat2iwt[iat0] + iw;
-                    if (col_inside)
-                        sloc_ik[mu * p2d.get_col_size() + nu] = sfull_ikbz[gr * nbasis + gc0];
-                    else
-                        sloc_ik[nu * p2d.get_row_size() + mu] = sfull_ikbz[gc0 * nbasis + gr];
-                }
+                int gc = p2d.local2global_col(nu);
+                int iat1 = ucell.iwt2iat[gc];
+                int iw = ucell.iwt2iw[gc];//orb-index of iat1, the same as iat0
+                int iat0 = rotiat_iat[iat1];   //g(iat0)=iat1
+                assert(ucell.iat2it[iat1] == ucell.iat2it[iat0]);//check for the same it
+                int gc0 = ucell.iat2iwt[iat0] + iw;
+                if (col_inside)
+                    sloc_out[mu * p2d.get_col_size() + nu] = sfull_in[gr * nbasis + gc0];
+                else
+                    sloc_out[nu * p2d.get_row_size() + mu] = sfull_in[gc0 * nbasis + gr];
             }
-            kvd_sloc.push_back(sloc_ik);
         }
-        return kvd_sloc;
+        return sloc_out;
     }
 
     std::vector<std::complex<double>> get_full_smat(
