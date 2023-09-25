@@ -3,7 +3,7 @@
 #include <memory>
 
 class Local_Orbital_Charge;
-class LCAO_Matrix;
+class LCAO_gen_fixedH;
 class Charge_Mixing;
 namespace elecstate
 {
@@ -32,10 +32,14 @@ public:
     void exx_beforescf(const K_Vectors& kv, const Charge_Mixing& chgmix);
 
     /// @brief in eachiterinit:  do DM mixing and calculate Hexx when entering 2nd SCF
-    void exx_eachiterinit(const Local_Orbital_Charge& loc, const Charge_Mixing& chgmix, const int& iter);
+    void exx_eachiterinit(
+        const Local_Orbital_Charge& loc,
+        const Charge_Mixing& chgmix,
+        const ModuleSymmetry::Symmetry& symm,
+        const int& iter);
 
     /// @brief in hamilt2density: calculate Hexx and Eexx
-    void exx_hamilt2density(elecstate::ElecState& elec, const Parallel_Orbitals& pv);
+    void exx_hamilt2density(elecstate::ElecState& elec, const Parallel_Orbitals& pv, const ModuleSymmetry::Symmetry& symm);
 
     /// @brief: in do_after_converge: add exx operators; do DM mixing if seperate loop
     bool exx_after_converge(
@@ -43,8 +47,19 @@ public:
         LCAO_Matrix& lm,
         const Local_Orbital_Charge& loc,
         const K_Vectors& kv,
+        const ModuleSymmetry::Symmetry& symm,
         int& iter);
-    
+
+    /// @brief calculate dm_k for all k points in kstar when symmetry is on
+    void restore_dm(
+        LCAO_Hamilt& uhm,
+        Local_Orbital_Charge& loc,
+        const K_Vectors& kv,
+        const UnitCell& ucell,
+        const psi::Psi<Tdata, psi::DEVICE_CPU>& psi,
+        const ModuleSymmetry::Symmetry& symm,
+        const ModuleBase::matrix& wg);
+
 private:
     std::shared_ptr<Exx_LRI<Tdata>> exx_lri;
 };

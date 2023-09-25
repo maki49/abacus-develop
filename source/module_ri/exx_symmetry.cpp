@@ -362,4 +362,14 @@ namespace ExxSym
         }
     }
 #endif
+
+    std::vector<ModuleBase::Vector3<double>> matfunc(
+        const std::vector<ModuleBase::Vector3<double>>& vec,
+        const ModuleBase::Matrix3& gmat,
+        const std::function<ModuleBase::Vector3<double>(const ModuleBase::Vector3<double>&, const ModuleBase::Matrix3&)>& f)
+    {
+        std::vector<ModuleBase::Vector3<double>> res;
+        for (auto& v : vec) res.push_back(f(v, gmat));
+        return res;
+    };
 }

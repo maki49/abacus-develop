@@ -196,6 +196,28 @@ class Gint
         double** dpsiz_dm,
         double* rho);
 
+    //------------------------------------------------------
+    // in gint_Skrot.cpp 
+    //------------------------------------------------------
+    ///calculate < phi_0|g^{-1}phi_R > for exx-symmetry
+    void gint_kernel_Srot(
+        const ModuleBase::Matrix3& ginv,
+        const int na_grid,
+        const int grid_index,
+        const double delta_r,
+        const double dv,
+        const int LD_pool,
+        double* pvpR_reduced);
+
+    /// calculate $<\phi_{k_1}|\phi_{k_2}> = \int{dr} \sum_{R_1}\phi_{R_1}(r)exp(-ik_1*R_1) \sum_{R_2}\phi_{R_2}(r)exp(ik_2*R_2)$
+    void gint_kernel_Srot(
+        const int na_grid,
+        const int grid_index,
+        const double delta_r,
+        const double dv,
+        const int LD_pool,
+        Gint_inout* inout);
+
     // dimension: [GlobalC::LNNR.nnrg] 
     // save the < phi_0i | V | phi_Rj > in sparse H matrix.
     bool pvpR_alloc_flag = false;

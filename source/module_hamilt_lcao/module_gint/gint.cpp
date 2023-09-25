@@ -23,7 +23,9 @@ void Gint::cal_gint(Gint_inout *inout)
 	if(inout->job==Gint_Tools::job_type::rho) ModuleBase::TITLE("Gint_interface","cal_gint_rho");
 	if(inout->job==Gint_Tools::job_type::tau) ModuleBase::TITLE("Gint_interface","cal_gint_tau");
 	if(inout->job==Gint_Tools::job_type::force) ModuleBase::TITLE("Gint_interface","cal_gint_force");
-	if(inout->job==Gint_Tools::job_type::force_meta) ModuleBase::TITLE("Gint_interface","cal_gint_force_meta");
+    if (inout->job == Gint_Tools::job_type::force_meta) ModuleBase::TITLE("Gint_interface", "cal_gint_force_meta");
+    if (inout->job == Gint_Tools::job_type::srot) ModuleBase::TITLE("Gint_interface", "cal_gint_srot");
+    if (inout->job == Gint_Tools::job_type::srotk) ModuleBase::TITLE("Gint_interface", "cal_gint_srotk");
 
 	if(inout->job==Gint_Tools::job_type::vlocal) ModuleBase::timer::tick("Gint_interface", "cal_gint_vlocal");
 	if(inout->job==Gint_Tools::job_type::vlocal_meta) ModuleBase::timer::tick("Gint_interface","cal_gint_vlocal_meta");
@@ -31,8 +33,10 @@ void Gint::cal_gint(Gint_inout *inout)
 	if(inout->job==Gint_Tools::job_type::tau) ModuleBase::timer::tick("Gint_interface","cal_gint_tau");
 	if(inout->job==Gint_Tools::job_type::force) ModuleBase::timer::tick("Gint_interface","cal_gint_force");
 	if(inout->job==Gint_Tools::job_type::force_meta) ModuleBase::timer::tick("Gint_interface","cal_gint_force_meta");
+    if (inout->job == Gint_Tools::job_type::srot) ModuleBase::timer::tick("Gint_interface", "cal_gint_srot");
+    if (inout->job == Gint_Tools::job_type::srotk) ModuleBase::timer::tick("Gint_interface", "cal_gint_srotk");
 
-	const int max_size = this->gridt->max_atom;
+    const int max_size = this->gridt->max_atom;
 	const int LD_pool = max_size*GlobalC::ucell.nwmax;
     const int lgd = this->gridt->lgd;
     const int nnrg = this->gridt->nnrg;
@@ -55,7 +59,8 @@ void Gint::cal_gint(Gint_inout *inout)
 			// it's a uniform grid to save orbital values, so the delta_r is a constant.
 			const double delta_r = GlobalC::ORB.dr_uniform;
 
-            if((inout->job==Gint_Tools::job_type::vlocal || inout->job==Gint_Tools::job_type::vlocal_meta) && !GlobalV::GAMMA_ONLY_LOCAL)
+            if ((inout->job == Gint_Tools::job_type::vlocal || inout->job == Gint_Tools::job_type::vlocal_meta || inout->job == Gint_Tools::job_type::srot)
+                && !GlobalV::GAMMA_ONLY_LOCAL)
             {
                 if(!pvpR_alloc_flag)
                 {
@@ -81,8 +86,9 @@ void Gint::cal_gint(Gint_inout *inout)
             //perpare auxiliary arrays to store thread-specific values
 #ifdef _OPENMP
 			double* pvpR_thread;
-			if(inout->job==Gint_Tools::job_type::vlocal || inout->job==Gint_Tools::job_type::vlocal_meta)
-			{
+            if (inout->job == Gint_Tools::job_type::vlocal || inout->job == Gint_Tools::job_type::vlocal_meta
+                || inout->job == Gint_Tools::job_type::srot)
+            {
                 if(!GlobalV::GAMMA_ONLY_LOCAL)
                 {
                     pvpR_thread = new double[nnrg];
@@ -247,8 +253,21 @@ void Gint::cal_gint(Gint_inout *inout)
 					#endif
 					delete[] vldr3;
 					delete[] vkdr3;
-				}
-			} // int grid_index
+                }
+                else if (inout->job == Gint_Tools::job_type::srot)
+                {
+#ifdef _OPENMP
+                    this->gint_kernel_Srot(inout->ginv, na_grid, grid_index, delta_r, dv, LD_pool, pvpR_thread);
+#else
+                    this->gint_kernel_Srot(inout->ginv, na_grid, grid_index, delta_r, dv, LD_pool, this->pvpR_reduced[0]);
+#endif
+                }
+                else if (inout->job == Gint_Tools::job_type::srotk)
+                {
+                    this->gint_kernel_Srot(na_grid, grid_index, delta_r, dv, LD_pool, inout);
+                }
+
+            } // int grid_index
 
 #ifdef _OPENMP
 			if(inout->job==Gint_Tools::job_type::vlocal || inout->job==Gint_Tools::job_type::vlocal_meta)
@@ -284,7 +303,17 @@ void Gint::cal_gint(Gint_inout *inout)
 				{
 					inout->svl_dphi[0]+=svl_dphi_thread;
 				}
-			}
+            }
+
+            if (inout->job == Gint_Tools::job_type::srot)
+            {
+#pragma omp critical(gint_k)
+                for (int innrg = 0; innrg < nnrg; innrg++)
+                {
+                    pvpR_reduced[0][innrg] += pvpR_thread[innrg];
+                }
+                delete[] pvpR_thread;
+            }
 #endif
 		} // end of #pragma omp parallel
 
@@ -300,8 +329,11 @@ void Gint::cal_gint(Gint_inout *inout)
 	if(inout->job==Gint_Tools::job_type::rho) ModuleBase::timer::tick("Gint_interface","cal_gint_rho");
 	if(inout->job==Gint_Tools::job_type::tau) ModuleBase::timer::tick("Gint_interface","cal_gint_tau");
 	if(inout->job==Gint_Tools::job_type::force) ModuleBase::timer::tick("Gint_interface","cal_gint_force");
-	if(inout->job==Gint_Tools::job_type::force_meta) ModuleBase::timer::tick("Gint_interface","cal_gint_force_meta");
-	return;
+    if (inout->job == Gint_Tools::job_type::force_meta) ModuleBase::timer::tick("Gint_interface", "cal_gint_force_meta");
+    if (inout->job == Gint_Tools::job_type::srot) ModuleBase::timer::tick("Gint_interface", "cal_gint_srot");
+    if (inout->job == Gint_Tools::job_type::srotk) ModuleBase::timer::tick("Gint_interface", "cal_gint_srotk");
+
+    return;
 }
 
 void Gint::prep_grid(

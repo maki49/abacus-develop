@@ -17,11 +17,11 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
-
 template<typename Tdata, typename Tmatrix>
-auto RI_2D_Comm::split_m2D_ktoR(const K_Vectors &kv, const std::vector<const Tmatrix*> &mks_2D, const Parallel_Orbitals &pv)
+auto RI_2D_Comm::split_m2D_ktoR(const K_Vectors& kv, const std::vector<const Tmatrix*>& mks_2D, const Parallel_Orbitals& pv, const ModuleSymmetry::Symmetry& symm)
 -> std::vector<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>>
 {
+    GlobalV::ofs_running << "nkstot_full=" << kv.nkstot_full << std::endl;
 	ModuleBase::TITLE("RI_2D_Comm","split_m2D_ktoR");
 	ModuleBase::timer::tick("RI_2D_Comm", "split_m2D_ktoR");
 
@@ -35,19 +35,105 @@ auto RI_2D_Comm::split_m2D_ktoR(const K_Vectors &kv, const std::vector<const Tma
 		const std::vector<int> ik_list = RI_2D_Comm::get_ik_list(kv, is_k);
 		for(const TC &cell : RI_Util::get_Born_von_Karmen_cells(period))
 		{
-			RI::Tensor<Tdata> mR_2D;
-			for(const int ik : ik_list)
-			{
-				using Tdata_m = typename Tmatrix::type;
-				RI::Tensor<Tdata_m> mk_2D = RI_Util::Matrix_to_Tensor<Tdata_m>(*mks_2D[ik]);
-				const Tdata_m frac = SPIN_multiple
-					* RI::Global_Func::convert<Tdata_m>( std::exp(
-						- ModuleBase::TWO_PI*ModuleBase::IMAG_UNIT * (kv.kvec_c[ik] * (RI_Util::array3_to_Vector3(cell)*GlobalC::ucell.latvec))));
-				if(mR_2D.empty())
-					mR_2D = RI::Global_Func::convert<Tdata>(mk_2D * frac);
-				else
-					mR_2D = mR_2D + RI::Global_Func::convert<Tdata>(mk_2D * frac);
-			}
+            RI::Tensor<Tdata> mR_2D;
+            int ik = 0;
+            for (const int ik_ibz : ik_list)
+            {
+                using Tdata_m = typename Tmatrix::type;
+                if (ModuleSymmetry::Symmetry::symm_flag == 1)
+                    for (auto ik_star : kv.kstars[ik_ibz])
+                    {
+                        RI::Tensor<Tdata_m> mk_2D = RI_Util::Matrix_to_Tensor<Tdata_m>(*mks_2D[ik]);
+                        //test: output mks_2D
+                        GlobalV::ofs_running << "ik=" << ik << ", kvec_d[ik]=" << ik_star.second.x << " " << ik_star.second.y << " " << ik_star.second.z << std::endl;
+                        GlobalV::ofs_running << "mk_2D=" << std::endl;
+                        for (int i = 0; i < mk_2D.shape[0]; ++i)
+                        {
+                            for (int j = 0; j < mk_2D.shape[1]; ++j)
+                            {
+                                GlobalV::ofs_running << mk_2D(i, j) << " ";
+                            }
+                            GlobalV::ofs_running << std::endl;
+                        }
+                        Tdata_m frac = SPIN_multiple
+                            * RI::Global_Func::convert<Tdata_m>(std::exp(
+                                -ModuleBase::TWO_PI * ModuleBase::IMAG_UNIT * (ik_star.second * GlobalC::ucell.G * (RI_Util::array3_to_Vector3(cell) * GlobalC::ucell.latvec))));
+                        if (static_cast<int>(std::round(SPIN_multiple * kv.wk[ik_ibz] / kv.kstars[ik_ibz].size() * kv.nkstot_full)) == 2) //time reversal symmetry
+                        {
+                            if (mR_2D.empty())
+                                mR_2D = RI::Global_Func::convert<Tdata>((mk_2D * 0.5 * frac) + tensor_conj(mk_2D * 0.5 * frac));
+                            else
+                                mR_2D = mR_2D + RI::Global_Func::convert<Tdata>((mk_2D * 0.5 * frac) + tensor_conj(mk_2D * 0.5 * frac));
+                        }
+                        else
+                        {
+                            if (mR_2D.empty())
+                                mR_2D = RI::Global_Func::convert<Tdata>(mk_2D * frac);
+                            else
+                                mR_2D = mR_2D + RI::Global_Func::convert<Tdata>(mk_2D * frac);
+                        }
+                        ++ik;
+                        //test: output mR_2D
+                        if (ik == kv.nkstot_full)
+                        {
+                            GlobalV::ofs_running << "mR_2D=" << std::endl;
+                            for (int i = 0; i < mR_2D.shape[0]; ++i)
+                            {
+                                for (int j = 0; j < mR_2D.shape[1]; ++j)
+                                {
+                                    GlobalV::ofs_running << mR_2D(i, j) << " ";
+                                }
+                                GlobalV::ofs_running << std::endl;
+                            }
+                        }
+                    }
+                else
+                {
+                    RI::Tensor<Tdata_m> mk_2D = RI_Util::Matrix_to_Tensor<Tdata_m>(*mks_2D[ik_ibz]);
+                    //test: output mks_2D
+                    GlobalV::ofs_running << "ik=" << ik << ", kvec_d[ik]=" << kv.kvec_d[ik_ibz].x << " " << kv.kvec_d[ik_ibz].y << " " << kv.kvec_d[ik_ibz].z << std::endl;
+                    GlobalV::ofs_running << "mk_2D=" << std::endl;
+                    for (int i = 0; i < mk_2D.shape[0]; ++i)
+                    {
+                        for (int j = 0; j < mk_2D.shape[1]; ++j)
+                        {
+                            GlobalV::ofs_running << mk_2D(i, j) << " ";
+                        }
+                        GlobalV::ofs_running << std::endl;
+                    }
+                    Tdata_m frac = SPIN_multiple
+                        * RI::Global_Func::convert<Tdata_m>(std::exp(
+                            -ModuleBase::TWO_PI * ModuleBase::IMAG_UNIT * (kv.kvec_c[ik_ibz] * (RI_Util::array3_to_Vector3(cell) * GlobalC::ucell.latvec))));
+                    if (static_cast<int>(std::round(SPIN_multiple * kv.wk[ik_ibz] * kv.nkstot_full)) == 2) //time reversal symmetry
+                    {
+                        if (mR_2D.empty())
+                            mR_2D = RI::Global_Func::convert<Tdata>((mk_2D * 0.5 * frac) + tensor_conj(mk_2D * 0.5 * frac));
+                        else
+                            mR_2D = mR_2D + RI::Global_Func::convert<Tdata>((mk_2D * 0.5 * frac) + tensor_conj(mk_2D * 0.5 * frac));
+                    }
+                    else
+                    {
+                        if (mR_2D.empty())
+                            mR_2D = RI::Global_Func::convert<Tdata>(mk_2D * frac);
+                        else
+                            mR_2D = mR_2D + RI::Global_Func::convert<Tdata>(mk_2D * frac);
+                    }
+                    ++ik;
+                    //test: output mR_2D
+                    if (ik == kv.nkstot)
+                    {
+                        GlobalV::ofs_running << "mR_2D=" << std::endl;
+                        for (int i = 0; i < mR_2D.shape[0]; ++i)
+                        {
+                            for (int j = 0; j < mR_2D.shape[1]; ++j)
+                            {
+                                GlobalV::ofs_running << mR_2D(i, j) << " ";
+                            }
+                            GlobalV::ofs_running << std::endl;
+                        }
+                    }
+                }
+            }
 
 			for(int iwt0_2D=0; iwt0_2D!=mR_2D.shape[0]; ++iwt0_2D)
 			{

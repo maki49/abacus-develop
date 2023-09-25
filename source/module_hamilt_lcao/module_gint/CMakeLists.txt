@@ -7,6 +7,7 @@ list(APPEND objects
     gint_rho.cpp
     gint_tau.cpp
     gint_vl.cpp
+    gint_Srot.cpp
     gint_k_env.cpp
     gint_k_sparse.cpp
     gint_k_sparse1.cpp

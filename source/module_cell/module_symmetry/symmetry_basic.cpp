@@ -1068,11 +1068,9 @@ void Symmetry_Basic::atom_ordering_new(double *posi, const int natom, int *subin
             ModuleBase::heapsort(nxequal, weighted_func, tmpindex.data());
             this->order_atoms(&posi[i * 3], nxequal, tmpindex.data());
             //rearange subindex using tmpindex
-            for (int j = 0; j < nxequal; ++j)
-            {
-                tmpindex[j] = subindex[i + tmpindex[j]];
-                subindex[i + j] = tmpindex[j];
-            }
+            for (int j = 0; j < nxequal; ++j)tmpindex[j] = subindex[i + tmpindex[j]];
+            for (int j = 0; j < nxequal; ++j)subindex[i + j] = tmpindex[j];
+
         }
 		i=ix_right;
 	}

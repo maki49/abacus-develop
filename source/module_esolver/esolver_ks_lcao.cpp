@@ -485,10 +485,13 @@ void ESolver_KS_LCAO::eachiterinit(const int istep, const int iter)
 
 #ifdef __EXX
     // calculate exact-exchange
+    if (GlobalC::exx_info.info_global.cal_exx && !GlobalC::exx_info.info_global.separate_loop// && exx_lri_complex->two_level_step
+        && !GlobalV::GAMMA_ONLY_LOCAL && ModuleSymmetry::Symmetry::symm_flag == 1)
+        this->exc->restore_dm(this->UHM, this->LOC, kv, GlobalC::ucell, *psi, symm, pelec->wg);
     if (GlobalC::exx_info.info_ri.real_number)
-        this->exd->exx_eachiterinit(this->LOC, *(this->p_chgmix), iter);
+        this->exd->exx_eachiterinit(this->LOC, *(this->p_chgmix), this->symm, iter);
     else
-        this->exc->exx_eachiterinit(this->LOC, *(this->p_chgmix), iter);
+        this->exc->exx_eachiterinit(this->LOC, *(this->p_chgmix), this->symm, iter);
 #endif
 
     if (GlobalV::dft_plus_u)
@@ -551,9 +554,9 @@ void ESolver_KS_LCAO::hamilt2density(int istep, int iter, double ethr)
 
 #ifdef __EXX
     if (GlobalC::exx_info.info_ri.real_number)
-        this->exd->exx_hamilt2density(*this->pelec, *this->LOWF.ParaV);
+        this->exd->exx_hamilt2density(*this->pelec, *this->LOWF.ParaV, symm);
     else
-        this->exc->exx_hamilt2density(*this->pelec, *this->LOWF.ParaV);
+        this->exc->exx_hamilt2density(*this->pelec, *this->LOWF.ParaV, symm);
 #endif
 
     // if DFT+U calculation is needed, this function will calculate
@@ -822,7 +825,7 @@ void ESolver_KS_LCAO::afterscf(const int istep)
         // rpa_interface.rpa_exx_lcao().info.files_abfs = GlobalV::rpa_orbitals;
         // rpa_interface.out_for_RPA(*(this->LOWF.ParaV), *(this->psi), this->LOC, this->pelec);
         RPA_LRI<double> rpa_lri_double(GlobalC::exx_info.info_ri);
-        rpa_lri_double.cal_postSCF_exx(this->LOC, MPI_COMM_WORLD, kv, *this->LOWF.ParaV);
+        rpa_lri_double.cal_postSCF_exx(this->LOC, MPI_COMM_WORLD, kv, *this->LOWF.ParaV, symm);
         rpa_lri_double.init(MPI_COMM_WORLD, kv);
         rpa_lri_double.out_for_RPA(*(this->LOWF.ParaV), *(this->psi), this->pelec);
     }
@@ -847,10 +850,12 @@ void ESolver_KS_LCAO::afterscf(const int istep)
 bool ESolver_KS_LCAO::do_after_converge(int& iter)
 {
 #ifdef __EXX
+    if (!GlobalV::GAMMA_ONLY_LOCAL && ModuleSymmetry::Symmetry::symm_flag == 1)
+        this->exc->restore_dm(this->UHM, this->LOC, kv, GlobalC::ucell, *psi, symm, pelec->wg);
     if (GlobalC::exx_info.info_ri.real_number)
-        return this->exd->exx_after_converge(*this->p_hamilt, this->LM, this->LOC, kv, iter);
+        return this->exd->exx_after_converge(*this->p_hamilt, this->LM, this->LOC, kv, symm, iter);
     else
-        return this->exc->exx_after_converge(*this->p_hamilt, this->LM, this->LOC, kv, iter);
+        return this->exc->exx_after_converge(*this->p_hamilt, this->LM, this->LOC, kv, symm, iter);
 #endif // __EXX
     return true;
 }

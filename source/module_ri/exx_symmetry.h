@@ -133,4 +133,10 @@ namespace ExxSym
         const int& nbasis,
         const Parallel_2D& p2d,
         const bool col_inside);
+
+
+    std::vector<ModuleBase::Vector3<double>> matfunc(
+        const std::vector<ModuleBase::Vector3<double>>& vec,
+        const ModuleBase::Matrix3& gmat,
+        const std::function<ModuleBase::Vector3<double>(const ModuleBase::Vector3<double>&, const ModuleBase::Matrix3&)>& f);
 }

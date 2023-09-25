@@ -55,6 +55,8 @@ class Gint_k : public Gint
     // destroy the temporary <phi_0 | V | dphi_R> matrix element.
     void destroy_pvdpR(void);
 
+    const double get_pvpR(int ispin, int innrg) { return this->pvpR_reduced[ispin][innrg]; }
+
     // folding the < phi_0 | V | phi_R> matrix to 
     // <phi_0i | V | phi_0j>
     // V is (Vl + Vh + Vxc) if no Vna is used,
@@ -66,10 +68,9 @@ class Gint_k : public Gint
     //------------------------------------------------------
     // calculate the envelop function via grid integrals
     void cal_env_k(int ik,
-                   const std::complex<double>* psi_k,
-                   double* rho,
-                   const std::vector<ModuleBase::Vector3<double>>& kvec_c,
-                   const std::vector<ModuleBase::Vector3<double>>& kvec_d);
+        const std::complex<double>* psi_k,
+        double* rho,
+        const std::vector<ModuleBase::Vector3<double>>& kvec_d);
 
     //------------------------------------------------------
     // in gint_k_sparse.cpp 
@@ -119,7 +120,18 @@ class Gint_k : public Gint
         const double &sparse_threshold,
         LCAO_Matrix *LM);
 
-    private:
+    //------------------------------------------------------
+    // in gint_k_srot.cpp 
+    //------------------------------------------------------  
+    /// folding the S_rot(R) = < phi_0 | g^{-1}phi_R> matrix to Srot(k)=\sum{R} Srot(R)exp(ikR) , for exx-symmetry
+    std::vector<std::complex<double>> folding_Srot_k(
+        const ModuleBase::Vector3<double>& kvec_d,
+        const Parallel_2D& p2d,
+        const double* data);
+    std::vector<std::complex<double>> grid_to_2d(
+        const Parallel_2D& p2d,
+        const std::vector<std::complex<double>>& mat_grid) const;
+private:
 
     //----------------------------
     // key variable 

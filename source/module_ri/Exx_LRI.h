@@ -64,7 +64,7 @@ private:
 	RI::Exx<TA,Tcell,Ndim,Tdata> exx_lri;
 
 	void cal_exx_ions();
-	void cal_exx_elec(const Parallel_Orbitals &pv);
+    void cal_exx_elec(const Parallel_Orbitals& pv, const ModuleSymmetry::Symmetry& symm);
 	void post_process_Hexx( std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> &Hexxs_io ) const;
 	Tdata post_process_Eexx( const Tdata &Eexx_in ) const;
 

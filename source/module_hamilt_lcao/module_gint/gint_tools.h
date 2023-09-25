@@ -10,8 +10,8 @@
 
 namespace Gint_Tools
 {
-    enum class job_type{vlocal, rho, force, tau, vlocal_meta, force_meta, dvlocal};
-	//Hamiltonian, electron density, force, kinetic energy density, Hamiltonian for mGGA
+    enum class job_type { vlocal, rho, force, tau, vlocal_meta, force_meta, dvlocal, srot, srotk };
+    //Hamiltonian, electron density, force, kinetic energy density, Hamiltonian for mGGA, <phi(r)|phi(g^{-1}r) >for exx-symmetry
 }
 
 //the class is used to pass input/output variables
@@ -30,7 +30,11 @@ class Gint_inout
         int ispin;
 		LCAO_Matrix *lm;
 
-    //output
+        ModuleBase::Matrix3 ginv;
+        ModuleBase::Vector3<double> kd1, kd2;
+        std::vector<std::complex<double>>* Srotk_grid;//lgd*lgd
+
+        //output
         double** rho;
         ModuleBase::matrix* fvl_dphi;
         ModuleBase::matrix* svl_dphi;
@@ -144,6 +148,16 @@ class Gint_inout
             lm = lm_in;
             job = job_in;
         }
+
+        // srot, multi-k
+        Gint_inout(const ModuleBase::Matrix3& ginv_in, Gint_Tools::job_type job_in) { ginv = ginv_in; job = job_in; }
+        Gint_inout(ModuleBase::Vector3<double> kd1_in, ModuleBase::Vector3<double> kd2_in,
+            std::vector<std::complex<double>>* Srotk_grid_in, Gint_Tools::job_type job_in) {
+            kd1 = kd1_in;
+            kd2 = kd2_in;
+            Srotk_grid = Srotk_grid_in;
+            job = job_in;
+        }
 };
  
 namespace Gint_Tools
@@ -243,9 +257,25 @@ namespace Gint_Tools
 		double*const*const ddpsir_ylm_xz,
 		double*const*const ddpsir_ylm_yy,
 		double*const*const ddpsir_ylm_yz,
-		double*const*const ddpsir_ylm_zz);
+        double* const* const ddpsir_ylm_zz);
 
-	// psir_ylm * vldr3
+    // #ifdef __EXX
+        /// $\phi(r)Ylm(g^{-1}r)$, for exx-symmetry
+    void cal_psir_ylmrot_dv(
+        const Grid_Technique& gt,
+        const ModuleBase::Matrix3& ginv,    ///< inverse rotation matirx
+        const int bxyz,
+        const int na_grid, // number of atoms on this grid 
+        const int grid_index, // 1d index of FFT index (i,j,k) 
+        const double delta_r, // delta_r of the uniform FFT grid
+        const double dv,                // volume of the FFT grid
+        const int* const block_index,  // count total number of atomis orbitals
+        const int* const block_size,
+        const bool* const* const cal_flag,
+        double* const* const psir_ylm); // whether the atom-grid distance is larger than cutoff
+    // #endif
+
+    // psir_ylm * vldr3
     Gint_Tools::Array_Pool<double> get_psir_vlbr3(
         const int bxyz,
         const int na_grid,  					    // how many atoms on this (i,j,k) grid

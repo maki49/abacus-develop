@@ -59,11 +59,15 @@ template <typename Tdata> void RPA_LRI<Tdata>::cal_rpa_cv()
 
 template <typename Tdata>
 void RPA_LRI<Tdata>::cal_postSCF_exx(const Local_Orbital_Charge& loc,
-                const MPI_Comm& mpi_comm_in,
-                const K_Vectors& kv,
-                const Parallel_Orbitals& pv)
+    const MPI_Comm& mpi_comm_in,
+    const K_Vectors& kv,
+    const Parallel_Orbitals& pv,
+    const ModuleSymmetry::Symmetry& symm)
 {
-    exx_lri_rpa.mix_DMk_2D.set_nks(kv.nks, GlobalV::GAMMA_ONLY_LOCAL);
+    if (!GlobalV::GAMMA_ONLY_LOCAL && ModuleSymmetry::Symmetry::symm_flag == 1)
+        exx_lri_rpa.mix_DMk_2D.set_nks(kv.nkstot_full, GlobalV::GAMMA_ONLY_LOCAL);
+    else
+        exx_lri_rpa.mix_DMk_2D.set_nks(kv.nks, GlobalV::GAMMA_ONLY_LOCAL);
     exx_lri_rpa.mix_DMk_2D.set_mixing_mode(Mixing_Mode::No);
     if(GlobalV::GAMMA_ONLY_LOCAL)
         exx_lri_rpa.mix_DMk_2D.mix(loc.dm_gamma, true);
@@ -71,7 +75,7 @@ void RPA_LRI<Tdata>::cal_postSCF_exx(const Local_Orbital_Charge& loc,
         exx_lri_rpa.mix_DMk_2D.mix(loc.dm_k, true);
     exx_lri_rpa.init(mpi_comm_in, kv);
     exx_lri_rpa.cal_exx_ions();
-    exx_lri_rpa.cal_exx_elec(pv);
+    exx_lri_rpa.cal_exx_elec(pv, symm);
     // cout<<"postSCF_Eexx: "<<exx_lri_rpa.Eexx<<endl;
 }
 

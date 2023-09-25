@@ -17,6 +17,7 @@
 #include "module_base/timer.h"
 #include "module_ri/serialization_cereal.h"
 #include "module_ri/Mix_DMk_2D.h"
+#include "module_ri/exx_symmetry.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
 
 #include <RI/distribute/Distribute_Equally.h>
@@ -161,7 +162,7 @@ void Exx_LRI<Tdata>::cal_exx_ions()
 }
 
 template<typename Tdata>
-void Exx_LRI<Tdata>::cal_exx_elec(const Parallel_Orbitals &pv)
+void Exx_LRI<Tdata>::cal_exx_elec(const Parallel_Orbitals& pv, const ModuleSymmetry::Symmetry& symm)
 {
 	ModuleBase::TITLE("Exx_LRI","cal_exx_elec");
 	ModuleBase::timer::tick("Exx_LRI", "cal_exx_elec");
@@ -171,7 +172,7 @@ void Exx_LRI<Tdata>::cal_exx_elec(const Parallel_Orbitals &pv)
 	std::vector<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>> Ds =
 		GlobalV::GAMMA_ONLY_LOCAL
 		? RI_2D_Comm::split_m2D_ktoR<Tdata>(*p_kv, this->mix_DMk_2D.get_DMk_gamma_out(), pv)
-		: RI_2D_Comm::split_m2D_ktoR<Tdata>(*p_kv, this->mix_DMk_2D.get_DMk_k_out(), pv);
+        : RI_2D_Comm::split_m2D_ktoR<Tdata>(*p_kv, this->mix_DMk_2D.get_DMk_k_out(), pv, symm);
 
 	this->exx_lri.set_csm_threshold(this->info.cauchy_threshold);
 

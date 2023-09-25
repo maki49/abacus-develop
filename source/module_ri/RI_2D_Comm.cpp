@@ -10,6 +10,17 @@
 #include <string>
 #include <stdexcept>
 
+RI::Tensor<double> RI_2D_Comm::tensor_conj(const RI::Tensor<double>& t)
+{
+    return t;
+}
+RI::Tensor<std::complex<double>> RI_2D_Comm::tensor_conj(const RI::Tensor<std::complex<double>>& t)
+{
+    RI::Tensor<std::complex<double>> r(t.shape);
+    for (int i = 0;i < t.data->size();++i)
+        (*r.data)[i] = std::conj((*t.data)[i]);
+    return r;
+}
 // judge[is] = {s0, s1}
 auto RI_2D_Comm::get_2D_judge(const Parallel_Orbitals &pv)
 -> std::vector<std::tuple<std::set<TA>, std::set<TA>>>

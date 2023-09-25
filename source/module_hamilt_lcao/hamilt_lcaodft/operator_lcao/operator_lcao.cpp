@@ -76,13 +76,42 @@ void OperatorLCAO<std::complex<double>>::folding_fixed(const int ik, const std::
     //-----------------------------------------
     this->LM->zeros_HSk('S');
     this->LM->zeros_HSk('T');
-    this->LM->folding_fixedH(ik, kvec_d);
+    this->LM->folding_fixedH(kvec_d[ik]);
 
     //------------------------------------------
     // Add T(k)+Vnl(k)+Vlocal(k)
     // (Hloc2 += Hloc_fixed2), (std::complex matrix)
     //------------------------------------------
-	this->LM->update_Hloc2(ik);
+    this->LM->update_Hloc2(ik);
+    // test: output HSk
+    GlobalV::ofs_running << "ik=" << ik << std::endl;
+    // GlobalV::ofs_running << "Hloc2 " << std::endl;
+    // for (int ir = 0;ir < GlobalV::NLOCAL;++ir)
+    // {
+    //     for (int ic = 0;ic < GlobalV::NLOCAL;++ic)
+    //     {
+    //         GlobalV::ofs_running << this->LM->Hloc2[ir * GlobalV::NLOCAL + ic] << " ";
+    //     }
+    //     GlobalV::ofs_running << std::endl;
+    // }
+    // GlobalV::ofs_running << "Hloc_fixed2 " << std::endl;
+    // for (int ir = 0;ir < GlobalV::NLOCAL;++ir)
+    // {
+    //     for (int ic = 0;ic < GlobalV::NLOCAL;++ic)
+    //     {
+    //         GlobalV::ofs_running << this->LM->Hloc_fixed2[ir * GlobalV::NLOCAL + ic] << " ";
+    //     }
+    //     GlobalV::ofs_running << std::endl;
+    // }
+    GlobalV::ofs_running << "Sloc2 with kvec_d=" << kvec_d[ik].x << " " << kvec_d[ik].y << " " << kvec_d[ik].z << std::endl;
+    for (int ir = 0;ir < GlobalV::NLOCAL;++ir)
+    {
+        for (int ic = 0;ic < GlobalV::NLOCAL;++ic)
+        {
+            GlobalV::ofs_running << this->LM->Sloc2[ir * GlobalV::NLOCAL + ic] << " ";
+        }
+        GlobalV::ofs_running << std::endl;
+    }
     ModuleBase::timer::tick("OperatorLCAO", "folding_fixed");
 }
 

@@ -24,9 +24,7 @@ class LCAO_Matrix
     
     // folding the fixed Hamiltonian (T+Vnl) if
 	// k-point algorithm is used.
-	void folding_fixedH(const int &ik, 
-                        const std::vector<ModuleBase::Vector3<double>>& kvec_d, 
-                        bool cal_syns = false);
+    void folding_fixedH(const ModuleBase::Vector3<double>& kvec_d, bool cal_syns = false);
 
     Parallel_Orbitals *ParaV;
     
@@ -124,6 +122,9 @@ private:
     // Records the R direct coordinates of HR and SR output, This variable will be filled with data when HR and SR files are output.
     std::set<Abfs::Vector3_Order<int>> output_R_coor;
 
+    /// for restoring DM(R) when symmetry == 1 and multi - k in EXX calculation.
+    /// $S^{-1}'(k)S(gk)$ for each kstar. size: [nks_ibz][nsymm][nbasis*nbasis(local)]
+    std::vector<std::vector<std::vector<std::complex<double>>>> invSkrot_Sgk;
 
     //========================================
     // FORCE

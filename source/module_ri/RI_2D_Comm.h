@@ -30,7 +30,7 @@ namespace RI_2D_Comm
 //public:
 	template<typename Tdata, typename Tmatrix>
 	extern std::vector<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>>
-	split_m2D_ktoR(const K_Vectors &kv, const std::vector<const Tmatrix*> &mks_2D, const Parallel_Orbitals &pv);
+        split_m2D_ktoR(const K_Vectors& kv, const std::vector<const Tmatrix*>& mks_2D, const Parallel_Orbitals& pv, const ModuleSymmetry::Symmetry& symm = ModuleSymmetry::Symmetry());
 
 	// judge[is] = {s0, s1}
 	extern std::vector<std::tuple<std::set<TA>, std::set<TA>>>
@@ -64,6 +64,9 @@ namespace RI_2D_Comm
 	extern inline int get_is_block(const int is_k, const int is_row_b, const int is_col_b);
 	extern inline std::tuple<int,int> split_is_block(const int is_b);
 	extern inline int get_iwt(const int iat, const int iw_b, const int is_b);
+
+    RI::Tensor<double> tensor_conj(const RI::Tensor<double>& t);
+    RI::Tensor<std::complex<double>> tensor_conj(const RI::Tensor<std::complex<double>>& t);
 }
 
 #include "RI_2D_Comm.hpp"

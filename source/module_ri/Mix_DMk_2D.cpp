@@ -51,7 +51,9 @@ void Mix_DMk_2D::mix(const std::vector<ModuleBase::matrix> &dm, const bool flag_
 void Mix_DMk_2D::mix(const std::vector<ModuleBase::ComplexMatrix> &dm, const bool flag_restart)
 {
 	ModuleBase::TITLE("Mix_DMk_2D","mix");
-	assert(this->mix_DMk_k.size() == dm.size());
+    std::cout << "mix_DMk_k.size() = " << this->mix_DMk_k.size() << std::endl;
+    std::cout << "dm.size() = " << dm.size() << std::endl;
+    assert(this->mix_DMk_k.size() == dm.size());
 	for(int ik=0; ik<dm.size(); ++ik)
 		this->mix_DMk_k[ik].mix(dm[ik], flag_restart);
 }

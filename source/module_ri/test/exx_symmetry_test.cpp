@@ -295,3 +295,36 @@ int main(int argc, char** argv)
     MPI_Finalize();
 #endif
 }
+
+TEST_F(SymExxTest, matfunc)
+{
+    // supercells
+    int nR = 1;
+    std::vector<ModuleBase::Vector3<double>> supercells;
+
+    for (int i = -nR;i <= nR;++i)
+        for (int j = -nR;j <= nR;++j)
+            for (int k = -nR;k <= nR;++k)
+                supercells.push_back(ModuleBase::Vector3<double>(i, j, k));
+
+    ModuleBase::Matrix3 inv2 = ModuleBase::Matrix3(-1, 1, 0, -1, 0, 0, -1, 0, 1);
+    ModuleBase::Matrix3 latvec(0, 0.5, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 0);
+    ModuleBase::Matrix3 inv2_cart = latvec.Inverse() * inv2 * latvec;
+
+
+    // auto f = [](const ModuleBase::Vector3<double>& R, const ModuleBase::Matrix3& g) {return R - R * g; };
+    auto f = [](const ModuleBase::Vector3<double>& R, const ModuleBase::Matrix3& g) {return R * g; };
+    // std::vector<ModuleBase::Vector3<double>> R_minus_gR = ExxSym::matfunc(supercells, inv2, f);
+    std::vector<ModuleBase::Vector3<double>> R_minus_gR_cart = ExxSym::matfunc(supercells, inv2_cart, f);
+
+    // output 
+    // std::cout << "R_minus_gR(Direct)" << std::endl;
+    // for (auto& v : R_minus_gR) std::cout << v.x << " " << v.y << " " << v.z << std::endl;
+    //cartesian
+    // std::cout << "R_minus_gR (Cartesian)" << std::endl;
+    // for (auto& v : R_minus_gR) std::cout << (v * latvec).x << " " << (v * latvec).y << " " << (v * latvec).z << std::endl;
+    std::cout << "R_minus_gR_cart (Cartesian)" << std::endl;
+    for (auto& v : R_minus_gR_cart) std::cout << v.x << " " << v.y << " " << v.z << std::endl;
+    std::cout << "R_minus_gR(Direct)" << std::endl;
+    for (auto& v : R_minus_gR_cart) std::cout << (v * latvec.Inverse()).x << " " << (v * latvec.Inverse()).y << " " << (v * latvec.Inverse()).z << std::endl;
+}
