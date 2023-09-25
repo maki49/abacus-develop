@@ -1,0 +1,19 @@
+INPUT_PARAMETERS
+pseudo_dir              ../../../tests/PP_ORB
+orbital_dir             ../../../tests/PP_ORB
+nbands                  5
+nspin                   1
+calculation             scf
+basis_type              lcao
+ks_solver               scalapack_gvx
+ecutwfc                 100
+scf_thr                 1e-8
+scf_nmax                100
+gamma_only              0
+symmetry                -1
+smearing_method         gauss
+mixing_type             pulay
+mixing_beta             0.4
+
+dft_functional          hse
+out_alllog	1
