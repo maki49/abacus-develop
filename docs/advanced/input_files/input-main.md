@@ -3624,7 +3624,6 @@ These variables are used to control the usage of QO analysis. QO further compres
 
 
 [back to top](#full-list-of-input-keywords)
-=======
 
 ## Beyond DFT
 
@@ -3643,17 +3642,24 @@ These parameters are used to solve the excited states using. e.g. lr-tddft
 - **Default**: 0
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 [back to top](#full-list-of-input-keywords)
 <<<<<<< HEAD
 =======
 >>>>>>> 7d4fe3b32 (add operator=(T&&) in Grid_Technique and its 4 base classes)
 =======
+=======
+>>>>>>> 9a97eada1 (psi wrapperL: k1<->bfirst)
 ### xc_kernel
 
 - **Type**: String
 - **Description**: The exchange-correlation kernel used in the calculation. Currently, only `LDA` is supported.
 - **Default**: LDA
 
+<<<<<<< HEAD
 [back to top](#full-list-of-input-keywords)
 >>>>>>> ab3506693 (Framework: kernel, pot, operator, hamilt)
 >>>>>>> 8316c5c67 (Framework: kernel, pot, operator, hamilt)
+=======
+[back to top](#full-list-of-input-keywords)
+>>>>>>> 9a97eada1 (psi wrapperL: k1<->bfirst)

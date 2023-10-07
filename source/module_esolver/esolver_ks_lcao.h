@@ -135,7 +135,7 @@ namespace ModuleESolver
 
         void dpks_cal_projected_DM(const elecstate::DensityMatrix<TK, double>* dm) const;
 #endif
-        template <typename T, typename Texx, typename Device>
+        template <typename T1, typename T2, typename Device>
         friend class ESolver_LRTD;
     };
 }

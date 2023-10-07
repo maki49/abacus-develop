@@ -503,7 +503,7 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
     ModuleBase::GlobalFunc::OUTP(ofs, "qo_basis", qo_basis, "type of QO basis function: hydrogen: hydrogen-like basis, pswfc: read basis from pseudopotential");
     ModuleBase::GlobalFunc::OUTP(ofs, "qo_thr", qo_thr, "accuracy for evaluating cutoff radius of QO basis function");
 
-   ofs << "\n#Parameters (22.beyond dft)" << std::endl;
+   ofs << "\n#Parameters (24.beyond dft)" << std::endl;
    ModuleBase::GlobalFunc::OUTP(ofs, "nstates", nstates, "the number of 2-particle states to be solved");
    ModuleBase::GlobalFunc::OUTP(ofs, "xc_kernel", xc_kernel, "xc kernel for LR-TDDFT. default: LDA");
    ofs.close();

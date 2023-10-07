@@ -1132,7 +1132,7 @@ namespace Gint_Tools
 		bool** cal_flag,
 		double** psi,
 		double ** psi_DMR,
-		double* DMR,
+        // double* DMR,
 		const hamilt::HContainer<double>* DM,
         const bool if_symm)
 	{
