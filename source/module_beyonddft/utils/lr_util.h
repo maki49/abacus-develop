@@ -5,6 +5,7 @@
 #include "module_base/matrix.h"
 #include "module_base/complexmatrix.h"
 #include "module_basis/module_ao/parallel_2d.h"
+#include "module_psi/psi.h"
 #include <ATen/core/tensor.h>
 
 using DAT = container::DataType;
@@ -19,11 +20,11 @@ namespace LR_Util
     /// @tparam TCell 
     /// @param ucell 
     template <typename TCell>
-    const size_t cal_nelec(const TCell& ucell);
+    const int cal_nelec(const TCell& ucell);
     
     /// @brief calculate the number of occupied orbitals
     /// @param nelec 
-    const size_t cal_nocc(size_t nelec);
+    const int cal_nocc(int nelec);
     
     /// @brief  set the index map: ix to (ic, iv) and vice versa
     /// by diagonal traverse the c-v pairs
@@ -55,7 +56,7 @@ namespace LR_Util
     void delete_p3(T*** p3, size_t size1, size_t size2);
 
 
-    //======== Tensor - Matrix transformer==========
+    ///======== Tensor - Matrix transformer==========
     container::Tensor mat2ten_double(ModuleBase::matrix& m);
     std::vector<container::Tensor> mat2ten_double(std::vector<ModuleBase::matrix>& m);
     ModuleBase::matrix ten2mat_double(container::Tensor& t);
@@ -65,6 +66,15 @@ namespace LR_Util
     ModuleBase::ComplexMatrix ten2mat_complex(container::Tensor& t);
     std::vector<ModuleBase::ComplexMatrix> ten2mat_complex(std::vector<container::Tensor>& t);
 
+    ///===================Psi wrapper=================
+    /// psi(nk=1, nbands=nb, nk * nbasis) -> psi(nb, nk, nbasis) without memory copy
+    template<typename T, typename Device>
+    psi::Psi<T, Device> k1_to_bfirst_wrapper(const psi::Psi<T, Device>& psi_kfirst, int nk_in, int nbasis_in);
+    ///  psi(nb, nk, nbasis) -> psi(nk=1, nbands=nb, nk * nbasis)  without memory copy
+    template<typename T, typename Device>
+    psi::Psi<T, Device> bfirst_to_k1_wrapper(const psi::Psi<T, Device>& psi_bfirst);
+
+    ///=================2D-block Parallel===============
     // pack the process to setup 2d divion reusing blacs_ctxt of a new 2d-matrix
     void setup_2d_division(Parallel_2D& pv, int nb, int gr, int gc);
 

@@ -32,7 +32,7 @@ namespace hamilt
 
         Parallel_2D pVc;        // for intermediate Vc
         LR_Util::setup_2d_division(pVc, pmat.get_block_size(), naos, nocc, pmat.comm_2D, pmat.blacs_ctxt);
-        for (size_t isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nsk;++isk)
         {
             AX_istate.fix_k(isk);
             c.fix_k(isk);

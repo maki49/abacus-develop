@@ -84,7 +84,6 @@ void Driver::driver_run() {
 
     //! 5: clean up esolver
     p_esolver->after_all_runners();
-    ModuleESolver::clean_esolver(p_esolver);
 
 #ifdef __LCAO
     //---------beyond DFT: set up the next ESolver---------
@@ -114,6 +113,8 @@ void Driver::driver_run() {
     if (INPUT.basis_type == "lcao")
         Cblacs_exit(1); // clean up blacs after all the esolvers are cleaned up without closing MPI
     std::cout << "befor end" << std::endl;
+#else
+    ModuleESolver::clean_esolver(p_esolver);
 #endif
     ModuleBase::timer::tick("Driver", "driver_line");
     return;

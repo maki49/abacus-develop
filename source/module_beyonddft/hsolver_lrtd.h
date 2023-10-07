@@ -11,7 +11,6 @@ namespace hsolver
         using Real = typename GetTypeReal<T>::type;
     public:
         HSolverLR() {};
-        ~HSolverLR() {};
         virtual Real set_diagethr(const int istep, const int iter, const Real ethr) override
         {
             this->diag_ethr = ethr;
