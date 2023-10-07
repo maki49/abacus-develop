@@ -14,6 +14,7 @@
 #include "module_hamilt_lcao/module_gint/gint_gamma.h"
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
+#include "module_elecstate/module_dm/density_matrix.h"
 #include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
 #include "module_beyonddft/hamilt_casida.hpp"
 #ifdef __EXX
@@ -22,6 +23,15 @@
 #endif
 namespace ModuleESolver
 {
+    template <typename T> struct TGint;
+    template <>
+    struct TGint<double> {
+        using type = Gint_Gamma;
+    };
+    template <>
+    struct TGint<std::complex<double>> {
+        using type = Gint_k;
+    };
     template<typename T, typename TR = double, typename Device = psi::DEVICE_CPU>
     // template<typename T, typename Texx = T, typename Device = psi::DEVICE_CPU>
     class ESolver_LRTD : public ESolver_FP
@@ -35,6 +45,7 @@ namespace ModuleESolver
             delete this->phsol;
             delete this->pot;
             delete this->psi_ks;
+            delete this->DM_trans;
             delete this->X;
             delete this->AX;
         }
@@ -56,7 +67,7 @@ namespace ModuleESolver
         const UnitCell* p_ucell = nullptr;
         const Input* p_input = nullptr;
 
-        hamilt::HamiltCasidaLR<T, Device>* p_hamilt = nullptr;  //opsd problem first to use base calss
+        hamilt::Hamilt<T, Device>* p_hamilt = nullptr;  //opsd problem first to use base calss
         hsolver::HSolver<T, Device>* phsol = nullptr;
         // not to use ElecState because 2-particle state is quite different from 1-particle state.
         // implement a independent one (ExcitedState) to pack physical properties if needed.
@@ -67,6 +78,8 @@ namespace ModuleESolver
         //pelec in  ESolver_FP
         const psi::Psi<T, Device>* psi_ks = nullptr;
         ModuleBase::matrix eig_ks;
+        /// transition density matrix in AO representation
+        elecstate::DensityMatrix<T, double>* DM_trans = nullptr;
         // energy of ground state is in pelec->ekb
 
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
@@ -91,8 +104,13 @@ namespace ModuleESolver
         // Grid_Technique gridt;
         // grid integration method(will be moved to OperatorKernelHxc)
         ModulePW::PW_Basis_Big bigpw;
+        Grid_Technique gt;
         Gint_Gamma gint_g;
         Gint_k gint_k;
+        typename TGint<T>::type* gint = nullptr;
+
+        void set_gint();
+
         K_Vectors kv;
 
         /// @brief variables for parallel distribution of KS orbitals
@@ -100,7 +118,7 @@ namespace ModuleESolver
         /// @brief variables for parallel distribution of excited states
         Parallel_2D paraX_;
         /// @brief variables for parallel distribution of matrix in AO representation
-        Parallel_2D paraMat_;
+        Parallel_Orbitals paraMat_;
 
         /// move to hsolver::updatePsiK
         void init_X();
@@ -114,4 +132,6 @@ namespace ModuleESolver
 #endif
 
     };
+    template<>void ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
+    template<>void ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_g.gridt = &this->gt; }
 }

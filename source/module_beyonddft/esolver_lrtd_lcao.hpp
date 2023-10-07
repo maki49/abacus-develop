@@ -7,6 +7,7 @@
 #include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
 #include "module_beyonddft/hsolver_lrtd.h"
 #include <memory>
+#include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 
 template<typename T, typename TR, typename Device>
 ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
@@ -18,6 +19,7 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
 
     //only need the eigenvalues. the 'elecstates' of excited states is different from ground state.
     this->eig_ks = std::move(ks_sol.pelec->ekb);
+
 
     //kv
     this->kv = std::move(ks_sol.kv);
@@ -32,11 +34,12 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     // except RA, which has been deleted after cal_Force 
     
     //grid integration
-    if (typeid(T) == typeid(double))
+    this->gt = std::move(ks_sol.GridT);
+    if (std::is_same<T, double>::value)
         this->gint_g = std::move(ks_sol.UHM.GG);
     else
         this->gint_k = std::move(ks_sol.UHM.GK);
-
+    this->set_gint();
     // xc kernel
     XC_Functional::set_xc_type(inp.xc_kernel);
     //init potential and calculate kernels using ground state charge
@@ -65,13 +68,21 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     //allocate 2-particle state and setup 2d division
     this->init_X();
 
-    //init Hamiltonian
-    if (typeid(T) == typeid(double))
-        this->p_hamilt = new hamilt::HamiltCasidaLR<T, Device>(this->nks, this->nbasis, this->nocc, this->nvirt, this->psi_ks,
-            &this->gint_g, this->pot, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
-    else if (typeid(T) == typeid(std::complex<double>))
-        this->p_hamilt = new hamilt::HamiltCasidaLR<T, Device>(this->nks, this->nbasis, this->nocc, this->nvirt, this->psi_ks,
-            &this->gint_k, this->pot, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
+    //2D-block parallel info
+    LR_Util::setup_2d_division(this->paraC_, 1, this->nbasis, this->nocc + this->nvirt, this->paraX_.comm_2D, this->paraX_.blacs_ctxt);
+    LR_Util::setup_2d_division(this->paraMat_, 1, this->nbasis, this->nbasis, this->paraX_.comm_2D, this->paraX_.blacs_ctxt);
+    this->paraMat_.atom_begin_row = std::move(ks_sol.LM.ParaV->atom_begin_row);
+    this->paraMat_.atom_begin_col = std::move(ks_sol.LM.ParaV->atom_begin_col);
+    this->paraMat_.iat2iwt_ = ucell.get_iat2iwt();
+
+    //HContainer-based DensityMatrix
+    hamilt::HContainer<double>*& pHR = dynamic_cast<hamilt::HamiltLCAO<T, TR>*>(ks_sol.p_hamilt)->getHR();
+    pHR->set_paraV(&this->paraMat_);
+    this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
+    this->DM_trans->init_DMR(*pHR);
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T, Device>(this->nks, this->nbasis, this->nocc, this->nvirt, this->psi_ks,
+        this->DM_trans, pHR, this->gint, this->pot, this->kv.kvec_d, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
+
 #ifdef __EXX
     if (inp.xc_kernel == "hf")
     {
@@ -111,7 +122,7 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::Run(int istep, UnitCell& cell)
 {
     ModuleBase::TITLE("ESolver_LRTD", "Run");
     std::cout << "running ESolver_LRTD" << std::endl;
-    this->phsol->solve(dynamic_cast<hamilt::Hamilt<T, Device>*>(this->p_hamilt), *this->X, this->pelec, "dav");
+    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, "dav");
     return;
 }
 
@@ -128,8 +139,6 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
     LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc);//nvirt - row, nocc - col 
     this->X = new psi::Psi<T, Device>(nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
     this->X->zero_out();
-    LR_Util::setup_2d_division(this->paraMat_, 1, this->nbasis, this->nbasis, this->paraX_.comm_2D, this->paraX_.blacs_ctxt);
-    LR_Util::setup_2d_division(this->paraC_, 1, this->nbasis, this->nocc + this->nvirt, this->paraX_.comm_2D, this->paraX_.blacs_ctxt);
     // this->AX = new psi::Psi<T, TR, Device>(*this->X);
     this->AX = new psi::Psi<T, Device>(nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);
     // set the initial guess of X
@@ -144,21 +153,25 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
     GlobalV::ofs_running << "mode of X-index: " << ix_mode << std::endl;
 
     /// global index map between (i,c) and ix
-    ModuleBase::matrix iciv2ix;
-    std::vector<std::pair<int, int>> ix2iciv;
+    ModuleBase::matrix ioiv2ix;
+    std::vector<std::pair<int, int>> ix2ioiv;
     std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>> indexmap =
         LR_Util::set_ix_map_diagonal(ix_mode, nocc, nvirt);
-    iciv2ix = std::move(std::get<0>(indexmap));
-    ix2iciv = std::move(std::get<1>(indexmap));
+    ioiv2ix = std::move(std::get<0>(indexmap));
+    ix2ioiv = std::move(std::get<1>(indexmap));
     
     // use unit vectors as the initial guess
-    for (int i = 0; i < this->nstates; i++)
+    for (int i = 0; i < std::min(this->nstates * GlobalV::PW_DIAG_NDIM, nocc * nvirt); i++)
     {
         this->X->fix_b(i);
-        int row_global = std::get<0>(ix2iciv[i]);
-        int col_global = std::get<1>(ix2iciv[i]);
-        if (this->paraX_.in_this_processor(row_global, col_global))
+        int occ_global = std::get<0>(ix2ioiv[i]);   // occ
+        int virt_global = std::get<1>(ix2ioiv[i]);   // virt
+        if (this->paraX_.in_this_processor(virt_global, occ_global))
             for (int isk = 0;isk < nsk;++isk)
-                (*X)(isk, this->paraX_.global2local_row(row_global) * this->paraX_.get_col_size() + this->paraX_.global2local_col(col_global)) = static_cast<T>(1.0);
+                (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
+        for (int ii = 0;ii < nocc * nvirt;++ii)
+            std::cout << (*X)(0, ii) << " ";
+        std::cout << std::endl;
+
     }
 }
