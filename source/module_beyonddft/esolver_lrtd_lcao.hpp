@@ -13,6 +13,7 @@ template<typename T, typename TR, typename Device>
 ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
     Input& inp, UnitCell& ucell) : p_input(&inp), p_ucell(&ucell)
 {
+    ModuleBase::TITLE("ESolver_LRTD", "ESolver_LRTD");
     // move the ground state info 
     this->psi_ks = ks_sol.psi;
     ks_sol.psi = nullptr;
@@ -20,10 +21,10 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     //only need the eigenvalues. the 'elecstates' of excited states is different from ground state.
     this->eig_ks = std::move(ks_sol.pelec->ekb);
 
-
     //kv
+    this->nspin = GlobalV::NSPIN;
     this->kv = std::move(ks_sol.kv);
-    std::cout << "kv.kvec_d[0].x" << kv.kvec_d[0].x << std::endl;
+    this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
 
     // move the basis info (2-center integrals currently not needed)
     // std::cout<<"before move orb"<<std::endl;
@@ -57,6 +58,7 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     this->nvirt = this->eig_ks.nc - nocc;   //nbands-nocc
     this->npairs = this->nocc * this->nvirt;
     this->nstates = inp.nstates;
+    assert(this->nstates <= this->nocc * this->nvirt);
     GlobalV::ofs_running << "Setting LR-TDDFT parameters: " << std::endl;
     GlobalV::ofs_running << "number of occupied bands: " << this->nocc << std::endl;
     GlobalV::ofs_running << "number of virtual bands: " << this->nvirt << std::endl;
@@ -80,7 +82,7 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     pHR->set_paraV(&this->paraMat_);
     this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
     this->DM_trans->init_DMR(*pHR);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T, Device>(this->nks, this->nbasis, this->nocc, this->nvirt, this->psi_ks,
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T, Device>(this->nspin, this->nbasis, this->nocc, this->nvirt, this->psi_ks,
         this->DM_trans, pHR, this->gint, this->pot, this->kv.kvec_d, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
 
 #ifdef __EXX
@@ -132,24 +134,20 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
     ModuleBase::TITLE("ESolver_LRTD", "Init");
     //the eigenstate in the electron-hole pair representation
     //Psi.nbasis = npairs, Psi.nbands = nstates.
-
     // setup ParaX
-
-    int nsk = (nspin == 4) ? this->nks : this->nks * this->nspin;
     LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc);//nvirt - row, nocc - col 
-    this->X = new psi::Psi<T, Device>(nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
+    this->X = new psi::Psi<T, Device>(this->nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
     this->X->zero_out();
-    // this->AX = new psi::Psi<T, TR, Device>(*this->X);
-    this->AX = new psi::Psi<T, Device>(nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);
+
     // set the initial guess of X
     // if (E_{lumo}-E_{homo-1} < E_{lumo+1}-E{homo}), mode = 0, else 1(smaller first)
     bool ix_mode = 0;   //default
-    if (this->eig_ks.nc > nocc + 1 &&
+    if (this->eig_ks.nc > nocc + 1 && nocc >= 2 &&
         eig_ks(0, nocc) - eig_ks(0, nocc - 2) > eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1))
         ix_mode = 1;
     GlobalV::ofs_running << "setting the initial guess of X: " << std::endl;
-    GlobalV::ofs_running << "E_{lumo}-E_{homo-1}=" << eig_ks(0, nocc) - eig_ks(0, nocc - 2) << std::endl;
-    GlobalV::ofs_running << "E_{lumo+1}-E{homo}=" << eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1) << std::endl;
+    if (nocc >= 2 && eig_ks.nc > nocc)GlobalV::ofs_running << "E_{lumo}-E_{homo-1}=" << eig_ks(0, nocc) - eig_ks(0, nocc - 2) << std::endl;
+    if (nocc >= 1 && eig_ks.nc > nocc + 1) GlobalV::ofs_running << "E_{lumo+1}-E{homo}=" << eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1) << std::endl;
     GlobalV::ofs_running << "mode of X-index: " << ix_mode << std::endl;
 
     /// global index map between (i,c) and ix
@@ -157,6 +155,8 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
     std::vector<std::pair<int, int>> ix2ioiv;
     std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>> indexmap =
         LR_Util::set_ix_map_diagonal(ix_mode, nocc, nvirt);
+    std::cout << "set ok" << std::endl;
+
     ioiv2ix = std::move(std::get<0>(indexmap));
     ix2ioiv = std::move(std::get<1>(indexmap));
     
@@ -167,11 +167,7 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
         int occ_global = std::get<0>(ix2ioiv[i]);   // occ
         int virt_global = std::get<1>(ix2ioiv[i]);   // virt
         if (this->paraX_.in_this_processor(virt_global, occ_global))
-            for (int isk = 0;isk < nsk;++isk)
+            for (int isk = 0;isk < this->nsk;++isk)
                 (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
-        for (int ii = 0;ii < nocc * nvirt;++ii)
-            std::cout << (*X)(0, ii) << " ";
-        std::cout << std::endl;
-
     }
 }

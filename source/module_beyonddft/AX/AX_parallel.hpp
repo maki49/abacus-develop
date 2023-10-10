@@ -56,26 +56,6 @@ namespace hamilt
             // descC puts M(nvirt) to row
             transa = 'T';
             transb = 'N';
-            // output c
-            std::cout << "c.get_pointer() =" << std::endl;
-            for (int i = 0;i < c.get_nbasis();++i)
-            {
-                std::cout << c.get_pointer()[i] << " ";
-            }
-            std::cout << std::endl;
-            // output Vc
-            std::cout << "Vc:" << std::endl;
-            for (int i = 0;i < naos * nocc;++i)
-            {
-                std::cout << Vc.data<double>()[i] << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "AX:" << std::endl;
-            for (int i = 0;i < nvirt * nocc;++i)
-            {
-                std::cout << AX_istate.get_pointer()[i] << " ";
-            }
-
             pdgemm_(&transa, &transb, &nvirt, &nocc, &naos,
                 &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
                 Vc.data<double>(), &i1, &i1, pVc.desc,

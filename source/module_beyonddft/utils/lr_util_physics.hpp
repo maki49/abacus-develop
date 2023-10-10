@@ -8,14 +8,14 @@
 namespace LR_Util
 {
     template <typename TCell>
-    const size_t cal_nelec(const TCell& ucell) {
-        size_t nelec = 0;
-        for (size_t it = 0; it < ucell.ntype; ++it)
+    const int cal_nelec(const TCell& ucell) {
+        int nelec = 0;
+        for (int it = 0; it < ucell.ntype; ++it)
             nelec += ucell.atoms[it].ncpp.zv * ucell.atoms[it].na;
         return nelec;
     }
 
-    const size_t cal_nocc(size_t nelec) { return nelec / ModuleBase::DEGSPIN; }
+    const int cal_nocc(int nelec) { return nelec / ModuleBase::DEGSPIN + nelec % static_cast<int>(ModuleBase::DEGSPIN); }
 
     std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>>
         set_ix_map_diagonal(bool mode, int nocc, int nvirt)

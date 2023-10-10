@@ -23,7 +23,7 @@ namespace hamilt
     class OperatorA_Hxc : public Operator<T, Device>
     {
     public:
-        OperatorA_Hxc(const int& nsk,
+        OperatorA_Hxc(const int& nspin,
             const int& naos,
             const int& nocc,
             const int& nvirt,
@@ -34,11 +34,13 @@ namespace hamilt
             elecstate::PotHxcLR* pot_in,
             const std::vector<ModuleBase::Vector3<double>>& kvec_d_in,
             const std::vector<Parallel_2D*> p2d_in /*< 2d-block parallel info of {X, c, matrix}*/)
-            : nsk(nsk), naos(naos), nocc(nocc), nvirt(nvirt),
+            : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), hR(hR_in), gint(gint_in), pot(pot_in), kvec_d(kvec_d_in),
             pX(p2d_in.at(0)), pc(p2d_in.at(1)), pmat(p2d_in.at(2))
         {
             ModuleBase::TITLE("OperatorA_Hxc", "OperatorA_Hxc(gamma)");
+            this->nks = std::is_same<T, double>::value ? 1 : kvec_d.size();
+            this->nsk = std::is_same<T, double>::value ? nspin : nks;
             this->cal_type = calculation_type::lcao_gint;
             this->act_type = 2;
             this->is_first_node = true;
@@ -46,18 +48,13 @@ namespace hamilt
 
         void init(const int ik_in) override {};
 
-        virtual void act(const int nbands,
-            const int nbasis,
-            const int npol,
-            const T* tmpsi_in,
-            T* tmhpsi,
-            const int ngk_ik = 0)const override {};
-        //tmp, for only one state
         // virtual psi::Psi<T> act(const psi::Psi<T>& psi_in) const override;
-        virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out) const override;
+        virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
     private:
         //global sizes
-        int nsk;    //nspin*nkpoints
+        int nks = 1;    // when nspin=2, nks is 2 times of real number of k-points.
+        int nsk = 1; // nspin for gamma_only, nks for multi-k
+        int nspin = 1;
         int naos;
         int nocc;
         int nvirt;

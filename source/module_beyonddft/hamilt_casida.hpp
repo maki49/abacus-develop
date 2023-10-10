@@ -10,7 +10,7 @@ namespace hamilt
     {
     public:
         template<typename TGint>
-        HamiltCasidaLR(const int& nsk,
+        HamiltCasidaLR(const int& nspin,
             const int& naos,
             const int& nocc,
             const int& nvirt,
@@ -26,7 +26,7 @@ namespace hamilt
             this->classname = "HamiltCasidaLR";
             this->hR = new HContainer<double>(std::move(*hR_in));
             //add Hxc operator (the first one)
-            this->ops = new OperatorA_Hxc<T, Device>(nsk, naos, nocc, nvirt, psi_ks_in, DM_trans_in, this->hR, gint_in, pot_in, kvec_d_in, p2d_in);
+            this->ops = new OperatorA_Hxc<T, Device>(nspin, naos, nocc, nvirt, psi_ks_in, DM_trans_in, this->hR, gint_in, pot_in, kvec_d_in, p2d_in);
             //add Exx operator (remaining)
             // Operator<double>* A_Exx = new OperatorA_Exx<T, TGint>;
             // this->opsd->add(A_Exx);

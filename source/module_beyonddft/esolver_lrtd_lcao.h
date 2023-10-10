@@ -47,7 +47,6 @@ namespace ModuleESolver
             delete this->psi_ks;
             delete this->DM_trans;
             delete this->X;
-            delete this->AX;
         }
 
         ///input: input, call, basis(LCAO), psi(ground state), elecstate
@@ -84,17 +83,16 @@ namespace ModuleESolver
 
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
         psi::Psi<T, Device>* X;
-        psi::Psi<T, Device>* AX;
 
-        size_t nocc;
-        size_t nvirt;
-        size_t nbasis;
+        int nocc;
+        int nvirt;
+        int nbasis;
         /// n_occ*n_unocc, the basis size of electron-hole pair representation
-        size_t npairs;
+        int npairs;
         /// how many 2-particle states to be solved
-        size_t nstates = 1;
-        size_t nks = 1; //gamma_only now
-        size_t nspin = 1;
+        int nstates = 1;
+        int nsk = 1; //nspin*nks
+        int nspin = 1;
 
         // basis info (currently use GlobalC)
         // LCAO_Orbitals orb;
@@ -133,5 +131,5 @@ namespace ModuleESolver
 
     };
     template<>void ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
-    template<>void ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_g.gridt = &this->gt; }
+    template<>void ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_k.gridt = &this->gt; }
 }
