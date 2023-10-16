@@ -101,16 +101,16 @@ void Local_Orbital_Charge::set_dm_k(int ik, std::complex<double>* dm_k_in)
     return;
 }
 
-void Local_Orbital_Charge::set_dm_gamma(int is, double* dm_gamma_in)
-{
-    ModuleBase::TITLE("Local_Orbital_Charge", "set_dm_gamma");
-    dm_gamma[is].create(ParaV->ncol, ParaV->nrow);
-    for (int i = 0; i < ParaV->ncol; ++i)
-    {
-        for (int j = 0; j < ParaV->nrow; ++j)
-        {
-            dm_gamma[is](i, j) = dm_gamma_in[i * ParaV->nrow + j];
-        }
-    }
-    return;
-}
+// void Local_Orbital_Charge::set_dm_gamma(int is, double* dm_gamma_in)
+// {
+//     ModuleBase::TITLE("Local_Orbital_Charge", "set_dm_gamma");
+//     dm_gamma[is].create(ParaV->ncol, ParaV->nrow);
+//     for (int i = 0; i < ParaV->ncol; ++i)
+//     {
+//         for (int j = 0; j < ParaV->nrow; ++j)
+//         {
+//             dm_gamma[is](i, j) = dm_gamma_in[i * ParaV->nrow + j];
+//         }
+//     }
+//     return;
+// }
