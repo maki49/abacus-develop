@@ -32,7 +32,7 @@ namespace ModuleESolver
     struct TGint<std::complex<double>> {
         using type = Gint_k;
     };
-    template<typename T, typename TR = double, typename Device = psi::DEVICE_CPU>
+    template<typename T, typename TR = double>
     // template<typename T, typename Texx = T, typename Device = psi::DEVICE_CPU>
     class ESolver_LRTD : public ESolver_FP
     {
@@ -63,11 +63,11 @@ namespace ModuleESolver
 
     protected:
 
-        const UnitCell* p_ucell = nullptr;
-        const Input* p_input = nullptr;
+        const UnitCell& ucell;
+        const Input& input;
 
-        hamilt::Hamilt<T, Device>* p_hamilt = nullptr;  //opsd problem first to use base calss
-        hsolver::HSolver<T, Device>* phsol = nullptr;
+        hamilt::Hamilt<T>* p_hamilt = nullptr;  //opsd problem first to use base calss
+        hsolver::HSolver<T>* phsol = nullptr;
         // not to use ElecState because 2-particle state is quite different from 1-particle state.
         // implement a independent one (ExcitedState) to pack physical properties if needed.
         // put the components of ElecState here: 
@@ -75,14 +75,14 @@ namespace ModuleESolver
 
         // ground state info 
         //pelec in  ESolver_FP
-        const psi::Psi<T, Device>* psi_ks = nullptr;
+        const psi::Psi<T>* psi_ks = nullptr;
         ModuleBase::matrix eig_ks;
         /// transition density matrix in AO representation
         elecstate::DensityMatrix<T, double>* DM_trans = nullptr;
         // energy of ground state is in pelec->ekb
 
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
-        psi::Psi<T, Device>* X;
+        psi::Psi<T>* X;
 
         int nocc;
         int nvirt;
@@ -122,11 +122,10 @@ namespace ModuleESolver
         void init_X();
 
 #ifdef __EXX
-        // using TA = int;
-        // using Tcell = int;
-        // static constexpr std::size_t Ndim = 3;
-        // RI::Exx<TA, Tcell, Ndim, Texx>* exx_lri;
-        std::shared_ptr<Exx_LRI<double>> exx_lri_double = nullptr;
+        /// Tdata of Exx_LRI is same as T, for the reason, see operator_lr_exx.h
+        std::shared_ptr<Exx_LRI<T>> exx_lri = nullptr;
+        void move_exx_lri(std::shared_ptr<Exx_LRI<double>>&);
+        void move_exx_lri(std::shared_ptr<Exx_LRI<std::complex<double>>>&);
 #endif
 
     };

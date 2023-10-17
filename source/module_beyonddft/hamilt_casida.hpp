@@ -1,12 +1,13 @@
 #pragma once
 #include "module_hamilt_general/hamilt.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_beyonddft/operator_casida/operatorA_hxc.h"
+#include "module_beyonddft/operator_casida/operator_lr_hxc.h"
+#include "module_beyonddft/operator_casida/operator_lr_exx.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
 namespace hamilt
 {
-    template<typename T, typename Device = psi::DEVICE_CPU>
-    class HamiltCasidaLR : public Hamilt<T, Device>
+    template<typename T>
+    class HamiltCasidaLR : public Hamilt<T, psi::DEVICE_CPU>
     {
     public:
         template<typename TGint>
@@ -14,22 +15,28 @@ namespace hamilt
             const int& naos,
             const int& nocc,
             const int& nvirt,
-            const psi::Psi<T, Device>* psi_ks_in,
+            const UnitCell& ucell_in,
+            const psi::Psi<T>* psi_ks_in,
             elecstate::DensityMatrix<T, double>* DM_trans_in,
             HContainer<double>*& hR_in,
+#ifdef __EXX
+            Exx_LRI<T>* exx_lri_in,
+#endif 
             TGint* gint_in,
             elecstate::PotHxcLR* pot_in,
-            const std::vector<ModuleBase::Vector3<double>>& kvec_d_in,
+            const K_Vectors& kv_in,
             const std::vector<Parallel_2D*> p2d_in)
         {
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
             this->hR = new HContainer<double>(std::move(*hR_in));
             //add Hxc operator (the first one)
-            this->ops = new OperatorA_Hxc<T, Device>(nspin, naos, nocc, nvirt, psi_ks_in, DM_trans_in, this->hR, gint_in, pot_in, kvec_d_in, p2d_in);
+            this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in, DM_trans_in, this->hR, gint_in, pot_in, kv_in.kvec_d, p2d_in);
             //add Exx operator (remaining)
-            // Operator<double>* A_Exx = new OperatorA_Exx<T, TGint>;
-            // this->opsd->add(A_Exx);
+#ifdef __EXX
+            Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc, nvirt, ucell_in, psi_ks_in, DM_trans_in, exx_lri_in, kv_in, p2d_in);
+            this->ops->add(lr_exx);
+#endif
         }
         ~HamiltCasidaLR()
         {

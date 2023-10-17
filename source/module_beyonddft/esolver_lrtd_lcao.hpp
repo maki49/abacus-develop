@@ -9,9 +9,34 @@
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 
-template<typename T, typename TR, typename Device>
-ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
-    Input& inp, UnitCell& ucell) : p_input(&inp), p_ucell(&ucell)
+#ifdef __EXX
+template<>
+void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
+{
+    this->exx_lri = exx_ks;
+    exx_ks = nullptr;
+}
+template<>
+void ModuleESolver::ESolver_LRTD<std::complex<double>>::move_exx_lri(std::shared_ptr<Exx_LRI<std::complex<double>>>& exx_ks)
+{
+    this->exx_lri = exx_ks;
+    exx_ks = nullptr;
+}
+template<>
+void ModuleESolver::ESolver_LRTD<std::complex<double>>::move_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
+{
+    throw std::runtime_error("ESolver_LRTD<std::complex<double>>::move_exx_lri: cannot move double to complex<double>");
+}
+template<>
+void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<std::complex<double>>>& exx_ks)
+{
+    throw std::runtime_error("ESolver_LRTD<double>::move_exx_lri: cannot move complex<double> to double");
+}
+#endif
+
+template<typename T, typename TR>
+ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
+    Input& inp, UnitCell& ucell) :input(inp), ucell(ucell)
 {
     ModuleBase::TITLE("ESolver_LRTD", "ESolver_LRTD");
     // move the ground state info 
@@ -47,7 +72,7 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     if (this->pot == nullptr)
     {
         this->pot = new elecstate::PotHxcLR(ks_sol.pw_rho,
-            p_ucell,
+            &ucell,
             ks_sol.pelec->charge);
     };
 
@@ -77,50 +102,41 @@ ModuleESolver::ESolver_LRTD<T, TR, Device>::ESolver_LRTD(ModuleESolver::ESolver_
     this->paraMat_.atom_begin_col = std::move(ks_sol.LM.ParaV->atom_begin_col);
     this->paraMat_.iat2iwt_ = ucell.get_iat2iwt();
 
-    //HContainer-based DensityMatrix
-    hamilt::HContainer<double>*& pHR = dynamic_cast<hamilt::HamiltLCAO<T, TR>*>(ks_sol.p_hamilt)->getHR();
-    pHR->set_paraV(&this->paraMat_);
-    this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
-    this->DM_trans->init_DMR(*pHR);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T, Device>(this->nspin, this->nbasis, this->nocc, this->nvirt, this->psi_ks,
-        this->DM_trans, pHR, this->gint, this->pot, this->kv.kvec_d, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
-
 #ifdef __EXX
     if (inp.xc_kernel == "hf")
     {
         //complex-double problem....waiting for refactor
         // this->exx_lri = std::make_shared<Exx_LRI<double>>(ks_sol.exx_lri_double);
-        if (ks_sol.exx_lri_double)  // move from ks solver
-        {
-            this->exx_lri_double = ks_sol.exx_lri_double;
-            ks_sol.exx_lri_double = nullptr;
-        }
+        // if calculated in the esolver_ks, move it
+        if (ks_sol.exx_lri_double && std::is_same<T, double>::value) this->move_exx_lri(ks_sol.exx_lri_double);
+        else if (ks_sol.exx_lri_complex && std::is_same<T, std::complex<double>>::value) this->move_exx_lri(ks_sol.exx_lri_complex);
         else    // construct C, V from scratch
         {
-            this->exx_lri_double = std::make_shared<Exx_LRI<double>>(GlobalC::exx_info.info_ri);
-            this->exx_lri_double->init(MPI_COMM_WORLD, kv); // using GlobalC::ORB
-            // this->exx_lri_double->cal_exx_ions();
+            this->exx_lri = std::make_shared<Exx_LRI<T>>(GlobalC::exx_info.info_ri);
+            this->exx_lri->init(MPI_COMM_WORLD, this->kv); // using GlobalC::ORB
+            this->exx_lri->cal_exx_ions();
         }
     }
 #endif
 
-    /// =========just for test==============
-    // try act
-    // for (int istate = 0;istate < nstates;++istate)
-    // {
-    //     this->X->fix_b(istate);
-    //     this->AX->fix_b(istate);
-    //     this->p_hamilt->ops->act(*this->X, *this->AX);
-    // }
-    /// =====================================
+    //HContainer-based DensityMatrix
+    hamilt::HContainer<double>*& pHR = dynamic_cast<hamilt::HamiltLCAO<T, TR>*>(ks_sol.p_hamilt)->getHR();
+    pHR->set_paraV(&this->paraMat_);
+    this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
+    this->DM_trans->init_DMR(*pHR);
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->DM_trans, pHR,
+#ifdef __EXX
+        this->exx_lri.get(),
+#endif
+        this->gint, this->pot, this->kv, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
 
     // init HSolver
-    this->phsol = new hsolver::HSolverLR<T, Device>();
+    this->phsol = new hsolver::HSolverLR<T>();
 
 }
 
-template<typename T, typename TR, typename Device>
-void ModuleESolver::ESolver_LRTD<T, TR, Device>::Run(int istep, UnitCell& cell)
+template<typename T, typename TR>
+void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
 {
     ModuleBase::TITLE("ESolver_LRTD", "Run");
     std::cout << "running ESolver_LRTD" << std::endl;
@@ -128,15 +144,15 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::Run(int istep, UnitCell& cell)
     return;
 }
 
-template<typename T, typename TR, typename Device>
-void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
+template<typename T, typename TR>
+void ModuleESolver::ESolver_LRTD<T, TR>::init_X()
 {
     ModuleBase::TITLE("ESolver_LRTD", "Init");
     //the eigenstate in the electron-hole pair representation
     //Psi.nbasis = npairs, Psi.nbands = nstates.
     // setup ParaX
     LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc);//nvirt - row, nocc - col 
-    this->X = new psi::Psi<T, Device>(this->nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
+    this->X = new psi::Psi<T>(this->nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
     this->X->zero_out();
 
     // set the initial guess of X
@@ -171,3 +187,4 @@ void ModuleESolver::ESolver_LRTD<T, TR, Device>::init_X()
                 (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
     }
 }
+

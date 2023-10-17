@@ -1,5 +1,5 @@
 #pragma once
-#include "operatorA_hxc.h"
+#include "operator_lr_hxc.h"
 #include <vector>
 #include "module_base/blas_connector.h"
 #include "module_beyonddft/utils/lr_util.h"
@@ -11,10 +11,10 @@ namespace hamilt
 {
     // for double
     template<typename T, typename Device>
-    // psi::Psi<T> OperatorA_Hxc<T, Device>::act(const psi::Psi<T>& psi_in) const
-    void OperatorA_Hxc<T, Device>::act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const
+    // psi::Psi<T> OperatorLRHxc<T, Device>::act(const psi::Psi<T>& psi_in) const
+    void OperatorLRHxc<T, Device>::act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const
     {
-        ModuleBase::TITLE("OperatorA_Hxc", "act");
+        ModuleBase::TITLE("OperatorLRHxc", "act");
 
         assert(nbands <= psi_in.get_nbands());
         psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nsk, this->pX->get_local_size());
@@ -35,17 +35,61 @@ namespace hamilt
 #else
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, psi_ks, nocc, nvirt);
 #endif
+            GlobalV::ofs_running << "1. Dm_trans: " << std::endl;
+            for (auto t : dm_trans_2d)
+            {
+                for (int i = 0;i < t.NumElements();++i)GlobalV::ofs_running << t.data<T>()[i] << " ";
+            }
+            GlobalV::ofs_running << std::endl;
             // tensor to vector, then set DMK
             for (int isk = 0;isk < this->nsk;++isk)this->DM_trans->set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
 
             // use cal_DMR to get DMR form DMK by FT
-            this->DM_trans->cal_DMR();
+            this->DM_trans->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
             GlobalV::ofs_running << "return cal_DMR (outside)" << std::endl;
             // 2d block to grid
             // new interface: transfer_DM2DtoGrid, set DMRGint for the next step Gint
+            // this->gint->transfer_DM2DtoGrid(this->gint->get_DMRGint());//err?
             this->gint->transfer_DM2DtoGrid(this->DM_trans->get_DMR_vector());
-            GlobalV::ofs_running << "return transfer_DMR (outside)" << std::endl;
-            // double*** dm_trans_grid;
+            // this->gint->set_DMRGint(this->DM_trans->get_DMR_vector());
+            // GlobalV::ofs_running << "return transfer_DMR (outside)" << std::endl;
+            GlobalV::ofs_running << "2. DM(R) (2d): " << std::endl;
+            // for (auto& dr : this->DM_trans->get_DMR_vector())
+            // {
+            //     for (int ia = 0;ia < GlobalC::ucell.nat;ia++)
+            //         for (int ja = 0;ja < GlobalC::ucell.nat;ja++)
+            //         {
+            //             auto ap = dr->find_pair(ia, ja);
+            //             GlobalV::ofs_running << "R-index size of atom pair(" << ia << ", " << ja << "): " << ap->get_R_size() << std::endl;
+            //             for (int iR = 0;iR < ap->get_R_size();++iR)
+            //             {
+            //                 GlobalV::ofs_running << "R(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): ";
+            //                 auto ptr = ap->get_HR_values(iR).get_pointer();
+            //                 int size = this->pmat->get_local_size();
+            //                 for (int i = 0;i < size;++i)GlobalV::ofs_running << ptr[i] << " ";
+            //                 GlobalV::ofs_running << std::endl;
+            //             }
+            //         }
+            // }
+            // GlobalV::ofs_running << "2. DM(R) (Grid): " << std::endl;
+            // for (auto& dr : this->gint->get_DMRGint())
+            // {
+            //     for (int ia = 0;ia < GlobalC::ucell.nat;ia++)
+            //         for (int ja = 0;ja < GlobalC::ucell.nat;ja++)
+            //         {
+            //             auto ap = dr->find_pair(ia, ja);
+            //             GlobalV::ofs_running << "R-index size of atom pair(" << ia << ", " << ja << "): " << ap->get_R_size() << std::endl;
+            //             for (int iR = 0;iR < ap->get_R_size();++iR)
+            //             {
+            //                 GlobalV::ofs_running << "R(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): ";
+            //                 auto ptr = ap->get_HR_values(iR).get_pointer();
+            //                 int size = this->pmat->get_local_size();
+            //                 for (int i = 0;i < size;++i)GlobalV::ofs_running << ptr[i] << " ";
+            //                 GlobalV::ofs_running << std::endl;
+            //             }
+            //         }
+            // }
+            // // double*** dm_trans_grid;
             // LR_Util::new_p3(dm_trans_grid, nsk, lgd, lgd);
             //         DMgamma_2dtoGrid dm2g;
             // #ifdef __MPI
@@ -54,6 +98,7 @@ namespace hamilt
             //         dm2g.cal_dk_gamma_from_2D(LR_Util::ten2mat_double(dm_trans_2d), dm_trans_grid, nsk, naos, lgd, GlobalV::ofs_running);
 
             // 2. transition electron density
+            // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
             GlobalV::ofs_running << "2. transition electron density" << std::endl;
             double** rho_trans;
             LR_Util::new_p2(rho_trans, nspin, this->pot->nrxx);
@@ -61,10 +106,24 @@ namespace hamilt
             Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho);
             this->gint->cal_gint(&inout_rho);
 
+            GlobalV::ofs_running << "first 30 non-zero elements of rho_trans ";
+            int n = 0;int i = 0;
+            while (n < 30 && i < this->pot->nrxx)
+            {
+                if (rho_trans[0][++i] - 0.0 > 1e-4) { GlobalV::ofs_running << rho_trans[0][i] << " ";++n; };
+            }
+
             // 3. v_hxc = f_hxc * rho_trans
             GlobalV::ofs_running << "3. v_hxc = f_hxc * rho_trans" << std::endl;
             ModuleBase::matrix vr_hxc(nspin, this->pot->nrxx);   //grid
             this->pot->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
+            GlobalV::ofs_running << "first 30 non-zero elements of vr_hxc: ";
+            n = 0;i = 0;
+            while (n < 30 && i < this->pot->nrxx)
+            {
+                if (vr_hxc.c[++i] - 0.0 > 1e-4) { GlobalV::ofs_running << vr_hxc.c[i] << " ";++n; };
+            }
+            GlobalV::ofs_running << std::endl;
 
             // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\mu(r)
             // loop for nspin, or use current spin (how?)
@@ -88,12 +147,33 @@ namespace hamilt
             }
             GlobalV::ofs_running << "return gint(vlocal, outof spin loop)" << std::endl;
             this->gint->transfer_pvpR(this->hR);
+            GlobalV::ofs_running << "4.V(R):" << std::endl;
+            for (int ia = 0;ia < GlobalC::ucell.nat;ia++)
+                for (int ja = 0;ja < GlobalC::ucell.nat;ja++)
+                {
+                    auto ap = this->hR->find_pair(ia, ja);
+                    GlobalV::ofs_running << "R-index size of atom pair(" << ia << ", " << ja << "): " << ap->get_R_size() << std::endl;
+                    for (int iR = 0;iR < ap->get_R_size();++iR)
+                    {
+                        GlobalV::ofs_running << "R(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): ";
+                        auto ptr = ap->get_HR_values(iR).get_pointer();
+                        int size = ap->get_HR_values(iR).get_memory_size();
+                        for (int i = 0;i < size;++i)GlobalV::ofs_running << ptr[i] << " ";
+                        GlobalV::ofs_running << std::endl;
+                    }
+                }
             // V(R)->V(k)
             int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER() ? this->pmat->get_row_size() : this->pmat->get_col_size();
             for (int isk = 0;isk < this->nsk;++isk)
             {
                 // this->gint->vl_grid_to_2D(this->gint->get_pvpR_grid(), *pmat, lgd, (is == 0), v_hxc_2d[is].c, setter);
                 hamilt::folding_HR(*this->hR, v_hxc_2d[isk].data<T>(), this->kvec_d[isk], nrow, 1);            // V(R) -> V(k)
+            }
+            GlobalV::ofs_running << "4. V(k)" << std::endl;
+            for (int isk = 0;isk < this->nsk;++isk)
+            {
+                for (int i = 0;i < v_hxc_2d[isk].NumElements();++i)GlobalV::ofs_running << v_hxc_2d[isk].data<T>()[i] << " ";
+                GlobalV::ofs_running << std::endl;
             }
             // clear useless matrices
             // LR_Util::delete_p3(dm_trans_grid, nsk, lgd);

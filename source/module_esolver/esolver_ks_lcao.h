@@ -14,7 +14,11 @@
 
 #include <memory>
 
-namespace ModuleESolver {
+namespace ModuleESolver
+{
+template<typename T, typename TR>
+class ESolver_LRTD;
+
 template <typename TK, typename TR>
 class ESolver_KS_LCAO : public ESolver_KS<TK> {
   public:
@@ -122,7 +126,7 @@ class ESolver_KS_LCAO : public ESolver_KS<TK> {
     void dpks_cal_projected_DM(
         const elecstate::DensityMatrix<TK, double>* dm) const;
 #endif
-    template <typename FPTYPE, typename Device>
-    friend class ESolver_LRTD;
+    friend class ESolver_LRTD<double, double>;
+    friend class ESolver_LRTD<std::complex<double>, double>;
 };
 } // namespace ModuleESolver
