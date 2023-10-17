@@ -28,6 +28,17 @@
     template<typename T, typename Tdata>
     class Exx_LRI_Interface;
 
+    namespace ModuleESolver
+    {
+        template<typename T, typename TR>
+        class ESolver_LRTD;
+    }
+    namespace hamilt
+    {
+        template<typename T>
+        class OperatorLREXX;
+    }
+
 template<typename Tdata>
 class Exx_LRI
 {
@@ -78,6 +89,10 @@ private:
     friend class RPA_LRI<std::complex<double>, Tdata>;
     friend class Exx_LRI_Interface<double, Tdata>;
     friend class Exx_LRI_Interface<std::complex<double>, Tdata>;
+    friend class ModuleESolver::ESolver_LRTD<double, double>;
+    friend class ModuleESolver::ESolver_LRTD<std::complex<double>, double>;
+    friend class hamilt::OperatorLREXX<double>;
+    friend class hamilt::OperatorLREXX<std::complex<double>>;
 };
 
 #include "Exx_LRI.hpp"

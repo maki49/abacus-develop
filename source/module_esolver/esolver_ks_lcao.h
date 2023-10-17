@@ -18,6 +18,10 @@
 #include <memory>
 namespace ModuleESolver
 {
+
+    template<typename T, typename TR>
+    class ESolver_LRTD;
+
     template <typename TK, typename TR>
     class ESolver_KS_LCAO : public ESolver_KS<TK>
     {
@@ -95,8 +99,8 @@ namespace ModuleESolver
         void dpks_cal_e_delta_band(const std::vector<std::vector<TK>>& dm) const;
         void dpks_cal_projected_DM(const std::vector<std::vector<TK>>& dm) const;
 #endif
-        template <typename T1, typename T2, typename Device>
-        friend class ESolver_LRTD;
+        friend class ESolver_LRTD<double, double>;
+        friend class ESolver_LRTD<std::complex<double>, double>;
     };
 
 }

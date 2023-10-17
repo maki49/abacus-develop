@@ -29,9 +29,9 @@ namespace elecstate
     };
 
     template <typename TK, typename TR>
-    class DensityMatrix
-    {
-        using TRShift = typename ShiftRealComplex<TR>::type;
+class DensityMatrix
+{
+    using TRShift = typename ShiftRealComplex<TR>::type;
   public:
     /**
      * @brief Destructor of class DensityMatrix

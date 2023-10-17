@@ -25,6 +25,7 @@ class Gint
     Gint& operator=(Gint&& rhs);
 
     hamilt::HContainer<double>* get_hRGint() const { return hRGint; }
+    std::vector<hamilt::HContainer<double>*> get_DMRGint() const { return DMRGint; }
 
     // the unified interface to grid integration
 	void cal_gint(Gint_inout *inout);
