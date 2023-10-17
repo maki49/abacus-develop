@@ -82,9 +82,9 @@ void Driver::driver_run(void)
         // ModuleESolver::ESolver_KS_LCAO* p_esolver_lcao_tmp = dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver);
         ModuleESolver::ESolver* p_esolver_lr = nullptr;
         if (INPUT.gamma_only)
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, double, psi::DEVICE_CPU>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver)), INPUT, GlobalC::ucell);
+            p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver)), INPUT, GlobalC::ucell);
         else
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double, psi::DEVICE_CPU>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
+            p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
 
         std::cout << "before clean ks" << std::endl;
         ModuleESolver::clean_esolver(p_esolver);

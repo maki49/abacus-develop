@@ -141,7 +141,6 @@ class DiagoDavid : public DiagH<T, Device>
     using syncmem_var_h2d_op = psi::memory::synchronize_memory_op<Real, Device, psi::DEVICE_CPU>;
     using syncmem_var_d2h_op = psi::memory::synchronize_memory_op<Real, psi::DEVICE_CPU, Device>;
     using syncmem_complex_op = psi::memory::synchronize_memory_op<T, Device, Device>;
-    using castmem_complex_op = psi::memory::cast_memory_op<std::complex<double>, T, Device, Device>;
     using syncmem_h2d_op = psi::memory::synchronize_memory_op<T, Device, psi::DEVICE_CPU>;
     using syncmem_d2h_op = psi::memory::synchronize_memory_op<T, psi::DEVICE_CPU, Device>;
 

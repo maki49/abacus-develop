@@ -672,6 +672,7 @@ void DensityMatrix<double, double>::cal_DMR()
         }
     }
     ModuleBase::timer::tick("DensityMatrix", "cal_DMR");
+    GlobalV::ofs_running << "return cal_DMR (inside)" << std::endl;
 }
 
 // merge density matrix DMR with different spin

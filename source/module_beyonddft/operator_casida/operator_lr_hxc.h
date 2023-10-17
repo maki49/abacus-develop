@@ -18,12 +18,12 @@ namespace hamilt
         using type = Gint_k;
     };
 
-    /// @brief  Hxc part of A operator
+    /// @brief  Hxc part of A operator for LR-TDDFT
     template<typename T = double, typename Device = psi::DEVICE_CPU>
-    class OperatorA_Hxc : public Operator<T, Device>
+    class OperatorLRHxc : public Operator<T, Device>
     {
     public:
-        OperatorA_Hxc(const int& nspin,
+        OperatorLRHxc(const int& nspin,
             const int& naos,
             const int& nocc,
             const int& nvirt,
@@ -38,7 +38,7 @@ namespace hamilt
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), hR(hR_in), gint(gint_in), pot(pot_in), kvec_d(kvec_d_in),
             pX(p2d_in.at(0)), pc(p2d_in.at(1)), pmat(p2d_in.at(2))
         {
-            ModuleBase::TITLE("OperatorA_Hxc", "OperatorA_Hxc(gamma)");
+            ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
             this->nks = std::is_same<T, double>::value ? 1 : kvec_d.size();
             this->nsk = std::is_same<T, double>::value ? nspin : nks;
             this->cal_type = calculation_type::lcao_gint;
@@ -76,8 +76,6 @@ namespace hamilt
         elecstate::PotHxcLR* pot = nullptr;
 
         typename TGint<T>::type* gint = nullptr;
-        /// \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
-        void cal_rho_trans();
     };
 }
-#include "module_beyonddft/operator_casida/operatorA_hxc.hpp"
+#include "module_beyonddft/operator_casida/operator_lr_hxc.hpp"

@@ -127,6 +127,33 @@ namespace LR_Util
         return m;
     }
 
+    ModuleBase::matrix vec2mat(const std::vector<double>& v, const int nr, const int nc)
+    {
+        assert(v.size() == nr * nc);
+        ModuleBase::matrix m(nr, nc, false);
+        for (int i = 0;i < v.size();++i) m.c[i] = v[i];
+        return m;
+    }
+    ModuleBase::ComplexMatrix vec2mat(const std::vector<std::complex<double>>& v, const int nr, const int nc)
+    {
+        assert(v.size() == nr * nc);
+        ModuleBase::ComplexMatrix m(nr, nc, false);
+        for (int i = 0;i < v.size();++i) m.c[i] = v[i];
+        return m;
+    }
+    std::vector<ModuleBase::matrix> vec2mat(const std::vector<std::vector<double>>& v, const int nr, const int nc)
+    {
+        std::vector<ModuleBase::matrix> m(v.size());
+        for (int i = 0;i < v.size();++i) m[i] = vec2mat(v[i], nr, nc);
+        return m;
+    }
+    std::vector<ModuleBase::ComplexMatrix> vec2mat(const std::vector<std::vector<std::complex<double>>>& v, const int nr, const int nc)
+    {
+        std::vector<ModuleBase::ComplexMatrix> m(v.size());
+        for (int i = 0;i < v.size();++i) m[i] = vec2mat(v[i], nr, nc);
+        return m;
+    }
+
     /// psi(nk=1, nbands=nb, nk * nbasis) -> psi(nb, nk, nbasis) without memory copy
     template<typename T, typename Device>
     psi::Psi<T, Device> k1_to_bfirst_wrapper(const psi::Psi<T, Device>& psi_kfirst, int nk_in, int nbasis_in)
