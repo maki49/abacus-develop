@@ -34,6 +34,9 @@ void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<s
 }
 #endif
 
+inline double getreal(std::complex<double> x) { return x.real(); }
+inline double getreal(double x) { return x; }
+
 template<typename T, typename TR>
 ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
     Input& inp, UnitCell& ucell) :input(inp), ucell(ucell)
@@ -42,6 +45,16 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     // move the ground state info 
     this->psi_ks = ks_sol.psi;
     ks_sol.psi = nullptr;
+
+
+    // test: 强制psi_ks第一个元素为正
+    // psi_ks->fix_kb(0, 0);
+    // for (int j = 0;j < psi_ks->get_nbands();++j)  //nbands
+    // {
+    //     if (getreal(psi_ks->get_pointer()[j * psi_ks->get_nbasis()]) < 0)
+    //         for (int i = 0;i < psi_ks->get_nbasis();++i)  //nlocal
+    //             psi_ks->get_pointer()[j * psi_ks->get_nbasis() + i] *= -1;
+    // }
 
     //only need the eigenvalues. the 'elecstates' of excited states is different from ground state.
     this->eig_ks = std::move(ks_sol.pelec->ekb);
@@ -67,11 +80,19 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
         this->gint_k = std::move(ks_sol.UHM.GK);
     this->set_gint();
     // xc kernel
-    XC_Functional::set_xc_type(inp.xc_kernel);
+    std::string xc_kernel = inp.xc_kernel;
+    std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
+    //check the input first
+    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "hf")
+        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
+    // move pw basis
+    this->pw_rho = ks_sol.pw_rho;
+    ks_sol.pw_rho = nullptr;
     //init potential and calculate kernels using ground state charge
     if (this->pot == nullptr)
     {
-        this->pot = new elecstate::PotHxcLR(ks_sol.pw_rho,
+        this->pot = new elecstate::PotHxcLR(xc_kernel,
+            this->pw_rho,
             &ucell,
             ks_sol.pelec->charge);
     };
@@ -103,7 +124,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     this->paraMat_.iat2iwt_ = ucell.get_iat2iwt();
 
 #ifdef __EXX
-    if (inp.xc_kernel == "hf")
+    if (xc_kernel == "hf")
     {
         //complex-double problem....waiting for refactor
         // this->exx_lri = std::make_shared<Exx_LRI<double>>(ks_sol.exx_lri_double);
@@ -124,7 +145,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     pHR->set_paraV(&this->paraMat_);
     this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
     this->DM_trans->init_DMR(*pHR);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->DM_trans, pHR,
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, this->DM_trans, pHR,
 #ifdef __EXX
         this->exx_lri.get(),
 #endif
@@ -132,6 +153,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
 
     // init HSolver
     this->phsol = new hsolver::HSolverLR<T>();
+    this->phsol->set_diagethr(0, 0, std::max(1e-13, inp.lr_thr));
 
 }
 
@@ -140,7 +162,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
 {
     ModuleBase::TITLE("ESolver_LRTD", "Run");
     std::cout << "running ESolver_LRTD" << std::endl;
-    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, "dav");
+    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->input.lr_solver);
     return;
 }
 

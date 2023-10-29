@@ -32,7 +32,7 @@ namespace hamilt
         assert(nsk == X_istate.get_nk());
 
         std::vector<container::Tensor> dm_trans(nsk, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { pmat.get_col_size(), pmat.get_row_size() }));
-        for (size_t isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nsk;++isk)
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
@@ -41,6 +41,7 @@ namespace hamilt
             Parallel_2D pXc;    //nvirt*naos
             LR_Util::setup_2d_division(pXc, px.get_block_size(), nocc, naos, px.comm_2D, px.blacs_ctxt);
             container::Tensor Xc(DAT::DT_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
+            Xc.zero();
             int i1 = 1;
             int ivirt = nocc + 1;
 
@@ -83,7 +84,7 @@ namespace hamilt
         assert(nsk == X_istate.get_nk());
 
         std::vector<container::Tensor> dm_trans(nsk, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pmat.get_col_size(), pmat.get_row_size() }));
-        for (size_t isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nsk;++isk)
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
@@ -92,6 +93,7 @@ namespace hamilt
             Parallel_2D pXc;
             LR_Util::setup_2d_division(pXc, px.get_block_size(), nocc, naos, px.comm_2D, px.blacs_ctxt);
             container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
+            Xc.zero();
             int i1 = 1;
             int ivirt = nocc + 1;
 

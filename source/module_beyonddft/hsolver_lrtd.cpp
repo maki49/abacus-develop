@@ -1,5 +1,6 @@
 #include "hsolver_lrtd.h"
 #include "module_hsolver/diago_david.h"
+#include "module_hsolver/diago_cg.h"
 
 namespace hsolver
 {
@@ -24,13 +25,17 @@ namespace hsolver
             this->pdiagh = new DiagoDavid<T, Device>(precondition.data());      //waiting for complex<T> removement
             this->pdiagh->method = this->method;
         }
+        else if (this->method == "cg")
+        {
+            this->pdiagh = new DiagoCG<T, Device>(precondition.data());
+            this->pdiagh->method = this->method;
+        }
         else
             throw std::runtime_error("HSolverLR::solve: method not implemented");
 
         // 3. set precondition and diagethr
-        for (int i = 0;i < psi.get_nk() * psi.get_nbasis();++i)precondition[i] = static_cast<Real>(i + 1);
+        for (int i = 0;i < psi.get_nk() * psi.get_nbasis();++i)precondition[i] = static_cast<Real>(1.0);
         // T ethr = this->set_diagether(1, 1, static_cast<T>(1e-2));
-        this->diag_ethr = 1e-2;
         std::cout << "ethr: " << this->diag_ethr << std::endl;
         // 4. solve Hamiltonian
         this->pdiagh->diag(pHamilt, psi, eigenvalue.data());

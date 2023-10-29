@@ -75,7 +75,8 @@ namespace ModuleESolver
 
         // ground state info 
         //pelec in  ESolver_FP
-        const psi::Psi<T>* psi_ks = nullptr;
+        // const psi::Psi<T>* psi_ks = nullptr;
+        psi::Psi<T>* psi_ks = nullptr;
         ModuleBase::matrix eig_ks;
         /// transition density matrix in AO representation
         elecstate::DensityMatrix<T, double>* DM_trans = nullptr;

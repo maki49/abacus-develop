@@ -17,7 +17,8 @@ namespace hamilt
         int nocc,
         int nvirt,
         Parallel_2D& pX,
-        psi::Psi<double, psi::DEVICE_CPU>& AX_istate)
+        psi::Psi<double, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_pblas");
         assert(pmat.comm_2D == pc.comm_2D);
@@ -39,6 +40,7 @@ namespace hamilt
 
             //Vc
             container::Tensor Vc(DAT::DT_DOUBLE, DEV::CpuDevice, { pVc.get_col_size(), pVc.get_row_size() });//row is "inside"(memory contiguity) for pblas
+            Vc.zero();
 
             int i1 = 1;
             int ivirt = nocc + 1;
@@ -46,7 +48,7 @@ namespace hamilt
             char transa = 'T';
             char transb = 'N';
             const double alpha = 1.0;
-            const double beta = 0.0;
+            const double beta = add_on ? 1.0 : 0.0;
             pdgemm_(&transa, &transb, &naos, &nocc, &naos,
                 &alpha, V_istate[isk].data<double>(), &i1, &i1, pmat.desc,
                 c.get_pointer(), &i1, &i1, pc.desc,
@@ -73,7 +75,8 @@ namespace hamilt
         int nocc,
         int nvirt,
         Parallel_2D& pX,
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate)
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_plas");
         assert(pmat.comm_2D == pc.comm_2D);
@@ -88,13 +91,14 @@ namespace hamilt
 
         Parallel_2D pVc;        // for intermediate Vc
         LR_Util::setup_2d_division(pVc, pmat.get_block_size(), naos, nocc, pmat.comm_2D, pmat.blacs_ctxt);
-        for (size_t isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nsk;++isk)
         {
             AX_istate.fix_k(isk);
             c.fix_k(isk);
 
             //Vc
             container::Tensor Vc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pVc.get_col_size(), pVc.get_row_size() });
+            Vc.zero();
 
             int i1 = 1;
             int ivirt = nocc + 1;
@@ -102,7 +106,7 @@ namespace hamilt
             char transa = 'T';
             char transb = 'N';
             const std::complex<double> alpha(1.0, 0.0);
-            const std::complex<double> beta(0.0, 0.0);
+            const std::complex<double> beta = add_on ? std::complex<double>(1.0, 0.0) : std::complex<double>(0.0, 0.0);
             pzgemm_(&transa, &transb, &naos, &nocc, &naos,
                 &alpha, V_istate[isk].data<std::complex<double>>(), &i1, &i1, pmat.desc,
                 c.get_pointer(), &i1, &i1, pc.desc,

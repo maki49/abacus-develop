@@ -344,7 +344,6 @@ Grid_Technique& Grid_Technique::operator=(Grid_Technique&& rhs)
 #include "module_cell/klist.h"
 K_Vectors& K_Vectors::operator=(K_Vectors&& rhs)
 {
-    std::cout << "moving kv" << std::endl;
     if (this == &rhs)return *this;
     this->kvec_c = std::move(rhs.kvec_c);
     this->kvec_d = std::move(rhs.kvec_d);

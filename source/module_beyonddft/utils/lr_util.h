@@ -55,7 +55,19 @@ namespace LR_Util
     template <typename T>
     void delete_p3(T*** p3, size_t size1, size_t size2);
 
-
+    ///================ BLAS ======================
+    /// calculate (A+A^T)/2
+    template<typename T>
+    void matsym(const T* in, const int n, T* out);
+    /// calculate (A+A^T)/2 (in-place version)
+    template<typename T>
+    void matsym(T* inout, const int n);
+#ifdef __MPI
+    template<typename T>
+    void matsym(const T* in, const int n, const Parallel_2D& pmat, T* out);
+    template<typename T>
+    void matsym(T* inout, const int n, const Parallel_2D& pmat);
+#endif
     ///======== Tensor - Matrix transformer==========
     container::Tensor mat2ten_double(ModuleBase::matrix& m);
     std::vector<container::Tensor> mat2ten_double(std::vector<ModuleBase::matrix>& m);

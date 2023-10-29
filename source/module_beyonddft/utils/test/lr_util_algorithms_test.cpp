@@ -56,3 +56,87 @@ TEST(LR_Util, PsiWrapper)
         }
     }
 }
+#ifdef __MPI
+void set_rand(double* data, int size) { for (int i = 0;i < size;++i) data[i] = double(rand()) / double(RAND_MAX) * 10.0 - 5.0; };
+TEST(LR_Util, MatSymDouble)
+{
+    int n = 7;
+    std::vector<double> din(n * n);
+    set_rand(din.data(), n * n);
+    std::vector<double> dref(n * n, 0.0);
+    LR_Util::matsym(din.data(), n, dref.data());
+
+    Parallel_2D pmat;
+    LR_Util::setup_2d_division(pmat, 1, n, n);
+    std::vector<double> din_local(pmat.get_local_size(), 0.0);
+    for (int i = 0;i < pmat.get_row_size();++i)
+        for (int j = 0;j < pmat.get_col_size();++j)
+            din_local[j * pmat.get_row_size() + i] = din[pmat.local2global_col(j) * n + pmat.local2global_row(i)];
+
+    std::vector<double> dout_local(pmat.get_local_size(), 0.0);
+    LR_Util::matsym(din_local.data(), n, pmat, dout_local.data());
+    for (int i = 0;i < pmat.get_row_size();++i)
+        for (int j = 0;j < pmat.get_col_size();++j)
+            EXPECT_DOUBLE_EQ(dout_local[j * pmat.get_row_size() + i], dref[pmat.local2global_col(j) * n + pmat.local2global_row(i)]);
+
+    //in-place version
+    LR_Util::matsym(din.data(), n);
+    for (int i = 0;i < n * n;++i)
+        EXPECT_DOUBLE_EQ(din[i], dref[i]);
+
+    LR_Util::matsym(din_local.data(), n, pmat);
+    for (int i = 0;i < pmat.get_local_size();++i)
+        EXPECT_DOUBLE_EQ(din_local[i], dout_local[i]);
+}
+
+void set_rand(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(rand(), rand()) / double(RAND_MAX) * 10.0 - 5.0; };
+TEST(LR_Util, MatSymComplex)
+{
+    int n = 5;
+    std::vector<std::complex<double>> din(n * n);
+    set_rand(din.data(), n * n);
+    std::vector<std::complex<double>> dref(n * n, std::complex<double>(0.0, 0.0));
+    LR_Util::matsym(din.data(), n, dref.data());
+
+    Parallel_2D pmat;
+    LR_Util::setup_2d_division(pmat, 1, n, n);
+    std::vector<std::complex<double>> din_local(pmat.get_local_size(), std::complex<double>(0.0, 0.0));
+    for (int i = 0;i < pmat.get_row_size();++i)
+        for (int j = 0;j < pmat.get_col_size();++j)
+            din_local[j * pmat.get_row_size() + i] = din[pmat.local2global_col(j) * n + pmat.local2global_row(i)];
+
+    std::vector<std::complex<double>> dout_local(pmat.get_local_size(), std::complex<double>(0.0, 0.0));
+    LR_Util::matsym(din_local.data(), n, pmat, dout_local.data());
+    for (int i = 0;i < pmat.get_row_size();++i)
+        for (int j = 0;j < pmat.get_col_size();++j)
+        {
+            EXPECT_DOUBLE_EQ(dout_local[j * pmat.get_row_size() + i].real(), dref[pmat.local2global_col(j) * n + pmat.local2global_row(i)].real());
+            EXPECT_DOUBLE_EQ(dout_local[j * pmat.get_row_size() + i].imag(), dref[pmat.local2global_col(j) * n + pmat.local2global_row(i)].imag());
+        }
+
+    //in-place version
+    LR_Util::matsym(din.data(), n);
+    for (int i = 0;i < n * n;++i)
+    {
+        EXPECT_DOUBLE_EQ(din[i].real(), dref[i].real());
+        EXPECT_DOUBLE_EQ(din[i].imag(), dref[i].imag());
+    }
+
+    LR_Util::matsym(din_local.data(), n, pmat);
+    for (int i = 0;i < pmat.get_local_size();++i)
+    {
+        EXPECT_DOUBLE_EQ(din_local[i].real(), dout_local[i].real());
+        EXPECT_DOUBLE_EQ(din_local[i].imag(), dout_local[i].imag());
+    }
+}
+
+int main(int argc, char** argv)
+{
+    srand(time(NULL));  // for random number generator
+    MPI_Init(&argc, &argv);
+    testing::InitGoogleTest(&argc, argv);
+    int result = RUN_ALL_TESTS();
+    MPI_Finalize();
+    return result;
+}
+#endif

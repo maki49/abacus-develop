@@ -75,7 +75,8 @@ namespace hamilt
         const psi::Psi<double, psi::DEVICE_CPU>& c,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<double, psi::DEVICE_CPU>& AX_istate)
+        psi::Psi<double, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_blas");
         int nsk = c.get_nk();
@@ -89,10 +90,11 @@ namespace hamilt
 
             // Vc[naos*nocc]
             container::Tensor Vc(DAT::DT_DOUBLE, DEV::CpuDevice, { nocc, naos });// (Vc)^T
+            Vc.zero();
             char transa = 'T';
             char transb = 'N';  //c is col major
             const double alpha = 1.0;
-            const double beta = 0.0;
+            const double beta = add_on ? 1.0 : 0.0;
             dgemm_(&transa, &transb, &naos, &nocc, &naos, &alpha,
                 V_istate[isk].data<double>(), &naos, c.get_pointer(), &naos, &beta,
                 Vc.data<double>(), &naos);
@@ -108,7 +110,8 @@ namespace hamilt
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate)
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_blas");
         int nsk = c.get_nk();
@@ -122,10 +125,11 @@ namespace hamilt
 
             // Vc[naos*nocc]
             container::Tensor Vc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nocc, naos });// (Vc)^T
+            Vc.zero();
             char transa = 'T';
             char transb = 'N';  //c is col major
             const std::complex<double> alpha(1.0, 0.0);
-            const std::complex<double> beta(0.0, 0.0);
+            const std::complex<double> beta = add_on ? std::complex<double>(1.0, 0.0) : std::complex<double>(0.0, 0.0);
             zgemm_(&transa, &transb, &naos, &nocc, &naos, &alpha,
                 V_istate[isk].data<std::complex<double>>(), &naos, c.get_pointer(), &naos, &beta,
                 Vc.data<std::complex<double>>(), &naos);
