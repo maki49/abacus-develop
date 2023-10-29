@@ -118,6 +118,9 @@ TEST_F(write_input, General1)
 
     EXPECT_THAT(output, testing::HasSubstr("beyonddft_method        none #the method for solving excited state. e.g. lr-tddft"));
     EXPECT_THAT(output, testing::HasSubstr("nstates        0 #the number of 2-particle states to be solved"));
+    EXPECT_THAT(output, testing::HasSubstr("xc_kernel        LDA #xc kernel for LR-TDDFT. default: LDA"));
+    EXPECT_THAT(output, testing::HasSubstr("lr_solver        dav #the diagonalization method for LR - TDDFT"));
+    EXPECT_THAT(output, testing::HasSubstr("lr_thr        1e-2 #convergence threshold of the LR - TDDFT eigensolver"));
     ifs.close();
     remove("write_input_test.log");
 }

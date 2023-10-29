@@ -295,6 +295,16 @@ void DiagoCG<T, Device>::orth_grad(
         1);
 }
 
+inline void init_real(const double in, double& out)
+{
+    out = in;
+}
+template<typename FPTYPE>
+inline void init_real(const FPTYPE  in, std::complex<FPTYPE>& out)
+{
+    out = std::complex<FPTYPE>(in, 0.0);
+}
+
 template<typename T, typename Device>
 void DiagoCG<T, Device>::calc_gamma_cg(
     const int& iter,

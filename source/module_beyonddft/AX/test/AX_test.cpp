@@ -74,7 +74,7 @@ TEST_F(AXTest, DoubleSerial)
             AX_for.fix_b(istate);
             AX_blas.fix_b(istate);
             hamilt::cal_AX_forloop_serial(V, c, s.nocc, s.nvirt, AX_for);
-            hamilt::cal_AX_blas(V, c, s.nocc, s.nvirt, AX_blas);
+            hamilt::cal_AX_blas(V, c, s.nocc, s.nvirt, AX_blas, false);
         }
         AX_for.fix_b(0);
         AX_blas.fix_b(0);
@@ -99,7 +99,7 @@ TEST_F(AXTest, ComplexSerial)
             AX_for.fix_b(istate);
             AX_blas.fix_b(istate);
             hamilt::cal_AX_forloop_serial(V, c, s.nocc, s.nvirt, AX_for);
-            hamilt::cal_AX_blas(V, c, s.nocc, s.nvirt, AX_blas);
+            hamilt::cal_AX_blas(V, c, s.nocc, s.nvirt, AX_blas, false);
         }
         AX_for.fix_b(0);
         AX_blas.fix_b(0);
@@ -139,7 +139,7 @@ TEST_F(AXTest, DoubleParallel)
             }
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
-            hamilt::cal_AX_pblas(V, pV, c, pc, s.naos, s.nocc, s.nvirt, px, AX_pblas_loc);
+            hamilt::cal_AX_pblas(V, pV, c, pc, s.naos, s.nocc, s.nvirt, px, AX_pblas_loc, false);
             // gather AX and output
             for (int isk = 0;isk < s.nsk;++isk)
             {
@@ -160,7 +160,7 @@ TEST_F(AXTest, DoubleParallel)
             if (my_rank == 0)
             {
                 psi::Psi<double, psi::DEVICE_CPU>  AX_full_istate(s.nsk, 1, s.nocc * s.nvirt, nullptr, false);
-                hamilt::cal_AX_blas(V_full, c_full, s.nocc, s.nvirt, AX_full_istate);
+                hamilt::cal_AX_blas(V_full, c_full, s.nocc, s.nvirt, AX_full_istate, false);
                 AX_full_istate.fix_b(0);
                 AX_gather.fix_b(istate);
                 check_eq(AX_full_istate.get_pointer(), AX_gather.get_pointer(), s.nsk * s.nocc * s.nvirt);
@@ -195,7 +195,7 @@ TEST_F(AXTest, ComplexParallel)
             }
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
-            hamilt::cal_AX_pblas(V, pV, c, pc, s.naos, s.nocc, s.nvirt, px, AX_pblas_loc);
+            hamilt::cal_AX_pblas(V, pV, c, pc, s.naos, s.nocc, s.nvirt, px, AX_pblas_loc, false);
 
             // gather AX and output
             for (int isk = 0;isk < s.nsk;++isk)
@@ -217,7 +217,7 @@ TEST_F(AXTest, ComplexParallel)
             if (my_rank == 0)
             {
                 psi::Psi<std::complex<double>, psi::DEVICE_CPU>  AX_full_istate(s.nsk, 1, s.nocc * s.nvirt, nullptr, false);
-                hamilt::cal_AX_blas(V_full, c_full, s.nocc, s.nvirt, AX_full_istate);
+                hamilt::cal_AX_blas(V_full, c_full, s.nocc, s.nvirt, AX_full_istate, false);
                 AX_full_istate.fix_b(0);
                 AX_gather.fix_b(istate);
                 check_eq(AX_full_istate.get_pointer(), AX_gather.get_pointer(), s.nsk * s.nocc * s.nvirt);

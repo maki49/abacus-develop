@@ -388,7 +388,7 @@
   - [Beyond DFT](#beyond-dft)
     - [nstates](#nstates)
     - [xc\_kernel](#xc_kernel)
-
+    - [lr\_solverl](#lr_solver)
 [back to top](#full-list-of-input-keywords)
 
 ## System variables
@@ -3653,7 +3653,13 @@ These parameters are used to solve the excited states using. e.g. lr-tddft
 ### xc_kernel
 
 - **Type**: String
-- **Description**: The exchange-correlation kernel used in the calculation. Currently, only `LDA` is supported.
+- **Description**: The exchange-correlation kernel used in the calculation. Currently, only `RPA` and `LDA` is supported.
+- **Default**: LDA
+
+### lr_solver
+
+- **Type**: String
+- **Description**: The diagonalization method for LR-TDDFT.
 - **Default**: LDA
 
 <<<<<<< HEAD
