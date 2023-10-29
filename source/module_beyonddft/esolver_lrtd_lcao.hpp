@@ -102,8 +102,10 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     this->paraMat_.atom_begin_col = std::move(ks_sol.LM.ParaV->atom_begin_col);
     this->paraMat_.iat2iwt_ = ucell.get_iat2iwt();
 
+    std::string xc_kernel;
+    std::transform(inp.xc_kernel.begin(), inp.xc_kernel.end(), xc_kernel.begin(), tolower);
 #ifdef __EXX
-    if (inp.xc_kernel == "hf")
+    if (xc_kernel == "hf")
     {
         //complex-double problem....waiting for refactor
         // this->exx_lri = std::make_shared<Exx_LRI<double>>(ks_sol.exx_lri_double);
@@ -124,7 +126,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     pHR->set_paraV(&this->paraMat_);
     this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
     this->DM_trans->init_DMR(*pHR);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->DM_trans, pHR,
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, this->DM_trans, pHR,
 #ifdef __EXX
         this->exx_lri.get(),
 #endif

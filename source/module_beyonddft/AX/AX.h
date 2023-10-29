@@ -19,7 +19,8 @@ namespace hamilt
         const psi::Psi<double, psi::DEVICE_CPU>& c,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<double, psi::DEVICE_CPU>& AX_istate);
+        psi::Psi<double, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on = true);
 #ifdef __MPI
     void cal_AX_pblas(
         const std::vector<container::Tensor>& V_istate,
@@ -30,7 +31,8 @@ namespace hamilt
         int nocc,
         int nvirt,
         Parallel_2D& pX,
-        psi::Psi<double, psi::DEVICE_CPU>& AX_istate);
+        psi::Psi<double, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on=true);
 #endif
     // complex
     void cal_AX_forloop_serial(
@@ -44,7 +46,8 @@ namespace hamilt
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on = true);
 
 #ifdef __MPI
     void  cal_AX_pblas(
@@ -56,7 +59,8 @@ namespace hamilt
         int nocc,
         int nvirt,
         Parallel_2D& pX,
-        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate);
+        psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate,
+        const bool add_on = true);
 #endif
 }
 #include "AX_parallel.hpp"
