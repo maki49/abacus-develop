@@ -620,6 +620,8 @@ void Input::Default(void)
     beyonddft_method = "none";
     nstates = 0;
     xc_kernel = "LDA";
+    lr_solver = "dav";
+    lr_thr = 1e-2;
     return;
 }
 
@@ -2241,6 +2243,14 @@ bool Input::Read(const std::string &fn)
         {
             read_value(ifs, xc_kernel);
         }
+        else if (strcmp("lr_solver", word) == 0)
+        {
+            read_value(ifs, lr_solver);
+        }
+        else if (strcmp("lr_thr", word) == 0)
+        {
+            read_value(ifs, lr_thr);
+        }
         //----------------------------------------------------------------------------------
         else
         {
@@ -3445,6 +3455,9 @@ void Input::Bcast()
     //----------------------------------------------------------------------------------
     Parallel_Common::bcast_string(beyonddft_method);
     Parallel_Common::bcast_int(nstates);
+    Parallel_Common::bcast_string(xc_kernel);
+    Parallel_Common::bcast_string(lr_solver);
+    Parallel_Common::bcast_double(lr_thr);
     return;
 }
 #endif

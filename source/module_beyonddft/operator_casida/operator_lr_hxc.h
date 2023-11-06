@@ -76,6 +76,8 @@ namespace hamilt
         elecstate::PotHxcLR* pot = nullptr;
 
         typename TGint<T>::type* gint = nullptr;
+
+        mutable bool first_call = true; ///< for debug
     };
 }
 #include "module_beyonddft/operator_casida/operator_lr_hxc.hpp"

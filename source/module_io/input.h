@@ -584,9 +584,10 @@ class Input
     //Beyond DFT
     //==========================================================
     std::string beyonddft_method; // the method for solving excited state. e.g. lr-tddft
-    int n_unocc;    // the number of unoccupied bands to form the 2-particle states
     int nstates;      // the number of 2-particle states to be solved
     std::string xc_kernel; // xc kernel for LR-TDDFT
+    std::string lr_solver; // the solver for LR-TDDFT
+    double lr_thr;  // convergence threshold of the LR-TDDFT eigensolver
 
   private:
     //==========================================================
