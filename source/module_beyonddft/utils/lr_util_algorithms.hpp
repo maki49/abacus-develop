@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "module_cell/unitcell.h"
 #include "module_base/constants.h"
+#include "module_base/scalapack_connector.h"
 
 
 namespace LR_Util
@@ -78,6 +79,61 @@ namespace LR_Util
         }
     };
 
+    template <typename T>
+    void matsym(const T* in, const int n, T* out)
+    {
+        for (int i = 0;i < n;++i)  out[i * n + i] = in[i * n + i];
+        for (int i = 0;i < n;++i)
+            for (int j = i + 1;j < n;++j)
+                out[i * n + j] = out[j * n + i] = 0.5 * (in[i * n + j] + in[j * n + i]);
+    }
+    template void matsym<double>(const double* in, const int n, double* out);
+    template void matsym<std::complex<double>>(const std::complex<double>* in, const int n, std::complex<double>* out);
+    template <typename T>
+    void matsym(T* inout, const int n)
+    {
+        for (int i = 0;i < n;++i)
+            for (int j = i + 1;j < n;++j)
+                inout[i * n + j] = inout[j * n + i] = 0.5 * (inout[i * n + j] + inout[j * n + i]);
+    }
+    template void matsym<double>(double* inout, const int n);
+    template void matsym<std::complex<double>>(std::complex<double>* inout, const int n);
+#ifdef __MPI
+    template<>
+    void matsym<double>(const double* in, const int n, const Parallel_2D& pmat, double* out)
+    {
+        for (int i = 0;i < pmat.get_local_size();++i)out[i] = in[i];
+        const double alpha = 0.5, beta = 0.5;
+        const int i1 = 1;
+        pdtran_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+    }
+    template<>
+    void matsym<double>(double* inout, const int n, const Parallel_2D& pmat)
+    {
+        std::vector<double> tmp(n * n);
+        for (int i = 0;i < pmat.get_local_size();++i)tmp[i] = inout[i];
+        const double alpha = 0.5, beta = 0.5;
+        const int i1 = 1;
+        pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+    }
+    template<>
+    void matsym<std::complex<double>>(const std::complex<double>* in, const int n, const Parallel_2D& pmat, std::complex<double>* out)
+    {
+        for (int i = 0;i < pmat.get_local_size();++i)out[i] = in[i];
+        const std::complex<double> alpha(0.5, 0.0), beta(0.5, 0.0);
+        const int i1 = 1;
+        pztranu_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+    }
+    template<>
+    void matsym<std::complex<double>>(std::complex<double>* inout, const int n, const Parallel_2D& pmat)
+    {
+        std::vector<std::complex<double>> tmp(n * n);
+        for (int i = 0;i < pmat.get_local_size();++i)tmp[i] = inout[i];
+        const std::complex<double> alpha(0.5, 0.0), beta(0.5, 0.0);
+        const int i1 = 1;
+        pztranu_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+    }
+#endif
     container::Tensor mat2ten_double(ModuleBase::matrix& m)
     {
         container::Tensor t(DAT::DT_DOUBLE, DEV::CpuDevice, { m.nr, m.nc });
