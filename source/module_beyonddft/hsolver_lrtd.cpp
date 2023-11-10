@@ -44,6 +44,19 @@ namespace hsolver
         for (auto& e : eigenvalue)std::cout << e << " ";
         std::cout << std::endl;
 
+        std::cout << "eigenvectors:" << std::endl;
+        for (int ist = 0;ist < psi.get_nbands();++ist)
+        {
+            for (int ik = 0;ik < psi.get_nk();++ik)
+            {
+                for (int ib = 0;ib < psi.get_nbasis();++ib)
+                {
+                    std::cout << psi(ist, ik, ib) << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+
         // output iters
         std::cout << "Average iterative diagonalization steps: " << DiagoIterAssist<T, Device>::avg_iter
             << " ; where current threshold is: " << DiagoIterAssist<T, Device>::PW_DIAG_THR << " . " << std::endl;

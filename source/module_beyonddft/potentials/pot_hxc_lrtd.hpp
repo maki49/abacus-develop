@@ -33,6 +33,7 @@ namespace elecstate
         }
         ~PotHxcLR()
         {
+            if (this->xc_kernel == "lda" /*|| pbe... */)
             delete this->xc_kernel_components_;
         }
         void cal_v_eff(const Charge* chg/*excited state*/, const UnitCell* ucell, ModuleBase::matrix& v_eff) override {};

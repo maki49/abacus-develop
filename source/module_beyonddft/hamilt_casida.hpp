@@ -32,6 +32,7 @@ namespace hamilt
         {
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
+            assert(hR_in != nullptr);
             this->hR = new HContainer<double>(std::move(*hR_in));
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks, p2d_in.at(0), kv_in.nks, nspin, nocc, nvirt);

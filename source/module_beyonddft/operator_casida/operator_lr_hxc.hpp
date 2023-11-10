@@ -16,8 +16,6 @@ namespace hamilt
     {
         ModuleBase::TITLE("OperatorLRHxc", "act");
 
-        if (first_call) GlobalV::excited_test = true;
-        first_call = false;
         assert(nbands <= psi_in.get_nbands());
         psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nsk, this->pX->get_local_size());
         psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nsk, this->pX->get_local_size());
@@ -57,8 +55,10 @@ namespace hamilt
 
 #ifdef __MPI
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
+            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
 #else
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, psi_ks, nocc, nvirt);
+            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos)
 #endif
             // GlobalV::ofs_running << "1. Dm_trans: " << std::endl;
             // GlobalV::ofs_running << "local row:" << pmat->get_row_size() << " local col:" << pmat->get_col_size() << std::endl;
@@ -134,7 +134,7 @@ namespace hamilt
             double** rho_trans;
             LR_Util::new_p2(rho_trans, nspin, this->pot->nrxx);
             for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], this->pot->nrxx);
-            Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho);
+            Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho, false);
             this->gint->cal_gint(&inout_rho);
 
             GlobalV::ofs_running << "first 10 non-zero elements of rho_trans ";
@@ -214,7 +214,6 @@ namespace hamilt
                     GlobalV::ofs_running << std::endl;
                 }
             }
-            GlobalV::excited_test = false;      // block gint of vlocal
             // clear useless matrices
             // LR_Util::delete_p3(dm_trans_grid, nsk, lgd);
             LR_Util::delete_p2(rho_trans, nspin);
@@ -226,6 +225,8 @@ namespace hamilt
 #else
             cal_AX_blas(v_hxc_2d, *this->psi_ks, nocc, nvirt, psi_out_bfirst);
 #endif
+            /// output AX
+            psi_out_bfirst.fix_k(0);
             for (int ik = 0;ik < psi_out_bfirst.get_nk();++ik)
             {
                 assert(psi_out_bfirst.get_nbasis() == pX->get_local_size());

@@ -77,7 +77,7 @@ namespace hamilt
 
         typename TGint<T>::type* gint = nullptr;
 
-        mutable bool first_call = true; ///< for debug
+        bool tdm_sym = false; ///< whether transition density matrix is symmetric
     };
 }
 #include "module_beyonddft/operator_casida/operator_lr_hxc.hpp"
