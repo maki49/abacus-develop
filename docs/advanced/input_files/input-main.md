@@ -459,6 +459,8 @@ These variables are used to control general system parameters.
   - tddft: real-time time-dependent density functional theory (TDDFT)
   - lj: Leonard Jones potential
   - dp: DeeP potential, see details in [md.md](../md.md#dpmd)
+  - ks-lr: Kohn-Sham density functional theory + LR-TDDFT
+  - lr: LR-TDDFT with given KS orbitals
 - **Default**: ksdft
 
 ### symmetry
@@ -3773,12 +3775,6 @@ These variables are used to control the usage of PEXSI (Pole Expansion and Selec
 ## Beyond DFT
 
 These parameters are used to solve the excited states using. e.g. lr-tddft
-
-### beyonddft_method
-
-- **Type**: String
-- **Description**: The method to solve the excited states. Currently, only `lr-tddft` is supported.
-- **Default**: none
 
 ### nstates
 

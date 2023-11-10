@@ -104,6 +104,11 @@ namespace LR_Util
     template <typename T>
     void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, bool col_first, int global_nrow, int global_ncol);
 #endif
+
+    ///=================diago-lapack====================
+    /// @brief  diagonalize a hermitian matrix
+    template<typename T>
+    void diag_lapack(const int& n, T* mat, double* eig);
 }
-#include "lr_util_algorithms.hpp"
-#include "lr_util_physics.hpp"
+// #include "lr_util_algorithms.hpp"
+// #include "lr_util_physics.hpp"

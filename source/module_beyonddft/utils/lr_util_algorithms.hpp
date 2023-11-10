@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "module_cell/unitcell.h"
 #include "module_base/constants.h"
+#include "module_base/lapack_connector.h"
 #include "module_base/scalapack_connector.h"
 
 
@@ -261,7 +262,7 @@ namespace LR_Util
     void setup_2d_division(Parallel_2D& pv, int nb, int gr, int gc,
         const MPI_Comm& comm_2D_in, const int& blacs_ctxt_in)
     {
-        ModuleBase::TITLE("ESolver_LRTD", "setup_2d_division");
+        ModuleBase::TITLE("LR_Util", "setup_2d_division");
         std::ofstream ofs("");
         pv.set_block_size(nb);
 
@@ -304,4 +305,34 @@ namespace LR_Util
         MPI_Allreduce(MPI_IN_PLACE, fullmat, global_nrow * global_ncol, get_mpi_datatype(), MPI_SUM, pv.comm_2D);
     };
 #endif
+
+    template<>
+    void diag_lapack<double>(const int& n, double* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_lapack<double>");
+        int info = 0;
+        char jobz = 'V', uplo = 'U';
+        double work_tmp;
+        constexpr int minus_one = -1;
+        dsyev_(&jobz, &uplo, &n, mat, &n, eig, &work_tmp, &minus_one, &info);		// get best lwork
+        const int lwork = work_tmp;
+        double* work2 = new double[lwork];
+        dsyev_(&jobz, &uplo, &n, mat, &n, eig, work2, &lwork, &info);
+        if (info) std::cout << "ERROR: Lapack solver, info=" << info << std::endl;
+        delete[] work2;
+    }
+    template<>
+    void diag_lapack<std::complex<double>>(const int& n, std::complex<double>* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_lapack<complex<double>>");
+        int lwork = 2 * n;
+        std::complex<double>* work2 = new std::complex<double>[lwork];
+        double* rwork = new double[3 * n - 2];
+        int info = 0;
+        char jobz = 'V', uplo = 'U';
+        zheev_(&jobz, &uplo, &n, mat, &n, eig, work2, &lwork, rwork, &info);
+        if (info) std::cout << "ERROR: Lapack solver, info=" << info << std::endl;
+        delete[] rwork;
+        delete[] work2;
+    }
 }

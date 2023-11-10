@@ -65,6 +65,14 @@ std::string determine_type()
         else if (GlobalV::ESOLVER_TYPE == "ksdft")
         {
             esolver_type = "ksdft_lcao";
+		}
+        else if (GlobalV::ESOLVER_TYPE == "ks-lr")
+        {
+            esolver_type = "ksdft_lr_lcao";
+        }
+        else if (GlobalV::ESOLVER_TYPE == "lr")
+        {
+            esolver_type = "lr_lcao";
         }
 #else
 		ModuleBase::WARNING_QUIT("ESolver", "Calculation involving numerical orbitals must be compiled with __LCAO");

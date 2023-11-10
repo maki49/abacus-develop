@@ -2,7 +2,7 @@
 #include "mpi.h"
 #include "../dm_trans.h"
 #ifdef __MPI
-#include "module_beyonddft/utils/lr_util.h"
+#include "module_beyonddft/utils/lr_util_algorithms.hpp"
 #endif
 struct matsize
 {

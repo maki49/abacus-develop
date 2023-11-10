@@ -21,14 +21,16 @@ namespace hamilt
             const int& nvirt,
             const UnitCell& ucell_in,
             const psi::Psi<T>* psi_ks_in,
-            elecstate::DensityMatrix<T, double>* DM_trans_in,
+            std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans_in,
             // HContainer<double>* hR_in,
             Exx_LRI<T>* exx_lri_in,
             const K_Vectors& kv_in,
-            const std::vector<Parallel_2D*> p2d_in /*< 2d-block parallel info of {X, c, matrix}*/)
+            Parallel_2D* pX_in,
+            Parallel_2D* pc_in,
+            Parallel_Orbitals* pmat_in)
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), exx_lri(exx_lri_in), kv(kv_in),
-            pX(p2d_in.at(0)), pc(p2d_in.at(1)), pmat(p2d_in.at(2)), ucell(ucell_in)
+            pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in)
         {
             ModuleBase::TITLE("OperatorLREXX", "OperatorLREXX");
             this->nks = std::is_same<T, double>::value ? 1 : this->kv.kvec_d.size();
@@ -38,14 +40,15 @@ namespace hamilt
             this->is_first_node = false;
 
             // reduce psi_ks for later use
-            this->psi_ks_full.resize(this->nsk, this->nbands_ks, this->naos);
-            LR_Util::gather_2d_to_full(*this->pc, this->psi_ks->get_pointer(), this->psi_ks_full.get_pointer(), false, this->naos, this->nbands_ks);
+            this->psi_ks_full.resize(this->nsk, this->psi_ks->get_nbands(), this->naos);
+            LR_Util::gather_2d_to_full(*this->pc, this->psi_ks->get_pointer(), this->psi_ks_full.get_pointer(), false, this->naos, this->psi_ks->get_nbands());
 
             // get cells in BvK supercell
             const TC period = RI_Util::get_Born_vonKarmen_period(kv_in);
             this->BvK_cells = RI_Util::get_Born_von_Karmen_cells(period);
 
             this->allocate_Ds_onebase();
+            this->exx_lri->Hexxs.resize(this->nspin);
         };
 
         void init(const int ik_in) override {};
@@ -60,14 +63,13 @@ namespace hamilt
         int naos;
         int nocc;
         int nvirt;
-        int nbands_ks;
         const K_Vectors& kv;
         /// ground state wavefunction
         const psi::Psi<T>* psi_ks = nullptr;
         psi::Psi<T> psi_ks_full;
 
         /// transition density matrix 
-        elecstate::DensityMatrix<T, double>* DM_trans;
+        std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans;
 
         /// density matrix of a certain (i, a, k), with full naos*naos size for each key
         /// D^{iak}_{\mu\nu}(k): 1/N_k * c^*_{ak,\mu} c_{ik,\nu}
@@ -92,7 +94,7 @@ namespace hamilt
         ///parallel info
         Parallel_2D* pc = nullptr;
         Parallel_2D* pX = nullptr;
-        Parallel_2D* pmat = nullptr;
+        Parallel_Orbitals* pmat = nullptr;
 
 
         // allocate Ds_onebase
