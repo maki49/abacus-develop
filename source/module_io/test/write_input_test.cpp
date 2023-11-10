@@ -115,12 +115,6 @@ TEST_F(write_input, General1)
                                    "charge density and wavefunction. 0: output only when ion steps are finished"));
     EXPECT_THAT(output, testing::HasSubstr("evice                         cpu #the computing device for ABACUS"));
     EXPECT_THAT(output, testing::HasSubstr(""));
-
-    EXPECT_THAT(output, testing::HasSubstr("beyonddft_method        none #the method for solving excited state. e.g. lr-tddft"));
-    EXPECT_THAT(output, testing::HasSubstr("nstates        0 #the number of 2-particle states to be solved"));
-    EXPECT_THAT(output, testing::HasSubstr("xc_kernel        LDA #xc kernel for LR-TDDFT. default: LDA"));
-    EXPECT_THAT(output, testing::HasSubstr("lr_solver        dav #the diagonalization method for LR - TDDFT"));
-    EXPECT_THAT(output, testing::HasSubstr("lr_thr        1e-2 #convergence threshold of the LR - TDDFT eigensolver"));
     ifs.close();
     remove("write_input_test.log");
 }
@@ -940,9 +934,11 @@ TEST_F(write_input, BeyondDFT23)
     EXPECT_EQ(a, 0);
     std::ifstream ifs("write_input_test.log");
     std::string output((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-    EXPECT_THAT(output, testing::HasSubstr("beyonddft_method        none #the method for solving excited state. e.g. lr-tddft"));
     EXPECT_THAT(output, testing::HasSubstr("nstates        0 #the number of 2-particle states to be solved"));
+    EXPECT_THAT(output, testing::HasSubstr("nvirt        0 #the number of virtual orbitals to form the 2-particle basis (nocc + nvirt <= nbands)"));
     EXPECT_THAT(output, testing::HasSubstr("xc_kernel        LDA #xc kernel for LR-TDDFT. default: LDA"));
+    EXPECT_THAT(output, testing::HasSubstr("lr_solver        dav #the diagonalization method for LR - TDDFT"));
+    EXPECT_THAT(output, testing::HasSubstr("lr_thr        1e-2 #convergence threshold of the LR - TDDFT eigensolver"));
 }
 
 #undef private

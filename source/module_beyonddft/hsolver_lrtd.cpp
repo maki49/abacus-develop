@@ -1,6 +1,7 @@
 #include "hsolver_lrtd.h"
 #include "module_hsolver/diago_david.h"
 #include "module_hsolver/diago_cg.h"
+#include "module_beyonddft/utils/lr_util.h"
 
 namespace hsolver
 {
@@ -30,6 +31,16 @@ namespace hsolver
             this->pdiagh = new DiagoCG<T, Device>(precondition.data());
             this->pdiagh->method = this->method;
         }
+        else if (this->method == "lapack")
+        {
+            std::vector<T> Amat_full = pHamilt->matrix();
+            eigenvalue.resize(npairs);
+            LR_Util::diag_lapack(npairs, Amat_full.data(), eigenvalue.data());
+            std::cout << "eigenvalues:" << std::endl;
+            for (auto& e : eigenvalue)std::cout << e << " ";
+            std::cout << std::endl;
+            return;
+        }
         else
             throw std::runtime_error("HSolverLR::solve: method not implemented");
 
@@ -43,6 +54,19 @@ namespace hsolver
         std::cout << "eigenvalues:" << std::endl;
         for (auto& e : eigenvalue)std::cout << e << " ";
         std::cout << std::endl;
+
+        std::cout << "eigenvectors:" << std::endl;
+        for (int ist = 0;ist < psi.get_nbands();++ist)
+        {
+            for (int ik = 0;ik < psi.get_nk();++ik)
+            {
+                for (int ib = 0;ib < psi.get_nbasis();++ib)
+                {
+                    std::cout << psi(ist, ik, ib) << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
 
         // output iters
         std::cout << "Average iterative diagonalization steps: " << DiagoIterAssist<T, Device>::avg_iter

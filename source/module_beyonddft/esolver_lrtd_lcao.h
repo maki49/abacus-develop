@@ -10,7 +10,6 @@
 #include <memory>
 
 #include "module_esolver/esolver_ks_lcao.h" //for the move constructor
-#include "module_hamilt_lcao/hamilt_lcaodft/record_adj.h"
 #include "module_hamilt_lcao/module_gint/gint_gamma.h"
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
@@ -39,13 +38,13 @@ namespace ModuleESolver
     public:
         /// @brief  a move constructor from ESolver_KS_LCAO
         ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol, Input& inp, UnitCell& ucell);
-        ESolver_LRTD() {}
+        /// @brief a from-scratch constructor
+        ESolver_LRTD(Input& inp, UnitCell& ucell);
         ~ESolver_LRTD() {
             delete this->p_hamilt;
             delete this->phsol;
             delete this->pot;
             delete this->psi_ks;
-            delete this->DM_trans;
             delete this->X;
         }
 
@@ -64,7 +63,6 @@ namespace ModuleESolver
     protected:
 
         const UnitCell& ucell;
-        const Input& input;
 
         hamilt::Hamilt<T>* p_hamilt = nullptr;  //opsd problem first to use base calss
         hsolver::HSolver<T>* phsol = nullptr;
@@ -77,10 +75,7 @@ namespace ModuleESolver
         //pelec in  ESolver_FP
         // const psi::Psi<T>* psi_ks = nullptr;
         psi::Psi<T>* psi_ks = nullptr;
-        ModuleBase::matrix eig_ks;
-        /// transition density matrix in AO representation
-        elecstate::DensityMatrix<T, double>* DM_trans = nullptr;
-        // energy of ground state is in pelec->ekb
+        ModuleBase::matrix eig_ks;///< energy of ground state
 
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
         psi::Psi<T>* X;
@@ -95,18 +90,13 @@ namespace ModuleESolver
         int nsk = 1; //nspin*nks
         int nspin = 1;
 
-        // basis info (currently use GlobalC)
-        // LCAO_Orbitals orb;
-        // adj info 
-        Record_adj ra;
-        // grid parallel info (no need for 2d-block distribution)?
-        // Grid_Technique gridt;
-        // grid integration method(will be moved to OperatorKernelHxc)
-        ModulePW::PW_Basis_Big bigpw;
         Grid_Technique gt;
         Gint_Gamma gint_g;
         Gint_k gint_k;
         typename TGint<T>::type* gint = nullptr;
+
+        std::string xc_kernel;
+        std::string lr_solver;
 
         void set_gint();
 
@@ -119,14 +109,24 @@ namespace ModuleESolver
         /// @brief variables for parallel distribution of matrix in AO representation
         Parallel_Orbitals paraMat_;
 
-        /// move to hsolver::updatePsiK
-        void init_X();
+        /// @brief allocate and initialize X
+        void init_X(const int& nvirt_input);
+        /// @brief allocate and initialize A matrix, density matrix and eignensolver
+        void init_A(hamilt::HContainer<double>* pHR_in, const double lr_thr);
+        /// @brief read in the ground state wave function, band energy and occupation
+        void read_ks_wfc();
+        /// @brief  read in the ground state charge density
+        void read_ks_chg(Charge& chg);
+
+        void init_pot(const Charge& chg_gs);
 
 #ifdef __EXX
         /// Tdata of Exx_LRI is same as T, for the reason, see operator_lr_exx.h
         std::shared_ptr<Exx_LRI<T>> exx_lri = nullptr;
         void move_exx_lri(std::shared_ptr<Exx_LRI<double>>&);
         void move_exx_lri(std::shared_ptr<Exx_LRI<std::complex<double>>>&);
+
+        std::unique_ptr<TwoCenterBundle> two_center_bundle;
 #endif
 
     };

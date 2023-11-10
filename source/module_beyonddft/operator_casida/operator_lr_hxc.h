@@ -28,18 +28,20 @@ namespace hamilt
             const int& nocc,
             const int& nvirt,
             const psi::Psi<T, Device>* psi_ks_in,
-            elecstate::DensityMatrix<T, double>* DM_trans_in,
+            std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans_in,
             HContainer<double>* hR_in,
             typename TGint<T>::type* gint_in,
             elecstate::PotHxcLR* pot_in,
-            const std::vector<ModuleBase::Vector3<double>>& kvec_d_in,
-            const std::vector<Parallel_2D*> p2d_in /*< 2d-block parallel info of {X, c, matrix}*/)
+            const K_Vectors& kv_in,
+            Parallel_2D* pX_in,
+            Parallel_2D* pc_in,
+            Parallel_Orbitals* pmat_in)
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
-            psi_ks(psi_ks_in), DM_trans(DM_trans_in), hR(hR_in), gint(gint_in), pot(pot_in), kvec_d(kvec_d_in),
-            pX(p2d_in.at(0)), pc(p2d_in.at(1)), pmat(p2d_in.at(2))
+            psi_ks(psi_ks_in), DM_trans(DM_trans_in), hR(hR_in), gint(gint_in), pot(pot_in), kv(kv_in),
+            pX(pX_in), pc(pc_in), pmat(pmat_in)
         {
             ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
-            this->nks = std::is_same<T, double>::value ? 1 : kvec_d.size();
+            this->nks = std::is_same<T, double>::value ? 1 : this->kv.kvec_d.size();
             this->nsk = std::is_same<T, double>::value ? nspin : nks;
             this->cal_type = calculation_type::lcao_gint;
             this->act_type = 2;
@@ -58,12 +60,12 @@ namespace hamilt
         int naos;
         int nocc;
         int nvirt;
-        const std::vector<ModuleBase::Vector3<double>>& kvec_d;
+        const K_Vectors& kv;
         /// ground state wavefunction
         const psi::Psi<T, Device>* psi_ks = nullptr;
 
         /// transition density matrix
-        elecstate::DensityMatrix<T, double>* DM_trans;
+        std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans;
 
         /// transition hamiltonian in AO representation
         hamilt::HContainer<double>* hR = nullptr;
@@ -71,13 +73,13 @@ namespace hamilt
         //parallel info
         Parallel_2D* pc = nullptr;
         Parallel_2D* pX = nullptr;
-        Parallel_2D* pmat = nullptr;
+        Parallel_Orbitals* pmat = nullptr;
 
         elecstate::PotHxcLR* pot = nullptr;
 
         typename TGint<T>::type* gint = nullptr;
 
-        mutable bool first_call = true; ///< for debug
+        bool tdm_sym = false; ///< whether transition density matrix is symmetric
     };
 }
 #include "module_beyonddft/operator_casida/operator_lr_hxc.hpp"

@@ -45,8 +45,18 @@ void Driver::driver_run(void)
     GlobalC::ucell.setup_cell(GlobalV::stru_file, GlobalV::ofs_running);
 
     //! 3: initialize Esolver and fill json-structure 
-    p_esolver->init(INPUT, GlobalC::ucell);
-
+#ifdef __LCAO
+    if (GlobalV::ESOLVER_TYPE == "lr")s
+        // use constructor rather than Init function to initialize reference (instead of pointers) to ucell
+        if (GlobalV::GAMMA_ONLY_LOCAL)
+            p_esolver = new ModuleESolver::ESolver_LRTD<double, double>(INPUT, GlobalC::ucell);
+        else if (GlobalV::NSPIN < 4)
+            p_esolver = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(INPUT, GlobalC::ucell);
+        else
+            throw std::runtime_error("LR-TDDFT is not implemented for spin polarized case");
+    else
+#endif
+        p_esolver->init(INPUT, GlobalC::ucell);
 
 #ifdef __RAPIDJSON
     Json::gen_stru_wrapper(&GlobalC::ucell);
@@ -76,7 +86,7 @@ void Driver::driver_run(void)
 
 #ifdef __LCAO
     //---------beyond DFT: set up the next ESolver---------
-    if (INPUT.beyonddft_method == "lr-tddft")
+    if (INPUT.esolver_type == "ks-lr")
     {
         std::cout << "setting up the esolver for excited state" << std::endl;
         // ModuleESolver::ESolver_KS_LCAO* p_esolver_lcao_tmp = dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver);
@@ -85,11 +95,7 @@ void Driver::driver_run(void)
             p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver)), INPUT, GlobalC::ucell);
         else
             p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
-
-        std::cout << "before clean ks" << std::endl;
         ModuleESolver::clean_esolver(p_esolver);
-        std::cout << "after clean ks" << std::endl;
-
         p_esolver_lr->Run(0, GlobalC::ucell);
 
         std::cout << "before clean lr" << std::endl;
@@ -101,7 +107,6 @@ void Driver::driver_run(void)
 
     if (INPUT.basis_type == "lcao")
         Cblacs_exit(1); // clean up blacs after all the esolvers are cleaned up without closing MPI
-    std::cout << "befor end" << std::endl;
 #else
     ModuleESolver::clean_esolver(p_esolver);
 #endif

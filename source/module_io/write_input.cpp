@@ -505,6 +505,7 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
 
    ofs << "\n#Parameters (24.beyond dft)" << std::endl;
    ModuleBase::GlobalFunc::OUTP(ofs, "nstates", nstates, "the number of 2-particle states to be solved");
+   ModuleBase::GlobalFunc::OUTP(ofs, "nvirt", nvirt, "the number of virtual orbitals to form the 2-particle basis (nocc + nvirt <= nbands)");
    ModuleBase::GlobalFunc::OUTP(ofs, "xc_kernel", xc_kernel, "xc kernel for LR-TDDFT. default: LDA");
    ModuleBase::GlobalFunc::OUTP(ofs, "lr_solver", lr_solver, "the diagonalization method for LR-TDDFT");
    ModuleBase::GlobalFunc::OUTP(ofs, "lr_thr", lr_thr, "convergence threshold of the LR - TDDFT eigensolver");
