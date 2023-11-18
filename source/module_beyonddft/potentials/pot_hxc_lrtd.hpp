@@ -43,7 +43,7 @@ namespace elecstate
             ModuleBase::timer::tick("PotHxcLR", "cal_v_eff");
             const int nspin = v_eff.nr;
             v_eff += H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), v_eff.nr, rho);
-            if (xc_kernel == "rpa")  return;
+            if (xc_kernel == "rpa" || xc_kernel == "hf")  return;
             else if (XC_Functional::get_func_type() == 1)//LDA
                 if (1 == nspin)// for LDA-spin0, just f*rho
                     for (int ir = 0;ir < nrxx;++ir)

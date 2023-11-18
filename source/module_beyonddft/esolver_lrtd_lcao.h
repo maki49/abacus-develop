@@ -45,7 +45,6 @@ namespace ModuleESolver
             delete this->phsol;
             delete this->pot;
             delete this->psi_ks;
-            delete this->DM_trans;
             delete this->X;
         }
 
@@ -76,10 +75,7 @@ namespace ModuleESolver
         //pelec in  ESolver_FP
         // const psi::Psi<T>* psi_ks = nullptr;
         psi::Psi<T>* psi_ks = nullptr;
-        ModuleBase::matrix eig_ks;
-        /// transition density matrix in AO representation
-        elecstate::DensityMatrix<T, double>* DM_trans = nullptr;
-        // energy of ground state is in pelec->ekb
+        ModuleBase::matrix eig_ks;///< energy of ground state
 
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
         psi::Psi<T>* X;

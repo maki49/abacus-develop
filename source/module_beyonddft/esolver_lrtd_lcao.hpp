@@ -255,11 +255,10 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
 
     // if EXX from scratch, init 2-center integral and calclate Cs, Vs 
 #ifdef __EXX
-    bool exx_from_scratch = false;
-    if (exx_from_scratch && xc_kernel == "hf")
+    if (xc_kernel == "hf")
     {
-        int Lmax = GlobalC::exx_info.info_ri.abfs_Lmax;
 #ifndef USE_NEW_TWO_CENTER
+        int Lmax = GlobalC::exx_info.info_ri.abfs_Lmax;
         this->orb_con.set_orb_tables(GlobalV::ofs_running,
             GlobalC::UOT,
             GlobalC::ORB,
@@ -271,10 +270,11 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
             ucell.infoNL.Beta);
 #else
         two_center_bundle.reset(new TwoCenterBundle);
-        two_center_bundle->build(ucell.ntype, ucell.orbital_fn, ucell.infoNL.Beta,
+        two_center_bundle->build(ucell.ntype, ucell.orbital_fn, nullptr/*ucell.infoNL.Beta*/,
             GlobalV::deepks_setorb, &ucell.descriptor_file);
         GlobalC::UOT.two_center_bundle = std::move(two_center_bundle);
 #endif
+        std::cout << GlobalC::exx_info.info_ri.dm_threshold << std::endl;
         this->exx_lri = std::make_shared<Exx_LRI<T>>(GlobalC::exx_info.info_ri);
         this->exx_lri->init(MPI_COMM_WORLD, this->kv); // using GlobalC::ORB
         this->exx_lri->cal_exx_ions();
@@ -388,18 +388,15 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_A(hamilt::HContainer<double>* pHR_
         pHR->allocate(true);
     }
     pHR->set_paraV(&this->paraMat_);
-    this->DM_trans = new elecstate::DensityMatrix<T, double>(&this->kv, &this->paraMat_, this->nspin);
-    this->DM_trans->init_DMR(*pHR);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, this->DM_trans, pHR,
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, pHR,
 #ifdef __EXX
         this->exx_lri.get(),
 #endif
-        this->gint, this->pot, this->kv, std::vector<Parallel_2D*>({ &this->paraX_, &this->paraC_, &this->paraMat_ }));
+        this->gint, this->pot, this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
 
     // init HSolver
-    this->phsol = new hsolver::HSolverLR<T>();
+    this->phsol = new hsolver::HSolverLR<T>(this->npairs);
     this->phsol->set_diagethr(0, 0, std::max(1e-13, lr_thr));
-    // if (!pHR_in) delete pHR; 
 }
 
 template<typename T, typename TR>

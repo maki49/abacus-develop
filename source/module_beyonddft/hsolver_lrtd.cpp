@@ -1,6 +1,7 @@
 #include "hsolver_lrtd.h"
 #include "module_hsolver/diago_david.h"
 #include "module_hsolver/diago_cg.h"
+#include "module_beyonddft/utils/lr_util.h"
 
 namespace hsolver
 {
@@ -29,6 +30,16 @@ namespace hsolver
         {
             this->pdiagh = new DiagoCG<T, Device>(precondition.data());
             this->pdiagh->method = this->method;
+        }
+        else if (this->method == "lapack")
+        {
+            std::vector<T> Amat_full = pHamilt->matrix();
+            eigenvalue.resize(npairs);
+            LR_Util::diag_lapack(npairs, Amat_full.data(), eigenvalue.data());
+            std::cout << "eigenvalues:" << std::endl;
+            for (auto& e : eigenvalue)std::cout << e << " ";
+            std::cout << std::endl;
+            return;
         }
         else
             throw std::runtime_error("HSolverLR::solve: method not implemented");
