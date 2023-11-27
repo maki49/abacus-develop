@@ -6,6 +6,7 @@
 #include "hamilt_casida.hpp"
 #include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
 #include "module_beyonddft/hsolver_lrtd.h"
+#include "module_beyonddft/lr_spectrum.hpp"
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 #include "module_io/read_wfc_nao.h"
@@ -60,7 +61,7 @@ inline void redrect_log(const bool& out_alllog)
 
 template<typename T, typename TR>
 ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
-    Input& inp, UnitCell& ucell) : ucell(ucell)
+    Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
 {
     redrect_log(inp.out_alllog);
     ModuleBase::TITLE("ESolver_LRTD", "ESolver_LRTD");
@@ -136,11 +137,12 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
 #endif
     this->init_A(dynamic_cast<hamilt::HamiltLCAO<T, TR>*>(ks_sol.p_hamilt)->getHR(), inp.lr_thr);
     this->lr_solver = inp.lr_solver;
+    this->pelec = new elecstate::ElecStateLCAO<T>();
 }
 
 
 template<typename T, typename TR>
-ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : ucell(ucell)
+ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
 {
     redrect_log(inp.out_alllog);
     ModuleBase::TITLE("ESolver_LRTD", "ESolver_LRTD");
@@ -285,6 +287,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
 
     this->init_A(nullptr, inp.lr_thr);
     this->lr_solver = inp.lr_solver;
+    this->pelec = new elecstate::ElecState();
 }
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
@@ -292,6 +295,24 @@ void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
     ModuleBase::TITLE("ESolver_LRTD", "Run");
     this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->lr_solver);
     return;
+}
+
+template<typename T, typename TR>
+void ModuleESolver::ESolver_LRTD<T, TR>::postprocess()
+{
+    //cal spectrum
+    LR_Spectrum<T> spectrum(this->pelec->ekb.c, *this->X, this->nspin, this->nbasis, this->nocc, this->nvirt, this->gint, *this->pw_rho, *this->psi_ks, this->ucell, this->kv, this->paraX_, this->paraC_, this->paraMat_);
+    spectrum.oscillator_strength();
+    spectrum.transition_analysis();
+    std::vector<double> freq(100);
+    std::vector<double> abs_wavelen_range({ 20, 200 });//default range
+    if (input.abs_wavelen_range.size() == 2 && std::abs(input.abs_wavelen_range[1] - input.abs_wavelen_range[0]) > 0.02)
+        abs_wavelen_range = input.abs_wavelen_range;
+    double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
+    double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
+    for (int i = 0;i < freq.size();++i)freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff);
+    double eta = 0.01;
+    spectrum.optical_absorption(freq, eta);
 }
 
 template<typename T, typename TR>

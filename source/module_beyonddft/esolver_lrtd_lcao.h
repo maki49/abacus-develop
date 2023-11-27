@@ -54,14 +54,14 @@ namespace ModuleESolver
 
         virtual void init_after_vc(Input& inp, UnitCell& cell) override {};
         virtual void Run(int istep, UnitCell& ucell) override;
-        virtual void postprocess() override {};
+        virtual void postprocess() override;
 
         virtual double cal_Energy()  override { return 0.0; };
         virtual void cal_Force(ModuleBase::matrix& force) override {};
         virtual void cal_Stress(ModuleBase::matrix& stress) override {};
 
     protected:
-
+        const Input& input;
         const UnitCell& ucell;
 
         hamilt::Hamilt<T>* p_hamilt = nullptr;  //opsd problem first to use base calss

@@ -95,7 +95,6 @@ namespace hamilt
             // new interface: transfer_DM2DtoGrid, set DMRGint for the next step Gint
             // this->gint->transfer_DM2DtoGrid(this->gint->get_DMRGint());//err?
             this->gint->transfer_DM2DtoGrid(this->DM_trans[ib_dm]->get_DMR_vector());
-            // this->gint->set_DMRGint(this->DM_trans[ib_dm]->get_DMR_vector());
             // GlobalV::ofs_running << "return transfer_DMR (outside)" << std::endl;
             // GlobalV::ofs_running << "2. DM(R) (2d): " << std::endl;
             // for (auto& dr : this->DM_trans[ib_dm]->get_DMR_vector())
@@ -153,24 +152,24 @@ namespace hamilt
             Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho, false);
             this->gint->cal_gint(&inout_rho);
 
-            GlobalV::ofs_running << "first 10 non-zero elements of rho_trans ";
-            int n = 0;int i = 0;
-            while (n < 10 && i < this->pot->nrxx)
-            {
-                if (rho_trans[0][++i] - 0.0 > 1e-4) { GlobalV::ofs_running << rho_trans[0][i] << " ";++n; };
-            }
+            // GlobalV::ofs_running << "first 10 non-zero elements of rho_trans ";
+            // int n = 0;int i = 0;
+            // while (n < 10 && i < this->pot->nrxx)
+            // {
+            //     if (rho_trans[0][++i] - 0.0 > 1e-4) { GlobalV::ofs_running << rho_trans[0][i] << " ";++n; };
+            // }
 
             // 3. v_hxc = f_hxc * rho_trans
             GlobalV::ofs_running << "3. v_hxc = f_hxc * rho_trans" << std::endl;
             ModuleBase::matrix vr_hxc(nspin, this->pot->nrxx);   //grid
             this->pot->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
-            GlobalV::ofs_running << "first 10 non-zero elements of vr_hxc: ";
-            n = 0;i = 0;
-            while (n < 10 && i < this->pot->nrxx)
-            {
-                if (vr_hxc.c[++i] - 0.0 > 1e-4) { GlobalV::ofs_running << vr_hxc.c[i] << " ";++n; };
-            }
-            GlobalV::ofs_running << std::endl;
+            // GlobalV::ofs_running << "first 10 non-zero elements of vr_hxc: ";
+            // n = 0;i = 0;
+            // while (n < 10 && i < this->pot->nrxx)
+            // {
+            //     if (vr_hxc.c[++i] - 0.0 > 1e-4) { GlobalV::ofs_running << vr_hxc.c[i] << " ";++n; };
+            // }
+            // GlobalV::ofs_running << std::endl;
 
             // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\mu(r)
             // loop for nspin, or use current spin (how?)
@@ -189,21 +188,21 @@ namespace hamilt
             }
             this->hR->set_zero();   // clear hR for each bands
             this->gint->transfer_pvpR(this->hR);
-            GlobalV::ofs_running << "4.V(R):" << std::endl;
-            for (int ia = 0;ia < GlobalC::ucell.nat;ia++)
-                for (int ja = 0;ja < GlobalC::ucell.nat;ja++)
-                {
-                    auto ap = this->hR->find_pair(ia, ja);
-                    GlobalV::ofs_running << "R-index size of atom pair(" << ia << ", " << ja << "): " << ap->get_R_size() << std::endl;
-                    for (int iR = 0;iR < ap->get_R_size();++iR)
-                    {
-                        GlobalV::ofs_running << "R(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): ";
-                        auto ptr = ap->get_HR_values(iR).get_pointer();
-                        int size = ap->get_size();
-                        for (int i = 0;i < size;++i)GlobalV::ofs_running << ptr[i] << " ";
-                        GlobalV::ofs_running << std::endl;
-                    }
-                }
+            // GlobalV::ofs_running << "4.V(R):" << std::endl;
+            // for (int ia = 0;ia < GlobalC::ucell.nat;ia++)
+            //     for (int ja = 0;ja < GlobalC::ucell.nat;ja++)
+            //     {
+            //         auto ap = this->hR->find_pair(ia, ja);
+            //         GlobalV::ofs_running << "R-index size of atom pair(" << ia << ", " << ja << "): " << ap->get_R_size() << std::endl;
+            //         for (int iR = 0;iR < ap->get_R_size();++iR)
+            //         {
+            //             GlobalV::ofs_running << "R(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): ";
+            //             auto ptr = ap->get_HR_values(iR).get_pointer();
+            //             int size = ap->get_size();
+            //             for (int i = 0;i < size;++i)GlobalV::ofs_running << ptr[i] << " ";
+            //             GlobalV::ofs_running << std::endl;
+            //         }
+            //     }
             // V(R)->V(k)
             int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER() ? this->pmat->get_row_size() : this->pmat->get_col_size();
             for (int isk = 0;isk < this->nsk;++isk)
@@ -211,16 +210,16 @@ namespace hamilt
                 // this->gint->vl_grid_to_2D(this->gint->get_pvpR_grid(), *pmat, lgd, (is == 0), v_hxc_2d[is].c, setter);
                 hamilt::folding_HR(*this->hR, v_hxc_2d[isk].data<T>(), this->kv.kvec_d[isk], nrow, 1);            // V(R) -> V(k)
             }
-            GlobalV::ofs_running << "4. V(k)" << std::endl;
-            for (int isk = 0;isk < this->nsk;++isk)
-            {
-                for (int j = 0; j < pmat->get_col_size();++j)
-                {
-                    for (int i = 0;i < pmat->get_row_size();++i)
-                        GlobalV::ofs_running << v_hxc_2d[isk].data<T>()[j * pmat->get_row_size() + i] << " ";
-                    GlobalV::ofs_running << std::endl;
-                }
-            }
+            // GlobalV::ofs_running << "4. V(k)" << std::endl;
+            // for (int isk = 0;isk < this->nsk;++isk)
+            // {
+            //     for (int j = 0; j < pmat->get_col_size();++j)
+            //     {
+            //         for (int i = 0;i < pmat->get_row_size();++i)
+            //             GlobalV::ofs_running << v_hxc_2d[isk].data<T>()[j * pmat->get_row_size() + i] << " ";
+            //         GlobalV::ofs_running << std::endl;
+            //     }
+            // }
             // clear useless matrices
             // LR_Util::delete_p3(dm_trans_grid, nsk, lgd);
             LR_Util::delete_p2(rho_trans, nspin);
