@@ -6,6 +6,7 @@
 #include "hamilt_casida.hpp"
 #include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
 #include "module_beyonddft/hsolver_lrtd.h"
+#include "module_beyonddft/lr_spectrum.hpp"
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 #include "module_io/read_wfc_nao.h"
@@ -39,7 +40,7 @@ void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<s
 inline double getreal(std::complex<double> x) { return x.real(); }
 inline double getreal(double x) { return x; }
 
-inline void redrect_log(const bool& out_alllog)
+inline void redirect_log(const bool& out_alllog)
 {
     GlobalV::ofs_running.close();
     std::stringstream   ss;
@@ -60,9 +61,9 @@ inline void redrect_log(const bool& out_alllog)
 
 template<typename T, typename TR>
 ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
-    Input& inp, UnitCell& ucell) : ucell(ucell)
+    Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
 {
-    redrect_log(inp.out_alllog);
+    redirect_log(inp.out_alllog);
     ModuleBase::TITLE("ESolver_LRTD", "ESolver_LRTD");
 
     // xc kernel
@@ -136,13 +137,14 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
 #endif
     this->init_A(dynamic_cast<hamilt::HamiltLCAO<T, TR>*>(ks_sol.p_hamilt)->getHR(), inp.lr_thr);
     this->lr_solver = inp.lr_solver;
+    this->pelec = new elecstate::ElecStateLCAO<T>();
 }
 
 
 template<typename T, typename TR>
-ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : ucell(ucell)
+ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
 {
-    redrect_log(inp.out_alllog);
+    redirect_log(inp.out_alllog);
     ModuleBase::TITLE("ESolver_LRTD", "ESolver_LRTD");
     // xc kernel
     this->xc_kernel = inp.xc_kernel;
@@ -285,6 +287,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
 
     this->init_A(nullptr, inp.lr_thr);
     this->lr_solver = inp.lr_solver;
+    this->pelec = new elecstate::ElecState();
 }
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
@@ -292,6 +295,24 @@ void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
     ModuleBase::TITLE("ESolver_LRTD", "Run");
     this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->lr_solver);
     return;
+}
+
+template<typename T, typename TR>
+void ModuleESolver::ESolver_LRTD<T, TR>::postprocess()
+{
+    //cal spectrum
+    LR_Spectrum<T> spectrum(this->pelec->ekb.c, *this->X, this->nspin, this->nbasis, this->nocc, this->nvirt, this->gint, *this->pw_rho, *this->psi_ks, this->ucell, this->kv, this->paraX_, this->paraC_, this->paraMat_);
+    spectrum.oscillator_strength();
+    spectrum.transition_analysis();
+    std::vector<double> freq(100);
+    std::vector<double> abs_wavelen_range({ 20, 200 });//default range
+    if (input.abs_wavelen_range.size() == 2 && std::abs(input.abs_wavelen_range[1] - input.abs_wavelen_range[0]) > 0.02)
+        abs_wavelen_range = input.abs_wavelen_range;
+    double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
+    double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
+    for (int i = 0;i < freq.size();++i)freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff);
+    double eta = 0.01;
+    spectrum.optical_absorption(freq, eta);
 }
 
 template<typename T, typename TR>
@@ -326,7 +347,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
     // if (E_{lumo}-E_{homo-1} < E_{lumo+1}-E{homo}), mode = 0, else 1(smaller first)
     bool ix_mode = 0;   //default
     if (this->eig_ks.nc > nocc + 1 && nocc >= 2 &&
-        eig_ks(0, nocc) - eig_ks(0, nocc - 2) > eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1))
+        eig_ks(0, nocc) - eig_ks(0, nocc - 2) - 1e-5 > eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1))
         ix_mode = 1;
     GlobalV::ofs_running << "setting the initial guess of X: " << std::endl;
     if (nocc >= 2 && eig_ks.nc > nocc)GlobalV::ofs_running << "E_{lumo}-E_{homo-1}=" << eig_ks(0, nocc) - eig_ks(0, nocc - 2) << std::endl;
@@ -343,7 +364,8 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
     ix2ioiv = std::move(std::get<1>(indexmap));
     
     // use unit vectors as the initial guess
-    for (int i = 0; i < std::min(this->nstates * GlobalV::PW_DIAG_NDIM, nocc * nvirt); i++)
+    // for (int i = 0; i < std::min(this->nstates * GlobalV::PW_DIAG_NDIM, nocc * nvirt); i++)
+    for (int i = 0; i < nstates; i++)
     {
         this->X->fix_b(i);
         int occ_global = std::get<0>(ix2ioiv[i]);   // occ
@@ -352,6 +374,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
             for (int isk = 0;isk < this->nsk;++isk)
                 (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
     }
+    this->X->fix_b(0);  //recover the pointer
 
     LR_Util::setup_2d_division(this->paraC_, 1, this->nbasis, this->nocc + this->nvirt, this->paraX_.comm_2D, this->paraX_.blacs_ctxt);
 }
@@ -386,6 +409,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_A(hamilt::HContainer<double>* pHR_
             }
         }
         pHR->allocate(true);
+        if (std::is_same<T, double>::value) pHR->fix_gamma();
     }
     pHR->set_paraV(&this->paraMat_);
     this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, pHR,

@@ -33,7 +33,7 @@ TEST(LR_Util, cal_nocc)
 {
     size_t nelec = 5;
     size_t nocc = LR_Util::cal_nocc(nelec);
-    EXPECT_EQ(nocc, 2);
+    EXPECT_EQ(nocc, 3);
 }
 
 TEST(LR_Util, set_ix_map_diagonal)

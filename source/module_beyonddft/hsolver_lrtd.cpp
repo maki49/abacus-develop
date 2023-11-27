@@ -5,6 +5,8 @@
 
 namespace hsolver
 {
+    inline double square(double x) { return x * x; };
+    inline double square(std::complex<double> x) { return x.real() * x.real() + x.imag() * x.imag(); };
     template<typename T, typename Device>
     void HSolverLR<T, Device>::solve(hamilt::Hamilt<T, Device>* pHamilt,
         psi::Psi<T, Device>& psi,
@@ -17,7 +19,7 @@ namespace hsolver
 
         // 1. allocate precondition and eigenvalue
         std::vector<Real> precondition(psi.get_nk() * psi.get_nbasis());
-        std::vector<Real> eigenvalue(psi.get_nbands());   //nstataes
+        std::vector<Real> eigenvalue(psi.get_nbands());   //nstates
         // 2. select the method
         this->method = method_in;
         if (this->method == "dav")
@@ -36,37 +38,48 @@ namespace hsolver
             std::vector<T> Amat_full = pHamilt->matrix();
             eigenvalue.resize(npairs);
             LR_Util::diag_lapack(npairs, Amat_full.data(), eigenvalue.data());
-            std::cout << "eigenvalues:" << std::endl;
-            for (auto& e : eigenvalue)std::cout << e << " ";
-            std::cout << std::endl;
-            return;
+            psi.fix_kb(0, 0);
+            // copy eigenvectors
+            for (int i = 0;i < psi.size();++i) psi.get_pointer()[i] = Amat_full[i];
         }
         else
             throw std::runtime_error("HSolverLR::solve: method not implemented");
 
-        // 3. set precondition and diagethr
-        for (int i = 0;i < psi.get_nk() * psi.get_nbasis();++i)precondition[i] = static_cast<Real>(1.0);
-        // T ethr = this->set_diagether(1, 1, static_cast<T>(1e-2));
-        std::cout << "ethr: " << this->diag_ethr << std::endl;
-        // 4. solve Hamiltonian
-        this->pdiagh->diag(pHamilt, psi, eigenvalue.data());
+        if (this->method != "lapack")
+        {
+            // 3. set precondition and diagethr
+            for (int i = 0;i < psi.get_nk() * psi.get_nbasis();++i)precondition[i] = static_cast<Real>(1.0);
+            // T ethr = this->set_diagether(1, 1, static_cast<T>(1e-2));
+            std::cout << "ethr: " << this->diag_ethr << std::endl;
+            // 4. solve Hamiltonian
+            this->pdiagh->diag(pHamilt, psi, eigenvalue.data());
+        }
+
         // 5. copy eigenvalue to pes
+        pes->ekb.create(1, psi.get_nbands());
+        for (int ist = 0;ist < psi.get_nbands();++ist) pes->ekb(0, ist) = eigenvalue[ist];
+
+
+        // 6. output eigenvalues and eigenvectors
         std::cout << "eigenvalues:" << std::endl;
         for (auto& e : eigenvalue)std::cout << e << " ";
         std::cout << std::endl;
 
-        std::cout << "eigenvectors:" << std::endl;
-        for (int ist = 0;ist < psi.get_nbands();++ist)
-        {
-            for (int ik = 0;ik < psi.get_nk();++ik)
-            {
-                for (int ib = 0;ib < psi.get_nbasis();++ib)
-                {
-                    std::cout << psi(ist, ik, ib) << " ";
-                }
-            }
-            std::cout << std::endl;
-        }
+        // normalization is already satisfied
+        // std::cout << "check normalization of eigenvectors:" << std::endl;
+        // for (int ist = 0;ist < psi.get_nbands();++ist)
+        // {
+        //     double norm2 = 0;
+        //     for (int ik = 0;ik < psi.get_nk();++ik)
+        //     {
+        //         for (int ib = 0;ib < psi.get_nbasis();++ib)
+        //         {
+        //             norm2 += square(psi(ist, ik, ib));
+        //             std::cout << "norm2_now=" << norm2 << std::endl;
+        //         }
+        //     }
+        //     std::cout << "state " << ist << ", norm2=" << norm2 << std::endl;
+        // }
 
         // output iters
         std::cout << "Average iterative diagonalization steps: " << DiagoIterAssist<T, Device>::avg_iter
