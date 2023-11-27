@@ -97,6 +97,7 @@ void Driver::driver_run(void)
             p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
         ModuleESolver::clean_esolver(p_esolver);
         p_esolver_lr->Run(0, GlobalC::ucell);
+        p_esolver_lr->postprocess();
 
         std::cout << "before clean lr" << std::endl;
         ModuleESolver::clean_esolver(p_esolver_lr);

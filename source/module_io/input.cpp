@@ -653,6 +653,7 @@ void Input::Default(void)
     xc_kernel = "LDA";
     lr_solver = "dav";
     lr_thr = 1e-2;
+    abs_wavelen_range = { 0.0, 0.0 };
     return;
 }
 
@@ -2379,6 +2380,12 @@ bool Input::Read(const std::string& fn)
         {
             read_value(ifs, lr_thr);
         }
+        else if (strcmp("abs_wavelen_range", word) == 0)
+        {
+            ifs >> abs_wavelen_range[0] >> abs_wavelen_range[1];
+            std::string line;
+            getline(ifs, line);
+        }
         //----------------------------------------------------------------------------------
         else
         {
@@ -3754,6 +3761,7 @@ void Input::Bcast()
     Parallel_Common::bcast_string(xc_kernel);
     Parallel_Common::bcast_string(lr_solver);
     Parallel_Common::bcast_double(lr_thr);
+    if (abs_wavelen_range.size())Parallel_Common::bcast_double(abs_wavelen_range.data(), abs_wavelen_range.size());
     return;
 }
 #endif

@@ -509,7 +509,7 @@ ModuleBase::GlobalFunc::OUTP(ofs, "out_bandgap", out_bandgap, "if true, print ou
    ModuleBase::GlobalFunc::OUTP(ofs, "xc_kernel", xc_kernel, "xc kernel for LR-TDDFT. default: LDA");
    ModuleBase::GlobalFunc::OUTP(ofs, "lr_solver", lr_solver, "the diagonalization method for LR-TDDFT");
    ModuleBase::GlobalFunc::OUTP(ofs, "lr_thr", lr_thr, "convergence threshold of the LR - TDDFT eigensolver");
-
+   ModuleBase::GlobalFunc::OUTP(ofs, "abs_wavelen_range", std::to_string(abs_wavelen_range[0]) + " " + std::to_string(abs_wavelen_range[1]), "the range of wavelength(nm) to output the absorption spectrum");
    ofs.close();
     return;
 }
