@@ -19,7 +19,7 @@ namespace hsolver
 
         // 1. allocate precondition and eigenvalue
         std::vector<Real> precondition(psi.get_nk() * psi.get_nbasis());
-        std::vector<Real> eigenvalue(psi.get_nbands());   //nstataes
+        std::vector<Real> eigenvalue(psi.get_nbands());   //nstates
         // 2. select the method
         this->method = method_in;
         if (this->method == "dav")
