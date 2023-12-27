@@ -30,7 +30,7 @@ namespace hamilt
             const K_Vectors& kv_in,
             Parallel_2D* pX_in,
             Parallel_2D* pc_in,
-            Parallel_Orbitals* pmat_in) : nocc(nocc), nvirt(nvirt), pX(pX_in)
+            Parallel_Orbitals* pmat_in) : nocc(nocc), nvirt(nvirt), pX(pX_in), nsk(eig_ks.nr)
         {
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
@@ -70,36 +70,42 @@ namespace hamilt
         {
             ModuleBase::TITLE("HamiltCasidaLR", "matrix");
             int npairs = this->nocc * this->nvirt;
-            std::vector<T> Amat_full(npairs * npairs, 0.0);
-            for (int lj = 0;lj < this->pX->get_col_size();++lj)
-                for (int lb = 0;lb < this->pX->get_row_size();++lb)
-                {//calculate A^{ai} for each bj
-                    int b = pX->local2global_row(lb);
-                    int j = pX->local2global_col(lj);
-                    int bj = j * nvirt + b;
-                    psi::Psi<T> X_bj(1, 1, this->pX->get_local_size());
-                    X_bj.zero_out();
-                    X_bj(0, 0, lj * this->pX->get_row_size() + lb) = this->one();
-                    psi::Psi<T> A_aibj(1, 1, this->pX->get_local_size());
-                    A_aibj.zero_out();
-                    Operator<T>* node(this->ops);
-                    while (node != nullptr)
-                    {
-                        node->act(X_bj, A_aibj, 1);
-                        node = (Operator<T>*)(node->next_op);
+            std::vector<T> Amat_full(this->nsk * npairs * this->nsk * npairs, 0.0);
+            for (int isk = 0;isk < this->nsk;++isk)
+                for (int j = 0;j < nocc;++j)
+                    for (int b = 0;b < nvirt;++b)
+                    {//calculate A^{ai} for each bj
+                        int bj = j * nvirt + b;
+                        int kbj = isk * npairs + bj;
+                        psi::Psi<T> X_bj(1, 1, this->nsk * this->pX->get_local_size()); // k1-first, like in iterative solver
+                        X_bj.zero_out();
+                        // X_bj(0, 0, lj * this->pX->get_row_size() + lb) = this->one();
+                        int lj = this->pX->global2local_col(j);
+                        int lb = this->pX->global2local_row(b);
+                        if (this->pX->in_this_processor(b, j)) X_bj(0, 0, isk * this->pX->get_local_size() + lj * this->pX->get_row_size() + lb) = this->one();
+                        psi::Psi<T> A_aibj(1, 1, this->nsk * this->pX->get_local_size()); // k1-first
+                        A_aibj.zero_out();
+
+                        Operator<T>* node(this->ops);
+                        while (node != nullptr)
+                        {   // act() on and return the k1-first type of psi
+                            node->act(X_bj, A_aibj, 1);
+                            node = (Operator<T>*)(node->next_op);
+                        }
+                        // reduce ai for a fixed bj
+                        A_aibj.fix_kb(0, 0);
+                        for (int isk_ai = 0;isk_ai < this->nsk;++isk_ai)
+                            LR_Util::gather_2d_to_full(*this->pX, &A_aibj.get_pointer()[isk_ai * this->pX->get_local_size()],
+                                Amat_full.data() + kbj * this->nsk * npairs /*col, bj*/ + isk_ai * npairs/*row, ai*/,
+                                false, this->nvirt, this->nocc);
                     }
-                    // reduce ai for a fixed bj
-                    LR_Util::gather_2d_to_full(*this->pX, A_aibj.get_pointer(), Amat_full.data() + bj * npairs, false, this->nvirt, this->nocc);
-                }
-            // reduce all bjs
-            MPI_Allreduce(MPI_IN_PLACE, Amat_full.data(), npairs * npairs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             // output Amat
             std::cout << "Amat_full:" << std::endl;
-            for (int i = 0;i < npairs;++i)
+            for (int i = 0;i < this->nsk * npairs;++i)
             {
-                for (int j = 0;j < npairs;++j)
+                for (int j = 0;j < this->nsk * npairs;++j)
                 {
-                    std::cout << Amat_full[i * npairs + j] << " ";
+                    std::cout << Amat_full[i * this->nsk * npairs + j] << " ";
                 }
                 std::cout << std::endl;
             }
@@ -108,6 +114,7 @@ namespace hamilt
     private:
         int nocc;
         int nvirt;
+        int nsk;
         Parallel_2D* pX = nullptr;
         T one();
         HContainer<double>* hR = nullptr;

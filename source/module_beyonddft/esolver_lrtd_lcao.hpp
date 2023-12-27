@@ -60,6 +60,13 @@ inline void redirect_log(const bool& out_alllog)
 }
 
 template<typename T, typename TR>
+void ModuleESolver::ESolver_LRTD<T, TR>::parameter_check()
+{
+    if (std::is_same<T, std::complex<double>>::value && this->nsk / this->nspin > 1 && this->input.lr_solver == "lapack")
+        throw std::invalid_argument("ESolver_LRTD: explicitly contruct A matrix is not supported for multi-k due to the complex density matrix.");
+}
+
+template<typename T, typename TR>
 ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
     Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
 {
@@ -94,6 +101,8 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     this->nspin = GlobalV::NSPIN;
     this->kv = std::move(ks_sol.kv);
     this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
+
+    this->parameter_check();
 
     //allocate 2-particle state and setup 2d division
     this->nbasis = GlobalV::NLOCAL;
@@ -170,6 +179,8 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
     ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "INIT K-POINTS");
     Print_Info::setup_parameters(ucell, this->kv);
+
+    this->parameter_check();
 
     // necessary steps in ESolver_KS_LCAO::Init_Basis_lcao
     // read orbitals
@@ -419,7 +430,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_A(hamilt::HContainer<double>* pHR_
         this->gint, this->pot, this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
 
     // init HSolver
-    this->phsol = new hsolver::HSolverLR<T>(this->npairs);
+    this->phsol = new hsolver::HSolverLR<T>(this->nsk, this->npairs);
     this->phsol->set_diagethr(0, 0, std::max(1e-13, lr_thr));
 }
 

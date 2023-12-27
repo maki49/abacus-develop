@@ -59,7 +59,7 @@ namespace hamilt
                     for (size_t j = 0;j < nocc;++j)
                     {
                         for (size_t b = 0; b < nvirt;++b)
-                            dm_trans[isk].data<std::complex<double>>()[mu * naos + nu] += c(j, mu) * X_istate(j * nvirt + b) * std::conj(c(nocc + b, nu));
+                            dm_trans[isk].data<std::complex<double>>()[mu * naos + nu] += std::conj(c(j, mu)) * X_istate(j * nvirt + b) * c(nocc + b, nu);
                     }
                 }
             }
@@ -80,18 +80,18 @@ namespace hamilt
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
-            // Xc^*, c^*=c [nocc, naos] for gamma_only
-            char transa = 'T';
+            // 1. [X*C_occ^T]^T=C_occ*X^T
+            char transa = 'N';
             char transb = 'T';
             const double alpha = 1.0;
             const double beta = 0.0;
-            container::Tensor Xc(DAT::DT_DOUBLE, DEV::CpuDevice, { nocc, naos });
-            dgemm_(&transa, &transb, &nocc, &naos, &nvirt, &alpha,
-                X_istate.get_pointer(), &nvirt, c.get_pointer(nocc), &naos,
-                &beta, Xc.data<double>(), &nocc);
-            // cXc^*
-            dgemm_(&transa, &transb, &naos, &naos, &nocc, &alpha,
-                Xc.data<double>(), &nocc, c.get_pointer(), &naos, &beta,
+            container::Tensor Xc(DAT::DT_DOUBLE, DEV::CpuDevice, { nvirt, naos });
+            dgemm_(&transa, &transb, &naos, &nvirt, &nocc, &alpha,
+                c.get_pointer(), &naos, X_istate.get_pointer(), &nvirt,
+                &beta, Xc.data<double>(), &naos);
+            // 2. C_virt*[X*C_occ^T]
+            dgemm_(&transa, &transb, &naos, &naos, &nvirt, &alpha,
+                c.get_pointer(nocc), &naos, Xc.data<double>(), &naos, &beta,
                 dm_trans[isk].data<double>(), &naos);
         }
         return dm_trans;
@@ -110,18 +110,18 @@ namespace hamilt
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
-            // Xc^*
-            char transa = 'C';
-            char transb = 'T';
+            // 1. [X*C_occ^\dagger]^\dagger=C_occ*X^\dagger
+            char transa = 'N';
+            char transb = 'C';
             const std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta(0.0, 0.0);
-            container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nocc, naos });
-            zgemm_(&transa, &transb, &nocc, &naos, &nvirt, &alpha,
-                X_istate.get_pointer(), &nvirt, c.get_pointer(nocc), &naos,
-                &beta, Xc.data<std::complex<double>>(), &nocc);
-            // cXc^*
-            zgemm_(&transa, &transb, &naos, &naos, &nocc, &alpha,
-                Xc.data<std::complex<double>>(), &nocc, c.get_pointer(), &naos, &beta,
+            container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nvirt, naos });
+            zgemm_(&transa, &transb, &naos, &nvirt, &nocc, &alpha,
+                c.get_pointer(), &naos, X_istate.get_pointer(), &nvirt,
+                &beta, Xc.data<std::complex<double>>(), &naos);
+            // 2. C_virt*[X*C_occ^\dagger]
+            zgemm_(&transa, &transb, &naos, &naos, &nvirt, &alpha,
+                c.get_pointer(nocc), &naos, Xc.data<std::complex<double>>(), &naos, &beta,
                 dm_trans[isk].data<std::complex<double>>(), &naos);
         }
         return dm_trans;

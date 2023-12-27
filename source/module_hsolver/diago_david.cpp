@@ -56,7 +56,7 @@ void DiagoDavid<T, Device>::diag_mock(hamilt::Hamilt<T, Device>* phm_in,
     ModuleBase::timer::tick("DiagoDavid", "diag_mock");
 
     assert(DiagoDavid::PW_DIAG_NDIM > 1);
-    assert(DiagoDavid::PW_DIAG_NDIM * psi.get_nbands() < psi.get_current_nbas() * GlobalV::NPROC_IN_POOL);
+    assert(DiagoDavid::PW_DIAG_NDIM * psi.get_nbands() < (psi.get_k_first() ? psi.get_current_nbas() : psi.get_nk() * psi.get_nbasis()) * GlobalV::NPROC_IN_POOL);
     // qianrui change it 2021-7-25.
     // In strictly speaking, it shoule be PW_DIAG_NDIM*nband < npw sum of all pools. We roughly estimate it here.
     // However, in most cases, total number of plane waves should be much larger than nband*PW_DIAG_NDIM
