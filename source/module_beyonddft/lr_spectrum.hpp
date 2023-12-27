@@ -153,14 +153,16 @@ void LR_Spectrum<T>::transition_analysis()
         << std::setw(15) << transition_dipole_[istate].x << std::setw(15) << transition_dipole_[istate].y << std::setw(15) << transition_dipole_[istate].z
         << std::setw(30) << oscillator_strength_[istate] << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
-    ofs << std::setw(8) << "State" << std::setw(20) << "Occupied orbital" <<
-        std::setw(20) << "Virtual orbital" << std::setw(30) << "Excitation amplitude" << std::endl;
+    ofs << std::setw(8) << "State" << std::setw(20) << "Occupied orbital"
+        << std::setw(20) << "Virtual orbital" << std::setw(30) << "Excitation amplitude"
+        << std::setw(30) << "Excitation rate"
+        << std::setw(10) << "k-point" << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
     for (int istate = 0;istate < X.get_nbands();++istate)
     {
         /// find the main contributions (> 0.5)
         X.fix_b(istate);
-        psi::Psi<T> X_full(1, X.get_nk(), nocc * nvirt, nullptr, false);
+        psi::Psi<T> X_full(X.get_nk(), 1, nocc * nvirt, nullptr, false);// one-band
         X_full.zero_out();
         for (int isk = 0;isk < X.get_nk();++isk)
         {
@@ -170,16 +172,19 @@ void LR_Spectrum<T>::transition_analysis()
         }
         std::map<double, int, std::greater<double>> abs_order;
         X_full.fix_k(0);
-        for (int i = 0;i < X.get_nk() * nocc * nvirt;++i) { double abs = std::abs(X_full.get_pointer()[i]);if (abs > 0.5) abs_order[abs] = i; }
+        for (int i = 0;i < X.get_nk() * nocc * nvirt;++i) { double abs = std::abs(X_full.get_pointer()[i]);if (abs > 0.3) abs_order[abs] = i; }
         if (abs_order.size() > 0)
             for (auto it = abs_order.cbegin();it != abs_order.cend();++it)
             {
-                int ik = it->second % X.get_nk();
+                int ik = it->second / (nocc * nvirt);
                 int ipair = it->second - ik * nocc * nvirt;
                 ofs << std::setw(8) << (it == abs_order.cbegin() ? std::to_string(istate) : " ")
                     << std::setw(20) << ipair / nvirt + 1 << std::setw(20) << ipair % nvirt + nocc + 1// iocc and ivirt
-                    << std::setw(30) << X_full(ik, ipair) << std::endl;
+                    << std::setw(30) << X_full(ik, ipair)
+                    << std::setw(30) << (std::conj(X_full(ik, ipair)) * X_full(ik, ipair)).real()
+                    << std::setw(10) << ik << std::endl;
             }
     }
     ofs << "==================================================================== " << std::endl;
+    X.fix_kb(0, 0);
 }

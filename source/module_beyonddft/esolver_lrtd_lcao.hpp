@@ -419,7 +419,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_A(hamilt::HContainer<double>* pHR_
         this->gint, this->pot, this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
 
     // init HSolver
-    this->phsol = new hsolver::HSolverLR<T>(this->npairs);
+    this->phsol = new hsolver::HSolverLR<T>(this->nsk, this->npairs);
     this->phsol->set_diagethr(0, 0, std::max(1e-13, lr_thr));
 }
 
