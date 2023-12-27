@@ -17,6 +17,12 @@ class Gint_k : public Gint
     {
         destroy_pvpR();
     }
+
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs 
+    /// @return *this
+    Gint_k& operator=(Gint_k&& rhs);
+
     //------------------------------------------------------
     // in gint_k_pvpr.cpp 
     //------------------------------------------------------

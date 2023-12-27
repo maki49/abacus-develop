@@ -42,8 +42,11 @@ void TwoCenterBundle::build(int ntype,
     orb_->set_transformer(sbt);
 
     beta_ = std::unique_ptr<RadialCollection>(new RadialCollection);
-    beta_->build(ntype, nl);
-    beta_->set_transformer(sbt);
+    if (nl != nullptr)
+    {
+        beta_->build(ntype, nl);
+        beta_->set_transformer(sbt);
+    }
 
     double rmax = std::max(orb_->rcut_max(), beta_->rcut_max());
 

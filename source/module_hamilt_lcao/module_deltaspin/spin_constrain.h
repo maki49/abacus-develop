@@ -25,23 +25,23 @@ public:
     */
     /// initialize spin-constrained DFT
   void init_sc(double sc_thr_in,
-               int nsc_in,
-               int nsc_min_in,
-               double alpha_trial_in,
-               double sccut_in,
-               bool decay_grad_switch_in,
-               const UnitCell& ucell,
-               std::string sc_file,
-               int NPOL,
-               Parallel_Orbitals* ParaV_in,
-               int nspin_in,
-               K_Vectors kv_in,
-               std::string KS_SOLVER_in,
-               LCAO_Matrix* LM_in,
-               hsolver::HSolver<FPTYPE, Device>* phsol_in,
-               hamilt::Hamilt<FPTYPE, Device>* p_hamilt_in,
-               psi::Psi<FPTYPE>* psi_in,
-               elecstate::ElecState* pelec_in);
+      int nsc_in,
+      int nsc_min_in,
+      double alpha_trial_in,
+      double sccut_in,
+      bool decay_grad_switch_in,
+      const UnitCell& ucell,
+      std::string sc_file,
+      int NPOL,
+      Parallel_Orbitals* ParaV_in,
+      int nspin_in,
+      K_Vectors& kv_in,
+      std::string KS_SOLVER_in,
+      LCAO_Matrix* LM_in,
+      hsolver::HSolver<FPTYPE, Device>* phsol_in,
+      hamilt::Hamilt<FPTYPE, Device>* p_hamilt_in,
+      psi::Psi<FPTYPE>* psi_in,
+      elecstate::ElecState* pelec_in);
 
   /// calculate h_lambda operator for spin-constrained DFT
   void cal_h_lambda(std::complex<double>* h_lambda, const std::vector<std::complex<double>>& Sloc2, bool column_major, int isk);
@@ -201,13 +201,14 @@ public:
     /// @brief set orbital parallel info
     void set_ParaV(Parallel_Orbitals* ParaV_in);
     /// @brief set parameters for solver
-    void set_solver_parameters(K_Vectors kv_in,
-                               hsolver::HSolver<FPTYPE, Device>* phsol_in,
-                               hamilt::Hamilt<FPTYPE, Device>* p_hamilt_in,
-                               psi::Psi<FPTYPE>* psi_in,
-                               elecstate::ElecState* pelec_in,
-                               std::string KS_SOLVER_in,
-                               LCAO_Matrix* LM_in);
+    void set_solver_parameters(
+        K_Vectors& kv_in,
+        hsolver::HSolver<FPTYPE, Device>* phsol_in,
+        hamilt::Hamilt<FPTYPE, Device>* p_hamilt_in,
+        psi::Psi<FPTYPE>* psi_in,
+        elecstate::ElecState* pelec_in,
+        std::string KS_SOLVER_in,
+        LCAO_Matrix* LM_in);
     /// bcast sc data read from json file
     void bcast_ScData(std::string sc_file, int nat, int ntype);
 

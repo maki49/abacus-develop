@@ -370,7 +370,10 @@
     - [alpha\_trial](#alpha_trial)
     - [sccut](#sccut)
     - [sc\_file](#sc_file)
-
+  - [Beyond DFT](#beyond-dft)
+    - [nstates](#nstates)
+    - [xc\_kernel](#xc_kernel)
+    - [lr\_solverl](#lr_solver)
 [back to top](#full-list-of-input-keywords)
 
 ## System variables
@@ -417,6 +420,8 @@ These variables are used to control general system parameters.
   - tddft: real-time time-dependent density functional theory (TDDFT)
   - lj: Leonard Jones potential
   - dp: DeeP potential, see details in [md.md](../md.md#dpmd)
+  - ks-lr: Kohn-Sham density functional theory + LR-TDDFT
+  - lr: LR-TDDFT with given KS orbitals
 - **Default**: ksdft
 
 ### symmetry
@@ -3430,5 +3435,29 @@ and
 for `nspin 2` case. The difference is that `lambda`, `target_mag`, and `constrain` are scalars in `nspin 2` case, and are vectors in `nspin 4` case.
 
 - **Default**: none
+
+[back to top](#full-list-of-input-keywords)
+
+## Beyond DFT
+
+These parameters are used to solve the excited states using. e.g. lr-tddft
+
+### nstates
+
+- **Type**: Integer
+- **Description**:  The number of 2-particle states to be solved
+- **Default**: 0
+
+### xc_kernel
+
+- **Type**: String
+- **Description**: The exchange-correlation kernel used in the calculation. Currently, only `RPA` and `LDA` is supported.
+- **Default**: LDA
+
+### lr_solver
+
+- **Type**: String
+- **Description**: The diagonalization method for LR-TDDFT.
+- **Default**: LDA
 
 [back to top](#full-list-of-input-keywords)

@@ -621,6 +621,15 @@ void Input::Default(void)
     alpha_trial = 0.01;
     sccut = 3.0;
     sc_file = "none";
+    //==========================================================
+    //    beyond-dft   
+    //==========================================================
+    nstates = 0;
+    nvirt = 0;
+    xc_kernel = "LDA";
+    lr_solver = "dav";
+    lr_thr = 1e-2;
+    abs_wavelen_range = { 0.0, 0.0 };
     return;
 }
 
@@ -2254,6 +2263,36 @@ bool Input::Read(const std::string &fn)
         else if (strcmp("sc_file", word) == 0){
             read_value(ifs, sc_file);
         }
+        //----------------------------------------------------------------------------------
+        // beyond dft
+        //----------------------------------------------------------------------------------
+        else if (strcmp("nstates", word) == 0)
+        {
+            read_value(ifs, nstates);
+        }
+        else if (strcmp("nvirt", word) == 0)
+        {
+            read_value(ifs, nvirt);
+        }
+        else if (strcmp("xc_kernel", word) == 0)
+        {
+            read_value(ifs, xc_kernel);
+        }
+        else if (strcmp("lr_solver", word) == 0)
+        {
+            read_value(ifs, lr_solver);
+        }
+        else if (strcmp("lr_thr", word) == 0)
+        {
+            read_value(ifs, lr_thr);
+        }
+        else if (strcmp("abs_wavelen_range", word) == 0)
+        {
+            ifs >> abs_wavelen_range[0] >> abs_wavelen_range[1];
+            std::string line;
+            getline(ifs, line);
+        }
+        //----------------------------------------------------------------------------------
         else
         {
             // xiaohui add 2015-09-15
@@ -3528,6 +3567,15 @@ void Input::Bcast()
     Parallel_Common::bcast_double(alpha_trial);
     Parallel_Common::bcast_double(sccut);
 
+    //----------------------------------------------------------------------------------
+    //    beyond dft
+    //----------------------------------------------------------------------------------
+    Parallel_Common::bcast_int(nstates);
+    Parallel_Common::bcast_int(nvirt);
+    Parallel_Common::bcast_string(xc_kernel);
+    Parallel_Common::bcast_string(lr_solver);
+    Parallel_Common::bcast_double(lr_thr);
+    if (abs_wavelen_range.size())Parallel_Common::bcast_double(abs_wavelen_range.data(), abs_wavelen_range.size());
     return;
 }
 #endif

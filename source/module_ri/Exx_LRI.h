@@ -28,6 +28,17 @@
     template<typename T, typename Tdata>
     class Exx_LRI_Interface;
 
+    namespace ModuleESolver
+    {
+        template<typename T, typename TR>
+        class ESolver_LRTD;
+    }
+    namespace hamilt
+    {
+        template<typename T>
+        class OperatorLREXX;
+    }
+
 template<typename Tdata>
 class Exx_LRI
 {
@@ -40,7 +51,10 @@ private:
 	using TatomR = std::array<double,Ndim>;		// tmp
 
 public:
-	Exx_LRI( const Exx_Info::Exx_Info_RI &info_in ) :info(info_in){}
+    Exx_LRI(const Exx_Info::Exx_Info_RI& info_in) :info(info_in) {}
+    Exx_LRI operator=(const Exx_LRI&) = delete;
+    Exx_LRI operator=(Exx_LRI&&);
+
 
 	void init(const MPI_Comm &mpi_comm_in, const K_Vectors &kv_in);
 	void cal_exx_force();
@@ -75,6 +89,10 @@ private:
     friend class RPA_LRI<std::complex<double>, Tdata>;
     friend class Exx_LRI_Interface<double, Tdata>;
     friend class Exx_LRI_Interface<std::complex<double>, Tdata>;
+    friend class ModuleESolver::ESolver_LRTD<double, double>;
+    friend class ModuleESolver::ESolver_LRTD<std::complex<double>, double>;
+    friend class hamilt::OperatorLREXX<double>;
+    friend class hamilt::OperatorLREXX<std::complex<double>>;
 };
 
 #include "Exx_LRI.hpp"

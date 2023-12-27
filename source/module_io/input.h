@@ -587,6 +587,16 @@ class Input
     // whether to use PAW
     //==========================================================
     bool use_paw = false;
+    
+    //==========================================================
+    //Beyond DFT
+    //==========================================================
+    int nstates;      // the number of 2-particle states to be solved
+    int nvirt;        // the number of virtual orbitals to form the 2-particle basis (nocc + nvirt <= nbands)
+    std::string xc_kernel; // xc kernel for LR-TDDFT
+    std::string lr_solver; // the solver for LR-TDDFT
+    double lr_thr;  // convergence threshold of the LR-TDDFT eigensolver
+    std::vector<double> abs_wavelen_range;  // the range of wavelength(nm) to output the absorption spectrum 
 
   private:
     //==========================================================

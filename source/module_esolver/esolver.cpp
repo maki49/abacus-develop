@@ -62,6 +62,14 @@ namespace ModuleESolver
             {
                 esolver_type = "ksdft_lcao";
             }
+            else if (GlobalV::ESOLVER_TYPE == "ks-lr")
+            {
+                esolver_type = "ksdft_lr_lcao";
+            }
+            else if (GlobalV::ESOLVER_TYPE == "lr")
+            {
+                esolver_type = "lr_lcao";
+            }
 #else
             ModuleBase::WARNING_QUIT("ESolver", "LCAO basis type must be compiled with __LCAO");
 #endif
@@ -124,7 +132,7 @@ namespace ModuleESolver
             }
         }
 #ifdef __LCAO
-        else if (esolver_type == "ksdft_lcao")
+        else if (esolver_type == "ksdft_lcao" || "ksdft_lr_lcao")
         {
             if (GlobalV::GAMMA_ONLY_LOCAL)
                 p_esolver = new ESolver_KS_LCAO<double, double>();

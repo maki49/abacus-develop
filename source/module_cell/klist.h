@@ -32,6 +32,8 @@ public:
 
     K_Vectors();
     ~K_Vectors();
+    K_Vectors& operator=(const K_Vectors&) = default;
+    K_Vectors& operator=(K_Vectors&& rhs);
 
     void set(
         const ModuleSymmetry::Symmetry &symm,

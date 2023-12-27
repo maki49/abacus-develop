@@ -380,7 +380,12 @@ TEST_F(InputParaTest,Bcast)
         EXPECT_EQ(INPUT.out_bandgap,0);
         EXPECT_EQ(INPUT.out_mat_t,0);
 
-	}
+        EXPECT_EQ(INPUT.nstates, 0);
+        EXPECT_EQ(INPUT.nvirt, 0);
+        EXPECT_EQ(INPUT.xc_kernel, "LDA");
+        EXPECT_EQ(INPUT.lr_solver, "dav");
+        EXPECT_EQ(INPUT.lr_thr, 1e-2);
+    }
 }
 
 TEST_F(InputParaTest,Init)

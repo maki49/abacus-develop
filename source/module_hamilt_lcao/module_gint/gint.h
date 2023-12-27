@@ -19,6 +19,14 @@ class Gint
 
     ~Gint();
 
+    /// @brief move operator for the next ESolver to directly use its infomation
+    /// @param rhs
+    /// @return *this
+    Gint& operator=(Gint&& rhs);
+
+    hamilt::HContainer<double>* get_hRGint() const { return hRGint; }
+    std::vector<hamilt::HContainer<double>*> get_DMRGint() const { return DMRGint; }
+
     // the unified interface to grid integration
 	void cal_gint(Gint_inout *inout);
 

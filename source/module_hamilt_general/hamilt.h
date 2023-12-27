@@ -38,7 +38,7 @@ class Hamilt
     /// core function: return H(k) and S(k) matrixs for direct solving eigenvalues.
     virtual void matrix(MatrixBlock<std::complex<double>> &hk_in, MatrixBlock<std::complex<double>> &sk_in){return;}
     virtual void matrix(MatrixBlock<double> &hk_in, MatrixBlock<double> &sk_in){return;}
-
+    virtual std::vector<T> matrix() { return std::vector<T>(); }
     std::string classname = "none";
 
     int non_first_scf=0;

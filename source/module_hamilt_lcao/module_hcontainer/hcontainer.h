@@ -172,6 +172,13 @@ class HContainer
       T* data_pointer = nullptr, 
       const std::vector<int>* ijr_info = nullptr);
 
+    void set_paraV(const Parallel_Orbitals* paraV_in)
+    {
+        this->paraV = paraV_in;
+        for (auto& ap : atom_pairs) ap.set_paraV(paraV_in);
+    };
+    const Parallel_Orbitals* get_paraV() const { return this->paraV; };
+
     /**
      * @brief allocate memory for all <IJR> matrix
      * if data_array is not nullptr, 

@@ -334,3 +334,33 @@ void Parallel_2D::set_serial(const int& M_A, const int& N_A)
     for (int i = 0; i < this->ncol; i++) this->local2global_col_[i] = i;
 }
 #endif
+
+Parallel_2D& Parallel_2D::operator=(Parallel_2D&& rhs)
+{
+    ModuleBase::TITLE("Parallel_2D", "operator=");
+    this->nrow = rhs.nrow;
+    this->ncol = rhs.ncol;
+    this->nloc = rhs.nloc;
+    this->nb = rhs.nb;
+    this->dim0 = rhs.dim0;
+    this->dim1 = rhs.dim1;
+    this->coord[0] = rhs.coord[0];
+    this->coord[1] = rhs.coord[1];
+    this->testpb = rhs.testpb;
+    this->local2global_row_ = std::move(rhs.local2global_row_);
+    this->local2global_col_ = std::move(rhs.local2global_col_);
+
+    if (this->global2local_row_) delete[] this->global2local_row_;
+    this->global2local_row_ = rhs.global2local_row_;
+    rhs.global2local_row_ = nullptr;
+    if (this->global2local_col_) delete[] this->global2local_col_;
+    this->global2local_col_ = rhs.global2local_col_;
+    rhs.global2local_col_ = nullptr;
+#ifdef __MPI
+    this->blacs_ctxt = rhs.blacs_ctxt;
+    this->comm_2D = rhs.comm_2D;
+    for (int i = 0; i < 9; ++i)
+        this->desc[i] = rhs.desc[i];
+#endif
+    return *this;
+}

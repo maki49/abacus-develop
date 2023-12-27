@@ -381,6 +381,11 @@ TEST_F(InputTest, Default)
     EXPECT_DOUBLE_EQ(INPUT.alpha_trial, 0.01);
     EXPECT_DOUBLE_EQ(INPUT.sccut, 3.0);
     EXPECT_EQ(INPUT.sc_file, "none");
+    EXPECT_EQ(INPUT.nstates, 0);
+    EXPECT_EQ(INPUT.nvirt, 0);
+    EXPECT_EQ(INPUT.xc_kernel, "LDA");
+    EXPECT_EQ(INPUT.lr_solver, "dav");
+    EXPECT_EQ(INPUT.lr_thr, 1e-2);
 }
 
 TEST_F(InputTest, Read)

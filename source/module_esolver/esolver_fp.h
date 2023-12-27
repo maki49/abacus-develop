@@ -27,7 +27,6 @@ namespace ModuleESolver
         virtual void Init(Input& inp, UnitCell& cell) override;
         virtual void init_after_vc(Input& inp, UnitCell& cell);    // liuyu add 2023-03-09
         // Hamilt* phamilt;
-
         elecstate::ElecState* pelec = nullptr;
         Charge chr;
         //--------------temporary----------------------------
@@ -37,7 +36,7 @@ namespace ModuleESolver
         Structure_Factor sf;
         K_Vectors kv;
 
-      private:
+    private:
         void print_rhofft(Input& inp, std::ofstream &ofs);
     };
 }
