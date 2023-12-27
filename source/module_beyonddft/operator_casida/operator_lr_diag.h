@@ -14,7 +14,11 @@ namespace hamilt
             nsk(std::is_same<T, double>::value ? nspin_in : nks_in)
         {   // calculate the difference of eigenvalues
             ModuleBase::TITLE("OperatorLRDiag", "OperatorLRDiag");
+#ifdef __MPI
+            Parallel_Common::bcast_double(eig_ks.c, eig_ks.nr * eig_ks.nc);
+#endif
             this->act_type = 2;
+            this->cal_type = calculation_type::no;
             this->eig_ks_diff.create(nks, pX->get_local_size(), false);
             for (int ik = 0;ik < nks;++ik)
                 for (int io = 0;io < pX->get_col_size();++io)    //nocc_local
@@ -24,16 +28,6 @@ namespace hamilt
                         int iv_g = pX->local2global_row(iv);
                         this->eig_ks_diff(ik, io * pX->get_row_size() + iv) = eig_ks(ik, nocc + iv_g) - eig_ks(ik, io_g);
                     }
-            // // output eig_ks_diff
-            // GlobalV::ofs_running << "eig_ks_diff" << std::endl;
-            // for (int ik = 0;ik < nks;++ik)
-            //     for (int io = 0;io < pX->get_col_size();++io)    //nocc_local
-            //         for (int iv = 0;iv < pX->get_row_size();++iv)    //nvirt_local
-            //         {
-            //             int io_g = pX->local2global_col(io);
-            //             int iv_g = pX->local2global_row(iv);
-            //             GlobalV::ofs_running << "io_global" << io_g << "iv_global +occ" << iv_g + nocc << " e_a-e_i=" << eig_ks_diff(ik, io * pX->get_row_size() + iv) << std::endl;
-            //         }
         };
         void init(const int ik_in) override {};
 
@@ -43,26 +37,19 @@ namespace hamilt
         {
             ModuleBase::TITLE("OperatorLRDiag", "act");
             assert(nbands <= psi_in.get_nbands());
-            assert(psi_in.get_nbasis() == this->nsk * pX->get_local_size());
+
+            psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nsk, this->pX->get_local_size());
+            psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nsk, this->pX->get_local_size());
             for (int ib = 0;ib < nbands;++ib)
             {
-                psi_in.fix_b(ib);
-                psi_out.fix_b(ib);
+                psi_in_bfirst.fix_b(ib);
+                psi_out_bfirst.fix_b(ib);
                 for (int is = 0;is < nsk / nks;++is)    // 1 or 2 for gamma_only, 1 for k
                     hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
-                        psi_in.get_nbasis(),
-                        psi_out.get_pointer() + is * this->nks * pX->get_local_size(),
-                        psi_in.get_pointer() + is * this->nks * pX->get_local_size(),
+                        psi_in_bfirst.get_nk() * psi_in_bfirst.get_nbasis(),
+                        psi_out_bfirst.get_pointer() + is * this->nks * pX->get_local_size(),
+                        psi_in_bfirst.get_pointer() + is * this->nks * pX->get_local_size(),
                         this->eig_ks_diff.c);
-                //output psi_out
-                // GlobalV::ofs_running << "psi_out:" << ib << "] in OperatorLRDiag : " << std::endl;
-                // for (int ik = 0;ik < nsk;++ik)
-                //     for (int io = 0;io < pX->get_col_size();++io)    //nocc_local
-                //     {
-                //         for (int iv = 0;iv < pX->get_row_size();++iv)    //nvirt_local
-                //             GlobalV::ofs_running << psi_out.get_pointer()[ik * pX->get_local_size() + io * pX->get_row_size() + iv] << " ";
-                //         GlobalV::ofs_running << std::endl;
-                //     }
             }
         }
     private:

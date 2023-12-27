@@ -36,28 +36,27 @@ namespace hamilt
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
-            // Xc^*
-            //c^ *= c[nocc, naos] for gamma_only. 
-            Parallel_2D pXc;    //nvirt*naos
-            LR_Util::setup_2d_division(pXc, px.get_block_size(), nocc, naos, px.comm_2D, px.blacs_ctxt);
-            container::Tensor Xc(DAT::DT_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
-            Xc.zero();
             int i1 = 1;
             int ivirt = nocc + 1;
-
-            char transa = 'T';
+            char transa = 'N';
             char transb = 'T';
             const double alpha = 1;
             const double beta = 0;
-            pdgemm_(&transa, &transb, &nocc, &naos, &nvirt,
-                &alpha, X_istate.get_pointer(), &i1, &i1, px.desc,
-                c.get_pointer(), &i1, &ivirt, pc.desc,
+
+            // 1. [X*C_occ^T]^T=C_occ*X^T
+            Parallel_2D pXc;    //nvirt*naos
+            LR_Util::setup_2d_division(pXc, px.get_block_size(), naos, nvirt, px.comm_2D, px.blacs_ctxt);
+            container::Tensor Xc(DAT::DT_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
+            Xc.zero();
+            pdgemm_(&transa, &transb, &naos, &nvirt, &nocc,
+                &alpha, c.get_pointer(), &i1, &i1, pc.desc,
+                X_istate.get_pointer(), &i1, &i1, px.desc,
                 &beta, Xc.data<double>(), &i1, &i1, pXc.desc);
 
-            // cXc^*
-            pdgemm_(&transa, &transb, &naos, &naos, &nocc,
-                &alpha, Xc.data<double>(), &i1, &i1, pXc.desc,
-                c.get_pointer(), &i1, &i1, pc.desc,
+            // 2. C_virt*[X*C_occ^T]
+            pdgemm_(&transa, &transb, &naos, &naos, &nvirt,
+                &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
+                Xc.data<double>(), &i1, &i1, pXc.desc,
                 &beta, dm_trans[isk].data<double>(), &i1, &i1, pmat.desc);
         }
         return dm_trans;
@@ -88,28 +87,27 @@ namespace hamilt
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
-
-            // (X^T)^T c_{virt}^\dagger
-            Parallel_2D pXc;
-            LR_Util::setup_2d_division(pXc, px.get_block_size(), nocc, naos, px.comm_2D, px.blacs_ctxt);
-            container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
-            Xc.zero();
             int i1 = 1;
             int ivirt = nocc + 1;
+            char transa = 'N';
+            char transb = 'C';
 
-            char transa = 'C';
-            char transb = 'T';
+            // 1. [X*C_occ^\dagger]^\dagger=C_occ*X^\dagger
+            Parallel_2D pXc;
+            LR_Util::setup_2d_division(pXc, px.get_block_size(), naos, nvirt, px.comm_2D, px.blacs_ctxt);
+            container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
+            Xc.zero();
             const std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta(0.0, 0.0);
-            pzgemm_(&transa, &transb, &nocc, &naos, &nvirt,
-                &alpha, X_istate.get_pointer(), &i1, &i1, px.desc,
-                c.get_pointer(), &i1, &ivirt, pc.desc,
+            pzgemm_(&transa, &transb, &naos, &nvirt, &nocc,
+                &alpha, c.get_pointer(), &i1, &i1, pc.desc,
+                X_istate.get_pointer(), &i1, &i1, px.desc,
                 &beta, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc);
 
-            // cXc^*
-            pzgemm_(&transa, &transb, &naos, &naos, &nocc,
-                &alpha, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc,
-                c.get_pointer(), &i1, &i1, pc.desc,
+            // 2. C_virt*[X*C_occ^\dagger]
+            pzgemm_(&transa, &transb, &naos, &naos, &nvirt,
+                &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
+                Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc,
                 &beta, dm_trans[isk].data<std::complex<double>>(), &i1, &i1, pmat.desc);
         }
         return dm_trans;

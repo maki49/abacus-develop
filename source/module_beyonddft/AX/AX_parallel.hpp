@@ -56,8 +56,6 @@ namespace hamilt
 
             // AX_istate = c ^ TVc
             // descC puts M(nvirt) to row
-            transa = 'T';
-            transb = 'N';
             pdgemm_(&transa, &transb, &nvirt, &nocc, &naos,
                 &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
                 Vc.data<double>(), &i1, &i1, pVc.desc,
@@ -103,7 +101,7 @@ namespace hamilt
             int i1 = 1;
             int ivirt = nocc + 1;
 
-            char transa = 'T';
+            char transa = 'C';
             char transb = 'N';
             const std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta = add_on ? std::complex<double>(1.0, 0.0) : std::complex<double>(0.0, 0.0);
@@ -114,8 +112,6 @@ namespace hamilt
 
             // AX_istate = c ^ TVc
             // descC puts M(nvirt) to row
-            transa = 'C';
-            transb = 'N';
             pzgemm_(&transa, &transb, &nvirt, &nocc, &naos,
                 &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
                 Vc.data<std::complex<double>>(), &i1, &i1, pVc.desc,

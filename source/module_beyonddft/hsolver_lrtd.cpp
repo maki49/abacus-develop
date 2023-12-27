@@ -28,16 +28,16 @@ namespace hsolver
             this->pdiagh = new DiagoDavid<T, Device>(precondition.data());      //waiting for complex<T> removement
             this->pdiagh->method = this->method;
         }
-        else if (this->method == "cg")
-        {
-            this->pdiagh = new DiagoCG<T, Device>(precondition.data());
-            this->pdiagh->method = this->method;
-        }
+        // else if (this->method == "cg")
+        // {
+        //     this->pdiagh = new DiagoCG<T, Device>(precondition.data());
+        //     this->pdiagh->method = this->method;
+        // }
         else if (this->method == "lapack")
         {
             std::vector<T> Amat_full = pHamilt->matrix();
-            eigenvalue.resize(npairs);
-            LR_Util::diag_lapack(npairs, Amat_full.data(), eigenvalue.data());
+            eigenvalue.resize(nsk * npairs);
+            LR_Util::diag_lapack(nsk * npairs, Amat_full.data(), eigenvalue.data());
             psi.fix_kb(0, 0);
             // copy eigenvectors
             for (int i = 0;i < psi.size();++i) psi.get_pointer()[i] = Amat_full[i];

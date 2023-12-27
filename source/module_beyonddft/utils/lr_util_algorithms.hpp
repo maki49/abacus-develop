@@ -282,6 +282,7 @@ namespace LR_Util
     template <typename T>
     void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, bool col_first, int global_nrow, int global_ncol)
     {
+        ModuleBase::TITLE("LR_Util", "gather_2d_to_full");
         auto get_mpi_datatype = []() -> MPI_Datatype {
             if (std::is_same<T, int>::value) { return MPI_INT; }
             if (std::is_same<T, float>::value) { return MPI_FLOAT; }

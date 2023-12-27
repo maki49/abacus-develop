@@ -120,6 +120,8 @@ namespace ModuleESolver
 
         void init_pot(const Charge& chg_gs);
 
+        void parameter_check();
+
 #ifdef __EXX
         /// Tdata of Exx_LRI is same as T, for the reason, see operator_lr_exx.h
         std::shared_ptr<Exx_LRI<T>> exx_lri = nullptr;

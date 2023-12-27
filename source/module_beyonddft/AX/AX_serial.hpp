@@ -62,7 +62,7 @@ namespace hamilt
                     {
                         for (int mu = 0;mu < naos;++mu)
                         {
-                            AX_istate(i * nvirt + a) += std::conj(c(nocc + a, mu)) * V_istate[isk].data<std::complex<double>>()[mu * naos + nu] * c(i, nu);
+                            AX_istate(i * nvirt + a) += std::conj(c(nocc + a, mu)) * std::conj(V_istate[isk].data<std::complex<double>>()[mu * naos + nu]) * c(i, nu);
                         }
                     }
                 }
@@ -123,20 +123,17 @@ namespace hamilt
             c.fix_k(isk);
             AX_istate.fix_k(isk);
 
-            // Vc[naos*nocc]
+            // Vc[naos*nocc] (V is hermitian)
             container::Tensor Vc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nocc, naos });// (Vc)^T
             Vc.zero();
-            char transa = 'T';
+            char transa = 'C';
             char transb = 'N';  //c is col major
             const std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta = add_on ? std::complex<double>(1.0, 0.0) : std::complex<double>(0.0, 0.0);
             zgemm_(&transa, &transb, &naos, &nocc, &naos, &alpha,
                 V_istate[isk].data<std::complex<double>>(), &naos, c.get_pointer(), &naos, &beta,
                 Vc.data<std::complex<double>>(), &naos);
-
-            //AX_istate=c^TVc (nvirt major)
-            transa = 'C';
-            transb = 'N';
+            //AX_istate=c^\dagger Vc (nvirt major)
             zgemm_(&transa, &transb, &nvirt, &nocc, &naos, &alpha,
                 c.get_pointer(nocc), &naos, Vc.data<std::complex<double>>(), &naos, &beta,
                 AX_istate.get_pointer(), &nvirt);
