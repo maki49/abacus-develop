@@ -44,30 +44,29 @@ namespace hamilt
             psi_out_bfirst.fix_b(ib);
 
             // 1. transition density matrix (nsk)
-            GlobalV::ofs_running << "1. transition density matrix" << std::endl;
-            // multi-k needs k-to-R FT
-            // output c and X
-            GlobalV::ofs_running << "nvirt:" << nvirt << " nocc:" << nocc << std::endl;
-            GlobalV::ofs_running << "nvirt local:" << pX->get_row_size();
-            GlobalV::ofs_running << "nocc local:" << pX->get_col_size() << std::endl;
-            GlobalV::ofs_running << "X: " << std::endl;
-            for (int j = 0;j < pX->get_col_size();++j)  //nbands
-            {
-                for (int i = 0;i < pX->get_row_size();++i)  //nlocal
-                    GlobalV::ofs_running << psi_in_bfirst.get_pointer()[j * pX->get_row_size() + i] << " ";
-                GlobalV::ofs_running << std::endl;
-            }
-            GlobalV::ofs_running << std::endl;
-            GlobalV::ofs_running << "C: " << std::endl;
-            GlobalV::ofs_running << "naos:" << naos << " nbands:" << nocc + nvirt << std::endl;
-            GlobalV::ofs_running << "naos local:" << pc->get_row_size();
-            GlobalV::ofs_running << "nbands local:" << pc->get_col_size() << std::endl;
-            for (int j = 0;j < pc->get_col_size();++j)  //nbands
-            {
-                for (int i = 0;i < pc->get_row_size();++i)  //nlocal
-                    GlobalV::ofs_running << psi_ks->get_pointer()[j * pc->get_row_size() + i] << " ";
-                GlobalV::ofs_running << std::endl;
-            }
+            // GlobalV::ofs_running << "1. transition density matrix" << std::endl;
+            // // output c and X
+            // GlobalV::ofs_running << "nvirt:" << nvirt << " nocc:" << nocc << std::endl;
+            // GlobalV::ofs_running << "nvirt local:" << pX->get_row_size();
+            // GlobalV::ofs_running << "nocc local:" << pX->get_col_size() << std::endl;
+            // GlobalV::ofs_running << "X: " << std::endl;
+            // for (int j = 0;j < pX->get_col_size();++j)  //nbands
+            // {
+            //     for (int i = 0;i < pX->get_row_size();++i)  //nlocal
+            //         GlobalV::ofs_running << psi_in_bfirst.get_pointer()[j * pX->get_row_size() + i] << " ";
+            //     GlobalV::ofs_running << std::endl;
+            // }
+            // GlobalV::ofs_running << std::endl;
+            // GlobalV::ofs_running << "C: " << std::endl;
+            // GlobalV::ofs_running << "naos:" << naos << " nbands:" << nocc + nvirt << std::endl;
+            // GlobalV::ofs_running << "naos local:" << pc->get_row_size();
+            // GlobalV::ofs_running << "nbands local:" << pc->get_col_size() << std::endl;
+            // for (int j = 0;j < pc->get_col_size();++j)  //nbands
+            // {
+            //     for (int i = 0;i < pc->get_row_size();++i)  //nlocal
+            //         GlobalV::ofs_running << psi_ks->get_pointer()[j * pc->get_row_size() + i] << " ";
+            //     GlobalV::ofs_running << std::endl;
+            // }
 
 #ifdef __MPI
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
@@ -145,7 +144,7 @@ namespace hamilt
 
             // 2. transition electron density
             // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
-            GlobalV::ofs_running << "2. transition electron density" << std::endl;
+            // GlobalV::ofs_running << "2. transition electron density" << std::endl;
             double** rho_trans;
             LR_Util::new_p2(rho_trans, nspin, this->pot->nrxx);
             for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], this->pot->nrxx);
@@ -160,7 +159,7 @@ namespace hamilt
             // }
 
             // 3. v_hxc = f_hxc * rho_trans
-            GlobalV::ofs_running << "3. v_hxc = f_hxc * rho_trans" << std::endl;
+            // GlobalV::ofs_running << "3. v_hxc = f_hxc * rho_trans" << std::endl;
             ModuleBase::matrix vr_hxc(nspin, this->pot->nrxx);   //grid
             this->pot->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
             // GlobalV::ofs_running << "first 10 non-zero elements of vr_hxc: ";
@@ -175,7 +174,7 @@ namespace hamilt
             // loop for nspin, or use current spin (how?)
             // results are stored in gint->pvpR_grid(gamma_only)
             // or gint_k->pvpR_reduced(multi_k)
-            GlobalV::ofs_running << "4.Vxc" << std::endl;
+            // GlobalV::ofs_running << "4.Vxc" << std::endl;
             std::vector<ct::Tensor> v_hxc_2d(nsk, ct::Tensor(ct::DataTypeToEnum<T>::value, ct::DeviceTypeToEnum<Device>::value, { pmat->get_col_size(), pmat->get_row_size() }));
             for (auto& v : v_hxc_2d) v.zero();
             // V(R) for each spin
@@ -224,7 +223,7 @@ namespace hamilt
             // LR_Util::delete_p3(dm_trans_grid, nsk, lgd);
             LR_Util::delete_p2(rho_trans, nspin);
 
-            GlobalV::ofs_running << "5.AX" << std::endl;
+            // GlobalV::ofs_running << "5.AX" << std::endl;
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
             cal_AX_pblas(v_hxc_2d, *this->pmat, *this->psi_ks, *this->pc, naos, nocc, nvirt, *this->pX, psi_out_bfirst);
@@ -232,14 +231,14 @@ namespace hamilt
             cal_AX_blas(v_hxc_2d, *this->psi_ks, nocc, nvirt, psi_out_bfirst);
 #endif
             /// output AX
-            psi_out_bfirst.fix_k(0);
-            for (int ik = 0;ik < psi_out_bfirst.get_nk();++ik)
-            {
-                assert(psi_out_bfirst.get_nbasis() == pX->get_local_size());
-                for (int i = 0;i < psi_out_bfirst.get_nbasis();++i)
-                    GlobalV::ofs_running << psi_out_bfirst(ik, i) << " ";
-                GlobalV::ofs_running << std::endl;
-            }
+            // psi_out_bfirst.fix_k(0);
+            // for (int ik = 0;ik < psi_out_bfirst.get_nk();++ik)
+            // {
+            //     assert(psi_out_bfirst.get_nbasis() == pX->get_local_size());
+            //     for (int i = 0;i < psi_out_bfirst.get_nbasis();++i)
+            //         GlobalV::ofs_running << psi_out_bfirst(ik, i) << " ";
+            //     GlobalV::ofs_running << std::endl;
+            // }
         }
     }
 }
