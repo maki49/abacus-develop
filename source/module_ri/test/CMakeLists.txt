@@ -6,3 +6,8 @@ AddTest(
   LIBS base ${math_libs} device
   SOURCES dm_mixing_test.cpp ../Mix_DMk_2D.cpp ../Mix_Matrix.cpp
 )
+# AddTest(
+#   TARGET symmetry_rotation
+#   LIBS base ${math_libs} device
+#   SOURCES symmetry_test_rotation.cpp
+# )

@@ -7,6 +7,7 @@ if (ENABLE_LIBRI)
         exx_lip.cpp
         Mix_DMk_2D.cpp
         Mix_Matrix.cpp
+        symmetry_rotation.cpp
   )
 
   if(ENABLE_LCAO)

@@ -31,7 +31,7 @@ void Exx_LRI_Interface<T, Tdata>::read_Hexxs(const std::string& file_name)
 	ModuleBase::timer::tick("Exx_LRI", "read_Hexxs");
 }
 template<typename T, typename Tdata>
-void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charge_Mixing& chgmix)
+void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charge_Mixing& chgmix, const UnitCell& ucell, const Parallel_2D& pv)
 {
 #ifdef __MPI
     if (GlobalC::exx_info.info_global.cal_exx)
@@ -39,16 +39,21 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
         if (GlobalC::restart.info_load.load_H_finish && !GlobalC::restart.info_load.restart_exx) XC_Functional::set_xc_type(GlobalC::ucell.atoms[0].ncpp.xc_func);
         else
         {
-            if (GlobalC::ucell.atoms[0].ncpp.xc_func == "HF" || GlobalC::ucell.atoms[0].ncpp.xc_func == "PBE0" || GlobalC::ucell.atoms[0].ncpp.xc_func == "HSE")
+            if (ucell.atoms[0].ncpp.xc_func == "HF" || ucell.atoms[0].ncpp.xc_func == "PBE0" || ucell.atoms[0].ncpp.xc_func == "HSE")
             {
                 XC_Functional::set_xc_type("pbe");
             }
-            else if (GlobalC::ucell.atoms[0].ncpp.xc_func == "SCAN0")
+            else if (ucell.atoms[0].ncpp.xc_func == "SCAN0")
             {
                 XC_Functional::set_xc_type("scan");
             }
         }
+        
         this->exx_ptr->cal_exx_ions();
+
+        // initialize the rotation matrix in AO representation
+        this->exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
+        if (this->exx_spacegroup_symmetry) this->symrot_.cal_Ms(kv.kstars, ucell, pv);
     }
 
 		if (Exx_Abfs::Jle::generate_matrix)
@@ -62,8 +67,11 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
 		
 		// set initial parameter for mix_DMk_2D
 		if(GlobalC::exx_info.info_global.cal_exx)
-		{
-			this->mix_DMk_2D.set_nks(kv.nks, GlobalV::GAMMA_ONLY_LOCAL);
+        {
+            if (this->exx_spacegroup_symmetry)
+                this->mix_DMk_2D.set_nks(kv.nkstot_full * (GlobalV::NSPIN == 2 ? 2 : 1), GlobalV::GAMMA_ONLY_LOCAL);
+            else
+                this->mix_DMk_2D.set_nks(kv.nks, GlobalV::GAMMA_ONLY_LOCAL);
 			if(GlobalC::exx_info.info_global.separate_loop)
                 this->mix_DMk_2D.set_mixing(nullptr);
 			else
@@ -75,18 +83,21 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
 }
 
 template<typename T, typename Tdata>
-void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const elecstate::DensityMatrix<T, double>& dm, const int& iter)
+void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const elecstate::DensityMatrix<T, double>& dm, const K_Vectors& kv, const int& iter)
 {
     if (GlobalC::exx_info.info_global.cal_exx)
     {
         if (!GlobalC::exx_info.info_global.separate_loop && this->two_level_step)
         {
-			const bool flag_restart = (iter==1) ? true : false;
-            this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
+            const bool flag_restart = (iter == 1) ? true : false;
+            if (this->exx_spacegroup_symmetry)
+                this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), flag_restart);
+            else
+                this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
 			const std::vector<std::map<int,std::map<std::pair<int, std::array<int, 3>>,RI::Tensor<Tdata>>>>
 				Ds = GlobalV::GAMMA_ONLY_LOCAL
 					? RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_gamma_out(), *dm.get_paraV_pointer())
-					: RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer());
+                : RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), this->exx_spacegroup_symmetry);
             this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer());
         }
     }
@@ -174,13 +185,36 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
             timeval t_start;       gettimeofday(&t_start, NULL);
 
             const bool flag_restart = (this->two_level_step == 0) ? true : false;
-            this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
+            if (flag_restart && !this->exx_spacegroup_symmetry)
+            {
+                //output DM for test
+                std::ofstream ofs("DM_ref.dat");
+                for (int ikibz = 0;ikibz < kv.nkstot;++ikibz)
+                {
+                    ofs << "ik=" << ikibz << std::endl;
+                    ofs << " k_ibz = " << kv.kvec_d[ikibz].x << " " << kv.kvec_d[ikibz].y << " " << kv.kvec_d[ikibz].z << std::endl;
+                    ofs << "DM(k):" << std::endl;
+                    for (int i = 0;i < dm.get_paraV_pointer()->get_row_size();++i)
+                    {
+                        for (int j = 0;j < dm.get_paraV_pointer()->get_col_size();++j)
+                        {
+                            ofs << dm.get_DMK_vector()[ikibz][j * dm.get_paraV_pointer()->get_row_size() + i] << " ";
+                        }
+                        ofs << std::endl;
+                    }
+                }
+                ofs.close();
+            }
+            if (this->exx_spacegroup_symmetry)
+                this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), flag_restart);
+            else
+                this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
 
             // GlobalC::exx_lcao.cal_exx_elec(p_esolver->LOC, p_esolver->LOWF.wfc_k_grid);
 			const std::vector<std::map<int,std::map<std::pair<int, std::array<int, 3>>,RI::Tensor<Tdata>>>>
 				Ds = GlobalV::GAMMA_ONLY_LOCAL
 					? RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_gamma_out(), *dm.get_paraV_pointer())
-					: RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer());
+                : RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), this->exx_spacegroup_symmetry);
             this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer());
             iter = 0;
             this->two_level_step++;
