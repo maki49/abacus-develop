@@ -114,7 +114,7 @@ public:
 	//convert n translation-vectors from va on basis {a1, a2, a3} to vb on basis {b1, b2, b3}
 	void gtrans_convert(const ModuleBase::Vector3<double>* va, ModuleBase::Vector3<double>* vb, 
 			const int n, const ModuleBase::Matrix3 &a, const ModuleBase::Matrix3 &b)const;
-	void gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap);
+	void gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap) const;
 	void hermite_normal_form(const ModuleBase::Matrix3 &s, ModuleBase::Matrix3 &H, ModuleBase::Matrix3 &b) const;
 	private:
 
@@ -142,6 +142,7 @@ public:
 
     /// Loop the magmom of each atoms in its type when NSPIN>1. If not all the same, primitive cells should not be looped in rhog_symmetry.
     bool magmom_same_check(const Atom* atoms)const;
+
 };
 }
 
