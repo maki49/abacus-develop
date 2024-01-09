@@ -10,6 +10,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include "module_ri/symmetry_rotation.h"
 
 template <typename T, typename Tdata> void RPA_LRI<T, Tdata>::init(const MPI_Comm& mpi_comm_in, const K_Vectors& kv_in)
 {
@@ -62,14 +63,25 @@ void RPA_LRI<T, Tdata>::cal_postSCF_exx(const elecstate::DensityMatrix<T, Tdata>
     const MPI_Comm& mpi_comm_in,
     const K_Vectors& kv)
 {
-	Mix_DMk_2D mix_DMk_2D;
-	mix_DMk_2D.set_nks(kv.nks, GlobalV::GAMMA_ONLY_LOCAL);
-	mix_DMk_2D.set_mixing(nullptr);
-	mix_DMk_2D.mix(dm.get_DMK_vector(), true);
+    Mix_DMk_2D mix_DMk_2D;
+    bool exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
+    if (exx_spacegroup_symmetry)
+        mix_DMk_2D.set_nks(kv.nkstot_full * (GlobalV::NSPIN == 2 ? 2 : 1), GlobalV::GAMMA_ONLY_LOCAL);
+    else
+        mix_DMk_2D.set_nks(kv.nks, GlobalV::GAMMA_ONLY_LOCAL);
+    mix_DMk_2D.set_mixing(nullptr);
+    if (exx_spacegroup_symmetry)
+    {
+        ModuleSymmetry::Symmetry_rotation symrot;
+        symrot.cal_Ms(kv.kstars, GlobalC::ucell, *dm.get_paraV_pointer());
+        mix_DMk_2D.mix(symrot.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), true);
+    }
+    else
+        mix_DMk_2D.mix(dm.get_DMK_vector(), true);
 	const std::vector<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>>
 		Ds = GlobalV::GAMMA_ONLY_LOCAL
 			? RI_2D_Comm::split_m2D_ktoR<Tdata>(kv, mix_DMk_2D.get_DMk_gamma_out(), *dm.get_paraV_pointer())
-			: RI_2D_Comm::split_m2D_ktoR<Tdata>(kv, mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer());
+        : RI_2D_Comm::split_m2D_ktoR<Tdata>(kv, mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), exx_spacegroup_symmetry);
 
     exx_lri_rpa.init(mpi_comm_in, kv);
     exx_lri_rpa.cal_exx_ions();

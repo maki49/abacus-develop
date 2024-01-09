@@ -127,8 +127,13 @@ public:
 	void gtrans_convert(const ModuleBase::Vector3<double>* va, ModuleBase::Vector3<double>* vb, 
 			const int n, const ModuleBase::Matrix3 &a, const ModuleBase::Matrix3 &b)const;
 	void gmatrix_invmap(const ModuleBase::Matrix3* s, const int n, int* invmap);
-	void hermite_normal_form(const ModuleBase::Matrix3 &s, ModuleBase::Matrix3 &H, ModuleBase::Matrix3 &b) const;
-	private:
+    void hermite_normal_form(const ModuleBase::Matrix3& s, ModuleBase::Matrix3& H, ModuleBase::Matrix3& b) const;
+
+    int get_rotated_atom(int isym, int iat)const {
+        if (!this->isym_rotiat_.empty()) return this->isym_rotiat_[isym][iat];
+        else return -1;
+    }
+private:
 
 	// (s)tart (p)osition of atom (t)ype which
 	// has (min)inal number.
@@ -154,6 +159,7 @@ public:
 
     /// Loop the magmom of each atoms in its type when NSPIN>1. If not all the same, primitive cells should not be looped in rhog_symmetry.
     bool magmom_same_check(const Atom* atoms)const;
+
 };
 }
 
