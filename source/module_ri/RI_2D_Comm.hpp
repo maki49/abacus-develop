@@ -65,16 +65,12 @@ auto RI_2D_Comm::split_m2D_ktoR(const K_Vectors& kv, const std::vector<const Tma
                 }
                 else
                 { // traverse kstar, ik means ik_ibz
-                    for (auto& isym_kvecd : kv.kstars[ik % ik_list.size()])
+                    for (auto& isym_kvd : kv.kstars[ik % ik_list.size()])
                     {
                         RI::Tensor<Tdata_m> mk_2D = RI_Util::Vector_to_Tensor<Tdata_m>(*mks_2D[ik_full + is_k * kv.nkstot_full], pv.get_col_size(), pv.get_row_size());
                         const Tdata_m frac = SPIN_multiple
                             * RI::Global_Func::convert<Tdata_m>(std::exp(
-                                -ModuleBase::TWO_PI * ModuleBase::IMAG_UNIT * (isym_kvecd.second * GlobalC::ucell.G * (RI_Util::array3_to_Vector3(cell) * GlobalC::ucell.latvec))));
-
-                        // deal with time-reversal-only case
-                        ///
-                        ///=============
+                                -ModuleBase::TWO_PI * ModuleBase::IMAG_UNIT * ((isym_kvd.second * GlobalC::ucell.G) * (RI_Util::array3_to_Vector3(cell) * GlobalC::ucell.latvec))));
                         set_mR_2D(mk_2D * frac);
                         ++ik_full;
                     }
@@ -106,8 +102,30 @@ auto RI_2D_Comm::split_m2D_ktoR(const K_Vectors& kv, const std::vector<const Tma
 					mR_a2D(iw0_b,iw1_b) = mR_2D(iwt0_2D, iwt1_2D);
 				}
 			}
-		}
-	}
+        }
+        //output DM(R)
+        std::ofstream ofs("DMR.dat");
+        for (const TC& cell : RI_Util::get_Born_von_Karmen_cells(period))
+        {
+            ofs << "cell: " << cell[0] << " " << cell[1] << " " << cell[2] << std::endl;
+            for (int iat0 = 0; iat0 < GlobalC::ucell.nat; ++iat0)
+            {
+                for (int iat1 = 0; iat1 < GlobalC::ucell.nat; ++iat1)
+                {
+                    ofs << "iat0: " << iat0 << " iat1: " << iat1 << std::endl;
+                    for (int iw0 = 0; iw0 < mRs_a2D[is_k][iat0][{iat1, cell}].shape[0]; ++iw0)
+                    {
+                        for (int iw1 = 0; iw1 < mRs_a2D[is_k][iat0][{iat1, cell}].shape[1]; ++iw1)
+                        {
+                            ofs << mRs_a2D[is_k][iat0][{iat1, cell}](iw0, iw1) << " ";
+                        }
+                        ofs << std::endl;
+                    }
+                }
+            }
+        }
+        ofs.close();
+    }
 	ModuleBase::timer::tick("RI_2D_Comm", "split_m2D_ktoR");
 	return mRs_a2D;
 }

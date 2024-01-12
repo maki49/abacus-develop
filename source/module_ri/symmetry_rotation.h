@@ -31,7 +31,7 @@ namespace ModuleSymmetry
             const std::vector<std::vector<double>>& dm_k_ibz,
             const Parallel_2D& pv)const;
         std::vector<std::complex<double>> rot_matrix_ao(const std::vector<std::complex<double>>& Hkibz,
-            const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv)const;
+            const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv, const bool TRS_conj = false) const;
 
         /// calculate Wigner D matrix
         double wigner_d(const double beta, const int l, const int m1, const int m2) const;
@@ -44,16 +44,18 @@ namespace ModuleSymmetry
         ModuleBase::Vector3<double> get_euler_angle(const ModuleBase::Matrix3& gmatc) const;
 
         /// T_mm' = [c^\dagger D c]_mm', the rotation matrix in the representation of real sphere harmonics
-        void cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int nsym, const int lmax);
+        void cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int lmax);
 
         /// Perfoming {R|t} to atom position r in the R=0 lattice, we get Rr+t, which may get out of R=0 lattice, 
         /// whose image in R=0 lattice is r'=Rr+t-O. This function is to get O for each atom and each symmetry operation.
         /// the range of direct position is [-0.5, 0.5).
         ModuleBase::Vector3<double> get_return_lattice(const Symmetry& symm,
-            const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd, const ModuleBase::Vector3<double>& posd)const;
+            const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd,
+            const ModuleBase::Vector3<double>& posd_a1, const ModuleBase::Vector3<double>& posd_a2)const;
 
         /// exp(-ik_ibz*O)
-        std::complex<double> cal_phase_factor_from_return_attice(const Symmetry& symm, const ModuleBase::Vector3<double>& tau_d,
+        std::complex<double> cal_phase_factor_from_return_attice(const Symmetry& symm,
+            const ModuleBase::Vector3<double>& pos_a1, const ModuleBase::Vector3<double>& pos_a2,
             int isym, ModuleBase::Vector3<double>kvec_d_ibz) const;
 
         /// set a block matrix onto a 2d-parallelized matrix, at the position (starti, startj) 
@@ -70,10 +72,12 @@ namespace ModuleSymmetry
 
     private:
 
+        int nsym_ = -1;
+
         /// the rotation matrix under the basis of S_l^m. size: [nsym][lmax][nm*nm]
         std::vector<std::vector<ModuleBase::ComplexMatrix>> rotmat_Slm_;
         // [natom][nsym], phase factor corresponding to a certain kvec_d_ibz
-        std::vector<std::vector<std::complex<double>>> phase_factor_;
+        // std::vector<std::vector<std::complex<double>>> phase_factor_;
 
         /// The unitary matrix associate D(Rk) with D(k) for each ibz-kpoint Rk and each symmetry operation. 
         /// size: [nks_ibz][nsym][nbasis*nbasis], only need to calculate once.

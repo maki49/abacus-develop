@@ -5,6 +5,7 @@
 #include "module_base/tool_title.h"
 #include "module_base/timer.h"
 #include "symmetry_rotation.h"
+#include "module_hamilt_pw/hamilt_pwdft/global.h"
 
 namespace ModuleSymmetry
 {
@@ -13,24 +14,48 @@ namespace ModuleSymmetry
     {
         ModuleBase::TITLE("Symmetry_rotation", "cal_Ms");
         ModuleBase::timer::tick("Symmetry_rotation", "cal_Ms");
-        const int& nsym = ucell.symm.nrotk;
-        std::vector<ModuleBase::Matrix3> gmatc(nsym);
-        for (int i = 0;i < nsym;++i) gmatc[i] = this->direct_to_cartesian(ucell.symm.gmatrix[i], ucell.latvec);
-        this->cal_rotmat_Slm(gmatc.data(), ucell.symm.nrotk, ucell.lmax);
 
+        this->nsym_ = ucell.symm.nrotk;
+        // 1. calculate the rotation matrix in real spherical harmonics representation for each symmetry operation: [T_l (isym)]_mm'
+        std::vector<ModuleBase::Matrix3> gmatc(nsym_);
+        for (int i = 0;i < nsym_;++i) gmatc[i] = this->direct_to_cartesian(ucell.symm.gmatrix[i], ucell.latvec);
+        this->cal_rotmat_Slm(gmatc.data(), ucell.lmax);
+
+        // 2. calculate the rotation matrix in AO-representation for each ibz_kpoint and symmetry operation: M(k, isym)
+        auto restrict_kpt = [](const ModuleBase::Vector3<double>& kvec, const double& symm_prec) -> ModuleBase::Vector3<double>
+            {// in (-0.5, 0.5]
+                ModuleBase::Vector3<double> kvec_res;
+                kvec_res.x = fmod(kvec.x + 100.5 - 0.5 * symm_prec, 1) - 0.5 + 0.5 * symm_prec;
+                kvec_res.y = fmod(kvec.y + 100.5 - 0.5 * symm_prec, 1) - 0.5 + 0.5 * symm_prec;
+                kvec_res.z = fmod(kvec.z + 100.5 - 0.5 * symm_prec, 1) - 0.5 + 0.5 * symm_prec;
+                if (std::abs(kvec_res.x) < symm_prec) kvec_res.x = 0.0;
+                if (std::abs(kvec_res.y) < symm_prec) kvec_res.y = 0.0;
+                if (std::abs(kvec_res.z) < symm_prec) kvec_res.z = 0.0;
+                return kvec_res;
+            };
         int nks_ibz = kstars.size();
         this->Ms_.resize(nks_ibz);
         for (int ik_ibz = 0;ik_ibz < nks_ibz;++ik_ibz)
         {
-            const ModuleBase::Vector3<double>& kvec_d_ibz = kstars[ik_ibz].at(0);
+            const ModuleBase::Vector3<double>& kvec_d_ibz = restrict_kpt((*kstars[ik_ibz].begin()).second * ucell.symm.kgmatrix[(*kstars[ik_ibz].begin()).first], ucell.symm.epsilon);
             for (auto& isym_kvd : kstars[ik_ibz])
-                this->Ms_[ik_ibz][isym_kvd.first] = this->contruct_2d_rot_mat_ao(ucell.symm, ucell.atoms, ucell.st, kvec_d_ibz, isym_kvd.first, pv);
-            // {
-            //     std::cout << "ik_ibz=" << ik_ibz << ", isym=" << isym_kvd.first << std::endl;
-            //     this->Ms_[ik_ibz].insert(std::pair<int, std::vector<std::complex<double>>>(isym_kvd.first,
-            //         this->contruct_2d_rot_mat_ao(ucell.symm, ucell.atoms, ucell.st, kvec_d_ibz, isym_kvd.first, pv)));
-            // }
+                if (isym_kvd.first < nsym_)
+                    this->Ms_[ik_ibz][isym_kvd.first] = this->contruct_2d_rot_mat_ao(ucell.symm, ucell.atoms, ucell.st, kvec_d_ibz, isym_kvd.first, pv);
         }
+
+        // // output Ms of isym=1
+        // std::ofstream ofs("Ms_k1_sym1.dat");
+        // for (int i = 0;i < pv.get_row_size();++i)
+        // {
+        //     for (int j = 0;j < pv.get_col_size();++j)
+        //     {
+        //         ofs << this->Ms_[1][1][j * pv.get_col_size() + i] << " ";
+        //     }
+        //     ofs << std::endl;
+        // }
+        // ofs << std::endl;
+        // ofs.close();
+
         ModuleBase::timer::tick("Symmetry_rotation", "cal_Ms");
     }
 
@@ -46,18 +71,21 @@ namespace ModuleSymmetry
         int nk = kv.nkstot / nspin0;
         for (int is = 0;is < nspin0;++is)
             for (int ik_ibz = 0;ik_ibz < nk;++ik_ibz)
-                for (auto& isym_kvecd : kv.kstars[ik_ibz])
-                    dm_k_full.push_back(this->rot_matrix_ao(dm_k_ibz[ik_ibz + is * nk], ik_ibz, kv.kstars[ik_ibz].size(), isym_kvecd.first, pv));
+                for (auto& isym_kvd : kv.kstars[ik_ibz])
+                    if (isym_kvd.first < nsym_)
+                        dm_k_full.push_back(this->rot_matrix_ao(dm_k_ibz[ik_ibz + is * nk], ik_ibz, kv.kstars[ik_ibz].size(), isym_kvd.first, pv));
+                    else
+                        dm_k_full.push_back(this->rot_matrix_ao(dm_k_ibz[ik_ibz + is * nk], ik_ibz, kv.kstars[ik_ibz].size(), isym_kvd.first - nsym_, pv, true));
+
 
         // test for output
         std::ofstream ofs("DM.dat");
         int ik = 0;
         for (int ikibz = 0;ikibz < kv.nkstot / nspin0;++ikibz)
-            for (auto& isym_kvecd : kv.kstars[ikibz])
+            for (auto& isym_kvd : kv.kstars[ikibz])
             {
-                ofs << "isym=" << isym_kvecd.first << std::endl;
-                ofs << " k = " << isym_kvecd.second.x << " " << isym_kvecd.second.y << " " << isym_kvecd.second.z << std::endl;
-                ofs << " rotk_ibz = " << kv.kstars[ikibz].at(0).x << " " << kv.kstars[ikibz].at(0).y << " " << kv.kstars[ikibz].at(0).z << std::endl;
+                ofs << "isym=" << isym_kvd.first << std::endl;
+                ofs << " k = " << isym_kvd.second.x << " " << isym_kvd.second.y << " " << isym_kvd.second.z << std::endl;
                 ofs << "DM(k):" << std::endl;
                 for (int i = 0;i < pv.get_row_size();++i)
                 {
@@ -169,7 +197,7 @@ namespace ModuleSymmetry
     }
 
     /// T_mm' = [c^\dagger D c]_mm'
-    void Symmetry_rotation::cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int nsym, const int lmax)
+    void Symmetry_rotation::cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int lmax)
     {
         auto set_zero = [](ModuleBase::ComplexMatrix& mat) -> void
             {
@@ -181,7 +209,7 @@ namespace ModuleSymmetry
                         if (std::abs(mat(i, j).imag()) < zero_thres) mat(i, j).imag(0.0);
                     }
             };
-        this->rotmat_Slm_.resize(nsym);
+        this->rotmat_Slm_.resize(nsym_);
         // c matrix is independent on isym
         std::vector<ModuleBase::ComplexMatrix> c_mm(lmax + 1);
         for (int l = 0;l <= lmax;++l)
@@ -191,7 +219,7 @@ namespace ModuleSymmetry
                 for (int m2 = -l;m2 <= l;++m2)
                     c_mm[l](m2im(m1), m2im(m2)) = ovlp_Ylm_Slm(l, m1, m2);
         }
-        for (int isym = 0;isym < nsym;++isym)
+        for (int isym = 0;isym < nsym_;++isym)
         {
             ModuleBase::Vector3<double>euler_angle = get_euler_angle(gmatc[isym]);
             this->rotmat_Slm_[isym].resize(lmax + 1);
@@ -205,22 +233,29 @@ namespace ModuleSymmetry
             }
         }
 
+        std::vector<ModuleBase::Vector3<double>> euler_angles_test(nsym_);
+        for (int isym = 0;isym < nsym_;++isym) euler_angles_test[isym] = get_euler_angle(gmatc[isym]);
+
         auto test_Tmm = [&]()-> void
             {
                 std::ofstream ofs("Tlm.dat");
-                for (int isym = 0;isym < nsym;++isym)
+                for (int isym = 0;isym < nsym_;++isym)
                 {
                     ofs << "isym=" << isym << std::endl;
                     ofs << "gmatrix_cart=" << std::endl;
                     ofs << gmatc[isym].e11 << " " << gmatc[isym].e12 << " " << gmatc[isym].e13 << std::endl;
                     ofs << gmatc[isym].e21 << " " << gmatc[isym].e22 << " " << gmatc[isym].e23 << std::endl;
                     ofs << gmatc[isym].e31 << " " << gmatc[isym].e32 << " " << gmatc[isym].e33 << std::endl;
-                    // ofs << "gmatrix_direct=" << std::endl;
-                    // ofs << GlobalC::ucell.symm.gmatrix[isym].e11 << " " << GlobalC::ucell.symm.gmatrix[isym].e12 << " " << GlobalC::ucell.symm.gmatrix[isym].e13 << std::endl;
-                    // ofs << GlobalC::ucell.symm.gmatrix[isym].e21 << " " << GlobalC::ucell.symm.gmatrix[isym].e22 << " " << GlobalC::ucell.symm.gmatrix[isym].e23 << std::endl;
-                    // ofs << GlobalC::ucell.symm.gmatrix[isym].e31 << " " << GlobalC::ucell.symm.gmatrix[isym].e32 << " " << GlobalC::ucell.symm.gmatrix[isym].e33 << std::endl;
-                    // ofs << "euler_angle/pi: " << euler_angle.x / ModuleBase::PI << " "
-                    //     << euler_angle.y / ModuleBase::PI << " " << euler_angle.z / ModuleBase::PI << std::endl;
+                    ofs << "gmatrix_direct=" << std::endl;
+                    ofs << GlobalC::ucell.symm.gmatrix[isym].e11 << " " << GlobalC::ucell.symm.gmatrix[isym].e12 << " " << GlobalC::ucell.symm.gmatrix[isym].e13 << std::endl;
+                    ofs << GlobalC::ucell.symm.gmatrix[isym].e21 << " " << GlobalC::ucell.symm.gmatrix[isym].e22 << " " << GlobalC::ucell.symm.gmatrix[isym].e23 << std::endl;
+                    ofs << GlobalC::ucell.symm.gmatrix[isym].e31 << " " << GlobalC::ucell.symm.gmatrix[isym].e32 << " " << GlobalC::ucell.symm.gmatrix[isym].e33 << std::endl;
+                    ofs << "kgmatrix_direct=" << std::endl;
+                    ofs << GlobalC::ucell.symm.kgmatrix[isym].e11 << " " << GlobalC::ucell.symm.kgmatrix[isym].e12 << " " << GlobalC::ucell.symm.kgmatrix[isym].e13 << std::endl;
+                    ofs << GlobalC::ucell.symm.kgmatrix[isym].e21 << " " << GlobalC::ucell.symm.kgmatrix[isym].e22 << " " << GlobalC::ucell.symm.kgmatrix[isym].e23 << std::endl;
+                    ofs << GlobalC::ucell.symm.kgmatrix[isym].e31 << " " << GlobalC::ucell.symm.kgmatrix[isym].e32 << " " << GlobalC::ucell.symm.kgmatrix[isym].e33 << std::endl;
+                    ofs << "euler_angle/pi: " << euler_angles_test[isym].x / ModuleBase::PI << " "
+                        << euler_angles_test[isym].y / ModuleBase::PI << " " << euler_angles_test[isym].z / ModuleBase::PI << std::endl;
                     for (int l = 0;l <= lmax;++l)
                         for (int i = 0;i < 2 * l + 1;++i)
                         {
@@ -230,14 +265,15 @@ namespace ModuleSymmetry
                 }
                 ofs.close();
             };
-        // test_Tmm();
+        test_Tmm();
     }
 
     // Perfoming {R|t} to atom position r in the R=0 lattice, we get Rr+t, which may get out of R=0 lattice, 
     // whose image in R=0 lattice is r'=Rr+t-O. This function is to get O for each atom and each symmetry operation.
     // the range of direct position is [-0.5, 0.5).
     ModuleBase::Vector3<double> Symmetry_rotation::get_return_lattice(const Symmetry& symm,
-        const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd, const ModuleBase::Vector3<double>& posd)const
+        const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd,
+        const ModuleBase::Vector3<double>& posd_a1, const ModuleBase::Vector3<double>& posd_a2)const
     {
         auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
             // in [-0.5, 0.5)
@@ -253,23 +289,34 @@ namespace ModuleSymmetry
         auto check_integer = [&symm](const double x) -> void {
             assert(symm.equal(x, std::round(x)));
             };
-        // auto int_round = [this](const double x) -> int {
-        //     return (x > 0) ? static_cast<int>(x + symm.epsilon) : static_cast<int>(x - symm.epsilon);
-        //     };
-        ModuleBase::Vector3<double> rotpos = restrict_center(posd) * gmatd + gtransd;  // row vector
-        ModuleBase::Vector3<double> restricted_rotpos = restrict_center(rotpos);
-        ModuleBase::Vector3<double> return_lattice_double = rotpos - restricted_rotpos;
+        ModuleBase::Vector3<double> rotpos1 = restrict_center(posd_a1) * gmatd + restrict_center(gtransd);  // row vector
+        ModuleBase::Vector3<double> return_lattice_double = rotpos1 - restrict_center(posd_a2);
         check_integer(return_lattice_double.x);
         check_integer(return_lattice_double.y);
         check_integer(return_lattice_double.z);
         return ModuleBase::Vector3<double>(std::round(return_lattice_double.x), std::round(return_lattice_double.y), std::round(return_lattice_double.z));
     }
 
-    std::complex<double> Symmetry_rotation::cal_phase_factor_from_return_attice(const Symmetry& symm, const ModuleBase::Vector3<double>& tau_d,
+    std::complex<double> Symmetry_rotation::cal_phase_factor_from_return_attice(const Symmetry& symm,
+        const ModuleBase::Vector3<double>& pos_a1, const ModuleBase::Vector3<double>& pos_a2,
         int isym, ModuleBase::Vector3<double>kvec_d_ibz)const
     {
-        ModuleBase::Vector3<double> return_lattice = get_return_lattice(symm, symm.gmatrix[isym], symm.gtrans[isym], tau_d);
-        double arg = -2 * ModuleBase::PI * kvec_d_ibz * return_lattice;
+        ModuleBase::Vector3<double> return_lattice = get_return_lattice(symm, symm.gmatrix[isym], symm.gtrans[isym], pos_a1, pos_a2);
+        if (isym == 1)
+        {
+            auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
+                // in [-0.5, 0.5)
+                ModuleBase::Vector3<double> vr;
+                vr.x = fmod(v.x + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+                vr.y = fmod(v.y + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+                vr.z = fmod(v.z + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+                if (std::abs(vr.x) < symm.epsilon) vr.x = 0.0;
+                if (std::abs(vr.y) < symm.epsilon) vr.y = 0.0;
+                if (std::abs(vr.z) < symm.epsilon) vr.z = 0.0;
+                return vr;
+                };
+        }
+        double arg = 2 * ModuleBase::PI * kvec_d_ibz * return_lattice;
         return std::complex<double>(std::cos(arg), std::sin(arg));
     }
 
@@ -296,6 +343,7 @@ namespace ModuleSymmetry
             int ia2 = cell_st.iat2ia[iat2];
             int iat1 = symm.get_rotated_atom(isym, iat2); //iat1=rot(iat2)
             int ia1 = cell_st.iat2ia[iat1];
+            std::complex<double>phase_factor = cal_phase_factor_from_return_attice(symm, atoms[it].taud[ia2], atoms[it].taud[ia1], isym, kvec_d_ibz);   //Si2 wrong
             int iw1start = atoms[it].stapos_wf + ia1 * atoms[it].nw;
             int iw2start = atoms[it].stapos_wf + ia2 * atoms[it].nw;
             int iw = 0;
@@ -305,7 +353,7 @@ namespace ModuleSymmetry
                 int nm = 2 * l + 1;
                 //caution: the order of m in orbitals may be different from increasing
                 set_block_to_mat2d(iw1start + iw, iw2start + iw,
-                    cal_phase_factor_from_return_attice(symm, atoms[it].taud[ia2], isym, kvec_d_ibz) * this->rotmat_Slm_[isym][l], M_isym, pv);
+                    phase_factor * this->rotmat_Slm_[isym][l], M_isym, pv);
                 iw += nm;
             }
         }
@@ -317,21 +365,34 @@ namespace ModuleSymmetry
     // D(k) = M(R, k)^\dagger D(k_ibz) M(R, k)
     // the link  ik_ibz-isym-ik can be found in kstars.
     std::vector<std::complex<double>> Symmetry_rotation::rot_matrix_ao(const std::vector<std::complex<double>>& Hkibz,
-        const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv) const
+        const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv, const bool TRS_conj) const
     {
         std::vector<std::complex<double>> Hk(pv.nloc, 0.0);
         std::vector<std::complex<double>> Hkibz_M(pv.nloc, 0.0);    // intermediate result
         const char dagger = 'C';
+        const char transpose = 'T';
         const char notrans = 'N';
         std::complex<double> alpha(1.0, 0.0);
         const std::complex<double> beta(0.0, 0.0);
         const int nbasis = GlobalV::NLOCAL;
         const int i1 = 1;
-        pzgemm_(&notrans, &notrans, &nbasis, &nbasis, &nbasis,
+
+        // if TRS_conj, calculate [M^\dagger D M]^* = M^T [M^\dagger D^\dagger]^T
+        // else, calculate M^\dagger D M
+
+        // step 1
+        if (TRS_conj)
+            pzgemm_(&dagger, &dagger, &nbasis, &nbasis, &nbasis,
+                &alpha, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc, Hkibz.data(), &i1, &i1, pv.desc,
+                &beta, Hkibz_M.data(), &i1, &i1, pv.desc);
+        else
+            pzgemm_(&notrans, &notrans, &nbasis, &nbasis, &nbasis,
             &alpha, Hkibz.data(), &i1, &i1, pv.desc, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc,
             &beta, Hkibz_M.data(), &i1, &i1, pv.desc);
+
+        //step 2
         alpha.real(1.0 / static_cast<double>(kstar_size));
-        pzgemm_(&dagger, &notrans, &nbasis, &nbasis, &nbasis,
+        pzgemm_(TRS_conj ? &transpose : &dagger, TRS_conj ? &transpose : &notrans, &nbasis, &nbasis, &nbasis,
             &alpha, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc, Hkibz_M.data(), &i1, &i1, pv.desc,
             &beta, Hk.data(), &i1, &i1, pv.desc);
         return Hk;
