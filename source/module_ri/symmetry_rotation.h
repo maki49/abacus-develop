@@ -30,7 +30,7 @@ namespace ModuleSymmetry
         std::vector<std::vector<double>>restore_dm(const K_Vectors& kv,
             const std::vector<std::vector<double>>& dm_k_ibz,
             const Parallel_2D& pv)const;
-        std::vector<std::complex<double>> rot_matrix_ao(const std::vector<std::complex<double>>& Hkibz,
+        std::vector<std::complex<double>> rot_matrix_ao(const std::vector<std::complex<double>>& DMkibz,
             const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv, const bool TRS_conj = false) const;
 
         /// calculate Wigner D matrix
