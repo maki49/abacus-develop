@@ -19,7 +19,8 @@ namespace ModuleSymmetry
         /// The top-level calculation interface of this class. calculate the rotation matrix in AO representation: M
         /// only need once call in each ion step (decided by the configuration)
         /// @param kstars  equal k points to each ibz-kpont, corresponding to a certain symmetry operations. 
-        void cal_Ms(const std::vector<std::map<int, ModuleBase::Vector3<double>>>& kstars,
+        void cal_Ms(const K_Vectors& kv,
+            //const std::vector<std::map<int, ModuleBase::Vector3<double>>>& kstars,
             const UnitCell& ucell, const Parallel_2D& pv);
 
         /// Use calculated M matrix to recover D(k) from D(k_ibz): D(k) = M(R, k)^\dagger D(k_ibz) M(R, k)
@@ -72,7 +73,11 @@ namespace ModuleSymmetry
 
     private:
 
-        int nsym_ = -1;
+        int nsym_ = 1;
+
+        double eps_ = 1e-6;
+
+        bool TRS_first_ = true; //if R(k)=-k, firstly use TRS to restore D(k) from D(R(k)), i.e conjugate D(R(k)).
 
         /// the rotation matrix under the basis of S_l^m. size: [nsym][lmax][nm*nm]
         std::vector<std::vector<ModuleBase::ComplexMatrix>> rotmat_Slm_;
