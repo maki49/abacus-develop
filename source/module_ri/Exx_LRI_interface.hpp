@@ -44,7 +44,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
 
             // initialize the rotation matrix in AO representation
             this->exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
-            if (this->exx_spacegroup_symmetry) this->symrot_.cal_Ms(kv.kstars, ucell, pv);
+            if (this->exx_spacegroup_symmetry) this->symrot_.cal_Ms(kv, ucell, pv);
         }
 
 		if (Exx_Abfs::Jle::generate_matrix)
@@ -218,26 +218,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
             }
 
             const bool flag_restart = (this->two_level_step == 0) ? true : false;
-            if (flag_restart && !this->exx_spacegroup_symmetry)
-            {
-                //output DM for test
-                std::ofstream ofs("DM_ref.dat");
-                for (int ikibz = 0;ikibz < kv.nkstot;++ikibz)
-                {
-                    ofs << "ik=" << ikibz << std::endl;
-                    ofs << " k_ibz = " << kv.kvec_d[ikibz].x << " " << kv.kvec_d[ikibz].y << " " << kv.kvec_d[ikibz].z << std::endl;
-                    ofs << "DM(k):" << std::endl;
-                    for (int i = 0;i < dm.get_paraV_pointer()->get_row_size();++i)
-                    {
-                        for (int j = 0;j < dm.get_paraV_pointer()->get_col_size();++j)
-                        {
-                            ofs << dm.get_DMK_vector()[ikibz][j * dm.get_paraV_pointer()->get_row_size() + i] << " ";
-                        }
-                        ofs << std::endl;
-                    }
-                }
-                ofs.close();
-            }
+
             if (this->exx_spacegroup_symmetry)
                 this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), flag_restart);
             else

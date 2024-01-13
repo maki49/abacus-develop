@@ -103,28 +103,6 @@ auto RI_2D_Comm::split_m2D_ktoR(const K_Vectors& kv, const std::vector<const Tma
 				}
 			}
         }
-        //output DM(R)
-        std::ofstream ofs("DMR.dat");
-        for (const TC& cell : RI_Util::get_Born_von_Karmen_cells(period))
-        {
-            ofs << "cell: " << cell[0] << " " << cell[1] << " " << cell[2] << std::endl;
-            for (int iat0 = 0; iat0 < GlobalC::ucell.nat; ++iat0)
-            {
-                for (int iat1 = 0; iat1 < GlobalC::ucell.nat; ++iat1)
-                {
-                    ofs << "iat0: " << iat0 << " iat1: " << iat1 << std::endl;
-                    for (int iw0 = 0; iw0 < mRs_a2D[is_k][iat0][{iat1, cell}].shape[0]; ++iw0)
-                    {
-                        for (int iw1 = 0; iw1 < mRs_a2D[is_k][iat0][{iat1, cell}].shape[1]; ++iw1)
-                        {
-                            ofs << mRs_a2D[is_k][iat0][{iat1, cell}](iw0, iw1) << " ";
-                        }
-                        ofs << std::endl;
-                    }
-                }
-            }
-        }
-        ofs.close();
     }
 	ModuleBase::timer::tick("RI_2D_Comm", "split_m2D_ktoR");
 	return mRs_a2D;

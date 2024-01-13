@@ -73,7 +73,7 @@ void RPA_LRI<T, Tdata>::cal_postSCF_exx(const elecstate::DensityMatrix<T, Tdata>
     if (exx_spacegroup_symmetry)
     {
         ModuleSymmetry::Symmetry_rotation symrot;
-        symrot.cal_Ms(kv.kstars, GlobalC::ucell, *dm.get_paraV_pointer());
+        symrot.cal_Ms(kv, GlobalC::ucell, *dm.get_paraV_pointer());
         mix_DMk_2D.mix(symrot.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), true);
     }
     else
