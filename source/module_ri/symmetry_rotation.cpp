@@ -316,18 +316,18 @@ namespace ModuleSymmetry
                 return vr;
                 };
         }
-        double arg = 2 * ModuleBase::PI * kvec_d_ibz * return_lattice;
+        double arg = -2 * ModuleBase::PI * kvec_d_ibz * return_lattice;
         return std::complex<double>(std::cos(arg), std::sin(arg));
     }
 
     void Symmetry_rotation::set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<std::complex<double>>& obj_mat, const Parallel_2D& pv) const
-    {
-        for (int i = 0;i < block.nr;++i)
-            for (int j = 0;j < block.nc;++j)
+    {   // caution: ComplaxMatrix is row-major(col-continuous), but obj_mat is col-major(row-continuous)
+        for (int j = 0;j < block.nr;++j)//outside dimension
+            for (int i = 0;i < block.nc;++i) //inside dimension
                 if (pv.in_this_processor(starti + i, startj + j))
                 {
                     int index = pv.global2local_col(startj + j) * pv.get_row_size() + pv.global2local_row(starti + i);
-                    obj_mat[index] = block(i, j);
+                    obj_mat[index] = block(j, i);
                 }
     }
 
@@ -362,13 +362,13 @@ namespace ModuleSymmetry
 
     // void cal_Ms (kstar), maybe use map to stare Ms
 
-    // D(k) = M(R, k)^\dagger D(k_ibz) M(R, k)
+    // D(k) = M^*(R, k) D(k_ibz) M^T(R, k)
     // the link  ik_ibz-isym-ik can be found in kstars.
-    std::vector<std::complex<double>> Symmetry_rotation::rot_matrix_ao(const std::vector<std::complex<double>>& Hkibz,
+    std::vector<std::complex<double>> Symmetry_rotation::rot_matrix_ao(const std::vector<std::complex<double>>& DMkibz,
         const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv, const bool TRS_conj) const
     {
-        std::vector<std::complex<double>> Hk(pv.nloc, 0.0);
-        std::vector<std::complex<double>> Hkibz_M(pv.nloc, 0.0);    // intermediate result
+        std::vector<std::complex<double>> DMk(pv.nloc, 0.0);
+        std::vector<std::complex<double>> DMkibz_M(pv.nloc, 0.0);    // intermediate result
         const char dagger = 'C';
         const char transpose = 'T';
         const char notrans = 'N';
@@ -377,25 +377,38 @@ namespace ModuleSymmetry
         const int nbasis = GlobalV::NLOCAL;
         const int i1 = 1;
 
-        // if TRS_conj, calculate [M^\dagger D M]^* = M^T [M^\dagger D^\dagger]^T
-        // else, calculate M^\dagger D M
+        // if TRS_conj, calculate [M^* D M^T]^* = [D^\dagger M^T]^T M^\dagger
+        // else, calculate M^* D M^T = [D^T M^\dagger]^T M^T
 
         // step 1
-        if (TRS_conj)
-            pzgemm_(&dagger, &dagger, &nbasis, &nbasis, &nbasis,
-                &alpha, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc, Hkibz.data(), &i1, &i1, pv.desc,
-                &beta, Hkibz_M.data(), &i1, &i1, pv.desc);
-        else
-            pzgemm_(&notrans, &notrans, &nbasis, &nbasis, &nbasis,
-            &alpha, Hkibz.data(), &i1, &i1, pv.desc, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc,
-            &beta, Hkibz_M.data(), &i1, &i1, pv.desc);
+        pzgemm_(TRS_conj ? &dagger : &transpose, TRS_conj ? &transpose : &dagger, &nbasis, &nbasis, &nbasis,
+            &alpha, DMkibz.data(), &i1, &i1, pv.desc, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc,
+            &beta, DMkibz_M.data(), &i1, &i1, pv.desc);
 
         //step 2
         alpha.real(1.0 / static_cast<double>(kstar_size));
-        pzgemm_(TRS_conj ? &transpose : &dagger, TRS_conj ? &transpose : &notrans, &nbasis, &nbasis, &nbasis,
-            &alpha, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc, Hkibz_M.data(), &i1, &i1, pv.desc,
-            &beta, Hk.data(), &i1, &i1, pv.desc);
-        return Hk;
+        pzgemm_(&transpose, TRS_conj ? &dagger : &transpose, &nbasis, &nbasis, &nbasis,
+            &alpha, DMkibz_M.data(), &i1, &i1, pv.desc, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc,
+            &beta, DMk.data(), &i1, &i1, pv.desc);
+
+        // but if we store D^*(=D^T, col-maj/row-inside), we sould calculate D^*(k) = M D^*(k_ibz) M^dagger
+        // step 1
+        // if (TRS_conj)
+        //     pzgemm_(&dagger, &dagger, &nbasis, &nbasis, &nbasis,
+        //         &alpha, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc, DMkibz.data(), &i1, &i1, pv.desc,
+        //         &beta, DMkibz_M.data(), &i1, &i1, pv.desc);
+        // else
+        //     pzgemm_(&notrans, &notrans, &nbasis, &nbasis, &nbasis,
+        //         &alpha, DMkibz.data(), &i1, &i1, pv.desc, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc,
+        //         &beta, DMkibz_M.data(), &i1, &i1, pv.desc);
+
+        // //step 2
+        // alpha.real(1.0 / static_cast<double>(kstar_size));
+        // pzgemm_(TRS_conj ? &transpose : &dagger, TRS_conj ? &transpose : &notrans, &nbasis, &nbasis, &nbasis,
+        //     &alpha, this->Ms_[ik_ibz].at(isym).data(), &i1, &i1, pv.desc, DMkibz_M.data(), &i1, &i1, pv.desc,
+        //     &beta, DMk.data(), &i1, &i1, pv.desc);
+
+        return DMk;
     }
 
     ModuleBase::Matrix3 Symmetry_rotation::direct_to_cartesian(const ModuleBase::Matrix3& d, const ModuleBase::Matrix3& latvec)
