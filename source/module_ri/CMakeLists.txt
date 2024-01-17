@@ -8,6 +8,7 @@ if (ENABLE_LIBRI)
         Mix_DMk_2D.cpp
         Mix_Matrix.cpp
         symmetry_rotation.cpp
+        symmetry_irreducible_atompair.cpp
   )
 
   if(ENABLE_LCAO)
