@@ -71,6 +71,19 @@ namespace ModuleSymmetry
 
         std::vector<std::vector<ModuleBase::ComplexMatrix>>& get_rotmat_Slm() { return this->rotmat_Slm_; }
 
+
+        /// find the irreducible atom pairs
+        /// algorithm 1: the way finding irreducible k-points
+        void find_irreducible_atom_pairs(const Symmetry& symm);
+        /// algorithm 2: taking out atom pairs from the initial set
+        void find_irreducible_atom_pairs_set(const Symmetry& symm);
+        /// double check between the two algorithms
+        void test_irreducible_atom_pairs(const Symmetry& symm);
+
+        /// find and print irreducible R
+        void find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const K_Vectors& kv);
+        void output_irreducible_R(const K_Vectors& kv);
+
     private:
 
         int nsym_ = 1;
@@ -87,5 +100,13 @@ namespace ModuleSymmetry
         /// The unitary matrix associate D(Rk) with D(k) for each ibz-kpoint Rk and each symmetry operation. 
         /// size: [nks_ibz][nsym][nbasis*nbasis], only need to calculate once.
         std::vector<std::map<int, std::vector<std::complex<double>>>> Ms_;
+
+        /// irreducible sector
+        /// irreducible atom pairs: [n_iap][(isym, ap=(iat1, iat2))]
+        std::vector<std::map<int, std::pair<int, int>>> atompair_stars_;
+        /// irreducible R for each irreducible atom pair: [n_iap][n_Rstar][(isym, R)], n_Rstar = how many kinds of length of (aRb) of irreducible atom pair (ab).
+        std::vector<std::vector<std::map<int, std::array<int, 3>>>> R_stars_;
+        /// the ireducible relative position vector (direct) from b0 to aR. [n_iap][n_Rstar]
+        std::vector<std::vector<ModuleBase::Vector3<double>>> irreducible_aRb_d_;
     };
 }
