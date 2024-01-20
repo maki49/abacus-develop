@@ -8,6 +8,7 @@
 #include "module_cell/unitcell.h" 
 #include "module_cell/module_symmetry/symmetry.h"
 #include "module_cell/klist.h"
+#include <RI/global/Tensor.h>
 namespace ModuleSymmetry
 {
     class Symmetry_rotation
@@ -53,7 +54,7 @@ namespace ModuleSymmetry
         ModuleBase::Vector3<double> get_return_lattice(const Symmetry& symm,
             const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd,
             const ModuleBase::Vector3<double>& posd_a1, const ModuleBase::Vector3<double>& posd_a2)const;
-
+        void get_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st);
         /// exp(-ik_ibz*O)
         std::complex<double> cal_phase_factor_from_return_attice(const Symmetry& symm,
             const ModuleBase::Vector3<double>& pos_a1, const ModuleBase::Vector3<double>& pos_a2,
@@ -71,7 +72,7 @@ namespace ModuleSymmetry
 
         std::vector<std::vector<ModuleBase::ComplexMatrix>>& get_rotmat_Slm() { return this->rotmat_Slm_; }
 
-
+        //--------------------------------------------------------------------------------
         /// find the irreducible atom pairs
         /// algorithm 1: the way finding irreducible k-points
         void find_irreducible_atom_pairs(const Symmetry& symm);
@@ -83,6 +84,22 @@ namespace ModuleSymmetry
         /// find and print irreducible R
         void find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const K_Vectors& kv);
         void output_irreducible_R(const K_Vectors& kv);
+
+        //--------------------------------------------------------------------------------
+        /// Given H(R) in the irreduceble sector, calculate H(R) for all the atompairs and cells.
+        template<typename Tdata>
+        std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> restore_HR(
+            const Symmetry& symm, const Atom* atoms, const Statistics& st,
+            std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> HR_irreduceble);
+        /// mode='H': H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
+        /// mode='D': D_12(R)=T^T(V)D_1'2'(VR+O_1-O_2)T^*(V)
+        template<typename Tdata>
+        RI::Tensor<Tdata> rotate_atompair_tensor(const RI::Tensor<Tdata>& t, const int isym,
+            const Atom& a1, const Atom& a2, const char mode);
+        /// test H(R) rotation: giver a full H(R), pick out H(R) in the irreducible sector, rotate it, and compare with the original full H(R)
+        template<typename Tdata>
+        void test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st,
+            const std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>>& HR_full);
 
     private:
 
@@ -108,5 +125,9 @@ namespace ModuleSymmetry
         std::vector<std::vector<std::map<int, std::array<int, 3>>>> R_stars_;
         /// the ireducible relative position vector (direct) from b0 to aR. [n_iap][n_Rstar]
         std::vector<std::vector<ModuleBase::Vector3<double>>> irreducible_aRb_d_;
+        /// the direct lattice vector of {R|t}\tau-\tau' for each atoms and each symmetry operation. [natom][nsym]
+        std::vector<std::vector<ModuleBase::Vector3<double>>> return_lattice_;
     };
 }
+
+#include "symmetry_rotation_R.hpp"

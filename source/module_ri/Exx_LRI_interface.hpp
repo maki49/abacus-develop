@@ -53,7 +53,17 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
 
         // initialize the rotation matrix in AO representation
         this->exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
-        if (this->exx_spacegroup_symmetry) this->symrot_.cal_Ms(kv, ucell, pv);
+        if (this->exx_spacegroup_symmetry)
+        {
+            this->symrot_.cal_Ms(kv, ucell, pv);
+            // test: irreducible atom pairs
+            this->symrot_.find_irreducible_atom_pairs(ucell.symm);
+            // test: irreducible R
+            this->symrot_.find_irreducible_atom_pairs_set(ucell.symm);
+            this->symrot_.find_irreducible_R(ucell.symm, ucell.atoms, ucell.st, kv);
+            this->symrot_.output_irreducible_R(kv);
+            this->symrot_.get_return_lattice_all(ucell.symm, ucell.atoms, ucell.st);
+        }
     }
 
 		if (Exx_Abfs::Jle::generate_matrix)
@@ -197,6 +207,10 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
 					? RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_gamma_out(), *dm.get_paraV_pointer())
                 : RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), this->exx_spacegroup_symmetry);
             this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer());
+
+            // check the rotation of Hexx
+            this->symrot_.test_HR_rotation(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, this->exx_ptr->Hexxs[0]);
+
             iter = 0;
             this->two_level_step++;
             

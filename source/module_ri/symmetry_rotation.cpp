@@ -305,12 +305,23 @@ namespace ModuleSymmetry
         const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd,
         const ModuleBase::Vector3<double>& posd_a1, const ModuleBase::Vector3<double>& posd_a2)const
     {
+        // auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
+        //     // in [-0.5, 0.5)
+        //     ModuleBase::Vector3<double> vr;
+        //     vr.x = fmod(v.x + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+        //     vr.y = fmod(v.y + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+        //     vr.z = fmod(v.z + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+        //     if (std::abs(vr.x) < symm.epsilon) vr.x = 0.0;
+        //     if (std::abs(vr.y) < symm.epsilon) vr.y = 0.0;
+        //     if (std::abs(vr.z) < symm.epsilon) vr.z = 0.0;
+        //     return vr;
+        //     };
         auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
-            // in [-0.5, 0.5)
+            // in [0,1)
             ModuleBase::Vector3<double> vr;
-            vr.x = fmod(v.x + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
-            vr.y = fmod(v.y + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
-            vr.z = fmod(v.z + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
+            vr.x = fmod(v.x + 100 + symm.epsilon, 1) - symm.epsilon;
+            vr.y = fmod(v.y + 100 + symm.epsilon, 1) - symm.epsilon;
+            vr.z = fmod(v.z + 100 + symm.epsilon, 1) - symm.epsilon;
             if (std::abs(vr.x) < symm.epsilon) vr.x = 0.0;
             if (std::abs(vr.y) < symm.epsilon) vr.y = 0.0;
             if (std::abs(vr.z) < symm.epsilon) vr.z = 0.0;
@@ -327,6 +338,37 @@ namespace ModuleSymmetry
         check_integer(return_lattice_double.z);
 #endif
         return ModuleBase::Vector3<double>(std::round(return_lattice_double.x), std::round(return_lattice_double.y), std::round(return_lattice_double.z));
+    }
+
+    inline void output_return_lattice(const std::vector<std::vector<ModuleBase::Vector3<double>>>& return_lattice)
+    {
+        std::cout << "return lattice:" << std::endl;
+        for (int iat = 0;iat < return_lattice.size();++iat)
+        {
+            std::cout << "atom" << iat << std::endl;
+            for (int isym = 0;isym < return_lattice[iat].size();++isym)
+                std::cout << "isym=" << isym << ", return lattice=" <<
+                return_lattice[iat][isym].x << " " << return_lattice[iat][isym].y << " " << return_lattice[iat][isym].z << std::endl;
+        }
+    }
+
+    void Symmetry_rotation::get_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st)
+    {
+        ModuleBase::TITLE("Symmetry_rotation", "get_return_lattice_all");
+        this->return_lattice_.resize(st.nat, std::vector<ModuleBase::Vector3<double>>(symm.nrotk));
+        for (int iat1 = 0;iat1 < st.nat;++iat1)
+        {
+            int it = st.iat2it[iat1];
+            int ia1 = st.iat2ia[iat1];
+            for (int isym = 0;isym < symm.nrotk;++isym)
+            {
+                int iat2 = symm.get_rotated_atom(isym, iat1);
+                int ia2 = st.iat2ia[iat2];
+                this->return_lattice_[iat1][isym] = get_return_lattice(symm, symm.gmatrix[isym], symm.gtrans[isym], atoms[it].taud[ia1], atoms[it].taud[ia2]);
+            }
+        }
+        // test: output return_lattice
+        output_return_lattice(this->return_lattice_);
     }
 
     std::complex<double> Symmetry_rotation::cal_phase_factor_from_return_attice(const Symmetry& symm,
