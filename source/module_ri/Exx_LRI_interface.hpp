@@ -46,14 +46,16 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
             this->exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
             if (this->exx_spacegroup_symmetry)
             {
+                this->symrot_.get_return_lattice_all(ucell.symm, ucell.atoms, ucell.st);
                 this->symrot_.cal_Ms(kv, ucell, pv);
                 // test: irreducible atom pairs
-                this->symrot_.find_irreducible_atom_pairs(ucell.symm);
+                this->symrot_.test_irreducible_atom_pairs(ucell.symm);
                 // test: irreducible R
-                this->symrot_.find_irreducible_atom_pairs_set(ucell.symm);
                 this->symrot_.find_irreducible_R(ucell.symm, ucell.atoms, ucell.st, kv);
-                this->symrot_.output_irreducible_R(kv);
-                this->symrot_.get_return_lattice_all(ucell.symm, ucell.atoms, ucell.st);
+                this->symrot_.output_irreducible_R(kv, ucell.atoms, ucell.st);
+                // test: final map
+                this->symrot_.get_final_map_to_irreducible_sector(ucell.symm, ucell.atoms, ucell.st);
+                this->symrot_.output_final_map_to_irreducible_sector(ucell.nat);
             }
         }
 

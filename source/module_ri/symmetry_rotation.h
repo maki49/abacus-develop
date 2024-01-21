@@ -4,6 +4,7 @@
 #include "module_base/matrix3.h"
 #include <vector>
 #include <map>
+#include <set>
 #include "module_basis/module_ao/parallel_2d.h"
 #include "module_cell/unitcell.h" 
 #include "module_cell/module_symmetry/symmetry.h"
@@ -83,7 +84,10 @@ namespace ModuleSymmetry
 
         /// find and print irreducible R
         void find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const K_Vectors& kv);
-        void output_irreducible_R(const K_Vectors& kv);
+        void output_irreducible_R(const K_Vectors& kv, const Atom* atoms, const Statistics& st);
+
+        void get_final_map_to_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st);
+        void output_final_map_to_irreducible_sector(const int nat);
 
         //--------------------------------------------------------------------------------
         /// Given H(R) in the irreduceble sector, calculate H(R) for all the atompairs and cells.
@@ -101,7 +105,17 @@ namespace ModuleSymmetry
         void test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st,
             const std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>>& HR_full);
 
+
     private:
+        int group_multiply(const Symmetry& symm, const int isym1, const int isym2)const;
+        int round2int(const double x)const;
+
+        /// gauge='L' means H(R)=<R|H|0>; gauge='R' means H(R)=<0|H|R>
+        /// gauge='L': R'=R+O_1-O_2; gauge='R': R'=R+O_2-O_1
+        std::array<int, 3> rotate_R_by_formula(const Symmetry& symm, const int isym, const int iat1, const int iat2, const std::array<int, 3>& R, const char gauge = 'R')const;
+        /// gauge='L': tau_a + R - tau_b; gauge='R': tau_a - tau_b - R (direct)
+        ModuleBase::Vector3<double> get_aRb_direct(const Atom* atoms, const Statistics& st, const int iat1, const int iat2, const std::array<int, 3>& R, const char gauge = 'R')const;
+        ModuleBase::Vector3<double> get_aRb_direct(const Atom* atoms, const Statistics& st, const int iat1, const int iat2, const ModuleBase::Vector3<double>& R, const char gauge = 'R')const;
 
         int nsym_ = 1;
 
@@ -121,10 +135,19 @@ namespace ModuleSymmetry
         /// irreducible sector
         /// irreducible atom pairs: [n_iap][(isym, ap=(iat1, iat2))]
         std::vector<std::map<int, std::pair<int, int>>> atompair_stars_;
-        /// irreducible R for each irreducible atom pair: [n_iap][n_Rstar][(isym, R)], n_Rstar = how many kinds of length of (aRb) of irreducible atom pair (ab).
+        /// irreducible R for each atom pair: [natoms*natoms][n_Rstar][(isym, R)], n_Rstar = how many kinds of length of (aRb) of irreducible atom pair (ab).
         std::vector<std::vector<std::map<int, std::array<int, 3>>>> R_stars_;
-        /// the ireducible relative position vector (direct) from b0 to aR. [n_iap][n_Rstar]
-        std::vector<std::vector<ModuleBase::Vector3<double>>> irreducible_aRb_d_;
+        /// extra part of Rstar in irreducible atom pairs due to exeeding the range of after the other atom pair's R rotating to its irreducible atom pair.
+        /// [irreducible_ap][n_Rstar](isym, R)
+        std::map<std::pair<int, int>, std::vector<std::map<int, std::array<int, 3>>>> R_stars_irap_append_;
+
+        ///The index range of the orbital matrix to be calculated: irreducible R in irreducible atom pairs
+        // (including R in other atom pairs that cannot rotate into R_stars_[irreducebule_ap])
+        std::map<std::pair<int, int>, std::set<std::array<int, 3>>> irreducible_sector_;
+
+        //[natoms*natoms](R, (isym, R_in))
+        std::vector<std::map<std::array<int, 3>, std::pair<int, std::array<int, 3>>>> final_map_to_irreducible_sector_;
+
         /// the direct lattice vector of {R|t}\tau-\tau' for each atoms and each symmetry operation. [natom][nsym]
         std::vector<std::vector<ModuleBase::Vector3<double>>> return_lattice_;
     };
