@@ -13,6 +13,39 @@ namespace ModuleSymmetry
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
         // get invmap
+        // std::vector<int> invmap(symm.nrotk, -1);
+        // symm.gmatrix_invmap(symm.gmatrix, symm.nrotk, invmap.data());
+
+        std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> HR_full;
+
+        for (auto& apstar : this->atompair_stars_)
+        {
+            std::pair<int, int>& irap = apstar.at(0);
+            for (auto& ap : apstar)
+            {
+                const int& iat1 = ap.second.first, & iat2 = ap.second.second;
+                for (auto& R_isym_irR : this->final_map_to_irreducible_sector_[iat1 * st.nat + iat2])
+                {
+                    const std::array<int, 3>& R = R_isym_irR.first;
+                    const int& isym = R_isym_irR.second.first;
+                    const std::array<int, 3>& irR = R_isym_irR.second.second;
+                    // rotate the matrix and pack data
+                    // H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
+                    HR_full[iat1][{iat2, R}] = rotate_atompair_tensor(HR_irreduceble.at(irap.first).at({ irap.second, irR }), isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], 'H');
+                }
+            }
+        }
+        return HR_full;
+    }
+
+    /*
+    template<typename Tdata>
+    std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> Symmetry_rotation::restore_HR(
+        const Symmetry& symm, const Atom* atoms, const Statistics& st,
+        std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> HR_irreduceble)
+    {
+        ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
+        // get invmap
         std::vector<int> invmap(symm.nrotk, -1);
         symm.gmatrix_invmap(symm.gmatrix, symm.nrotk, invmap.data());
 
@@ -29,21 +62,8 @@ namespace ModuleSymmetry
                     if (this->R_stars_[iap][iR].at(0) == R)return iR;
                 return -1;
             };
-        auto group_multiply = [&symm](int isym1, int isym2) -> int
-            {   // row_vec * gmat1*gmat2
-                ModuleBase::Matrix3 g12 = symm.gmatrix[isym1] * symm.gmatrix[isym2];
-                int isym = 0;
-                for (;isym < symm.nrotk;++isym)
-                    if (symm.equal(g12.e11, symm.gmatrix[isym].e11) && symm.equal(g12.e12, symm.gmatrix[isym].e12) && symm.equal(g12.e13, symm.gmatrix[isym].e13) &&
-                        symm.equal(g12.e21, symm.gmatrix[isym].e21) && symm.equal(g12.e22, symm.gmatrix[isym].e22) && symm.equal(g12.e23, symm.gmatrix[isym].e23) &&
-                        symm.equal(g12.e31, symm.gmatrix[isym].e31) && symm.equal(g12.e32, symm.gmatrix[isym].e32) && symm.equal(g12.e33, symm.gmatrix[isym].e33))
-                        break;
-                return isym;
-            };
         auto round2int = [&](const double v)->int
-            {
-                return v > 0 ? static_cast<int>(v + symm.epsilon) : static_cast<int>(v - symm.epsilon);
-            };
+            {return v > 0 ? static_cast<int>(v + symm.epsilon) : static_cast<int>(v - symm.epsilon);};
 
         auto transform_back_R_method1 = [&](const int isym12, const std::pair<int, int>& irap,
             const std::pair<int, int>& ap0, const std::array<int, 3>& irR)->std::array<int, 3>
@@ -103,21 +123,22 @@ namespace ModuleSymmetry
                 int iap = find_iap(irap);
                 if (iap >= 0) //irreducible atom pair exists
                 {
-                    int iR = find_iR(iap, irR);
-                    if (iR >= 0)// irreducible R in atom pair exists
+                    for (auto& isym_ap : this->atompair_stars_[iap])// traverse the atom pair star of irreducible atom pair
                     {
-                        for (auto& isym_ap : this->atompair_stars_[iap])// traverse the atom pair star of irreducible atom pair
+                        int isym1 = isym_ap.first;
+                        std::pair<int, int> ap = isym_ap.second;
+                        int iap_all = ap.first * st.nat + ap.second;
+                        int iR = find_iR(iap_all, irR);
+                        if (iR >= 0)// irreducible R in atom pair exists
                         {
-                            int isym1 = isym_ap.first;
-                            std::pair<int, int> ap = isym_ap.second;
-                            for (auto& isym_R : this->R_stars_[iap][iR]) //traverse the R star of irreducible R in atom pair
+                            for (auto& isym_R : this->R_stars_[iap_all][iR]) //traverse the R star of irreducible R in atom pair
                             {
                                 int isym2 = isym_R.first;
                                 // std::array<int, 3> R_in_star = isym_R.second;
                                 // ModuleBase::Vector3<int> irR = RI_Util::array3_to_Vector3(isym_R.second);
 
                                 // get the original R
-                                int isym12 = group_multiply(isym1, isym2);
+                                int isym12 = group_multiply(symm, isym1, isym2);
                                 std::array<int, 3> R = transform_back_R_method2(isym12, ap, irR);
 #ifdef __DEBUG
                                 std::array<int, 3> R_ref = transform_back_R_method1(isym12, irap, ap, irR);
@@ -125,7 +146,7 @@ namespace ModuleSymmetry
 #endif
                                 // rotate the matrix and pack data
                                 // H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
-                                HR_full[ap.first][{ap.second, R}] = rotate_atompair_tensor(iHR_ia12R.second, invmap[isym12], atoms[st.iat2it[iat1]], atoms[st.iat2it[iat2]],/*mode=*/'H');
+                                HR_full[ap.first][{ap.second, R}] = rotate_atompair_tensor(iHR_ia12R.second, invmap[isym12], atoms[st.iat2it[iat1]], atoms[st.iat2it[iat2]],'H');
                             }
                         }
                     }
@@ -134,7 +155,7 @@ namespace ModuleSymmetry
         }
         return HR_full;
     }
-
+    */
     template<typename Tdata>
     RI::Tensor<Tdata> Symmetry_rotation::rotate_atompair_tensor(const RI::Tensor<Tdata>& A, const int isym,
         const Atom& a1, const Atom& a2, const char mode)
@@ -239,7 +260,7 @@ namespace ModuleSymmetry
                 assert(HR_rot.shape[0] == HR_ref.shape[0]);
                 assert(HR_rot.shape[1] == HR_ref.shape[1]);
                 // output 
-                if (iat1 == 0 && iat2 == 0 && R[0] == 0 && R[1] == -1 && R[2] == 0)
+                if (iat1 == 0 && iat2 == 0) //&& R[0] == 0 && R[1] == -1 && R[2] == 0)
                 {
                     std::cout << "atom pair (" << iat1 << ", " << iat2 << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "):\n";
                     print_tensor(HR_rot, "HR_rot");
