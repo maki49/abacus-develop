@@ -12,7 +12,6 @@ tested functions:
 - get_euler_angle
 - cal_rotmat_Slm
 - get_return_lattice
-- cal_phase_factor_from_return_lattice
 
 untested functions:
 - cal_Ms (depending on UnitCell,K_Vectors, Parallel_2D)
@@ -140,21 +139,7 @@ TEST_F(SymmetryRotationTest, GetReturnLattice)
     ModuleBase::Vector3<double> return_lattice = symrot.get_return_lattice(ModuleSymmetry::Symmetry(), gmatd, gtransd, posd_a1, posd_a2);
     EXPECT_NEAR(return_lattice.x, -1, DOUBLETHRESHOLD);
     EXPECT_NEAR(return_lattice.y, 0, DOUBLETHRESHOLD);
-    EXPECT_NEAR(return_lattice.z, 0, DOUBLETHRESHOLD);
-}
-
-TEST_F(SymmetryRotationTest, PhaseFactor)
-{
-    ModuleBase::Vector3<double> posd_a1(1. / 3., 1. / 3., 0.2);
-    ModuleBase::Vector3<double> posd_a2(1. / 3., 1. / 3., -0.2);
-    ModuleBase::Vector3<double> kvec_d_ibz(0.5, -1. / 3. - 0.25);
-    ModuleBase::Vector3<double> gtransd(0, 0, 0);
-    ModuleSymmetry::Symmetry symm;
-    symm.gmatrix[0] = ModuleBase::Matrix3(-1, 1, 0, -1, 0, 0, 0, 0, -1);
-    symm.gtrans[0] = ModuleBase::Vector3<double>(0, 0, 0);
-    std::complex<double> phase_factor = symrot.cal_phase_factor_from_return_attice(symm, posd_a1, posd_a2, 0, kvec_d_ibz);
-    EXPECT_NEAR(phase_factor.real(), -1, DOUBLETHRESHOLD);
-    EXPECT_NEAR(phase_factor.imag(), 0, DOUBLETHRESHOLD);
+    EXPECT_NEAR(return_lattice.z, -1, DOUBLETHRESHOLD);
 }
 
 TEST_F(SymmetryRotationTest, SetBlockToMat2d)

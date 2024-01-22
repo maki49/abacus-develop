@@ -56,10 +56,6 @@ namespace ModuleSymmetry
             const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd,
             const ModuleBase::Vector3<double>& posd_a1, const ModuleBase::Vector3<double>& posd_a2)const;
         void get_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st);
-        /// exp(-ik_ibz*O)
-        std::complex<double> cal_phase_factor_from_return_attice(const Symmetry& symm,
-            const ModuleBase::Vector3<double>& pos_a1, const ModuleBase::Vector3<double>& pos_a2,
-            int isym, ModuleBase::Vector3<double>kvec_d_ibz) const;
 
         /// set a block matrix onto a 2d-parallelized matrix, at the position (starti, startj) 
         void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<std::complex<double>>& obj_mat, const Parallel_2D& pv) const;

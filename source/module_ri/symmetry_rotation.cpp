@@ -371,29 +371,6 @@ namespace ModuleSymmetry
         output_return_lattice(this->return_lattice_);
     }
 
-    std::complex<double> Symmetry_rotation::cal_phase_factor_from_return_attice(const Symmetry& symm,
-        const ModuleBase::Vector3<double>& pos_a1, const ModuleBase::Vector3<double>& pos_a2,
-        int isym, ModuleBase::Vector3<double>kvec_d_ibz)const
-    {
-        ModuleBase::Vector3<double> return_lattice = get_return_lattice(symm, symm.gmatrix[isym], symm.gtrans[isym], pos_a1, pos_a2);
-        if (isym == 1)
-        {
-            auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
-                // in [-0.5, 0.5)
-                ModuleBase::Vector3<double> vr;
-                vr.x = fmod(v.x + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
-                vr.y = fmod(v.y + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
-                vr.z = fmod(v.z + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
-                if (std::abs(vr.x) < symm.epsilon) vr.x = 0.0;
-                if (std::abs(vr.y) < symm.epsilon) vr.y = 0.0;
-                if (std::abs(vr.z) < symm.epsilon) vr.z = 0.0;
-                return vr;
-                };
-        }
-        double arg = 2 * ModuleBase::PI * kvec_d_ibz * return_lattice;
-        return std::complex<double>(std::cos(arg), std::sin(arg));
-    }
-
     void Symmetry_rotation::set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<std::complex<double>>& obj_mat, const Parallel_2D& pv) const
     {   // caution: ComplaxMatrix is row-major(col-continuous), but obj_mat is col-major(row-continuous)
         for (int j = 0;j < block.nr;++j)//outside dimension
@@ -411,13 +388,15 @@ namespace ModuleSymmetry
         const ModuleBase::Vector3<double>& kvec_d_ibz, int isym, const Parallel_2D& pv) const
     {
         std::vector<std::complex<double>> M_isym(pv.get_local_size(), 0.0);
-        for (int iat2 = 0;iat2 < cell_st.nat;++iat2)
+        for (int iat1 = 0;iat1 < cell_st.nat;++iat1)
         {
-            int it = cell_st.iat2it[iat2];  // it1=it2
-            int ia2 = cell_st.iat2ia[iat2];
-            int iat1 = symm.get_rotated_atom(isym, iat2); //iat1=rot(iat2)
+            int it = cell_st.iat2it[iat1];  // it1=it2
             int ia1 = cell_st.iat2ia[iat1];
-            std::complex<double>phase_factor = cal_phase_factor_from_return_attice(symm, atoms[it].taud[ia2], atoms[it].taud[ia1], isym, kvec_d_ibz);   //Si2 wrong
+            int iat2 = symm.get_rotated_atom(isym, iat1); //iat2=rot(iat1)
+            int ia2 = cell_st.iat2ia[iat2];
+            // cal phase factor from return lattice:     exp(-ik_ibz*O)
+            double arg = 2 * ModuleBase::PI * kvec_d_ibz * this->return_lattice_[ia1][isym];
+            std::complex<double>phase_factor = std::complex<double>(std::cos(arg), std::sin(arg));
             int iw1start = atoms[it].stapos_wf + ia1 * atoms[it].nw;
             int iw2start = atoms[it].stapos_wf + ia2 * atoms[it].nw;
             int iw = 0;
