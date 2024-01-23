@@ -382,6 +382,17 @@ namespace ModuleSymmetry
                 }
     }
 
+    void Symmetry_rotation::set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<double>& obj_mat, const Parallel_2D& pv) const
+    {   // caution: ComplaxMatrix is row-major(col-continuous), but obj_mat is col-major(row-continuous)
+        for (int j = 0;j < block.nr;++j)//outside dimension
+            for (int i = 0;i < block.nc;++i) //inside dimension
+                if (pv.in_this_processor(starti + i, startj + j))
+                {
+                    int index = pv.global2local_col(startj + j) * pv.get_row_size() + pv.global2local_row(starti + i);
+                    obj_mat[index] = block(j, i).real();
+                }
+    }
+
     // 2d-block parallized rotation matrix in AO-representation, denoted as M.
     // finally we will use D(k)=M(R, k)^\dagger*D(Rk)*M(R, k) to recover D(k) from D(Rk) in cal_Ms.
     std::vector<std::complex<double>> Symmetry_rotation::contruct_2d_rot_mat_ao(const Symmetry& symm, const Atom* atoms, const Statistics& cell_st,

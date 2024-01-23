@@ -10,6 +10,8 @@
 #include "module_cell/module_symmetry/symmetry.h"
 #include "module_cell/klist.h"
 #include <RI/global/Tensor.h>
+#include "module_hamilt_lcao/module_hcontainer/hcontainer.h"
+#include "module_cell/module_neighbor/sltk_grid_driver.h"
 namespace ModuleSymmetry
 {
     class Symmetry_rotation
@@ -59,6 +61,7 @@ namespace ModuleSymmetry
 
         /// set a block matrix onto a 2d-parallelized matrix, at the position (starti, startj) 
         void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<std::complex<double>>& obj_mat, const Parallel_2D& pv) const;
+        void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<double>& obj_mat, const Parallel_2D& pv) const;
 
         /// 2d-block parallized rotation matrix in AO-representation, denoted as M.
         /// finally we will use D(k)=M(R, k)^\dagger*D(Rk)*M(R, k) to recover D(k) from D(Rk).
@@ -70,6 +73,8 @@ namespace ModuleSymmetry
         std::vector<std::vector<ModuleBase::ComplexMatrix>>& get_rotmat_Slm() { return this->rotmat_Slm_; }
 
         //--------------------------------------------------------------------------------
+        /// The main function to find irreducible sector: {abR}
+        void find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<std::array<int, 3>>& Rs);
         /// find the irreducible atom pairs
         /// algorithm 1: the way finding irreducible k-points
         void find_irreducible_atom_pairs(const Symmetry& symm);
@@ -79,28 +84,44 @@ namespace ModuleSymmetry
         void test_irreducible_atom_pairs(const Symmetry& symm);
 
         /// find and print irreducible R
-        void find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const K_Vectors& kv);
-        void output_irreducible_R(const K_Vectors& kv, const Atom* atoms, const Statistics& st);
+        std::vector<std::array<int, 3>> get_Rs_from_BvK(const K_Vectors& kv)const;
+        std::vector<std::array<int, 3>> get_Rs_from_adjacent_list(const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals& pv)const;
+        void find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<std::array<int, 3>>& Rs);
+        void output_irreducible_R(const Atom* atoms, const Statistics& st, const std::vector<std::array<int, 3>>& Rs);
 
         void get_final_map_to_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st);
         void output_final_map_to_irreducible_sector(const int nat);
 
         //--------------------------------------------------------------------------------
         /// Given H(R) in the irreduceble sector, calculate H(R) for all the atompairs and cells.
-        template<typename Tdata>
+        template<typename Tdata>    // RI::Tensor type
         std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> restore_HR(
             const Symmetry& symm, const Atom* atoms, const Statistics& st,
-            std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>> HR_irreduceble);
+            const std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>>& HR_irreduceble);
+        template<typename TR>   // HContainer type
+        void restore_HR(
+            const Symmetry& symm, const Atom* atoms, const Statistics& st,
+            const hamilt::HContainer<TR>& HR_irreduceble, hamilt::HContainer<TR>& HR_rotated);
+
         /// mode='H': H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
         /// mode='D': D_12(R)=T^T(V)D_1'2'(VR+O_1-O_2)T^*(V)
-        template<typename Tdata>
-        RI::Tensor<Tdata> rotate_atompair_tensor(const RI::Tensor<Tdata>& t, const int isym,
+        template<typename Tdata>    // RI::Tensor type, blas
+        RI::Tensor<Tdata> rotate_atompair_serial(const RI::Tensor<Tdata>& t, const int isym,
             const Atom& a1, const Atom& a2, const char mode);
+        template<typename TR>    // HContainer type, pblas
+        void rotate_atompair_parallel(const TR* Alocal_in, const int isym, const Atom* atoms, const Statistics& st,
+            const std::pair<int, int>& ap_in, const std::pair<int, int>& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output = false);
+
         /// test H(R) rotation: giver a full H(R), pick out H(R) in the irreducible sector, rotate it, and compare with the original full H(R)
-        template<typename Tdata>
+        template<typename Tdata>    // RI::Tensor type, using col-major implementation
         void test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st,
             const std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>>& HR_full);
+        template<typename TR>   // HContainer type, using row-major implementation
+        void test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st,
+            const hamilt::HContainer<TR>& HR_full);
 
+        template<typename Tdata>    // HContainer type
+        void print_HR(const std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>>& HR, const std::string name);
 
     private:
         int group_multiply(const Symmetry& symm, const int isym1, const int isym2)const;
@@ -150,3 +171,4 @@ namespace ModuleSymmetry
 }
 
 #include "symmetry_rotation_R.hpp"
+#include "symmetry_rotation_R_hcontainer.hpp"

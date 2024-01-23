@@ -52,19 +52,12 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
         this->exx_ptr->cal_exx_ions();
         
         // initialize the rotation matrix in AO representation
-        this->exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
+        this->exx_spacegroup_symmetry = (GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
         if (this->exx_spacegroup_symmetry)
         {
             this->symrot_.get_return_lattice_all(ucell.symm, ucell.atoms, ucell.st);
             this->symrot_.cal_Ms(kv, ucell, pv);
-            // test: irreducible atom pairs
-            this->symrot_.test_irreducible_atom_pairs(ucell.symm);
-            // test: irreducible R
-            this->symrot_.find_irreducible_R(ucell.symm, ucell.atoms, ucell.st, kv);
-            this->symrot_.output_irreducible_R(kv, ucell.atoms, ucell.st);
-            // test: final map
-            this->symrot_.get_final_map_to_irreducible_sector(ucell.symm, ucell.atoms, ucell.st);
-            this->symrot_.output_final_map_to_irreducible_sector(ucell.nat);
+            this->symrot_.find_irreducible_sector(ucell.symm, ucell.atoms, ucell.st, this->symrot_.get_Rs_from_BvK(kv));
         }
     }
 
@@ -210,8 +203,13 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
                 : RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), this->exx_spacegroup_symmetry);
             this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer());
 
+            if (!this->exx_spacegroup_symmetry)this->symrot_.print_HR(this->exx_ptr->Hexxs[0], "Hexxs_ref");
+
+            // check the rotation of S(R)
+            this->symrot_.find_irreducible_sector(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, this->symrot_.get_Rs_from_adjacent_list(GlobalC::ucell, GlobalC::GridD, *lm.ParaV));
+            this->symrot_.test_HR_rotation(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, *(dynamic_cast<hamilt::HamiltLCAO<T, double>*>(&hamilt)->getSR()));
             // check the rotation of Hexx
-            this->symrot_.test_HR_rotation(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, this->exx_ptr->Hexxs[0]);
+            // this->symrot_.test_HR_rotation(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, this->exx_ptr->Hexxs[0]);
 
             iter = 0;
             this->two_level_step++;
