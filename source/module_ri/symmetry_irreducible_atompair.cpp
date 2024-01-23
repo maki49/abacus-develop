@@ -1,8 +1,29 @@
 #include "symmetry_rotation.h"
 #include <set>
 #include "RI_Util.h"
+#include "module_base/timer.h"
 namespace ModuleSymmetry
 {
+    void Symmetry_rotation::find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<std::array<int, 3>>& Rs)
+    {
+        ModuleBase::TITLE("Symmetry_rotation", "find_irreducible_sector");
+        ModuleBase::timer::tick("Symmetry_rotation", "find_irreducible_sector");
+        this->eps_ = symm.epsilon;
+        if (this->return_lattice_.empty()) this->get_return_lattice_all(symm, atoms, st);
+        // 1. find irreducible atom pairs
+        if (this->atompair_stars_.empty())this->find_irreducible_atom_pairs(symm);
+
+        // 2. find irreducible R
+        this->find_irreducible_R(symm, atoms, st, Rs);
+        this->output_irreducible_R(atoms, st, Rs);
+
+        // 3. find final map to irreducible sector
+        this->get_final_map_to_irreducible_sector(symm, atoms, st);
+        this->output_final_map_to_irreducible_sector(st.nat);
+
+        ModuleBase::timer::tick("Symmetry_rotation", "find_irreducible_sector");
+    }
+
     int Symmetry_rotation::group_multiply(const Symmetry& symm, const int isym1, const int isym2) const
     {   // row_vec * gmat1*gmat2
         ModuleBase::Matrix3 g12 = symm.gmatrix[isym1] * symm.gmatrix[isym2];
@@ -131,13 +152,45 @@ namespace ModuleSymmetry
         output_atompair_stars(this->atompair_stars_);
     }
 
+    std::vector<std::array<int, 3>> Symmetry_rotation::get_Rs_from_BvK(const K_Vectors& kv) const
+    {
+        const std::array<int, 3>& period = RI_Util::get_Born_vonKarmen_period(kv);
+        return RI_Util::get_Born_von_Karmen_cells(period);
+    }
+    std::vector<std::array<int, 3>> Symmetry_rotation::get_Rs_from_adjacent_list(const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals& pv) const
+    {
+        // find the union set of Rs for all the atom pairs
+        std::set<std::array<int, 3>> Rs_set;
+        for (int iat1 = 0;iat1 < ucell.nat;++iat1)
+        {
+            auto tau1 = ucell.get_tau(iat1);
+            int it1 = ucell.iat2it[iat1], ia1 = ucell.iat2ia[iat1];
+            AdjacentAtomInfo adjs;
+            gd.Find_atom(ucell, tau1, it1, ia1, &adjs);
+            for (int ad = 0; ad < adjs.adj_num + 1; ++ad)
+            {
+                const int it2 = adjs.ntype[ad];
+                const int ia2 = adjs.natom[ad];
+                int iat2 = ucell.itia2iat(it2, ia2);
+                if (pv.get_row_size(iat1) && pv.get_col_size(iat2))
+                {
+                    const ModuleBase::Vector3<int>& R_index = adjs.box[ad];
+                    if (ucell.cal_dtau(iat1, iat2, R_index).norm() * ucell.lat0
+                        < ucell.atoms[it1].Rcut + ucell.atoms[it2].Rcut)
+                        Rs_set.insert({ R_index.x, R_index.y, R_index.z });
+                }
+            }
+        }
+        // set to vector
+        std::vector<std::array<int, 3>> Rs(Rs_set.size());
+        for (auto& R : Rs_set) Rs.push_back(R);
+        return Rs;
+    }
 
-    void Symmetry_rotation::find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const K_Vectors& kv)
+    void Symmetry_rotation::find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<std::array<int, 3>>& Rs)
     {
         ModuleBase::TITLE("Symmetry_rotation", "find_irreducible_R");
-        std::array<int, 3> period = RI_Util::get_Born_vonKarmen_period(kv);
-        std::vector<std::array<int, 3>> BvK_cells = RI_Util::get_Born_von_Karmen_cells(period);
-
+        this->R_stars_.clear();
         this->R_stars_.resize(st.nat * st.nat);
 
         auto no_rotation = [](const int isym, const int iat1, const int iat2, const std::array<int, 3>& R)-> int
@@ -181,6 +234,8 @@ namespace ModuleSymmetry
                     {
                         for (int isym = 0; isym < symm.nrotk; ++isym)
                         {
+                            // only consider pure rotation when finding irreducible R in the atom pair
+                            if (symm.gmatrix[isym].Det() < 0) continue;
                             ModuleBase::Vector3<double> rot_aRb_d = aRb_d * symm.gmatrix[isym];
                             if (symm.equal(rot_aRb_d.x, aRb_d_irR.x) &&
                                 symm.equal(rot_aRb_d.y, aRb_d_irR.y) &&
@@ -200,13 +255,13 @@ namespace ModuleSymmetry
         // 1. find Rstars for each atom pair
         for (int iat1 = 0;iat1 < st.nat;++iat1)
             for (int iat2 = 0;iat2 < st.nat;++iat2)
-                for (auto& R : BvK_cells) add_R_to_Rstar(this->R_stars_[iat1 * st.nat + iat2], iat1, iat2, R, no_rotation);
+                for (auto& R : Rs) add_R_to_Rstar(this->R_stars_[iat1 * st.nat + iat2], iat1, iat2, R, no_rotation);
 
         // 2. find irreducible sector
         // 2.1. contruct appendix Rstar: irreducible R in other atom pairs that cannot rotate into R_stars_[irreducebule_ap]
         auto exceed_range = [&](const std::array<int, 3>& irR)->bool
             {
-                for (auto& cell : BvK_cells) if (irR == cell) return false;
+                for (auto& cell : Rs) if (irR == cell) return false;
                 return true;
             };
         for (auto apstar : this->atompair_stars_)
@@ -243,12 +298,8 @@ namespace ModuleSymmetry
         }
     }
 
-    void Symmetry_rotation::output_irreducible_R(const K_Vectors& kv, const Atom* atoms, const Statistics& st)
+    void Symmetry_rotation::output_irreducible_R(const Atom* atoms, const Statistics& st, const std::vector<std::array<int, 3>>& Rs)
     {
-        // output BvK cells
-        std::array<int, 3> period = RI_Util::get_Born_vonKarmen_period(kv);
-        std::vector<std::array<int, 3>> BvK_cells = RI_Util::get_Born_von_Karmen_cells(period);
-
         std::cout << "Number of irreducible atom pairs: " << this->atompair_stars_.size() << std::endl;
         std::cout << "Irreducible atom pairs: " << std::endl;
         for (int iap = 0; iap < this->atompair_stars_.size(); ++iap)
@@ -296,6 +347,7 @@ namespace ModuleSymmetry
     void Symmetry_rotation::get_final_map_to_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st)
     {
         ModuleBase::TITLE("Symmetry_rotation", "get_final_map_to_irreducible_sector");
+        this->final_map_to_irreducible_sector_.clear();
         this->final_map_to_irreducible_sector_.resize(st.nat * st.nat);
         for (auto& apstar : this->atompair_stars_)
             for (auto& ap : apstar)
@@ -361,6 +413,9 @@ namespace ModuleSymmetry
                         }// Rstar[iap]
                 }  //if irreducible atom pair
             } // atom pair star
+        // clear Rstars 
+        this->R_stars_.clear();
+        this->R_stars_irap_append_.clear();
     }
 
     void Symmetry_rotation::output_final_map_to_irreducible_sector(const int nat)

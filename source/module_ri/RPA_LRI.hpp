@@ -64,7 +64,7 @@ void RPA_LRI<T, Tdata>::cal_postSCF_exx(const elecstate::DensityMatrix<T, Tdata>
     const K_Vectors& kv)
 {
     Mix_DMk_2D mix_DMk_2D;
-    bool exx_spacegroup_symmetry = (!GlobalV::GAMMA_ONLY_LOCAL && GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
+    bool exx_spacegroup_symmetry = (GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
     if (exx_spacegroup_symmetry)
         mix_DMk_2D.set_nks(kv.nkstot_full * (GlobalV::NSPIN == 2 ? 2 : 1), GlobalV::GAMMA_ONLY_LOCAL);
     else
