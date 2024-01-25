@@ -10,7 +10,7 @@
 namespace ModuleSymmetry
 {
     void Symmetry_rotation::cal_Ms(const K_Vectors& kv,
-        //const std::vector<std::map<int, ModuleBase::Vector3<double>>>& kstars,
+        //const std::vector<std::map<int, TCdouble>>& kstars,
         const UnitCell& ucell, const Parallel_2D& pv)
     {
         ModuleBase::TITLE("Symmetry_rotation", "cal_Ms");
@@ -25,9 +25,9 @@ namespace ModuleSymmetry
         this->cal_rotmat_Slm(gmatc.data(), ucell.lmax);
 
         // 2. calculate the rotation matrix in AO-representation for each ibz_kpoint and symmetry operation: M(k, isym)
-        auto restrict_kpt = [](const ModuleBase::Vector3<double>& kvec, const double& symm_prec) -> ModuleBase::Vector3<double>
+        auto restrict_kpt = [](const TCdouble& kvec, const double& symm_prec) -> TCdouble
             {// in (-0.5, 0.5]
-                ModuleBase::Vector3<double> kvec_res;
+                TCdouble kvec_res;
                 kvec_res.x = fmod(kvec.x + 100.5 - 0.5 * symm_prec, 1) - 0.5 + 0.5 * symm_prec;
                 kvec_res.y = fmod(kvec.y + 100.5 - 0.5 * symm_prec, 1) - 0.5 + 0.5 * symm_prec;
                 kvec_res.z = fmod(kvec.z + 100.5 - 0.5 * symm_prec, 1) - 0.5 + 0.5 * symm_prec;
@@ -40,7 +40,7 @@ namespace ModuleSymmetry
         this->Ms_.resize(nks_ibz);
         for (int ik_ibz = 0;ik_ibz < nks_ibz;++ik_ibz)
         {
-            // const ModuleBase::Vector3<double>& kvec_d_ibz = restrict_kpt((*kstars[ik_ibz].begin()).second * ucell.symm.kgmatrix[(*kstars[ik_ibz].begin()).first], ucell.symm.epsilon);
+            // const TCdouble& kvec_d_ibz = restrict_kpt((*kstars[ik_ibz].begin()).second * ucell.symm.kgmatrix[(*kstars[ik_ibz].begin()).first], ucell.symm.epsilon);
             for (auto& isym_kvd : kv.kstars[ik_ibz])
                 if (isym_kvd.first < nsym_)
                     this->Ms_[ik_ibz][isym_kvd.first] = this->contruct_2d_rot_mat_ao(ucell.symm, ucell.atoms, ucell.st, kv.kvec_d[ik_ibz], isym_kvd.first, pv);
@@ -67,7 +67,7 @@ namespace ModuleSymmetry
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_dm");
         ModuleBase::timer::tick("Symmetry_rotation", "restore_dm");
-        auto vec3_eq = [](const ModuleBase::Vector3<double>& v1, const ModuleBase::Vector3<double>& v2, const double& prec) -> bool
+        auto vec3_eq = [](const TCdouble& v1, const TCdouble& v2, const double& prec) -> bool
             {
                 return (std::abs(v1.x - v2.x) < prec) && (std::abs(v1.y - v2.y) < prec) && (std::abs(v1.z - v2.z) < prec);
             };
@@ -147,7 +147,7 @@ namespace ModuleSymmetry
         return result;
     }
 
-    std::complex<double> Symmetry_rotation::wigner_D(const ModuleBase::Vector3<double>& euler_angle, const int l, const int m1, const int m2, const bool inv) const
+    std::complex<double> Symmetry_rotation::wigner_D(const TCdouble& euler_angle, const int l, const int m1, const int m2, const bool inv) const
     {
         std::complex<double> prefac(inv ? std::pow(-1, l) : 1, 0);
         return std::exp(-ModuleBase::IMAG_UNIT * static_cast<double>(m1) * euler_angle.x)
@@ -176,7 +176,7 @@ namespace ModuleSymmetry
     // because the atom position here is row vector, the original gmatrix(eular angle) is transposed.
     // gmatc: the rotation matrix under the basis of cartesian coordinates
     // gmatc should be a rotation matrix, i.e. det(gmatc)=1
-    ModuleBase::Vector3<double> Symmetry_rotation::get_euler_angle(const ModuleBase::Matrix3& gmatc) const
+    TCdouble Symmetry_rotation::get_euler_angle(const ModuleBase::Matrix3& gmatc) const
     {
         double threshold = 1e-8;
         double alpha, beta, gamma;
@@ -210,7 +210,7 @@ namespace ModuleSymmetry
                 gamma = ModuleBase::PI;// pi+alpha-gamma=alpha  => gamma=pi
             }
         }
-        return ModuleBase::Vector3<double>(alpha, beta, gamma);
+        return TCdouble(alpha, beta, gamma);
     }
 
     // in: the real value of m in range {-l, -l+1, ..., 0, ..., l-1, l}
@@ -246,7 +246,7 @@ namespace ModuleSymmetry
         for (int isym = 0;isym < nsym_;++isym)
         {
             // if R is a reflection operation, calculate D^l(R)=(-1)^l*D^l(IR), so the euler angle of (IR) is needed.
-            ModuleBase::Vector3<double>euler_angle = get_euler_angle(gmatc[isym].Det() > 0 ?
+            TCdouble euler_angle = get_euler_angle(gmatc[isym].Det() > 0 ?
                 gmatc[isym] : gmatc[isym] * ModuleBase::Matrix3(-1, 0, 0, 0, -1, 0, 0, 0, -1));
 
             this->rotmat_Slm_[isym].resize(lmax + 1);
@@ -261,7 +261,7 @@ namespace ModuleSymmetry
             }
         }
 /*
-        std::vector<ModuleBase::Vector3<double>> euler_angles_test(nsym_);
+        std::vector<TCdouble> euler_angles_test(nsym_);
         for (int isym = 0;isym < nsym_;++isym) euler_angles_test[isym] =
             get_euler_angle(gmatc[isym].Det() > 0 ? gmatc[isym] : gmatc[isym] * ModuleBase::Matrix3(-1, 0, 0, 0, -1, 0, 0, 0, -1));
 
@@ -301,13 +301,13 @@ namespace ModuleSymmetry
     // Perfoming {R|t} to atom position r in the R=0 lattice, we get Rr+t, which may get out of R=0 lattice, 
     // whose image in R=0 lattice is r'=Rr+t-O. This function is to get O for each atom and each symmetry operation.
     // the range of direct position is [-0.5, 0.5).
-    ModuleBase::Vector3<double> Symmetry_rotation::get_return_lattice(const Symmetry& symm,
-        const ModuleBase::Matrix3& gmatd, const ModuleBase::Vector3<double>gtransd,
-        const ModuleBase::Vector3<double>& posd_a1, const ModuleBase::Vector3<double>& posd_a2)const
+    TCdouble Symmetry_rotation::get_return_lattice(const Symmetry& symm,
+        const ModuleBase::Matrix3& gmatd, const TCdouble gtransd,
+        const TCdouble& posd_a1, const TCdouble& posd_a2)const
     {
-        // auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
+        // auto restrict_center = [&symm](const TCdouble& v) -> TCdouble {
         //     // in [-0.5, 0.5)
-        //     ModuleBase::Vector3<double> vr;
+        //     TCdouble vr;
         //     vr.x = fmod(v.x + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
         //     vr.y = fmod(v.y + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
         //     vr.z = fmod(v.z + 100.5 + 0.5 * symm.epsilon, 1) - 0.5 - 0.5 * symm.epsilon;
@@ -316,9 +316,9 @@ namespace ModuleSymmetry
         //     if (std::abs(vr.z) < symm.epsilon) vr.z = 0.0;
         //     return vr;
         //     };
-        auto restrict_center = [&symm](const ModuleBase::Vector3<double>& v) -> ModuleBase::Vector3<double> {
+        auto restrict_center = [&symm](const TCdouble& v) -> TCdouble {
             // in [0,1)
-            ModuleBase::Vector3<double> vr;
+            TCdouble vr;
             vr.x = fmod(v.x + 100 + symm.epsilon, 1) - symm.epsilon;
             vr.y = fmod(v.y + 100 + symm.epsilon, 1) - symm.epsilon;
             vr.z = fmod(v.z + 100 + symm.epsilon, 1) - symm.epsilon;
@@ -330,17 +330,17 @@ namespace ModuleSymmetry
         auto check_integer = [&symm](const double x) -> void {
             assert(symm.equal(x, std::round(x)));
             };
-        ModuleBase::Vector3<double> rotpos1 = restrict_center(posd_a1) * gmatd + restrict_center(gtransd);  // row vector
-        ModuleBase::Vector3<double> return_lattice_double = rotpos1 - restrict_center(posd_a2);
+        TCdouble rotpos1 = restrict_center(posd_a1) * gmatd + restrict_center(gtransd);  // row vector
+        TCdouble return_lattice_double = rotpos1 - restrict_center(posd_a2);
 #ifdef __DEBUG
         check_integer(return_lattice_double.x);
         check_integer(return_lattice_double.y);
         check_integer(return_lattice_double.z);
 #endif
-        return ModuleBase::Vector3<double>(std::round(return_lattice_double.x), std::round(return_lattice_double.y), std::round(return_lattice_double.z));
+        return TCdouble(std::round(return_lattice_double.x), std::round(return_lattice_double.y), std::round(return_lattice_double.z));
     }
 
-    inline void output_return_lattice(const std::vector<std::vector<ModuleBase::Vector3<double>>>& return_lattice)
+    inline void output_return_lattice(const std::vector<std::vector<TCdouble>>& return_lattice)
     {
         std::cout << "return lattice:" << std::endl;
         for (int iat = 0;iat < return_lattice.size();++iat)
@@ -355,7 +355,7 @@ namespace ModuleSymmetry
     void Symmetry_rotation::get_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st)
     {
         ModuleBase::TITLE("Symmetry_rotation", "get_return_lattice_all");
-        this->return_lattice_.resize(st.nat, std::vector<ModuleBase::Vector3<double>>(symm.nrotk));
+        this->return_lattice_.resize(st.nat, std::vector<TCdouble>(symm.nrotk));
         for (int iat1 = 0;iat1 < st.nat;++iat1)
         {
             int it = st.iat2it[iat1];
@@ -396,7 +396,7 @@ namespace ModuleSymmetry
     // 2d-block parallized rotation matrix in AO-representation, denoted as M.
     // finally we will use D(k)=M(R, k)^\dagger*D(Rk)*M(R, k) to recover D(k) from D(Rk) in cal_Ms.
     std::vector<std::complex<double>> Symmetry_rotation::contruct_2d_rot_mat_ao(const Symmetry& symm, const Atom* atoms, const Statistics& cell_st,
-        const ModuleBase::Vector3<double>& kvec_d_ibz, int isym, const Parallel_2D& pv) const
+        const TCdouble& kvec_d_ibz, int isym, const Parallel_2D& pv) const
     {
         std::vector<std::complex<double>> M_isym(pv.get_local_size(), 0.0);
         for (int iat1 = 0;iat1 < cell_st.nat;++iat1)

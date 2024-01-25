@@ -1013,7 +1013,6 @@ void ESolver_KS_LCAO<TK, TR>::after_scf(const int istep)
         }
     }
 
-    bool out_exc = true;    // tmp, add parameter!
     if (GlobalV::out_mat_xc)
     {
         ModuleIO::write_Vxc<TK, TR>(GlobalV::NSPIN, GlobalV::NLOCAL, GlobalV::DRANK,
