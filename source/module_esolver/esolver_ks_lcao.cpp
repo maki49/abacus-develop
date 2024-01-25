@@ -827,7 +827,6 @@ namespace ModuleESolver
         }
     }
 
-    bool out_exc = true;    // tmp, add parameter!
     if (GlobalV::out_mat_xc)
         ModuleIO::write_Vxc<TK, TR>(GlobalV::NSPIN, GlobalV::NLOCAL, GlobalV::DRANK,
             *this->psi, GlobalC::ucell, this->sf, *this->pw_rho, *this->pw_rhod, GlobalC::ppcell.vloc,

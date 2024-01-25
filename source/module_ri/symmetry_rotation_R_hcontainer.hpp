@@ -36,37 +36,31 @@ namespace ModuleSymmetry
 
     template<typename TR>   // HContainer type
     void Symmetry_rotation::restore_HR(
-        const Symmetry& symm, const Atom* atoms, const Statistics& st,
+        const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
         const hamilt::HContainer<TR>& HR_irreduceble,
         hamilt::HContainer<TR>& HR_rotated)
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
-        for (auto& apstar : this->atompair_stars_)
+        for (auto& apR_isym_irapR : this->final_map_to_irreducible_sector_)
         {
-            std::pair<int, int>& irap = apstar.at(0);
-            for (auto& ap : apstar)
-            {
-                const int& iat1 = ap.second.first, & iat2 = ap.second.second;
-                for (auto& R_isym_irR : this->final_map_to_irreducible_sector_[iat1 * st.nat + iat2])
-                {
-                    const std::array<int, 3>& R = R_isym_irR.first;
-                    const int& isym = R_isym_irR.second.first;
-                    const std::array<int, 3>& irR = R_isym_irR.second.second;
-                    assert(irR == this->rotate_R_by_formula(symm, isym, iat1, iat2, R));
-
-                    // get in and out pointer from HContainer
-                    const hamilt::AtomPair<TR>& irap_hc = HR_irreduceble.get_atom_pair(irap.first, irap.second);
-                    const int irR_hc = irap_hc.find_R(irR[0], irR[1], irR[2]);
-                    if (irR_hc < 0) continue;
-                    const TR* irijR_ptr = irap_hc.get_pointer(irR_hc);
-                    const hamilt::AtomPair<TR>& ap_hc = HR_rotated.get_atom_pair(iat1, iat2);
-                    const int R_hc = ap_hc.find_R(R[0], R[1], R[2]);
-                    if (R_hc < 0) continue;
-                    TR* ijR_ptr = ap_hc.get_pointer(R_hc);
-                    rotate_atompair_parallel(irijR_ptr, isym, atoms, st, irap, ap.second, 'H', *irap_hc.get_paraV(), ijR_ptr);
-                }
-            }
+            const Tap& ap = apR_isym_irapR.first.first;
+            const TC& R = apR_isym_irapR.first.second;
+            const int& isym = apR_isym_irapR.second.first;
+            const Tap& irap = apR_isym_irapR.second.second.first;
+            const TC& irR = apR_isym_irapR.second.second.second;
+            assert(irR == this->rotate_R_by_formula(symm, isym, ap.first, ap.second, R));
+            // get in and out pointer from HContainer
+            const hamilt::AtomPair<TR>& irap_hc = HR_irreduceble.get_atom_pair(irap.first, irap.second);
+            const int irR_hc = irap_hc.find_R(irR[0], irR[1], irR[2]);
+            if (irR_hc < 0) continue;
+            const TR* irijR_ptr = irap_hc.get_pointer(irR_hc);
+            const hamilt::AtomPair<TR>& ap_hc = HR_rotated.get_atom_pair(ap.first, ap.second);
+            const int R_hc = ap_hc.find_R(R[0], R[1], R[2]);
+            if (R_hc < 0) continue;
+            TR* ijR_ptr = ap_hc.get_pointer(R_hc);
+            rotate_atompair_parallel(irijR_ptr, isym, atoms, st, irap, ap, mode, *irap_hc.get_paraV(), ijR_ptr);
         }
+
     }
 
     inline void set_block(const int starti, const int startj, const int nr, const ModuleBase::ComplexMatrix& block, double* obj)
@@ -83,7 +77,7 @@ namespace ModuleSymmetry
     };
     template<typename TR>
     void Symmetry_rotation::rotate_atompair_parallel(const TR* Alocal_in, const int isym, const Atom* atoms, const Statistics& st,
-        const std::pair<int, int>& ap_in, const std::pair<int, int>& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output)
+        const Tap& ap_in, const Tap& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output)
     {
         // all the matrices are row-major (col-contiguous)
         int iat1 = ap_in.first, iat2 = ap_in.second;
@@ -170,7 +164,7 @@ namespace ModuleSymmetry
 
     template<typename TR>
     void Symmetry_rotation::test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st,
-        const hamilt::HContainer<TR>& HR_full)
+        const char mode, const hamilt::HContainer<TR>& HR_full)
     {
         ModuleBase::TITLE("Symmetry_rotation", "test_HR_rotation");
         auto get_irreducible_ijR_info = [&HR_full, this]() -> std::vector<int>
@@ -215,7 +209,7 @@ namespace ModuleSymmetry
         //2. rotate
         hamilt::HContainer<TR> HR_rotated(HR_full);
         HR_rotated.set_zero();
-        this->restore_HR(symm, atoms, st, HR_irreducible, HR_rotated);
+        this->restore_HR(symm, atoms, st, mode, HR_irreducible, HR_rotated);
         //3. compare
         for (int iat1 = 0;iat1 < st.nat;++iat1)
         {
@@ -230,8 +224,8 @@ namespace ModuleSymmetry
                     int* R = ap_full.get_R_index(irR);
                     const TR* rotated_ptr = ap_rotated.get_HR_values(R[0], R[1], R[2]).get_pointer();
                     GlobalV::ofs_running << "atom pair: (" << iat1 << ", " << iat2 << "),  R: (" << R[0] << " " << R[1] << " " << R[2] << ")\n";
-                    print_atompair_local(*pv, iat1, iat2, rotated_ptr, "HR_rotated");
-                    print_atompair_local(*pv, iat1, iat2, full_ptr, "HR_ref");
+                    print_atompair_local(*pv, iat1, iat2, rotated_ptr, std::string("R_rot").insert(0, 1, mode));
+                    print_atompair_local(*pv, iat1, iat2, full_ptr, std::string("R_ref").insert(0, 1, mode));
                 }
             }
         }
