@@ -57,6 +57,11 @@ namespace ModuleSymmetry
             : R_double * symm.gmatrix[isym] + this->return_lattice_[iat2][isym] - this->return_lattice_[iat1][isym];
         return { round2int(Rrot_double.x), round2int(Rrot_double.y), round2int(Rrot_double.z) };
     }
+    TapR Symmetry_rotation::rotate_R_by_formula(const Symmetry& symm,
+        const int isym, const TapR& apR, const char gauge) const
+    {
+        return { apR.first,  this->rotate_R_by_formula(symm, isym, apR.first.first, apR.first.second, apR.second, gauge) };
+    }
 
     TCdouble Symmetry_rotation::get_aRb_direct(const Atom* atoms, const Statistics& st,
         const int iat1, const int iat2, const TCdouble& R, const char gauge)const
@@ -97,7 +102,6 @@ namespace ModuleSymmetry
                 if (!exist)this->atompair_stars_.push_back({ {0, pair} });
             }
     }
-
 
     void Symmetry_rotation::find_irreducible_atom_pairs_set(const Symmetry& symm)
     {
@@ -234,8 +238,7 @@ namespace ModuleSymmetry
                     {
                         for (int isym = 0; isym < symm.nrotk; ++isym)
                         {
-                            // only consider pure rotation when finding irreducible R in the atom pair
-                            if (symm.gmatrix[isym].Det() < 0) continue;
+                            // if (symm.gmatrix[isym].Det() < 0) continue; // only consider pure rotation
                             TCdouble rot_aRb_d = aRb_d * symm.gmatrix[isym];
                             if (symm.equal(rot_aRb_d.x, aRb_d_irR.x) &&
                                 symm.equal(rot_aRb_d.y, aRb_d_irR.y) &&
@@ -487,7 +490,7 @@ namespace ModuleSymmetry
         this->transpose_list_.clear();
         for (auto& irs_star : this->sector_stars_)
         {
-            const TapR& irap_R = irs_star.at(0);
+            const TapR& irap_R = irs_star.count(0) ? irs_star.at(0) : this->rotate_R_by_formula(symm, irs_star.begin()->first, irs_star.begin()->second);
             if (irap_R.first.first != irap_R.first.second) continue; // only consider the aa-pairs
             std::set<TapR> transpose_set;
             std::set<TapR> rotation_set;

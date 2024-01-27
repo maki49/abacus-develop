@@ -127,8 +127,9 @@ namespace ModuleSymmetry
             for (auto& irR : irap_Rs.second)
             {
                 const std::pair<int, TC> a2_irR = { irap.second, irR };
-                HR_irreduceble[irap.first][a2_irR]
-                    = HR_full.at(irap.first).at(a2_irR);
+                HR_irreduceble[irap.first][a2_irR] = (HR_full.at(irap.first).count(a2_irR) != 0) ?
+                    HR_full.at(irap.first).at(a2_irR)
+                    : RI::Tensor<Tdata>(HR_full.at(irap.first).begin()->second.shape);
             }
         }
         // 2. rotate
@@ -154,6 +155,102 @@ namespace ModuleSymmetry
                 std::cout << "atom pair (" << iat1 << ", " << iat2 << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "):\n";
                 print_tensor(HR_rot, std::string("R_rot").insert(0, 1, mode));
                 print_tensor(HR_ref, std::string("R_ref").insert(0, 1, mode));
+            }
+        }
+    }
+
+    template<typename Tdata>
+    void Symmetry_rotation::test_sector_equivalence_in_cal_Hs(const TapR& apR_test,
+        const std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>>& Ds_full,
+        Exx_LRI<Tdata>& exx_lri, const Parallel_Orbitals& pv)
+    {
+        // 1. pick out D(R) on one of the irreducible {abR}s from full D(R)
+        std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>> Ds_one_in_sector = Ds_full;
+        for (auto& a1_a2R_tensor : Ds_one_in_sector[0])
+        {
+            const int& iat1 = a1_a2R_tensor.first;
+            for (auto& a2R_tensor : a1_a2R_tensor.second)
+            {
+                const int& iat2 = a2R_tensor.first.first;
+                const TC& R = a2R_tensor.first.second;
+                const TapR& apR = { {iat1, iat2}, R };
+                if (apR.first == apR_test.first && apR.second == apR_test.second)
+                    a2R_tensor.second = Ds_full[0].at(iat1).at({ iat2, R });
+                else
+                    a2R_tensor.second = RI::Tensor<Tdata>(a2R_tensor.second.shape);
+            }
+        }
+        exx_lri.cal_exx_elec(Ds_one_in_sector, pv);
+        const std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>> Hexxs_one_in_sector = exx_lri.get_Hexxs();
+
+
+        //2. pick out D(R) on the whole sector star of the tested irreducible {abR}
+        TapR irapR_test = this->final_map_to_irreducible_sector_.at(apR_test).second;
+        std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>> Ds_sector_star = Ds_full;
+        for (auto& a1_a2R_tensor : Ds_sector_star[0])
+        {
+            const int& iat1 = a1_a2R_tensor.first;
+            for (auto& a2R_tensor : a1_a2R_tensor.second)
+            {
+                const int& iat2 = a2R_tensor.first.first;
+                const TC& R = a2R_tensor.first.second;
+                const TapR& apR = { {iat1, iat2}, R };
+                const TapR& irapR = this->final_map_to_irreducible_sector_.at(apR).second;
+                if (irapR.first == irapR_test.first && irapR.second == irapR_test.second)
+                    a2R_tensor.second = Ds_full[0].at(iat1).at({ iat2, R });
+                else
+                    a2R_tensor.second = RI::Tensor<Tdata>(a2R_tensor.second.shape);
+            }
+        }
+        exx_lri.cal_exx_elec(Ds_sector_star, pv);
+        const std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>> Hexxs_sector_star = exx_lri.get_Hexxs();
+
+        // test: output Ds
+        std::cout << "Ds_one_in_sector[0].size(): " << Ds_one_in_sector[0].size() << std::endl;
+        for (auto& a1_a2R_tensor : Ds_one_in_sector[0])
+        {
+            const int& iat1 = a1_a2R_tensor.first;
+            for (auto& a2R_tensor : a1_a2R_tensor.second)
+            {
+                const int& iat2 = a2R_tensor.first.first;
+                const TC& R = a2R_tensor.first.second;
+                std::cout << "atom pair (" << iat1 << ", " << iat2 << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "):\n";
+                const RI::Tensor<Tdata>& Ds_one = a2R_tensor.second;
+                const RI::Tensor<Tdata>& Ds_star = Ds_sector_star[0].at(iat1).at({ iat2, R });
+                print_tensor(Ds_one, "Ds_one");
+                print_tensor(Ds_star, "Ds_star");
+            }
+        }
+
+        // 3. compare
+        // get sector star size
+        auto get_star_size = [this](const TapR& apR_test)->int
+            {
+                for (auto& ss : this->sector_stars_)
+                {
+                    const TapR& star_apR = ss.begin()->second;
+                    const TapR& star_irapR = this->final_map_to_irreducible_sector_.at(star_apR).second;
+                    if (star_apR.first == apR_test.first && star_apR.second == apR_test.second)
+                        return ss.size();
+                }
+                return 0;
+            };
+
+        const int starsize = get_star_size(apR_test);
+        std::cout << "star size of tested apR: " << starsize << std::endl;
+        std::cout << "Hexxs_one_in_sector[0].size(): " << Hexxs_one_in_sector[0].size() << std::endl;
+        for (auto& a1_a2R_tensor : Hexxs_one_in_sector[0])
+        {
+            const int& iat1 = a1_a2R_tensor.first;
+            for (auto& a2R_tensor : a1_a2R_tensor.second)
+            {
+                const int& iat2 = a2R_tensor.first.first;
+                const TC& R = a2R_tensor.first.second;
+                std::cout << "atom pair (" << iat1 << ", " << iat2 << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "):\n";
+                const RI::Tensor<Tdata>& Hexxs_one = a2R_tensor.second;
+                const RI::Tensor<Tdata>& Hexxs_star = Hexxs_sector_star[0].at(iat1).at({ iat2, R });
+                print_tensor(Hexxs_one * RI::Global_Func::convert<Tdata>(static_cast<double>(starsize)), "Hexxs_one* starsize");
+                print_tensor(Hexxs_star, "Hexxs_star");
             }
         }
     }

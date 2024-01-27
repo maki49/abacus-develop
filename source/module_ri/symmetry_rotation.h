@@ -12,6 +12,9 @@
 #include <RI/global/Tensor.h>
 #include "module_hamilt_lcao/module_hcontainer/hcontainer.h"
 #include "module_cell/module_neighbor/sltk_grid_driver.h"
+// for test
+#include "Exx_LRI.h"
+ 
 namespace ModuleSymmetry
 {
     using Tap = std::pair<int, int>;
@@ -117,6 +120,8 @@ namespace ModuleSymmetry
             const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
             const hamilt::HContainer<TR>& HR_irreduceble, hamilt::HContainer<TR>& HR_rotated);
 
+        //--------------------------------------------------------------------------------
+        /// test functions
         /// test H(R) rotation: giver a full H(R), pick out H(R) in the irreducible sector, rotate it, and compare with the original full H(R)
         template<typename Tdata>    // RI::Tensor type, using col-major implementation
         void test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
@@ -124,9 +129,15 @@ namespace ModuleSymmetry
         template<typename TR>   // HContainer type, using row-major implementation
         void test_HR_rotation(const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
             const hamilt::HContainer<TR>& HR_full);
-
         template<typename Tdata>    // HContainer type
         void print_HR(const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR, const std::string name);
+
+        // check whether Ds can be reduced in cal_Hs
+        template<typename Tdata>
+        void test_sector_equivalence_in_cal_Hs(const TapR& iapR_test,
+            const std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>>& Ds_full,
+            Exx_LRI<Tdata>& exx_lri, const Parallel_Orbitals& pv);
+        //--------------------------------------------------------------------------------
 
     private:
         int group_multiply(const Symmetry& symm, const int isym1, const int isym2)const;
@@ -138,6 +149,7 @@ namespace ModuleSymmetry
         /// gauge='L' means H(R)=<R|H|0>; gauge='R' means H(R)=<0|H|R>
         /// gauge='L': R'=R+O_1-O_2; gauge='R': R'=R+O_2-O_1
         TC rotate_R_by_formula(const Symmetry& symm, const int isym, const int iat1, const int iat2, const TC& R, const char gauge = 'R')const;
+        TapR rotate_R_by_formula(const Symmetry& symm, const int isym, const TapR& iapR, const char gauge = 'R')const;
         /// gauge='L': tau_a + R - tau_b; gauge='R': tau_a - tau_b - R (direct)
         TCdouble get_aRb_direct(const Atom* atoms, const Statistics& st, const int iat1, const int iat2, const TC& R, const char gauge = 'R')const;
         TCdouble get_aRb_direct(const Atom* atoms, const Statistics& st, const int iat1, const int iat2, const TCdouble& R, const char gauge = 'R')const;
