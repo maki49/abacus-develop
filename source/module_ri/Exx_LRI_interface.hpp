@@ -57,7 +57,8 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
         {
             this->symrot_.get_return_lattice_all(ucell.symm, ucell.atoms, ucell.st);
             this->symrot_.cal_Ms(kv, ucell, pv);
-            this->symrot_.find_irreducible_sector(ucell.symm, ucell.atoms, ucell.st, this->symrot_.get_Rs_from_BvK(kv));
+            this->symrot_.find_irreducible_sector(ucell.symm, ucell.atoms, ucell.st, this->symrot_.get_Rs_from_BvK(kv),
+                RI_Util::get_Born_vonKarmen_period(kv));
         }
     }
 

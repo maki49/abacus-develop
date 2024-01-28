@@ -41,7 +41,7 @@ namespace ModuleSymmetry
         hamilt::HContainer<TR>& HR_rotated)
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
-        for (auto& apR_isym_irapR : this->final_map_to_irreducible_sector_)
+        for (auto& apR_isym_irapR : this->full_map_to_irreducible_sector_)
         {
             const Tap& ap = apR_isym_irapR.first.first;
             const TC& R = apR_isym_irapR.first.second;
