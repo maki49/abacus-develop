@@ -40,6 +40,19 @@ namespace ModuleSymmetry
             else return lhs.second < rhs.second;
         }
     };
+    struct len_less_func
+    {
+        int norm2(const TC& R)const
+        {
+            return R[0] * R[0] + R[1] * R[1] + R[2] * R[2];
+        }
+        bool operator()(const TC& lhs, const TC& rhs) const
+        {
+            if (norm2(lhs) < norm2(rhs))return true;
+            else if (norm2(lhs) > norm2(rhs))return false;
+            else return lhs < rhs;
+        }
+    };
 
     class Symmetry_rotation
     {
@@ -103,7 +116,7 @@ namespace ModuleSymmetry
 
         //--------------------------------------------------------------------------------
         /// The main function to find irreducible sector: {abR}
-        void find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs);
+        void find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs, const TC& period);
         std::vector<TC> get_Rs_from_BvK(const K_Vectors& kv)const;
         std::vector<TC> get_Rs_from_adjacent_list(const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals& pv)const;
         //--------------------------------------------------------------------------------
@@ -140,7 +153,6 @@ namespace ModuleSymmetry
         //--------------------------------------------------------------------------------
 
     private:
-        int group_multiply(const Symmetry& symm, const int isym1, const int isym2)const;
         int round2int(const double x)const;
 
         //--------------------------------------------------------------------------------
@@ -162,18 +174,9 @@ namespace ModuleSymmetry
         /// double check between the two algorithms
         void test_irreducible_atom_pairs(const Symmetry& symm);
 
-        /// find and print irreducible R
-        void find_irreducible_R(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs);
-        void output_irreducible_R(const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs);
-
-        void get_final_map_to_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st);
-        void output_final_map_to_irreducible_sector(const int nat);
-
-        void find_sector_star_from_final_map(const Symmetry& symm, const Atom* atoms, const Statistics& st);
+        void output_full_map_to_irreducible_sector(const int nat);
         void output_sector_star();
 
-        void find_transpose_list_from_sector_star(const Symmetry& symm, const Atom* atoms, const Statistics& st);
-        void output_transpose_list();
         //--------------------------------------------------------------------------------
 
         /// The sub functions to rotate matrices
@@ -206,29 +209,19 @@ namespace ModuleSymmetry
         /// irreducible sector
         /// irreducible atom pairs: [n_iap][(isym, ap=(iat1, iat2))]
         std::vector<std::map<int, Tap>> atompair_stars_;
-        /// irreducible R for each atom pair: [natoms*natoms][n_Rstar][(isym, R)], n_Rstar = how many kinds of length of (aRb) of irreducible atom pair (ab).
-        std::vector<std::vector<std::map<int, TC>>> R_stars_;
-        /// extra part of Rstar in irreducible atom pairs due to exeeding the range of after the other atom pair's R rotating to its irreducible atom pair.
-        /// [irreducible_ap][n_Rstar](isym, R)
-        std::map<Tap, std::vector<std::map<int, TC>>> R_stars_irap_append_;
 
         ///The index range of the orbital matrix to be calculated: irreducible R in irreducible atom pairs
         // (including R in other atom pairs that cannot rotate into R_stars_[irreducebule_ap])
         std::map<Tap, std::set<TC>> irreducible_sector_;
 
         // //[natoms*natoms](R, (isym, irreducible_R))
-        // std::vector<std::map<TC, std::pair<int, TC>>> final_map_to_irreducible_sector_;
+        // std::vector<std::map<TC, std::pair<int, TC>>> full_map_to_irreducible_sector_;
         // (abR) -> (isym, abR)
-        std::map<TapR, std::pair<int, TapR>, apR_less_func> final_map_to_irreducible_sector_;
+        std::map<TapR, std::pair<int, TapR>, apR_less_func> full_map_to_irreducible_sector_;
 
         // all the {abR}s , where the isym=0 one in each star forms the irreducible sector.
         // [irreducible sector size][isym, ((ab),R)]
         std::vector<std::map<int, TapR>> sector_stars_;
-
-        /// if (aaR) and (-aaR) are in the same star, they should be associated by transpose rather than rotation.
-        ///(aaR to be calculated by transpose) -> (aaR to be restored from the irreducible sector)
-        // std::map<TC, TC> transpose_list_;
-        std::map<TapR, TapR, apR_less_func> transpose_list_;
 
         /// the direct lattice vector of {R|t}\tau-\tau' for each atoms and each symmetry operation. [natom][nsym]
         std::vector<std::vector<TCdouble>> return_lattice_;

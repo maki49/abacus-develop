@@ -14,7 +14,7 @@ namespace ModuleSymmetry
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_full;
 
-        for (auto& apR_isym_irapR : this->final_map_to_irreducible_sector_)
+        for (auto& apR_isym_irapR : this->full_map_to_irreducible_sector_)
         {
             const Tap& ap = apR_isym_irapR.first.first;
             const TC& R = apR_isym_irapR.first.second;
@@ -23,7 +23,7 @@ namespace ModuleSymmetry
             const TC& irR = apR_isym_irapR.second.second.second;
             // rotate the matrix and pack data
             // H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
-            assert(irR == this->rotate_R_by_formula(symm, isym, ap.first, ap.second, R));
+            if (HR_irreduceble.find(irap.first) != HR_irreduceble.end() && HR_irreduceble.at(irap.first).find({ irap.second, irR }) != HR_irreduceble.at(irap.first).end())
             HR_full[ap.first][{ap.second, R}] = rotate_atompair_serial(HR_irreduceble.at(irap.first).at({ irap.second, irR }),
                 isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], mode);
         }
@@ -185,7 +185,7 @@ namespace ModuleSymmetry
 
 
         //2. pick out D(R) on the whole sector star of the tested irreducible {abR}
-        TapR irapR_test = this->final_map_to_irreducible_sector_.at(apR_test).second;
+        TapR irapR_test = this->full_map_to_irreducible_sector_.at(apR_test).second;
         std::vector<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>> Ds_sector_star = Ds_full;
         for (auto& a1_a2R_tensor : Ds_sector_star[0])
         {
@@ -195,7 +195,7 @@ namespace ModuleSymmetry
                 const int& iat2 = a2R_tensor.first.first;
                 const TC& R = a2R_tensor.first.second;
                 const TapR& apR = { {iat1, iat2}, R };
-                const TapR& irapR = this->final_map_to_irreducible_sector_.at(apR).second;
+                const TapR& irapR = this->full_map_to_irreducible_sector_.at(apR).second;
                 if (irapR.first == irapR_test.first && irapR.second == irapR_test.second)
                     a2R_tensor.second = Ds_full[0].at(iat1).at({ iat2, R });
                 else
@@ -229,7 +229,7 @@ namespace ModuleSymmetry
                 for (auto& ss : this->sector_stars_)
                 {
                     const TapR& star_apR = ss.begin()->second;
-                    const TapR& star_irapR = this->final_map_to_irreducible_sector_.at(star_apR).second;
+                    const TapR& star_irapR = this->full_map_to_irreducible_sector_.at(star_apR).second;
                     if (star_apR.first == apR_test.first && star_apR.second == apR_test.second)
                         return ss.size();
                 }
