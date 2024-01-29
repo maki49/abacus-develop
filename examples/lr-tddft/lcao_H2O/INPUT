@@ -36,3 +36,4 @@ out_alllog	1
 # out_chg 1
 
 nvirt 19
+abs_wavelen_range  40 180

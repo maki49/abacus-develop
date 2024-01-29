@@ -46,7 +46,7 @@ namespace hamilt
                 psi_out_bfirst.fix_b(ib);
                 for (int is = 0;is < nsk / nks;++is)    // 1 or 2 for gamma_only, 1 for k
                     hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
-                        psi_in_bfirst.get_nbasis(),
+                        psi_in_bfirst.get_nk() * psi_in_bfirst.get_nbasis(),
                         psi_out_bfirst.get_pointer() + is * this->nks * pX->get_local_size(),
                         psi_in_bfirst.get_pointer() + is * this->nks * pX->get_local_size(),
                         this->eig_ks_diff.c);
