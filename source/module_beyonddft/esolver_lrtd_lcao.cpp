@@ -1,16 +1,16 @@
-#pragma once
 #include "esolver_lrtd_lcao.h"
 #include "move_gint.hpp"
-#include "utils/lr_util_algorithms.hpp"
-#include "utils/lr_util_physics.hpp"
-#include "hamilt_casida.hpp"
-#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
+#include "utils/lr_util.h"
+#include "hamilt_casida.h"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
 #include "module_beyonddft/hsolver_lrtd.h"
-#include "module_beyonddft/lr_spectrum.hpp"
+#include "module_beyonddft/lr_spectrum.h"
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 #include "module_io/read_wfc_nao.h"
 #include "module_io/rho_io.h"
+#include "module_io/print_info.h"
+#include "module_cell/module_neighbor/sltk_atom_arrange.h"
 
 #ifdef __EXX
 template<>
@@ -36,6 +36,8 @@ void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<s
     throw std::runtime_error("ESolver_LRTD<double>::move_exx_lri: cannot move complex<double> to double");
 }
 #endif
+template<>void ModuleESolver::ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
+template<>void ModuleESolver::ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_k.gridt = &this->gt; }
 
 inline double getreal(std::complex<double> x) { return x.real(); }
 inline double getreal(double x) { return x; }
@@ -62,10 +64,13 @@ inline void redirect_log(const bool& out_alllog)
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::parameter_check()
 {
-    if (std::is_same<T, std::complex<double>>::value && this->nsk / this->nspin > 1 && this->input.lr_solver == "lapack")
-        throw std::invalid_argument("ESolver_LRTD: explicitly contruct A matrix is not supported for multi-k due to the complex density matrix.");
+    if (input.lr_solver != "dav" && input.lr_solver != "lapack")
+        throw std::invalid_argument("ESolver_LRTD: unknown type of lr_solver");
+    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "pbe" && xc_kernel != "hf")
+        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
+    if (this->nspin != 1 && this->nspin != 2)
+        throw std::invalid_argument("LR-TDDFT only supports nspin = 1 or 2 now");
 }
-
 template<typename T, typename TR>
 ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
     Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
@@ -76,23 +81,10 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     // xc kernel
     this->xc_kernel = inp.xc_kernel;
     std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
-    //check the input first
-    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "hf")
-        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
 
     // move the ground state info 
     this->psi_ks = ks_sol.psi;
     ks_sol.psi = nullptr;
-
-
-    // test: 强制psi_ks第一个元素为正
-    // psi_ks->fix_kb(0, 0);
-    // for (int j = 0;j < psi_ks->get_nbands();++j)  //nbands
-    // {
-    //     if (getreal(psi_ks->get_pointer()[j * psi_ks->get_nbasis()]) < 0)
-    //         for (int i = 0;i < psi_ks->get_nbasis();++i)  //nlocal
-    //             psi_ks->get_pointer()[j * psi_ks->get_nbasis() + i] *= -1;
-    // }
 
     //only need the eigenvalues. the 'elecstates' of excited states is different from ground state.
     this->eig_ks = std::move(ks_sol.pelec->ekb);
@@ -100,7 +92,6 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     //kv
     this->nspin = GlobalV::NSPIN;
     this->kv = std::move(ks_sol.kv);
-    this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
 
     this->parameter_check();
 
@@ -144,8 +135,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
         }
     }
 #endif
-    this->init_A(dynamic_cast<hamilt::HamiltLCAO<T, TR>*>(ks_sol.p_hamilt)->getHR(), inp.lr_thr);
-    this->lr_solver = inp.lr_solver;
+    this->init_A(inp.lr_thr);
     this->pelec = new elecstate::ElecStateLCAO<T>();
 }
 
@@ -158,9 +148,6 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     // xc kernel
     this->xc_kernel = inp.xc_kernel;
     std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
-    //check the input first
-    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "hf")
-        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
 
     // necessary steps in ESolver_FP
     ESolver_FP::Init(inp, ucell);
@@ -175,8 +162,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     }
     this->nspin = GlobalV::NSPIN;
     std::cout << "nspin: " << this->nspin << std::endl;
-    this->kv.set(this->symm, GlobalV::global_kpoint_card, nspin, ucell.G, ucell.latvec);
-    this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
+    this->kv.set(ucell.symm, GlobalV::global_kpoint_card, nspin, ucell.G, ucell.latvec);
     ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "INIT K-POINTS");
     Print_Info::setup_parameters(ucell, this->kv);
 
@@ -296,15 +282,14 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
 #endif
         ModuleBase::Ylm::set_coefficients();    // set Ylm only for Gint 
 
-    this->init_A(nullptr, inp.lr_thr);
-    this->lr_solver = inp.lr_solver;
+    this->init_A(inp.lr_thr);
     this->pelec = new elecstate::ElecState();
 }
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
 {
     ModuleBase::TITLE("ESolver_LRTD", "Run");
-    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->lr_solver);
+    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->input.lr_solver);
     return;
 }
 
@@ -338,8 +323,8 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
         GlobalV::ofs_warning << "ESolver_LRTD: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = " << this->nvirt << std::endl;
     else if (nvirt_input > 0) this->nvirt = nvirt_input;
     this->npairs = this->nocc * this->nvirt;
-    if (this->nstates > this->nocc * this->nvirt)
-        throw std::invalid_argument("ESolver_LRTD: nstates > nocc*nvirt");
+    if (this->nstates > this->nocc * this->nvirt * this->kv.nks)
+        throw std::invalid_argument("ESolver_LRTD: nstates > nocc*nvirt*nks");
 
     GlobalV::ofs_running << "Setting LR-TDDFT parameters: " << std::endl;
     GlobalV::ofs_running << "number of occupied bands: " << this->nocc << std::endl;
@@ -351,7 +336,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 
     // setup ParaX
     LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc);//nvirt - row, nocc - col 
-    this->X = new psi::Psi<T>(this->nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
+    this->X = new psi::Psi<T>(this->kv.nks, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
     this->X->zero_out();
 
     // set the initial guess of X
@@ -373,17 +358,20 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 
     ioiv2ix = std::move(std::get<0>(indexmap));
     ix2ioiv = std::move(std::get<1>(indexmap));
-    
+
     // use unit vectors as the initial guess
     // for (int i = 0; i < std::min(this->nstates * GlobalV::PW_DIAG_NDIM, nocc * nvirt); i++)
-    for (int i = 0; i < nstates; i++)
+    for (int s = 0; s < nstates; ++s)
     {
-        this->X->fix_b(i);
-        int occ_global = std::get<0>(ix2ioiv[i]);   // occ
-        int virt_global = std::get<1>(ix2ioiv[i]);   // virt
+        this->X->fix_b(s);
+        int ipair = s % (npairs);
+        int occ_global = std::get<0>(ix2ioiv[ipair]);   // occ
+        int virt_global = std::get<1>(ix2ioiv[ipair]);   // virt
+        int ik = s / (npairs);
         if (this->paraX_.in_this_processor(virt_global, occ_global))
-            for (int isk = 0;isk < this->nsk;++isk)
-                (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
+            // for (int isk = 0;isk < this->kv.nks;++isk)
+            (*X)(ik, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global))
+            = (static_cast<T>(1.0) / static_cast<T>(this->kv.nks));
     }
     this->X->fix_b(0);  //recover the pointer
 
@@ -393,44 +381,13 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::init_A(hamilt::HContainer<double>* pHR_in, const double lr_thr)
 {
-    //HContainer-based DensityMatrix
-    hamilt::HContainer<double>*& pHR = pHR_in;
-    if (!pHR)
-    {
-        pHR = new hamilt::HContainer<TR>(&this->paraMat_);
-        for (int iat1 = 0; iat1 < ucell.nat; iat1++)
-        {
-            auto tau1 = this->ucell.get_tau(iat1);
-            int T1, I1;
-            this->ucell.iat2iait(iat1, &I1, &T1);
-            AdjacentAtomInfo adjs;
-            GlobalC::GridD.Find_atom(this->ucell, tau1, T1, I1, &adjs);
-            for (int ad = 0; ad < adjs.adj_num + 1; ++ad)
-            {
-                const int T2 = adjs.ntype[ad];
-                const int I2 = adjs.natom[ad];
-                int iat2 = this->ucell.itia2iat(T2, I2);
-                if (this->paraMat_.get_row_size(iat1) <= 0 || this->paraMat_.get_col_size(iat2) <= 0) continue;
-                const ModuleBase::Vector3<int>& R_index = adjs.box[ad];
-                const LCAO_Orbitals& orb = LCAO_Orbitals::get_const_instance();
-                if (this->ucell.cal_dtau(iat1, iat2, R_index).norm() * this->ucell.lat0
-                    >= orb.Phi[T1].getRcut() + orb.Phi[T2].getRcut()) continue;
-                hamilt::AtomPair<TR> tmp(iat1, iat2, R_index.x, R_index.y, R_index.z, &this->paraMat_);
-                pHR->insert_pair(tmp);
-            }
-        }
-        pHR->allocate(true);
-        if (std::is_same<T, double>::value) pHR->fix_gamma();
-    }
-    pHR->set_paraV(&this->paraMat_);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, pHR,
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, GlobalC::GridD, this->psi_ks, this->eig_ks,
 #ifdef __EXX
         this->exx_lri.get(),
 #endif
         this->gint, this->pot, this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
-
     // init HSolver
-    this->phsol = new hsolver::HSolverLR<T>(this->nsk, this->npairs);
+    this->phsol = new hsolver::HSolverLR<T>(this->kv.nks, this->npairs);
     this->phsol->set_diagethr(0, 0, std::max(1e-13, lr_thr));
 }
 
@@ -541,3 +498,5 @@ void ModuleESolver::ESolver_LRTD<T, TR>::read_ks_chg(Charge& chg_gs)
                 "or you must set read_file_dir \n to a specific directory. ");
     }
 }
+template class ModuleESolver::ESolver_LRTD<double, double>;
+template class ModuleESolver::ESolver_LRTD<std::complex<double>, double>;

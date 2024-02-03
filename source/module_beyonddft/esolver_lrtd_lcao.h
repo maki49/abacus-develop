@@ -14,8 +14,8 @@
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
-#include "module_beyonddft/hamilt_casida.hpp"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
+#include "module_beyonddft/hamilt_casida.h"
 #ifdef __EXX
 // #include <RI/physics/Exx.h>
 #include "module_ri/Exx_LRI.h"
@@ -87,7 +87,6 @@ namespace ModuleESolver
         int npairs;
         /// how many 2-particle states to be solved
         int nstates = 1;
-        int nsk = 1; //nspin*nks
         int nspin = 1;
 
         Grid_Technique gt;
@@ -96,7 +95,6 @@ namespace ModuleESolver
         typename TGint<T>::type* gint = nullptr;
 
         std::string xc_kernel;
-        std::string lr_solver;
 
         void set_gint();
 
@@ -132,6 +130,4 @@ namespace ModuleESolver
 #endif
 
     };
-    template<>void ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
-    template<>void ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_k.gridt = &this->gt; }
 }

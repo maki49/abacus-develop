@@ -8,7 +8,7 @@
 #include "module_io/para_json.h"
 
 #ifdef __LCAO
-#include "module_beyonddft/esolver_lrtd_lcao.hpp"
+#include "module_beyonddft/esolver_lrtd_lcao.h"
 #endif
 extern "C"
 {

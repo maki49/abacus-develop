@@ -9,10 +9,10 @@ namespace hsolver
     {
     private:
         using Real = typename GetTypeReal<T>::type;
-        const int nsk = 0;
+        const int nks = 0;
         const int npairs = 0;
     public:
-        HSolverLR(const int nsk_in, const int npairs_in) :nsk(nsk_in), npairs(npairs_in) {};
+        HSolverLR(const int nks_in, const int npairs_in) :nks(nks_in), npairs(npairs_in) {};
         virtual Real set_diagethr(const int istep, const int iter, const Real ethr) override
         {
             this->diag_ethr = ethr;

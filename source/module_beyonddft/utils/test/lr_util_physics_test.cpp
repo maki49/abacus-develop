@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../lr_util_physics.hpp"
+#include "../lr_util.h"
 struct Atom_pseudo_Test
 {
     size_t zv;

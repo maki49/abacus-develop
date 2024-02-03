@@ -2,6 +2,9 @@
 #include "module_beyonddft/utils/lr_util.h"
 #include "module_hsolver/kernels/math_kernel_op.h"
 #include "module_base/global_variable.h"
+#ifdef __MPI
+#include "module_base/parallel_common.h"
+#endif
 namespace hamilt
 {
     /// @brief  Diag part of A operator: [AX]_iak = (e_ak - e_ik) X_iak
@@ -10,8 +13,7 @@ namespace hamilt
     {
     public:
         OperatorLRDiag(const ModuleBase::matrix& eig_ks_in, const Parallel_2D* pX_in, const int& nks_in, const int& nspin_in, const int& nocc_in, const int& nvirt_in)
-            : eig_ks(eig_ks_in), pX(pX_in), nks(nks_in), nspin(nspin_in), nocc(nocc_in), nvirt(nvirt_in),
-            nsk(std::is_same<T, double>::value ? nspin_in : nks_in)
+            : eig_ks(eig_ks_in), pX(pX_in), nks(nks_in), nspin(nspin_in), nocc(nocc_in), nvirt(nvirt_in)
         {   // calculate the difference of eigenvalues
             ModuleBase::TITLE("OperatorLRDiag", "OperatorLRDiag");
 #ifdef __MPI
@@ -38,18 +40,17 @@ namespace hamilt
             ModuleBase::TITLE("OperatorLRDiag", "act");
             assert(nbands <= psi_in.get_nbands());
 
-            psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nsk, this->pX->get_local_size());
-            psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nsk, this->pX->get_local_size());
+            psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nks, this->pX->get_local_size());
+            psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nks, this->pX->get_local_size());
             for (int ib = 0;ib < nbands;++ib)
             {
                 psi_in_bfirst.fix_b(ib);
                 psi_out_bfirst.fix_b(ib);
-                for (int is = 0;is < nsk / nks;++is)    // 1 or 2 for gamma_only, 1 for k
-                    hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
-                        psi_in_bfirst.get_nk() * psi_in_bfirst.get_nbasis(),
-                        psi_out_bfirst.get_pointer() + is * this->nks * pX->get_local_size(),
-                        psi_in_bfirst.get_pointer() + is * this->nks * pX->get_local_size(),
-                        this->eig_ks_diff.c);
+                hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
+                    psi_in_bfirst.get_nk() * psi_in_bfirst.get_nbasis(),
+                    psi_out_bfirst.get_pointer(),
+                    psi_in_bfirst.get_pointer(),
+                    this->eig_ks_diff.c);
             }
         }
     private:
@@ -58,7 +59,6 @@ namespace hamilt
         ModuleBase::matrix eig_ks_diff;
         const int nks;
         const int nspin;
-        const int nsk;
         const int nocc;
         const int nvirt;
         Device* ctx = {};

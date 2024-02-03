@@ -1,80 +1,34 @@
-#pragma once
-#include "module_psi/psi.h"
-#include "module_elecstate/module_dm/density_matrix.h"
+#include "lr_spectrum.h"
 #include "module_beyonddft/utils/lr_util.h"
-#include "module_hamilt_lcao/module_gint/gint_gamma.h"
-#include "module_hamilt_lcao/module_gint/gint_k.h"
-
-template <typename T> struct TGint;
-template <>
-struct TGint<double> {
-    using type = Gint_Gamma;
-};
-template <>
-struct TGint<std::complex<double>> {
-    using type = Gint_k;
-};
+#include "module_beyonddft/dm_trans/dm_trans.h"
+#include "module_base/parallel_reduce.h"
+#include "module_beyonddft/utils/lr_util.h"
+#include "module_beyonddft/utils/lr_util_hcontainer.h"
 
 template<typename T>
-class LR_Spectrum
+void LR_Spectrum<T>::cal_gint_rho(double** rho, const int& nspin, const int& nrxx)
 {
-public:
-    LR_Spectrum(const double* eig, const psi::Psi<T>& X, const int& nspin, const int& naos, const int& nocc, const int& nvirt,
-        typename TGint<T>::type* gint, const ModulePW::PW_Basis& rho_basis, psi::Psi<T>& psi_ks,
-        const UnitCell& ucell, const K_Vectors& kv_in, Parallel_2D& pX_in, Parallel_2D& pc_in, Parallel_Orbitals& pmat_in) :
-        eig(eig), X(X), nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
-        gint(gint), rho_basis(rho_basis), psi_ks(psi_ks),
-        ucell(ucell), kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in),
-        nsk(std::is_same<T, double>::value ? nspin : kv_in.kvec_d.size()) {};
-    /// $$2/3\Omega\sum_{ia\sigma} |\braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2\int \rho_{\alpha\beta}(\mathbf{r}) \mathbf{r} d\mathbf{r}$$
-    void oscillator_strength();
-    /// @brief calculate the optical absorption spectrum
-    void optical_absorption(const std::vector<double>& freq, const double eta);
-    /// @brief print out the transition dipole moment and the main contributions to the transition amplitude
-    void transition_analysis();
-private:
-    const int nspin;
-    const int nsk;
-    const int naos;
-    const int nocc;
-    const int nvirt;
-    const double* eig;
-    const psi::Psi<T>& X;
-    const K_Vectors& kv;
-    const psi::Psi<T>& psi_ks;
-    Parallel_2D& pX;
-    Parallel_2D& pc;
-    Parallel_Orbitals& pmat;
-    typename TGint<T>::type* gint = nullptr;
-    const ModulePW::PW_Basis& rho_basis;
-    const UnitCell& ucell;
+    for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho[is], nrxx);
+    Gint_inout inout_rho((double**)nullptr, rho, Gint_Tools::job_type::rho, false);
+    this->gint->cal_gint(&inout_rho);
+}
 
-    std::vector<ModuleBase::Vector3<double>> transition_dipole_;   // \braket{ \psi_{i} | \mathbf{r} | \psi_{a} }
-    std::vector<double> oscillator_strength_;// 2/3\Omega |\sum_{ia\sigma} \braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2
-};
-
-template<typename T>
-void LR_Spectrum<T>::oscillator_strength()
+template<>
+void LR_Spectrum<double>::oscillator_strength()
 {
     ModuleBase::TITLE("LR_Spectrum", "oscillator_strength");
-    std::vector<double>& osc = this->oscillator_strength_;
+    std::vector<double>& osc = this->oscillator_strength_;  // unit: Ry
     osc.resize(X.get_nbands(), 0.0);
     // const int nspin0 = (this->nspin == 2) ? 2 : 1;   use this in NSPIN=4 implementation
     double osc_tot = 0.0;
-    elecstate::DensityMatrix<T, double> DM_trans(&this->kv, &this->pmat, this->nspin);
+    elecstate::DensityMatrix<double, double> DM_trans(&this->kv, &this->pmat, this->nspin);
     DM_trans.init_DMR(&GlobalC::GridD, &this->ucell);
     this->transition_dipole_.resize(X.get_nbands(), ModuleBase::Vector3<double>(0.0, 0.0, 0.0));
     for (int istate = 0;istate < X.get_nbands();++istate)
     {
         X.fix_b(istate);
 
-        GlobalV::ofs_running << "final X: " << std::endl;
-        for (int j = 0;j < pX.get_col_size();++j)  //nbands
-        {
-            for (int i = 0;i < pX.get_row_size();++i)  //nlocal
-                GlobalV::ofs_running << X.get_pointer()[j * pX.get_row_size() + i] << " ";
-            GlobalV::ofs_running << std::endl;
-        }
+        // LR_Util::print_psi_bandfirst(X, "final X", istate);
 
         //1. transition density 
 #ifdef __MPI
@@ -84,16 +38,14 @@ void LR_Spectrum<T>::oscillator_strength()
         std::vector<container::Tensor>  dm_trans_2d = hamilt::cal_dm_trans_blas(X, this->psi_ks, this->nocc, this->nvirt);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
-        for (int isk = 0;isk < this->nsk;++isk)DM_trans.set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
+        for (int isk = 0;isk < this->kv.nks;++isk)DM_trans.set_DMK_pointer(isk, dm_trans_2d[isk].data<double>());
         DM_trans.cal_DMR();
         this->gint->transfer_DM2DtoGrid(DM_trans.get_DMR_vector());
 
         // 2. transition density
         double** rho_trans;
         LR_Util::new_p2(rho_trans, nspin, this->rho_basis.nrxx);
-        for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], this->rho_basis.nrxx);
-        Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho, false);
-        this->gint->cal_gint(&inout_rho);
+        this->cal_gint_rho(rho_trans, nspin, this->rho_basis.nrxx);
 
         // 3. transition dipole moment
         for (int ir = 0; ir < rho_basis.nrxx; ++ir)
@@ -106,6 +58,7 @@ void LR_Spectrum<T>::oscillator_strength()
             ModuleBase::Vector3<double> rc = rd * ucell.latvec * ucell.lat0; // real coordinate
             for (int is = 0;is < nspin;++is) transition_dipole_[istate] += rc * rho_trans[is][ir];
         }
+        LR_Util::delete_p2(rho_trans, nspin);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].x);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].y);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].z);
@@ -121,19 +74,92 @@ void LR_Spectrum<T>::oscillator_strength()
     //         + std::to_string(osc_tot) + "nelec = " + std::to_string(GlobalV::nelec));
 }
 
+template<>
+void LR_Spectrum<std::complex<double>>::oscillator_strength()
+{
+    ModuleBase::TITLE("LR_Spectrum", "oscillator_strength");
+    std::vector<double>& osc = this->oscillator_strength_;  // unit: Ry
+    osc.resize(X.get_nbands(), 0.0);
+    // const int nspin0 = (this->nspin == 2) ? 2 : 1;   use this in NSPIN=4 implementation
+    double osc_tot = 0.0;
+    elecstate::DensityMatrix<std::complex<double>, std::complex<double>> DM_trans(&this->kv, &this->pmat, this->nspin);
+    DM_trans.init_DMR(&GlobalC::GridD, &this->ucell);
+    elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&this->kv, &this->pmat, this->nspin);
+    DM_trans_real_imag.init_DMR(&GlobalC::GridD, &this->ucell);
+
+    this->transition_dipole_.resize(X.get_nbands(), ModuleBase::Vector3<std::complex<double>>(0.0, 0.0, 0.0));
+    for (int istate = 0;istate < X.get_nbands();++istate)
+    {
+        X.fix_b(istate);
+        // LR_Util::print_psi_bandfirst(X, "final X", istate);
+
+        //1. transition density 
+#ifdef __MPI
+        std::vector<container::Tensor>  dm_trans_2d = hamilt::cal_dm_trans_pblas(X, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
+        // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
+#else
+        std::vector<container::Tensor>  dm_trans_2d = hamilt::cal_dm_trans_blas(X, this->psi_ks, this->nocc, this->nvirt);
+        // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
+#endif
+        for (int isk = 0;isk < this->kv.nks;++isk)DM_trans.set_DMK_pointer(isk, dm_trans_2d[isk].data<std::complex<double>>());
+        DM_trans.cal_DMR();
+
+        // 2. transition density
+        double** rho_trans_real;
+        double** rho_trans_imag;
+        LR_Util::new_p2(rho_trans_real, nspin, this->rho_basis.nrxx);
+        LR_Util::new_p2(rho_trans_imag, nspin, this->rho_basis.nrxx);
+        // real part
+        LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, ucell.nat, 'R');
+        this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
+        this->cal_gint_rho(rho_trans_real, nspin, this->rho_basis.nrxx);
+        // imag part
+        LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, ucell.nat, 'I');
+        this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
+        this->cal_gint_rho(rho_trans_imag, nspin, this->rho_basis.nrxx);
+
+        // 3. transition dipole moment
+        for (int ir = 0; ir < rho_basis.nrxx; ++ir)
+        {
+            int i = ir / (rho_basis.ny * rho_basis.nplane);
+            int j = ir / rho_basis.nplane - i * rho_basis.ny;
+            int k = ir % rho_basis.nplane + rho_basis.startz_current;
+            ModuleBase::Vector3<double> rd(static_cast<double>(i) / rho_basis.nx, static_cast<double>(j) / rho_basis.ny, static_cast<double>(k) / rho_basis.nz);  //+1/2 better?
+            rd -= ModuleBase::Vector3<double>(0.5, 0.5, 0.5);   //shift to the center of the grid (need ?)
+            ModuleBase::Vector3<double> rc = rd * ucell.latvec * ucell.lat0; // real coordinate
+            ModuleBase::Vector3<std::complex<double>> rc_complex(rc.x, rc.y, rc.z);
+            for (int is = 0;is < nspin;++is)
+                transition_dipole_[istate] += rc_complex *
+                std::complex<double>(rho_trans_real[is][ir], rho_trans_imag[is][ir]);
+        }
+        LR_Util::delete_p2(rho_trans_real, nspin);
+        LR_Util::delete_p2(rho_trans_imag, nspin);
+        Parallel_Reduce::reduce_all(transition_dipole_[istate].x);
+        Parallel_Reduce::reduce_all(transition_dipole_[istate].y);
+        Parallel_Reduce::reduce_all(transition_dipole_[istate].z);
+        auto norm2 = [](const ModuleBase::Vector3<std::complex<double>>& v) -> double
+            {
+                return v.x.real() * v.x.real() + v.y.real() * v.y.real() + v.z.real() * v.z.real()
+                    + v.x.imag() * v.x.imag() + v.y.imag() * v.y.imag() + v.z.imag() * v.z.imag();
+            };
+        osc[istate] = norm2(transition_dipole_[istate]) * eig[istate] * 2. / 3.;
+        osc_tot += osc[istate];
+    }
+}
 template<typename T>
 void LR_Spectrum<T>::optical_absorption(const std::vector<double>& freq, const double eta)
 {
     ModuleBase::TITLE("LR_Spectrum", "optical_absorption");
     std::vector<double>& osc = this->oscillator_strength_;
     std::ofstream ofs(GlobalV::global_out_dir + "absorption.dat");
-    if (GlobalV::MY_RANK == 0) ofs << "Frequency (eV) | wave length(nm) | Absorption coefficient (a.u.)" << std::endl;
+    if (GlobalV::MY_RANK == 0) ofs << "Frequency (eV) | wave length(nm) | Absorption (a.u.)" << std::endl;
+    double FourPI_div_c = ModuleBase::FOUR_PI / 137.036;
     for (int f = 0;f < freq.size();++f)
     {
         std::complex<double> f_complex = std::complex<double>(freq[f], eta);
         double abs = 0.0;
         for (int i = 0;i < osc.size();++i)  //nstates
-            abs += (osc[i] / (f_complex * f_complex - eig[i] * eig[i])).imag();
+            abs += (osc[i] / (f_complex * f_complex - eig[i] * eig[i])).imag() * freq[f] * FourPI_div_c;
         if (GlobalV::MY_RANK == 0)ofs << freq[f] * ModuleBase::Ry_to_eV << "\t" << 91.126664 / freq[f] << "\t" << std::abs(abs) << std::endl;
     }
     ofs.close();
@@ -188,3 +214,6 @@ void LR_Spectrum<T>::transition_analysis()
     ofs << "==================================================================== " << std::endl;
     X.fix_kb(0, 0);
 }
+
+template class LR_Spectrum<double>;
+template class LR_Spectrum<std::complex<double>>;

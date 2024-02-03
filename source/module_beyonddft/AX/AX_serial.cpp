@@ -1,6 +1,7 @@
 #include "AX.h"
 #include "module_base/blas_connector.h"
 #include "module_base/tool_title.h"
+#include "module_beyonddft/utils/lr_util.h"
 namespace hamilt
 {
     void cal_AX_forloop_serial(
@@ -11,13 +12,13 @@ namespace hamilt
         psi::Psi<double, psi::DEVICE_CPU>& AX_istate)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_forloop");
-        int nsk = c.get_nk();
-        assert(V_istate.size() == nsk);
+        int nks = c.get_nk();
+        assert(V_istate.size() == nks);
         int naos = c.get_nbasis();
         AX_istate.fix_k(0);
-        ModuleBase::GlobalFunc::ZEROS(AX_istate.get_pointer(), nsk * nocc * nvirt);
+        ModuleBase::GlobalFunc::ZEROS(AX_istate.get_pointer(), nks * nocc * nvirt);
 
-        for (int isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nks;++isk)
         {
             c.fix_k(isk);
             AX_istate.fix_k(isk);
@@ -44,13 +45,13 @@ namespace hamilt
         psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_forloop");
-        int nsk = c.get_nk();
-        assert(V_istate.size() == nsk);
+        int nks = c.get_nk();
+        assert(V_istate.size() == nks);
         int naos = c.get_nbasis();
         AX_istate.fix_k(0);
-        ModuleBase::GlobalFunc::ZEROS(AX_istate.get_pointer(), nsk * nocc * nvirt);
+        ModuleBase::GlobalFunc::ZEROS(AX_istate.get_pointer(), nks * nocc * nvirt);
 
-        for (int isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nks;++isk)
         {
             c.fix_k(isk);
             AX_istate.fix_k(isk);
@@ -79,11 +80,11 @@ namespace hamilt
         const bool add_on)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_blas");
-        int nsk = c.get_nk();
-        assert(V_istate.size() == nsk);
+        int nks = c.get_nk();
+        assert(V_istate.size() == nks);
         int naos = c.get_nbasis();
 
-        for (int isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nks;++isk)
         {
             c.fix_k(isk);
             AX_istate.fix_k(isk);
@@ -114,11 +115,11 @@ namespace hamilt
         const bool add_on)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_blas");
-        int nsk = c.get_nk();
-        assert(V_istate.size() == nsk);
+        int nks = c.get_nk();
+        assert(V_istate.size() == nks);
         int naos = c.get_nbasis();
 
-        for (int isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nks;++isk)
         {
             c.fix_k(isk);
             AX_istate.fix_k(isk);

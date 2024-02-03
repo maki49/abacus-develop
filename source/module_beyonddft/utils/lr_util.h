@@ -7,13 +7,13 @@
 #include "module_basis/module_ao/parallel_2d.h"
 #include "module_psi/psi.h"
 #include <ATen/core/tensor.h>
+#include "module_basis/module_pw/pw_basis.h"
 
 using DAT = container::DataType;
 using DEV = container::DeviceType;
 
 namespace LR_Util
 {
-
     /// =====================PHYSICS====================
 
     /// @brief calculate the number of electrons
@@ -36,6 +36,17 @@ namespace LR_Util
     std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>>
         set_ix_map_diagonal(bool mode, int nc, int nv);
 
+#ifdef  USE_LIBXC
+    /// operators to calculate XC kernels
+    void grad(const double* rhor,
+        ModuleBase::Vector3<double>* gdr,
+        const ModulePW::PW_Basis& rho_basis,
+        const double& tpiba);
+    void laplace(const double* rhor,
+        double* lapn,
+        const ModulePW::PW_Basis& rho_basis,
+        const double& tpiba2);
+#endif
     /// =================ALGORITHM====================
 
     //====== newers and deleters========
@@ -107,8 +118,7 @@ namespace LR_Util
 
     ///=================diago-lapack====================
     /// @brief  diagonalize a hermitian matrix
-    template<typename T>
-    void diag_lapack(const int& n, T* mat, double* eig);
+    void diag_lapack(const int& n, double* mat, double* eig);
+    void diag_lapack(const int& n, std::complex<double>* mat, double* eig);
 }
-// #include "lr_util_algorithms.hpp"
-// #include "lr_util_physics.hpp"
+#include "lr_util.hpp"

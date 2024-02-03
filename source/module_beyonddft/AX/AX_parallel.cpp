@@ -28,12 +28,12 @@ namespace hamilt
             LR_Util::setup_2d_division(pX, pmat.get_block_size(), nvirt, nocc, pmat.comm_2D, pmat.blacs_ctxt);
         else assert(pX.get_local_size() > 0 && AX_istate.get_nbasis() == pX.get_local_size());
 
-        int nsk = c.get_nk();
-        assert(V_istate.size() == nsk);
+        int nks = c.get_nk();
+        assert(V_istate.size() == nks);
 
         Parallel_2D pVc;        // for intermediate Vc
         LR_Util::setup_2d_division(pVc, pmat.get_block_size(), naos, nocc, pmat.comm_2D, pmat.blacs_ctxt);
-        for (int isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nks;++isk)
         {
             AX_istate.fix_k(isk);
             c.fix_k(isk);
@@ -84,12 +84,12 @@ namespace hamilt
             LR_Util::setup_2d_division(pX, pmat.get_block_size(), nvirt, nocc, pmat.comm_2D, pmat.blacs_ctxt);
         else assert(pX.get_local_size() > 0 && AX_istate.get_nbasis() == pX.get_local_size());
 
-        int nsk = c.get_nk();
-        assert(V_istate.size() == nsk);
+        int nks = c.get_nk();
+        assert(V_istate.size() == nks);
 
         Parallel_2D pVc;        // for intermediate Vc
         LR_Util::setup_2d_division(pVc, pmat.get_block_size(), naos, nocc, pmat.comm_2D, pmat.blacs_ctxt);
-        for (int isk = 0;isk < nsk;++isk)
+        for (int isk = 0;isk < nks;++isk)
         {
             AX_istate.fix_k(isk);
             c.fix_k(isk);
