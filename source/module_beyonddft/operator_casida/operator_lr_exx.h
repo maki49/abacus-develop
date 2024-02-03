@@ -1,13 +1,15 @@
+#ifdef __EXX
 #pragma once
 #include "module_hamilt_general/operator.h"
 #include "module_elecstate/module_dm/density_matrix.h"
 #include "module_ri/Exx_LRI.h"
+#include "module_beyonddft/utils/lr_util.h"
 namespace hamilt
 {
 
     /// @brief  Hxc part of A operator
     template<typename T = double>
-    class OperatorLREXX : public Operator<T, psi::DEVICE_CPU>
+    class OperatorLREXX : public Operator<T, base_device::DEVICE_CPU>
     {
         using TA = int;
         static const size_t Ndim = 3;
@@ -21,7 +23,7 @@ namespace hamilt
             const int& nvirt,
             const UnitCell& ucell_in,
             const psi::Psi<T>* psi_ks_in,
-            std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans_in,
+            std::vector<elecstate::DensityMatrix<T, T>*>& DM_trans_in,
             // HContainer<double>* hR_in,
             Exx_LRI<T>* exx_lri_in,
             const K_Vectors& kv_in,
@@ -33,14 +35,12 @@ namespace hamilt
             pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in)
         {
             ModuleBase::TITLE("OperatorLREXX", "OperatorLREXX");
-            this->nks = std::is_same<T, double>::value ? 1 : this->kv.kvec_d.size();
-            this->nsk = std::is_same<T, double>::value ? nspin : nks;
             this->cal_type = calculation_type::lcao_exx;
             this->act_type = 2;
             this->is_first_node = false;
 
             // reduce psi_ks for later use
-            this->psi_ks_full.resize(this->nsk, this->psi_ks->get_nbands(), this->naos);
+            this->psi_ks_full.resize(this->kv.get_nks(), this->psi_ks->get_nbands(), this->naos);
             LR_Util::gather_2d_to_full(*this->pc, this->psi_ks->get_pointer(), this->psi_ks_full.get_pointer(), false, this->naos, this->psi_ks->get_nbands());
 
             // get cells in BvK supercell
@@ -57,8 +57,6 @@ namespace hamilt
         virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
     private:
         //global sizes
-        int nks = 1;    // when nspin=2, nks is 2 times of real number of k-points.
-        int nsk = 1; // nspin for gamma_only, nks for multi-k
         int nspin = 1;
         int naos;
         int nocc;
@@ -69,7 +67,7 @@ namespace hamilt
         psi::Psi<T> psi_ks_full;
 
         /// transition density matrix 
-        std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans;
+        std::vector<elecstate::DensityMatrix<T, T>*>& DM_trans;
 
         /// density matrix of a certain (i, a, k), with full naos*naos size for each key
         /// D^{iak}_{\mu\nu}(k): 1/N_k * c^*_{ak,\mu} c_{ik,\nu}
@@ -102,7 +100,6 @@ namespace hamilt
 
         void cal_DM_onebase(const int io, const int iv, const int ik, const int is) const;
 
-
     };
 }
-#include "module_beyonddft/operator_casida/operator_lr_exx.hpp"
+#endif

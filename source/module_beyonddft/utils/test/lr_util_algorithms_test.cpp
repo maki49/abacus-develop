@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../lr_util_algorithms.hpp"
+#include "../lr_util.h"
 
 TEST(LR_Util, PsiWrapper)
 {

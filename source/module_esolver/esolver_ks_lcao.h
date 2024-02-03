@@ -130,3 +130,4 @@ class ESolver_KS_LCAO : public ESolver_KS<TK> {
     friend class ESolver_LRTD<std::complex<double>, double>;
 };
 } // namespace ModuleESolver
+#endif

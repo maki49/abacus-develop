@@ -22,9 +22,9 @@ class Grid_MeshK
         int cal_Rindex(const int& u1, const int& u2, const int& u3)const;
 
         /// move operator for the next ESolver to directly use its infomation
-        Grid_MeshK& operator=(Grid_MeshK&& rhs);
+        Grid_MeshK& operator=(Grid_MeshK&& rhs) = default;
 
-	protected:
+      protected:
 		// the max and the min unitcell.
 		int maxu1;
 		int maxu2;

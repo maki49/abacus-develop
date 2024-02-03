@@ -20,6 +20,9 @@ class Grid_Technique : public Grid_MeshBall {
   public:
     Grid_Technique();
     ~Grid_Technique();
+
+    /// move operator for the next ESolver to directly use its infomation
+    Grid_Technique& operator=(Grid_Technique&& rhs) = default;
     //------------------------------------
     // 1: Info about atom number on grid.
     //------------------------------------
@@ -77,7 +80,6 @@ class Grid_Technique : public Grid_MeshBall {
     const UnitCell* ucell;
     const LCAO_Orbitals* orb;
 
-<<<<<<< HEAD
     // UnitCell parameters
     int nwmax;
     int nr_max;
@@ -120,29 +122,6 @@ class Grid_Technique : public Grid_MeshBall {
                       const std::vector<std::vector<double>>& dpsi_u,
                       const std::vector<std::vector<double>>& d2psi_u,
                       const int& num_stream);
-=======
-    /// @brief move operator for the next ESolver to directly use its infomation
-    /// @param rhs
-    /// @return *this
-    Grid_Technique& operator=(Grid_Technique&& rhs);
-    
-	void set_pbc_grid(
-			const int &ncx_in,
-			const int &ncy_in,
-			const int &ncz_in,
-			const int &bx_in,
-			const int &by_in,
-			const int &bz_in,
-			const int &nbx_in,
-			const int &nby_in,
-			const int &nbz_in,
-			const int &nbxx_in,
-			const int &nbzp_start_in,
-            const int& nbzp_in,
-            const int& ny,
-            const int& nplane,
-            const int& startz_current);
->>>>>>> 42c8e43b9 (add operator=(T&&) in Grid_Technique and its 4 base classes)
 
     /// number of elements(basis-pairs) in this processon
     /// on all adjacent atoms-pairs(Grid division)

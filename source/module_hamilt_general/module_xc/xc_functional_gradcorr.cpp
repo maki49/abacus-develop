@@ -664,7 +664,7 @@ void XC_Functional::grad_rho(const std::complex<double>* rhog,
 }
 
 
-void XC_Functional::grad_dot(const ModuleBase::Vector3<double> *h, double *dh, ModulePW::PW_Basis *rho_basis, const double tpiba)
+void XC_Functional::grad_dot(const ModuleBase::Vector3<double>* h, double* dh, const ModulePW::PW_Basis* rho_basis, const double tpiba)
 {
 	std::complex<double> *aux = new std::complex<double>[rho_basis->nmaxgr];
 	std::complex<double> *gaux = new std::complex<double>[rho_basis->npw];

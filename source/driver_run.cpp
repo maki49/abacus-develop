@@ -8,13 +8,6 @@
 #include "module_io/winput.h"
 #include "module_md/run_md.h"
 
-#ifdef __LCAO
-#include "module_beyonddft/esolver_lrtd_lcao.hpp"
-#endif
-extern "C"
-{
-#include "module_base/blacs_connector.h"
-}
 /**
  * @brief This is the driver function which defines the workflow of ABACUS
  * calculations. It relies on the class Esolver, which is a class that organizes
@@ -34,10 +27,7 @@ void Driver::driver_run() {
     ModuleBase::TITLE("Driver", "driver_line");
     ModuleBase::timer::tick("Driver", "driver_line");
 
-    //! 1: initialize the ESolver 
-    ModuleESolver::ESolver *p_esolver = ModuleESolver::init_esolver();
-
-    //! 2: setup cell and atom information
+    //! 1: setup cell and atom information
 
     // this warning should not be here, mohan 2024-05-22
 #ifndef __LCAO
@@ -53,18 +43,10 @@ void Driver::driver_run() {
     Check_Atomic_Stru::check_atomic_stru(GlobalC::ucell,
                                          GlobalV::MIN_DIST_COEF);
 
-    //! 3: initialize Esolver and fill json-structure 
-#ifdef __LCAO
-    if (GlobalV::ESOLVER_TYPE == "lr")s
-        // use constructor rather than Init function to initialize reference (instead of pointers) to ucell
-        if (GlobalV::GAMMA_ONLY_LOCAL)
-            p_esolver = new ModuleESolver::ESolver_LRTD<double, double>(INPUT, GlobalC::ucell);
-        else if (GlobalV::NSPIN < 4)
-            p_esolver = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(INPUT, GlobalC::ucell);
-        else
-            throw std::runtime_error("LR-TDDFT is not implemented for spin polarized case");
-    else
-#endif
+    //! 2: initialize the ESolver 
+    ModuleESolver::ESolver* p_esolver = ModuleESolver::init_esolver(INPUT, GlobalC::ucell);
+
+    //! 3: initialize Esolver and fill json-structure
     p_esolver->before_all_runners(INPUT, GlobalC::ucell);
 
     // this Json part should be moved to before_all_runners, mohan 2024-05-12
@@ -96,33 +78,8 @@ void Driver::driver_run() {
     //! 5: clean up esolver
     p_esolver->after_all_runners();
 
-#ifdef __LCAO
-    //---------beyond DFT: set up the next ESolver---------
-    if (INPUT.esolver_type == "ks-lr")
-    {
-        std::cout << "setting up the esolver for excited state" << std::endl;
-        // ModuleESolver::ESolver_KS_LCAO* p_esolver_lcao_tmp = dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver);
-        ModuleESolver::ESolver* p_esolver_lr = nullptr;
-        if (INPUT.gamma_only)
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver)), INPUT, GlobalC::ucell);
-        else
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
-        ModuleESolver::clean_esolver(p_esolver);
-        p_esolver_lr->Run(0, GlobalC::ucell);
-        p_esolver_lr->postprocess();
-
-        std::cout << "before clean lr" << std::endl;
-        ModuleESolver::clean_esolver(p_esolver_lr);
-        std::cout << "after clean lr" << std::endl;
-    } //----------------------beyond DFT------------------------
-    else
-        ModuleESolver::clean_esolver(p_esolver);
-
-    if (INPUT.basis_type == "lcao")
-        Cblacs_exit(1); // clean up blacs after all the esolvers are cleaned up without closing MPI
-#else
     ModuleESolver::clean_esolver(p_esolver);
-#endif
+
     ModuleBase::timer::tick("Driver", "driver_line");
     return;
 }

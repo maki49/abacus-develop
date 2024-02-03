@@ -1,3 +1,4 @@
+#ifdef __EXX
 #include "operator_lr_exx.h"
 #include "module_beyonddft/dm_trans/dm_trans.h"
 #include "module_beyonddft/utils/lr_util.h"
@@ -55,7 +56,7 @@ namespace hamilt
                             int iat2 = ucell.itia2iat(it2, ia2);
                             auto& D2d = this->Ds_onebase[is][iat1][std::make_pair(iat2, cell)];
                             for (int iw1 = 0;iw1 < ucell.atoms[it1].nw;++iw1)
-                                for (int iw2 = 0;iw1 < ucell.atoms[it2].nw;++iw2)
+                                for (int iw2 = 0;iw2 < ucell.atoms[it2].nw;++iw2)
                                     D2d(iw1, iw2) = frac * std::conj(this->psi_ks_full(ik, io, ucell.itiaiw2iwt(it1, ia1, iw1))) * this->psi_ks_full(ik, iv, ucell.itiaiw2iwt(it2, ia2, iw2));
                         }
         }
@@ -67,8 +68,9 @@ namespace hamilt
         ModuleBase::TITLE("OperatorLREXX", "act");
 
         assert(nbands <= psi_in.get_nbands());
-        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nsk, this->pX->get_local_size());
-        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nsk, this->pX->get_local_size());
+        const int& nks = this->kv.get_nks();
+        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nks, this->pX->get_local_size());
+        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, nks, this->pX->get_local_size());
 
         // convert parallel info to LibRI interfaces
         std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(*this->pmat);
@@ -82,39 +84,15 @@ namespace hamilt
             // convert to vector<T*> for the interface of RI_2D_Comm::split_m2D_ktoR (interface will be unified to ct::Tensor)
             std::cout << "ib=" << ib << std::endl;
             std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans[ib]->get_DMK_vector();
-            assert(DMk_trans_vector.size() == this->nsk);
-            std::vector<const std::vector<T>*> DMk_trans_pointer(this->nsk);
-            for (int is = 0;is < this->nsk;++is) DMk_trans_pointer[is] = &DMk_trans_vector[is];
+            assert(DMk_trans_vector.size() == nks);
+            std::vector<const std::vector<T>*> DMk_trans_pointer(nks);
+            for (int is = 0;is < nks;++is) DMk_trans_pointer[is] = &DMk_trans_vector[is];
             // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
             std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
                 RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, *this->pmat);
 
-            // output DM_trans
-            // GlobalV::ofs_running << "DM_trans in OperatorLREXX::act" << std::endl;
-            // for (int is = 0;is < this->nsk;++is)
-            // {
-            //     GlobalV::ofs_running << "is = " << is << std::endl;
-            //     for (auto& mabR : Ds_trans[is
-            //     ])
-            //     {
-            //         int ia = mabR.first;
-            //         GlobalV::ofs_running << "ia = " << ia << std::endl;
-            //         for (auto& mbR : mabR.second)
-            //         {
-            //             GlobalV::ofs_running << "ib = " << mbR.first.first << ", R=" << mbR.first.second[0] <<
-            //                 " " << mbR.first.second[1] << " " << mbR.first.second[2] << ", size=" << mbR.second.shape[0] << ", " << mbR.second.shape[1] << std::endl;
-            //             auto& t = mbR.second;
-            //             for (int i = 0;i < t.shape[0];++i)
-            //             {
-            //                 for (int j = 0;j < t.shape[1];++j)
-            //                     GlobalV::ofs_running << t(i, j) << " ";
-            //                 GlobalV::ofs_running << std::endl;
-            //             }
-            //         }
-            //     }
-            // }
             // 2. cal_Hs
-            for (int is = 0;is < this->nsk;++is)
+            for (int is = 0;is < nks;++is)
             {
                 this->exx_lri->exx_lri.set_Ds(std::move(Ds_trans[is]), this->exx_lri->info.dm_threshold);
                 this->exx_lri->exx_lri.cal_Hs();
@@ -130,12 +108,14 @@ namespace hamilt
             {
                 for (int iv = 0;iv < this->pX->get_row_size();++iv)   // nvirt for serial
                 {
-                    for (int ik = 0;ik < this->nks;++ik)
+                    for (int ik = 0;ik < nks;++ik)
                     {
                         for (int is = 0;is < this->nspin;++is)
                         {
                             this->cal_DM_onebase(this->pX->local2global_col(io), this->pX->local2global_row(iv), ik, is);       //set Ds_onebase
-                            psi_out_bfirst(ik, io * this->pX->get_row_size() + iv) -= 0.5 * //minus for exchange, 0.5 for spin
+                            psi_out_bfirst(ik, io * this->pX->get_row_size() + iv) -=
+                                0.5 * //minus for exchange, 0.5 for spin
+                                GlobalC::exx_info.info_global.hybrid_alpha *
                                 this->exx_lri->exx_lri.post_2D.cal_energy(this->Ds_onebase[is], this->exx_lri->Hexxs[is]);
                         }
                     }
@@ -143,5 +123,7 @@ namespace hamilt
             }
         }
     }
-
+    template class OperatorLREXX<double>;
+    template class OperatorLREXX<std::complex<double>>;
 }
+#endif

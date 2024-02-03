@@ -84,9 +84,9 @@ std::string determine_type(void);
  *
  * @return [out] A pointer to an ESolver object that will be initialized.
  */
-ESolver* init_esolver();
+ESolver * init_esolver(Input & input, UnitCell & ucell);
 
-void clean_esolver(ESolver*& pesolver);
+void clean_esolver(ESolver*& pesolver, const bool lcao_cblacs_exit = false);
 
 } // namespace ModuleESolver
 

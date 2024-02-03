@@ -25,7 +25,7 @@ class K_Vectors
     K_Vectors();
     ~K_Vectors();
     K_Vectors& operator=(const K_Vectors&) = default;
-    K_Vectors& operator=(K_Vectors&& rhs);
+    K_Vectors& operator=(K_Vectors&& rhs) = default;
 
     /**
      * @brief Set up the k-points for the system.

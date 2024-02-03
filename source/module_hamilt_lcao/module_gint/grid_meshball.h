@@ -12,9 +12,9 @@ class Grid_MeshBall : public Grid_BigCell
         std::vector<std::vector<double>> meshball_positions;
 
         /// move operator for the next ESolver to directly use its infomation
-        Grid_MeshBall& operator=(Grid_MeshBall&& rhs);
+        Grid_MeshBall& operator=(Grid_MeshBall&& rhs) = default;
 
-	protected:
+      protected:
 		// number of meshcells in meshball.
 		int meshball_ncells=0;
 		// used in index2normal

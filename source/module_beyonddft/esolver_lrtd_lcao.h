@@ -14,8 +14,8 @@
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
-#include "module_beyonddft/hamilt_casida.hpp"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
+#include "module_beyonddft/hamilt_casida.h"
 #ifdef __EXX
 // #include <RI/physics/Exx.h>
 #include "module_ri/Exx_LRI.h"
@@ -32,7 +32,6 @@ namespace ModuleESolver
         using type = Gint_k;
     };
     template<typename T, typename TR = double>
-    // template<typename T, typename Texx = T, typename Device = psi::DEVICE_CPU>
     class ESolver_LRTD : public ESolver_FP
     {
     public:
@@ -50,15 +49,15 @@ namespace ModuleESolver
 
         ///input: input, call, basis(LCAO), psi(ground state), elecstate
         // initialize sth. independent of the ground state
-        virtual void Init(Input& inp, UnitCell& cell) override {};
+        virtual void before_all_runners(Input& inp, UnitCell& cell) override {};
 
         virtual void init_after_vc(Input& inp, UnitCell& cell) override {};
-        virtual void Run(int istep, UnitCell& ucell) override;
-        virtual void postprocess() override;
+        virtual void runner(int istep, UnitCell& ucell) override;
+        virtual void after_all_runners() override;
 
-        virtual double cal_Energy()  override { return 0.0; };
-        virtual void cal_Force(ModuleBase::matrix& force) override {};
-        virtual void cal_Stress(ModuleBase::matrix& stress) override {};
+        virtual double cal_energy()  override { return 0.0; };
+        virtual void cal_force(ModuleBase::matrix& force) override {};
+        virtual void cal_stress(ModuleBase::matrix& stress) override {};
 
     protected:
         const Input& input;
@@ -80,14 +79,13 @@ namespace ModuleESolver
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
         psi::Psi<T>* X;
 
-        int nocc;
-        int nvirt;
-        int nbasis;
+        int nocc = 1;
+        int nvirt = 1;
+        int nbasis = 2;
         /// n_occ*n_unocc, the basis size of electron-hole pair representation
-        int npairs;
+        int npairs = 1;
         /// how many 2-particle states to be solved
         int nstates = 1;
-        int nsk = 1; //nspin*nks
         int nspin = 1;
 
         Grid_Technique gt;
@@ -96,7 +94,6 @@ namespace ModuleESolver
         typename TGint<T>::type* gint = nullptr;
 
         std::string xc_kernel;
-        std::string lr_solver;
 
         void set_gint();
 
@@ -112,7 +109,7 @@ namespace ModuleESolver
         /// @brief allocate and initialize X
         void init_X(const int& nvirt_input);
         /// @brief allocate and initialize A matrix, density matrix and eignensolver
-        void init_A(hamilt::HContainer<double>* pHR_in, const double lr_thr);
+        void init_A(const double lr_thr);
         /// @brief read in the ground state wave function, band energy and occupation
         void read_ks_wfc();
         /// @brief  read in the ground state charge density
@@ -128,10 +125,9 @@ namespace ModuleESolver
         void move_exx_lri(std::shared_ptr<Exx_LRI<double>>&);
         void move_exx_lri(std::shared_ptr<Exx_LRI<std::complex<double>>>&);
 
-        std::unique_ptr<TwoCenterBundle> two_center_bundle;
+        // std::unique_ptr<TwoCenterBundle> two_center_bundle;
+        ORB_gen_tables* uot_;
 #endif
 
     };
-    template<>void ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
-    template<>void ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_k.gridt = &this->gt; }
 }
