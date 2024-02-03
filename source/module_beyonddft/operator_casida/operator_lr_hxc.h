@@ -4,7 +4,7 @@
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
 
 namespace hamilt
 {
@@ -82,4 +82,3 @@ namespace hamilt
         bool tdm_sym = false; ///< whether transition density matrix is symmetric
     };
 }
-#include "module_beyonddft/operator_casida/operator_lr_hxc.hpp"

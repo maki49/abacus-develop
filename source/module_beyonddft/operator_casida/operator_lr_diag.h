@@ -2,6 +2,9 @@
 #include "module_beyonddft/utils/lr_util.h"
 #include "module_hsolver/kernels/math_kernel_op.h"
 #include "module_base/global_variable.h"
+#ifdef __MPI
+#include "module_base/parallel_common.h"
+#endif
 namespace hamilt
 {
     /// @brief  Diag part of A operator: [AX]_iak = (e_ak - e_ik) X_iak

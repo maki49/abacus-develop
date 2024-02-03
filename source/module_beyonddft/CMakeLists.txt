@@ -1,13 +1,23 @@
-add_subdirectory(AX)
-add_subdirectory(dm_trans)
-add_subdirectory(utils)
 if(ENABLE_LCAO)
-  list(APPEND objects
-      hsolver_lrtd.cpp
-  )
-endif()
+  add_subdirectory(utils)
+  add_subdirectory(AX)
+  add_subdirectory(dm_trans)
+
 add_library(
     lr
     OBJECT
-    ${objects}
+    utils/lr_util.cpp
+    AX/AX_parallel.cpp
+    AX/AX_serial.cpp
+    dm_trans/dm_trans_parallel.cpp
+    dm_trans/dm_trans_serial.cpp
+    operator_casida/operator_lr_hxc.cpp
+    operator_casida/operator_lr_exx.cpp
+    potentials/kernel_xc.cpp
+    potentials/pot_hxc_lrtd.cpp
+    hsolver_lrtd.cpp
+    lr_spectrum.cpp
+    hamilt_casida.cpp
+    esolver_lrtd_lcao.cpp
 )
+endif()

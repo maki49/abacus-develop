@@ -2,7 +2,7 @@
 #include "mpi.h"
 #include "../dm_trans.h"
 #ifdef __MPI
-#include "module_beyonddft/utils/lr_util_algorithms.hpp"
+#include "module_beyonddft/utils/lr_util.h"
 #endif
 struct matsize
 {
@@ -68,8 +68,8 @@ TEST_F(DMTransTest, DoubleSerial)
             psi::Psi<double, psi::DEVICE_CPU> c(s.nsk, s.nocc + s.nvirt, s.naos);
             set_rand(c.get_pointer(), size_c);
             X.fix_b(istate);
-            std::vector<container::Tensor> dm_for = hamilt::cal_dm_trans_forloop_serial(X, c, s.nocc, s.nvirt);
-            std::vector<container::Tensor> dm_blas = hamilt::cal_dm_trans_blas(X, c, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_for = hamilt::cal_dm_trans_forloop_serial(X, c, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_blas = hamilt::cal_dm_trans_blas(X, c, s.nocc, s.nvirt);
             for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_for[isk].data<double>(), dm_blas[isk].data<double>(), s.naos * s.naos);
         }
 
@@ -87,8 +87,8 @@ TEST_F(DMTransTest, ComplexSerial)
             psi::Psi<std::complex<double>, psi::DEVICE_CPU> c(s.nsk, s.nocc + s.nvirt, s.naos);
             set_rand(c.get_pointer(), size_c);
             X.fix_b(istate);
-            std::vector<container::Tensor> dm_for = hamilt::cal_dm_trans_forloop_serial(X, c, s.nocc, s.nvirt);
-            std::vector<container::Tensor> dm_blas = hamilt::cal_dm_trans_blas(X, c, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_for = hamilt::cal_dm_trans_forloop_serial(X, c, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_blas = hamilt::cal_dm_trans_blas(X, c, s.nocc, s.nvirt);
             for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_for[isk].data<std::complex<double>>(), dm_blas[isk].data<std::complex<double>>(), s.naos * s.naos);
         }
 
@@ -154,7 +154,7 @@ TEST_F(DMTransTest, DoubleParallel)
             }
             if (my_rank == 0)
             {
-                std::vector<container::Tensor> dm_full = hamilt::cal_dm_trans_blas(X_full, c_full, s.nocc, s.nvirt);
+                const std::vector<container::Tensor>& dm_full = hamilt::cal_dm_trans_blas(X_full, c_full, s.nocc, s.nvirt);
                 for (int isk = 0;isk < s.nsk;++isk) check_eq(dm_full[isk].data<double>(), dm_gather[isk].data<double>(), s.naos * s.naos);
             }
         }

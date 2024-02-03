@@ -143,5 +143,6 @@ namespace hamilt
             }
         }
     }
-
+    template class OperatorLREXX<double>;
+    template class OperatorLREXX<std::complex<double>>;
 }

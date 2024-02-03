@@ -2,6 +2,7 @@
 #include "module_hamilt_general/operator.h"
 #include "module_elecstate/module_dm/density_matrix.h"
 #include "module_ri/Exx_LRI.h"
+#include "module_beyonddft/utils/lr_util.h"
 namespace hamilt
 {
 
@@ -105,4 +106,3 @@ namespace hamilt
 
     };
 }
-#include "module_beyonddft/operator_casida/operator_lr_exx.hpp"

@@ -14,8 +14,8 @@
 #include "module_hamilt_lcao/module_gint/gint_k.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
-#include "module_beyonddft/hamilt_casida.hpp"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
+#include "module_beyonddft/hamilt_casida.h"
 #ifdef __EXX
 // #include <RI/physics/Exx.h>
 #include "module_ri/Exx_LRI.h"
@@ -132,6 +132,4 @@ namespace ModuleESolver
 #endif
 
     };
-    template<>void ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
-    template<>void ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_k.gridt = &this->gt; }
 }

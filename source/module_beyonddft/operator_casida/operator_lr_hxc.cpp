@@ -1,12 +1,14 @@
-#pragma once
 #include "operator_lr_hxc.h"
 #include <vector>
 #include "module_base/blas_connector.h"
-#include "module_beyonddft/utils/lr_util_algorithms.hpp"
+#include "module_beyonddft/utils/lr_util.h"
 // #include "module_hamilt_lcao/hamilt_lcaodft/DM_gamma_2d_to_grid.h"
 #include "module_hamilt_lcao/module_hcontainer/hcontainer_funcs.h"
 #include "module_beyonddft/dm_trans/dm_trans.h"
 #include "module_beyonddft/AX/AX.h"
+#include "module_hamilt_pw/hamilt_pwdft/global.h"
+inline double conj(double a) { return a; }
+inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); }
 namespace hamilt
 {
     // for double
@@ -49,41 +51,73 @@ namespace hamilt
             // GlobalV::ofs_running << "nvirt:" << nvirt << " nocc:" << nocc << std::endl;
             // GlobalV::ofs_running << "nvirt local:" << pX->get_row_size();
             // GlobalV::ofs_running << "nocc local:" << pX->get_col_size() << std::endl;
+
             // GlobalV::ofs_running << "X: " << std::endl;
-            // for (int j = 0;j < pX->get_col_size();++j)  //nbands
+            // for (int ik = 0;ik < nsk;++ik)
             // {
-            //     for (int i = 0;i < pX->get_row_size();++i)  //nlocal
-            //         GlobalV::ofs_running << psi_in_bfirst.get_pointer()[j * pX->get_row_size() + i] << " ";
-            //     GlobalV::ofs_running << std::endl;
+            //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
+            //     for (int j = 0;j < pX->get_col_size();++j)  //nbands
+            //     {
+            //         for (int i = 0;i < pX->get_row_size();++i)  //nlocal
+            //             GlobalV::ofs_running << psi_in_bfirst.get_pointer()[ik * pX->get_local_size() + j * pX->get_row_size() + i] << " ";
+            //         GlobalV::ofs_running << std::endl;
+            //     }
             // }
             // GlobalV::ofs_running << std::endl;
             // GlobalV::ofs_running << "C: " << std::endl;
-            // GlobalV::ofs_running << "naos:" << naos << " nbands:" << nocc + nvirt << std::endl;
+            // GlobalV::ofs_running << "nks:" << psi_ks->get_nk() << "naos:" << naos << " nbands:" << nocc + nvirt << std::endl;
             // GlobalV::ofs_running << "naos local:" << pc->get_row_size();
             // GlobalV::ofs_running << "nbands local:" << pc->get_col_size() << std::endl;
-            // for (int j = 0;j < pc->get_col_size();++j)  //nbands
+            // GlobalV::ofs_running.setf(std::ios::fixed);
+            // for (int ik = 0;ik < nsk;++ik)
             // {
-            //     for (int i = 0;i < pc->get_row_size();++i)  //nlocal
-            //         GlobalV::ofs_running << psi_ks->get_pointer()[j * pc->get_row_size() + i] << " ";
-            //     GlobalV::ofs_running << std::endl;
+            //     psi_ks->fix_k(ik);
+            //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
+            //     for (int j = 0;j < pc->get_col_size();++j)  //nbands
+            //     {
+            //         for (int i = 0;i < pc->get_row_size();++i)  //nlocal
+            //             GlobalV::ofs_running << std::setprecision(6) << psi_ks->get_pointer()[j * pc->get_row_size() + i] << " ";
+            //         GlobalV::ofs_running << std::endl;
+            //     }
             // }
 
 #ifdef __MPI
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
+            // GlobalV::ofs_running << "1. Dm_trans before symmetrization: " << std::endl;
+            // GlobalV::ofs_running << "local row:" << pmat->get_row_size() << " local col:" << pmat->get_col_size() << std::endl;
+            // for (int ik = 0;ik < nsk;++ik)
+            // {
+            //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
+            //     for (int j = 0;j < pmat->get_col_size();++j)
+            //     {
+            //         for (int i = 0;i < pmat->get_row_size();++i)
+            //             GlobalV::ofs_running << std::setprecision(6) << dm_trans_2d[ik].data<T>()[j * pmat->get_row_size() + i] << " ";
+            //         GlobalV::ofs_running << std::endl;
+            //     }
+            // }
+
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
+            // test: force D(-k)=D(k)^* in k444
+            // for (int i = 0; i < pmat->get_local_size();++i) dm_trans_2d[3].data<T>()[i] = conj(dm_trans_2d[1].data<T>()[i]);
 #else
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, psi_ks, nocc, nvirt);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
-            // GlobalV::ofs_running << "1. Dm_trans: " << std::endl;
+            // GlobalV::ofs_running << "1. Dm_trans after symmetrization: " << std::endl;
             // GlobalV::ofs_running << "local row:" << pmat->get_row_size() << " local col:" << pmat->get_col_size() << std::endl;
-            // for (int j = 0;j < pmat->get_col_size();++j)
+            // for (int ik = 0;ik < nsk;++ik)
             // {
-            //     for (int i = 0;i < pmat->get_row_size();++i)
-            //         GlobalV::ofs_running << dm_trans_2d[0].data<T>()[j * pmat->get_row_size() + i] << " ";
-            //     GlobalV::ofs_running << std::endl;
+            //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
+            //     for (int j = 0;j < pmat->get_col_size();++j)
+            //     {
+            //         for (int i = 0;i < pmat->get_row_size();++i)
+            //             GlobalV::ofs_running << std::setprecision(6) << dm_trans_2d[ik].data<T>()[j * pmat->get_row_size() + i] << " ";
+            //         GlobalV::ofs_running << std::endl;
+            //     }
             // }
-            // GlobalV::ofs_running << std::endl;
+
+            GlobalV::ofs_running << std::endl;
+            GlobalV::ofs_running.setf(std::ios::scientific);
             // tensor to vector, then set DMK
             for (int isk = 0;isk < this->nsk;++isk)this->DM_trans[ib_dm]->set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
 
@@ -241,4 +275,6 @@ namespace hamilt
             // }
         }
     }
+    template class OperatorLRHxc<double>;
+    template class OperatorLRHxc<std::complex<double>>;
 }

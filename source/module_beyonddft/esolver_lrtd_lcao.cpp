@@ -1,16 +1,16 @@
-#pragma once
 #include "esolver_lrtd_lcao.h"
 #include "move_gint.hpp"
-#include "utils/lr_util_algorithms.hpp"
-#include "utils/lr_util_physics.hpp"
-#include "hamilt_casida.hpp"
-#include "module_beyonddft/potentials/pot_hxc_lrtd.hpp"
+#include "utils/lr_util.h"
+#include "hamilt_casida.h"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
 #include "module_beyonddft/hsolver_lrtd.h"
-#include "module_beyonddft/lr_spectrum.hpp"
+#include "module_beyonddft/lr_spectrum.h"
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 #include "module_io/read_wfc_nao.h"
 #include "module_io/rho_io.h"
+#include "module_io/print_info.h"
+#include "module_cell/module_neighbor/sltk_atom_arrange.h"
 
 #ifdef __EXX
 template<>
@@ -36,6 +36,8 @@ void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<s
     throw std::runtime_error("ESolver_LRTD<double>::move_exx_lri: cannot move complex<double> to double");
 }
 #endif
+template<>void ModuleESolver::ESolver_LRTD<double>::set_gint() { this->gint = &this->gint_g;this->gint_g.gridt = &this->gt; }
+template<>void ModuleESolver::ESolver_LRTD<std::complex<double>>::set_gint() { this->gint = &this->gint_k; this->gint_k.gridt = &this->gt; }
 
 inline double getreal(std::complex<double> x) { return x.real(); }
 inline double getreal(double x) { return x; }
@@ -77,22 +79,12 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     this->xc_kernel = inp.xc_kernel;
     std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
     //check the input first
-    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "hf")
+    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "pbe" && xc_kernel != "hf")
         throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
 
     // move the ground state info 
     this->psi_ks = ks_sol.psi;
     ks_sol.psi = nullptr;
-
-
-    // test: 强制psi_ks第一个元素为正
-    // psi_ks->fix_kb(0, 0);
-    // for (int j = 0;j < psi_ks->get_nbands();++j)  //nbands
-    // {
-    //     if (getreal(psi_ks->get_pointer()[j * psi_ks->get_nbasis()]) < 0)
-    //         for (int i = 0;i < psi_ks->get_nbasis();++i)  //nlocal
-    //             psi_ks->get_pointer()[j * psi_ks->get_nbasis() + i] *= -1;
-    // }
 
     //only need the eigenvalues. the 'elecstates' of excited states is different from ground state.
     this->eig_ks = std::move(ks_sol.pelec->ekb);
@@ -159,7 +151,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     this->xc_kernel = inp.xc_kernel;
     std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
     //check the input first
-    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "hf")
+    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "pbe" && xc_kernel != "hf")
         throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
 
     // necessary steps in ESolver_FP
@@ -180,7 +172,7 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "INIT K-POINTS");
     Print_Info::setup_parameters(ucell, this->kv);
 
-    this->parameter_check();
+    // this->parameter_check();
 
     // necessary steps in ESolver_KS_LCAO::Init_Basis_lcao
     // read orbitals
@@ -373,7 +365,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 
     ioiv2ix = std::move(std::get<0>(indexmap));
     ix2ioiv = std::move(std::get<1>(indexmap));
-    
+
     // use unit vectors as the initial guess
     // for (int i = 0; i < std::min(this->nstates * GlobalV::PW_DIAG_NDIM, nocc * nvirt); i++)
     for (int i = 0; i < nstates; i++)
@@ -424,7 +416,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_A(const double lr_thr)
 #ifdef __EXX
         this->exx_lri.get(),
 #endif
-        this->gint, this->pot, this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
+        this->gint, this->pot, this->kv, &this->paraX_, &this->paraC_, &this->paraMat_);
 
     // init HSolver
     this->phsol = new hsolver::HSolverLR<T>(this->nsk, this->npairs);
@@ -538,3 +530,5 @@ void ModuleESolver::ESolver_LRTD<T, TR>::read_ks_chg(Charge& chg_gs)
                 "or you must set read_file_dir \n to a specific directory. ");
     }
 }
+template class ModuleESolver::ESolver_LRTD<double, double>;
+template class ModuleESolver::ESolver_LRTD<std::complex<double>, double>;

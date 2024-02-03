@@ -1,104 +1,63 @@
-#pragma once
-#include <cstddef>
-#include "lr_util.h"
-#include <algorithm>
-#include "module_cell/unitcell.h"
 #include "module_base/constants.h"
+#include "lr_util.h"
 #include "module_base/lapack_connector.h"
 #include "module_base/scalapack_connector.h"
-
-
 namespace LR_Util
 {
+    /// =================PHYSICS====================
+    const int cal_nocc(int nelec) { return nelec / ModuleBase::DEGSPIN + nelec % static_cast<int>(ModuleBase::DEGSPIN); }
+
+    std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>>
+        set_ix_map_diagonal(bool mode, int nocc, int nvirt)
+    {
+        int npairs = nocc * nvirt;
+        ModuleBase::matrix ioiv2ix(nocc, nvirt, true);
+        std::vector<std::pair<int, int>> ix2ioiv(npairs);
+        int io = nocc - 1, iv = 0;    //start：leftup
+        if (mode == 0)  // leftdown->rightup
+        {
+            for (int ix = 0;ix < npairs - 1;++ix)
+            {
+                // 1. set value
+                ioiv2ix(io, iv) = ix;
+                ix2ioiv[ix] = std::make_pair(io, iv);
+                // 2. move
+                if (io == nocc - 1 || iv == nvirt - 1)    // rightup bound
+                {
+                    int io_next = std::max(nocc - iv - 1 - (nocc - io), 0);
+                    iv -= (io - io_next) - 1;
+                    io = io_next;
+                }
+                else { ++io;++iv; }//move rightup
+            }
+        }
+        else    //rightup->leftdown
+        {
+            for (int ix = 0;ix < npairs - 1;++ix)
+            {
+                // 1. set value
+                ioiv2ix(io, iv) = ix;
+                ix2ioiv[ix] = std::make_pair(io, iv);
+                // 2. move
+                if (io == 0 || iv == 0)    // leftdown bound
+                {
+                    int iv_next = std::min(nocc - io + iv, nvirt - 1);
+                    io += (iv_next - iv) - 1;
+                    iv = iv_next;
+                }
+                else { --iv;--io; }//move leftdown
+            }
+        }
+        //final set: rightdown
+        assert(io == 0);
+        assert(iv == nvirt - 1);
+        ioiv2ix(io, iv) = npairs - 1;
+        ix2ioiv[npairs - 1] = std::make_pair(io, iv);
+        return std::make_pair(std::move(ioiv2ix), std::move(ix2ioiv));
+    }
 
     /// =================ALGORITHM====================
 
-    //====== newers and deleters========
-    //(arbitrary dimention will be supported in the future)
-
-    /// @brief  new 2d pointer
-    /// @tparam T
-    /// @param size1
-    /// @param size2
-    template <typename T>
-    void new_p2(T**& p2, size_t size1, size_t size2)
-    {
-        p2 = new T * [size1];
-        for (size_t i = 0; i < size1; ++i)
-        {
-            p2[i] = new T[size2];
-        }
-    };
-
-    /// @brief  new 3d pointer
-    /// @tparam T
-    /// @param size1
-    /// @param size2
-    /// @param size3
-    template <typename T>
-    void new_p3(T***& p3, size_t size1, size_t size2, size_t size3)
-    {
-        p3 = new T * *[size1];
-        for (size_t i = 0; i < size1; ++i)
-        {
-            new_p2(p3[i], size2, size3);
-        }
-    };
-
-    /// @brief  delete 2d pointer 
-    /// @tparam T 
-    /// @param p2 
-    /// @param size 
-    template <typename T>
-    void delete_p2(T** p2, size_t size)
-    {
-        if (p2 != nullptr)
-        {
-            for (size_t i = 0; i < size; ++i)
-            {
-                if (p2[i] != nullptr) delete[] p2[i];
-            }
-            delete[] p2;
-        }
-    };
-
-    /// @brief  delete 3d pointer 
-    /// @tparam T 
-    /// @param p2 
-    /// @param size1
-    /// @param size2
-    template <typename T>
-    void delete_p3(T*** p3, size_t size1, size_t size2)
-    {
-        if (p3 != nullptr)
-        {
-            for (size_t i = 0; i < size1; ++i)
-            {
-                delete_p2(p3[i], size2);
-            }
-            delete[] p3;
-        }
-    };
-
-    template <typename T>
-    void matsym(const T* in, const int n, T* out)
-    {
-        for (int i = 0;i < n;++i)  out[i * n + i] = in[i * n + i];
-        for (int i = 0;i < n;++i)
-            for (int j = i + 1;j < n;++j)
-                out[i * n + j] = out[j * n + i] = 0.5 * (in[i * n + j] + in[j * n + i]);
-    }
-    template void matsym<double>(const double* in, const int n, double* out);
-    template void matsym<std::complex<double>>(const std::complex<double>* in, const int n, std::complex<double>* out);
-    template <typename T>
-    void matsym(T* inout, const int n)
-    {
-        for (int i = 0;i < n;++i)
-            for (int j = i + 1;j < n;++j)
-                inout[i * n + j] = inout[j * n + i] = 0.5 * (inout[i * n + j] + inout[j * n + i]);
-    }
-    template void matsym<double>(double* inout, const int n);
-    template void matsym<std::complex<double>>(std::complex<double>* inout, const int n);
 #ifdef __MPI
     template<>
     void matsym<double>(const double* in, const int n, const Parallel_2D& pmat, double* out)
@@ -123,7 +82,7 @@ namespace LR_Util
         for (int i = 0;i < pmat.get_local_size();++i)out[i] = in[i];
         const std::complex<double> alpha(0.5, 0.0), beta(0.5, 0.0);
         const int i1 = 1;
-        pztranu_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+        pztranc_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
     }
     template<>
     void matsym<std::complex<double>>(std::complex<double>* inout, const int n, const Parallel_2D& pmat)
@@ -132,7 +91,7 @@ namespace LR_Util
         for (int i = 0;i < pmat.get_local_size();++i)tmp[i] = inout[i];
         const std::complex<double> alpha(0.5, 0.0), beta(0.5, 0.0);
         const int i1 = 1;
-        pztranu_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        pztranc_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
     }
 #endif
     container::Tensor mat2ten_double(ModuleBase::matrix& m)
@@ -211,31 +170,6 @@ namespace LR_Util
         return m;
     }
 
-    /// psi(nk=1, nbands=nb, nk * nbasis) -> psi(nb, nk, nbasis) without memory copy
-    template<typename T, typename Device>
-    psi::Psi<T, Device> k1_to_bfirst_wrapper(const psi::Psi<T, Device>& psi_kfirst, int nk_in, int nbasis_in)
-    {
-        assert(psi_kfirst.get_nk() == 1);
-        assert(nk_in * nbasis_in == psi_kfirst.get_nbasis());
-        int ib_now = psi_kfirst.get_current_b();
-        psi_kfirst.fix_b(0);    // for get_pointer() to get the head pointer
-        psi::Psi<T, Device> psi_bfirst(psi_kfirst.get_pointer(), nk_in, psi_kfirst.get_nbands(), nbasis_in, psi_kfirst.get_ngk_pointer(), false);
-        psi_kfirst.fix_b(ib_now);
-        return psi_bfirst;
-    }
-
-    ///  psi(nb, nk, nbasis) -> psi(nk=1, nbands=nb, nk * nbasis)  without memory copy
-    template<typename T, typename Device>
-    psi::Psi<T, Device> bfirst_to_k1_wrapper(const psi::Psi<T, Device>& psi_bfirst)
-    {
-        int ib_now = psi_bfirst.get_current_b();
-        int ik_now = psi_bfirst.get_current_k();
-        psi_bfirst.fix_kb(0, 0);    // for get_pointer() to get the head pointer
-        psi::Psi<T, Device> psi_kfirst(psi_bfirst.get_pointer(), 1, psi_bfirst.get_nbands(), psi_bfirst.get_nk() * psi_bfirst.get_nbasis(), psi_bfirst.get_ngk_pointer(), true);
-        psi_bfirst.fix_kb(ik_now, ib_now);
-        return psi_kfirst;
-    }
-
     // for the first matrix in the commutator
     void setup_2d_division(Parallel_2D& pv, int nb, int gr, int gc)
     {
@@ -255,7 +189,7 @@ namespace LR_Util
         pv.set_serial(gr, gc);
         pv.set_global2local(gr, gc, false, ofs);
 #endif
-    };
+    }
 
 #ifdef __MPI
     // for the other matrices in the commutator other than the first one
@@ -274,41 +208,10 @@ namespace LR_Util
         pv.set_local2global(gr, gc, ofs, ofs);
         pv.set_desc(gr, gc, pv.get_row_size(), false);
         pv.set_global2local(gr, gc, true, ofs);
-    };
+    }
 #endif
 
-
-#ifdef __MPI
-    template <typename T>
-    void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, bool col_first, int global_nrow, int global_ncol)
-    {
-        ModuleBase::TITLE("LR_Util", "gather_2d_to_full");
-        auto get_mpi_datatype = []() -> MPI_Datatype {
-            if (std::is_same<T, int>::value) { return MPI_INT; }
-            if (std::is_same<T, float>::value) { return MPI_FLOAT; }
-            else if (std::is_same<T, double>::value) { return MPI_DOUBLE; }
-            if (std::is_same<T, std::complex<float>>::value) { return MPI_COMPLEX; }
-            else if (std::is_same<T, std::complex<double>>::value) { return MPI_DOUBLE_COMPLEX; }
-            else { throw std::runtime_error("gather_2d_to_full: unsupported type"); }
-            };
-
-        // zeros
-        for (int i = 0;i < global_nrow * global_ncol;++i) fullmat[i] = 0.0;
-        //copy
-        for (int i = 0;i < pv.get_row_size();++i)
-            for (int j = 0;j < pv.get_col_size();++j)
-                if (col_first)
-                    fullmat[pv.local2global_row(i) * global_ncol + pv.local2global_col(j)] = submat[i * pv.get_col_size() + j];
-                else
-                    fullmat[pv.local2global_col(j) * global_nrow + pv.local2global_row(i)] = submat[j * pv.get_row_size() + i];
-
-        //reduce to root
-        MPI_Allreduce(MPI_IN_PLACE, fullmat, global_nrow * global_ncol, get_mpi_datatype(), MPI_SUM, pv.comm_2D);
-    };
-#endif
-
-    template<>
-    void diag_lapack<double>(const int& n, double* mat, double* eig)
+    void diag_lapack(const int& n, double* mat, double* eig)
     {
         ModuleBase::TITLE("LR_Util", "diag_lapack<double>");
         int info = 0;
@@ -322,8 +225,8 @@ namespace LR_Util
         if (info) std::cout << "ERROR: Lapack solver, info=" << info << std::endl;
         delete[] work2;
     }
-    template<>
-    void diag_lapack<std::complex<double>>(const int& n, std::complex<double>* mat, double* eig)
+
+    void diag_lapack(const int& n, std::complex<double>* mat, double* eig)
     {
         ModuleBase::TITLE("LR_Util", "diag_lapack<complex<double>>");
         int lwork = 2 * n;
@@ -336,4 +239,33 @@ namespace LR_Util
         delete[] rwork;
         delete[] work2;
     }
+
+#ifdef USE_LIBXC
+    void grad(const double* rhor,
+        ModuleBase::Vector3<double>* gdr,
+        const ModulePW::PW_Basis& rho_basis,
+        const double& tpiba)
+    {
+        std::vector<std::complex<double>> rhog(rho_basis.npw);
+        rho_basis.real2recip(rhor, rhog.data());
+        XC_Functional::grad_rho(rhog.data(), gdr, &rho_basis, tpiba);
+    }
+    void laplace(const double* rhor, double* lapn,
+        const ModulePW::PW_Basis& rho_basis,
+        const double& tpiba2)
+    {
+        ModuleBase::GlobalFunc::ZEROS(lapn, rho_basis.nrxx);
+        std::vector<std::complex<double>> rhog(rho_basis.npw);
+        std::vector<double> tmp_rhor(rho_basis.nrxx);
+        rho_basis.real2recip(rhor, rhog.data());
+        for (int i = 0;i < 3;++i)
+        {
+            for (int ig = 0; ig < rho_basis.npw; ig++)
+                rhog[ig] *= pow(rho_basis.gcar[ig][i], 2);
+            rho_basis.recip2real(rhog.data(), tmp_rhor.data());
+            for (int ir = 0; ir < rho_basis.nrxx; ir++)
+                lapn[ir] -= tmp_rhor[ir] * tpiba2;
+        }
+    }
+#endif
 }

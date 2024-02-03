@@ -6,7 +6,6 @@
 namespace hamilt
 {
 
-
     //output: col first, consistent with blas
     // c: nao*nbands in para2d, nbands*nao in psi  (row-para and constructed: nao)
     // X: nvirt*nocc in para2d, nocc*nvirt in psi (row-para and constructed: nvirt)

@@ -37,7 +37,8 @@ namespace hamilt
     /// @brief calculate the 2d-block transition density matrix in AO basis using dgemm
     std::vector<container::Tensor> cal_dm_trans_blas(
         const psi::Psi<double, psi::DEVICE_CPU>& X_istate,
-        const psi::Psi<double, psi::DEVICE_CPU>& c);
+        const psi::Psi<double, psi::DEVICE_CPU>& c,
+        const int& nocc, const int& nvirt);
     /// @brief calculate the 2d-block transition density matrix in AO basis using dgemm
     std::vector<container::Tensor> cal_dm_trans_blas(
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& X_istate,
@@ -56,5 +57,3 @@ namespace hamilt
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c,
         const int& nocc, const int& nvirt);
 }
-#include "dm_trans_parallel.hpp"
-#include "dm_trans_serial.hpp"

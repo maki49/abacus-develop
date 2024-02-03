@@ -635,7 +635,6 @@ target_link_libraries(${ABACUS_BIN_NAME}
     vdw
     device
     container
-    lr
 )
 
 if(ENABLE_PAW)
@@ -654,6 +653,7 @@ if(ENABLE_LCAO)
       hcontainer
       deltaspin
       numerical_atomic_orbitals
+      lr
   )
   if (USE_ELPA)
     target_link_libraries(${ABACUS_BIN_NAME}

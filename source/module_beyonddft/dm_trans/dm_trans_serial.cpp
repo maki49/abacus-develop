@@ -2,6 +2,7 @@
 #include "module_base/blas_connector.h"
 #include "module_base/tool_title.h"
 #include "module_base/global_function.h"
+#include "module_beyonddft/utils/lr_util.h"
 namespace hamilt
 {
     std::vector<container::Tensor> cal_dm_trans_forloop_serial(const psi::Psi<double, psi::DEVICE_CPU>& X_istate, const psi::Psi<double, psi::DEVICE_CPU>& c, const int& nocc, const int& nvirt)

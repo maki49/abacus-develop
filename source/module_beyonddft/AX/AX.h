@@ -63,5 +63,3 @@ namespace hamilt
         const bool add_on = true);
 #endif
 }
-#include "AX_parallel.hpp"
-#include "AX_serial.hpp"

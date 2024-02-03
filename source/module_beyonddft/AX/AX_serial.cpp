@@ -1,6 +1,7 @@
 #include "AX.h"
 #include "module_base/blas_connector.h"
 #include "module_base/tool_title.h"
+#include "module_beyonddft/utils/lr_util.h"
 namespace hamilt
 {
     void cal_AX_forloop_serial(

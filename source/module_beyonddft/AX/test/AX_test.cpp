@@ -2,7 +2,7 @@
 #include "mpi.h"
 #include "../AX.h"
 
-#include "module_beyonddft/utils/lr_util_algorithms.hpp"
+#include "module_beyonddft/utils/lr_util.h"
 
 struct matsize
 {
