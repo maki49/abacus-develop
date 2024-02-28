@@ -116,9 +116,11 @@ namespace ModuleSymmetry
 
         //--------------------------------------------------------------------------------
         /// The main function to find irreducible sector: {abR}
-        void find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs, const TC& period);
+        void find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs);
         std::vector<TC> get_Rs_from_BvK(const K_Vectors& kv)const;
         std::vector<TC> get_Rs_from_adjacent_list(const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals& pv)const;
+        const std::map<Tap, std::set<TC>>& get_irreducible_sector()const { return this->irreducible_sector_; }
+        // const std::map<int, std::set<std::pair<int, TC>>> convirt_irreducible_sector() {};
         //--------------------------------------------------------------------------------
 
         //--------------------------------------------------------------------------------
@@ -184,7 +186,7 @@ namespace ModuleSymmetry
         /// mode='D': D_12(R)=T^T(V)D_1'2'(VR+O_1-O_2)T^*(V)
         template<typename Tdata>    // RI::Tensor type, blas
         RI::Tensor<Tdata> rotate_atompair_serial(const RI::Tensor<Tdata>& t, const int isym,
-            const Atom& a1, const Atom& a2, const char mode);
+            const Atom& a1, const Atom& a2, const char mode, bool output = false);
         template<typename TR>    // HContainer type, pblas
         void rotate_atompair_parallel(const TR* Alocal_in, const int isym, const Atom* atoms, const Statistics& st,
             const Tap& ap_in, const Tap& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output = false);
