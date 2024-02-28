@@ -26,13 +26,27 @@ namespace ModuleSymmetry
             if (HR_irreduceble.find(irap.first) != HR_irreduceble.end() && HR_irreduceble.at(irap.first).find({ irap.second, irR }) != HR_irreduceble.at(irap.first).end())
             HR_full[ap.first][{ap.second, R}] = rotate_atompair_serial(HR_irreduceble.at(irap.first).at({ irap.second, irR }),
                 isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], mode);
+            else
+                std::cout << "not found: current atom pair =(" << ap.first << "," << ap.second << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "), irreducible atom pair =(" << irap.first << "," << irap.second << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";
         }
         return HR_full;
     }
 
     template<typename Tdata>
+    inline void print_tensor(const RI::Tensor<Tdata>& t, const std::string& name)
+    {
+        std::cout << name << ":\n";
+        for (int i = 0;i < t.shape[0];++i)
+        {
+            for (int j = 0;j < t.shape[1];++j)
+                std::cout << t(i, j) << " ";
+            std::cout << std::endl;
+        }
+    }
+
+    template<typename Tdata>
     RI::Tensor<Tdata> Symmetry_rotation::rotate_atompair_serial(const RI::Tensor<Tdata>& A, const int isym,
-        const Atom& a1, const Atom& a2, const char mode)
+        const Atom& a1, const Atom& a2, const char mode, const bool output)
     {   // due to col-contiguous, actually what we know is T^T and H^T (or D^T), 
         // and what we calculate is(H'^T = T ^ T * H ^ T * T^*) or (D'^T = T ^ \dagger * D ^ T * T)
         auto set_block = [](const int starti, const int startj, const ModuleBase::ComplexMatrix& block,
@@ -56,7 +70,7 @@ namespace ModuleSymmetry
                 return T;
             };
 
-        bool sametype = (a1.type == a2.type);
+        bool sametype = (a1.label == a2.label);
         assert(A.shape[0] == a1.nw);//col
         assert(A.shape[1] == a2.nw);//row
         // contrut T matrix 
@@ -81,21 +95,16 @@ namespace ModuleSymmetry
             zgemm_(&transpose, &transpose, &a2.nw, &a1.nw, &a1.nw, &alpha, AT2.ptr(), &a1.nw, T1.ptr(), &a1.nw, &beta, TAT.ptr(), &a2.nw);
         }
         else throw std::invalid_argument("Symmetry_rotation::rotate_atompair_tensor: invalid mode.");
+        if (output)
+        {
+            print_tensor(A, "A");
+            print_tensor(T1, "T1");
+            print_tensor(T2, "T2");
+            print_tensor(TAT, "TAT");
+        }
         return RI::Global_Func::convert<Tdata>(TAT);
     }
-
-    template<typename Tdata>
-    inline void print_tensor(const RI::Tensor<Tdata>& t, const std::string& name)
-    {
-        std::cout << name << ":\n";
-        for (int i = 0;i < t.shape[0];++i)
-        {
-            for (int j = 0;j < t.shape[1];++j)
-                std::cout << t(i, j) << " ";
-            std::cout << std::endl;
-        }
-    }
-
+    
     template<typename Tdata>
     void Symmetry_rotation::print_HR(const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR, const std::string name)
     {

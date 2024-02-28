@@ -176,16 +176,28 @@ namespace ModuleSymmetry
                 std::cout << "isym=" << isym_ap_R.first << ", atompair=(" << isym_ap_R.second.first.first << ", " << isym_ap_R.second.first.second << "), R=("
                 << isym_ap_R.second.second[0] << ", " << isym_ap_R.second.second[1] << ", " << isym_ap_R.second.second[2] << ")" << std::endl;
         }
+        // print irreducible sector
+        std::cout << "irreducible sector: " << std::endl;
+        for (auto& irap_irR : this->irreducible_sector_)
+        {
+            for (auto& irR : irap_irR.second)
+                std::cout << "atompair (" << irap_irR.first.first << ", " << irap_irR.first.second << "), R = (" << irR[0] << ", " << irR[1] << ", " << irR[2] << ") \n";
+            std::cout << std::endl;
+        }
     }
 
-    void Symmetry_rotation::find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs, const TC& period)
+    void Symmetry_rotation::find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st, const std::vector<TC>& Rs)
     {
+        this->full_map_to_irreducible_sector_.clear();
+        this->irreducible_sector_.clear();
+        this->sector_stars_.clear();
+
         if (this->return_lattice_.empty()) this->get_return_lattice_all(symm, atoms, st);
         if (this->atompair_stars_.empty()) this->find_irreducible_atom_pairs(symm);
 
         // contruct {atom pair, R} set
         // constider different number of Rs for different atom pairs later.
-        std::map<Tap, std::set<TC>> apR_all;
+        std::map<Tap, std::set<TC, len_less_func>> apR_all;
         for (int iat1 = 0;iat1 < st.nat; iat1++)
             for (int iat2 = 0; iat2 < st.nat; iat2++)
                 for (auto& R : Rs)
@@ -195,47 +207,34 @@ namespace ModuleSymmetry
         std::vector<int> invmap(symm.nrotk, -1);
         symm.gmatrix_invmap(symm.gmatrix, symm.nrotk, invmap.data());
 
-        // R set to be used for current irap to generate all equivalent atom pairs
-        std::set<TC, len_less_func> Rs_gen_ref;
-        for (int i = -period[0];i <= period[0];++i)
-            for (int j = -period[1];j <= period[1];++j)
-                for (int k = -period[2];k <= period[2];++k)
-                    Rs_gen_ref.insert({ i,j,k });
-
-        for (auto& apstar : this->atompair_stars_)
+        while (!apR_all.empty())
         {
-            const Tap& irap = apstar.at(0);
-            std::set<TC, len_less_func> Rs_gen = Rs_gen_ref;
-            while (!Rs_gen.empty() && !apR_all[irap].empty()) //better stop condition?
+            const Tap& irap = apR_all.begin()->first;
+            const TC irR = *apR_all[irap].begin();
+            const TapR& irapR = { irap, irR };
+            std::map<int, TapR> sector_star;
+            for (int isym = 0;isym < symm.nrotk;++isym)
             {
-                const TC irR = *Rs_gen.begin();
-                const TapR& irapR = { irap, irR };
-                std::map<int, TapR> sector_star;
-                for (int isym = 0;isym < symm.nrotk;++isym)
+                const TapR& apRrot = this->rotate_R_by_formula(symm, invmap[isym], irapR);
+                const Tap& aprot = apRrot.first;
+                const TC& Rrot = apRrot.second;
+                if (apR_all.count(aprot) && apR_all.at(aprot).count(Rrot))
                 {
-                    const TapR& apRrot = this->rotate_R_by_formula(symm, isym, irapR);
-                    const Tap& aprot = apRrot.first;
-                    const TC& Rrot = apRrot.second;
-                    if (apR_all.count(aprot) && apR_all.at(aprot).count(Rrot))
-                    {
-                        this->full_map_to_irreducible_sector_.insert({ apRrot, {invmap[isym], irapR} });
-                        sector_star.insert({ invmap[isym], apRrot });
-                        apR_all[aprot].erase(Rrot);
-                        if (apR_all.at(aprot).empty()) apR_all.erase(aprot);
-                        if (apR_all.empty()) break;
-                    }
-                    if (aprot == irap && Rs_gen.count(Rrot))Rs_gen.erase(Rrot); //remove covered {apR}s
-                    if (Rs_gen.empty()) break;
-                }// end for isym
-                if (!sector_star.empty())
-                {
-                    this->sector_stars_.push_back(sector_star);
-                    if (this->irreducible_sector_.count(irap))
-                        this->irreducible_sector_.at(irap).insert(irR);
-                    else
-                        this->irreducible_sector_.insert({ irap, {irR} });
+                    this->full_map_to_irreducible_sector_.insert({ apRrot, {isym, irapR} });
+                    sector_star.insert({ isym, apRrot });
+                    apR_all[aprot].erase(Rrot);
+                    if (apR_all.at(aprot).empty()) apR_all.erase(aprot);
+                    if (apR_all.empty()) break;
                 }
-            }   // end for Rs
+            }// end for isym
+            if (!sector_star.empty())
+            {
+                this->sector_stars_.push_back(sector_star);
+                if (this->irreducible_sector_.count(irap))
+                    this->irreducible_sector_.at(irap).insert(irR);
+                else
+                    this->irreducible_sector_.insert({ irap, {irR} });
+            }
         }
         // test
         int total_apR_in_star = 0;
