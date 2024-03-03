@@ -38,7 +38,7 @@ namespace ModuleSymmetry
     void Symmetry_rotation::restore_HR(
         const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
         const hamilt::HContainer<TR>& HR_irreduceble,
-        hamilt::HContainer<TR>& HR_rotated)
+        hamilt::HContainer<TR>& HR_rotated)const
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
         for (auto& apR_isym_irapR : this->full_map_to_irreducible_sector_)
@@ -77,7 +77,7 @@ namespace ModuleSymmetry
     };
     template<typename TR>
     void Symmetry_rotation::rotate_atompair_parallel(const TR* Alocal_in, const int isym, const Atom* atoms, const Statistics& st,
-        const Tap& ap_in, const Tap& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output)
+        const Tap& ap_in, const Tap& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output)const
     {
         // all the matrices are row-major (col-contiguous)
         int iat1 = ap_in.first, iat2 = ap_in.second;
