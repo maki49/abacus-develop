@@ -18,7 +18,11 @@ namespace ModuleSymmetry
 
         this->nsym_ = ucell.symm.nrotk;
         this->eps_ = ucell.symm.epsilon;
-
+        if (this->invmap_.empty())
+        {
+            this->invmap_.resize(ucell.symm.nrotk);
+            ucell.symm.gmatrix_invmap(ucell.symm.gmatrix, ucell.symm.nrotk, invmap_.data());
+        }
         // 1. calculate the rotation matrix in real spherical harmonics representation for each symmetry operation: [T_l (isym)]_mm'
         std::vector<ModuleBase::Matrix3> gmatc(nsym_);
         for (int i = 0;i < nsym_;++i) gmatc[i] = this->direct_to_cartesian(ucell.symm.gmatrix[i], ucell.latvec);
