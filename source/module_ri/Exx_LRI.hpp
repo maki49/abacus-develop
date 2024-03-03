@@ -161,7 +161,8 @@ void Exx_LRI<Tdata>::cal_exx_ions()
 }
 
 template<typename Tdata>
-void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>> &Ds, const Parallel_Orbitals &pv)
+void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>>& Ds, const Parallel_Orbitals& pv,
+    const ModuleSymmetry::Symmetry_rotation* p_symrot)
 {
 	ModuleBase::TITLE("Exx_LRI","cal_exx_elec");
 	ModuleBase::timer::tick("Exx_LRI", "cal_exx_elec");
@@ -177,8 +178,10 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA,std::map<TAC,RI:
 		if(!(GlobalV::CAL_FORCE || GlobalV::CAL_STRESS))
 		{
 			this->exx_lri.set_Ds(Ds[is], this->info.dm_threshold);
-			this->exx_lri.cal_Hs();
-		}
+            this->exx_lri.cal_Hs({ "","","" },
+                (p_symrot == nullptr) ? std::map<std::pair<TA, TA>, std::set<TC> >({}) : p_symrot->get_irreducible_sector(),
+                (p_symrot == nullptr) ? true : false);
+        }
 		else
 		{
 			this->exx_lri.set_Ds(Ds[is], this->info.dm_threshold, std::to_string(is));
@@ -186,6 +189,15 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA,std::map<TAC,RI:
 		}
 		this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
 			this->mpi_comm, std::move(this->exx_lri.Hs), std::get<0>(judge[is]), std::get<1>(judge[is]));
+
+        if (p_symrot != nullptr)
+        {
+            this->Hexxs[is] = p_symrot->restore_HR(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, 'H', this->Hexxs[is]);
+            // cal energy using full Hs
+            this->exx_lri.energy = this->exx_lri.post_2D.cal_energy(
+                this->exx_lri.post_2D.saves["Ds_"],
+                this->Hexxs[is]);
+        }
 		this->Eexx += this->exx_lri.energy;
 		post_process_Hexx(this->Hexxs[is]);
 	}
