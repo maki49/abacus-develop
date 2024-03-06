@@ -101,9 +101,12 @@ namespace ModuleSymmetry
             const TCdouble& posd_a1, const TCdouble& posd_a2)const;
         void get_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st);
 
-        /// set a block matrix onto a 2d-parallelized matrix, at the position (starti, startj) 
-        void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<std::complex<double>>& obj_mat, const Parallel_2D& pv) const;
-        void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block, std::vector<double>& obj_mat, const Parallel_2D& pv) const;
+        /// set a block matrix onto a 2d-parallelized matrix(col-maj), at the position (starti, startj) 
+        /// if trans=true, the block matrix is transposed before setting
+        void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block,
+            std::vector<std::complex<double>>& obj_mat, const Parallel_2D& pv, const bool trans = false) const;
+        void set_block_to_mat2d(const int starti, const int startj, const ModuleBase::ComplexMatrix& block,
+            std::vector<double>& obj_mat, const Parallel_2D& pv, const bool trans = false) const;
 
         /// 2d-block parallized rotation matrix in AO-representation, denoted as M.
         /// finally we will use D(k)=M(R, k)^\dagger*D(Rk)*M(R, k) to recover D(k) from D(Rk).

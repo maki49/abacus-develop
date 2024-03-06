@@ -215,7 +215,7 @@ namespace ModuleSymmetry
 
         while (!apR_all.empty())
         {
-            const Tap& irap = apR_all.begin()->first;
+            const Tap irap = apR_all.begin()->first;
             const TC irR = *apR_all[irap].begin();
             const TapR& irapR = { irap, irR };
             std::map<int, TapR> sector_star;
