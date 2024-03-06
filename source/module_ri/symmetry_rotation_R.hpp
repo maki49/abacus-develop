@@ -1,6 +1,7 @@
 #include "symmetry_rotation.h"
 #include "module_ri/RI_Util.h"
 #include "module_base/blas_connector.h"
+#include "module_base/timer.h"
 #include <array>
 #include <RI/global/Global_Func-2.h>
 
@@ -12,8 +13,9 @@ namespace ModuleSymmetry
         const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_irreduceble) const
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
+        ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_full;
-
+        // openmp slows down this for loop, why?
         for (auto& apR_isym_irapR : this->full_map_to_irreducible_sector_)
         {
             const Tap& ap = apR_isym_irapR.first.first;
@@ -29,6 +31,7 @@ namespace ModuleSymmetry
             else
                 std::cout << "not found: current atom pair =(" << ap.first << "," << ap.second << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "), irreducible atom pair =(" << irap.first << "," << irap.second << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";
         }
+        ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
         return HR_full;
     }
 
