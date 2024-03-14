@@ -677,6 +677,8 @@ TEST_F(write_input, Exx14)
     EXPECT_THAT(output,
                 testing::HasSubstr("exx_opt_orb_tolerence          0 #the threshold when solving for the zeros of "
                                    "spherical Bessel functions for opt ABFs"));
+    EXPECT_THAT(output,
+        testing::HasSubstr("exx_symmetry_realspace           1 #true for rotate H(R) and D(k) and false for rotate D(k) only"));
     EXPECT_THAT(output, testing::HasSubstr(""));
     ifs.close();
     remove("write_input_test.log");

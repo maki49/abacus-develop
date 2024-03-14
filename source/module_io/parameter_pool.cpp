@@ -1276,6 +1276,10 @@ bool input_parameters_set(std::map<std::string, InputParameter> input_parameters
     {
         INPUT.exx_opt_orb_tolerence = *static_cast<double*>(input_parameters["exx_opt_orb_tolerence"].get());
     }
+    else if (input_parameters.count("exx_symmetry_realspace") != 0)
+    {
+        INPUT.exx_symmetry_realspace = *static_cast<bool*>(input_parameters["exx_symmetry_realspace"].get());
+    }
     else if (input_parameters.count("td_force_dt") != 0)
     {
         INPUT.td_force_dt = *static_cast<double*>(input_parameters["td_force_dt"].get());

@@ -394,6 +394,8 @@ class Input
     double exx_opt_orb_ecut;
     double exx_opt_orb_tolerence;
 
+    bool exx_symmetry_realspace; ///< true for rotate H(R) and D(k) and false for rotate D(k) only
+
     //==========================================================
     // tddft
     // Fuxiang He add 2016-10-26

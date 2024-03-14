@@ -581,6 +581,8 @@ void Input_Conv::Convert(void)
         GlobalC::exx_info.info_ri.ccp_threshold = INPUT.exx_ccp_threshold;
         GlobalC::exx_info.info_ri.ccp_rmesh_times = std::stod(INPUT.exx_ccp_rmesh_times);
 
+        GlobalC::exx_info.info_global.exx_symmetry_realspace = INPUT.exx_symmetry_realspace;
+
         Exx_Abfs::Jle::Lmax = INPUT.exx_opt_orb_lmax;
         Exx_Abfs::Jle::Ecut_exx = INPUT.exx_opt_orb_ecut;
         Exx_Abfs::Jle::tolerence = INPUT.exx_opt_orb_tolerence;
