@@ -264,7 +264,8 @@ TEST_F(InputTest, Default)
         EXPECT_EQ(INPUT.exx_distribute_type,"htime");
         EXPECT_EQ(INPUT.exx_opt_orb_lmax,0);
         EXPECT_DOUBLE_EQ(INPUT.exx_opt_orb_ecut,0.0);
-        EXPECT_DOUBLE_EQ(INPUT.exx_opt_orb_tolerence,0.0);
+        EXPECT_DOUBLE_EQ(INPUT.exx_opt_orb_tolerence, 0.0);
+        EXPECT_TRUE(INPUT.exx_symmetry_realspace);
         EXPECT_FALSE(INPUT.noncolin);
         EXPECT_FALSE(INPUT.lspinorb);
         EXPECT_DOUBLE_EQ(INPUT.soc_lambda,1.0);
@@ -629,7 +630,8 @@ TEST_F(InputTest, Read)
         EXPECT_EQ(INPUT.exx_distribute_type,"htime");
         EXPECT_EQ(INPUT.exx_opt_orb_lmax,0);
         EXPECT_DOUBLE_EQ(INPUT.exx_opt_orb_ecut,0.0);
-        EXPECT_DOUBLE_EQ(INPUT.exx_opt_orb_tolerence,0.0);
+        EXPECT_DOUBLE_EQ(INPUT.exx_opt_orb_tolerence, 0.0);
+        EXPECT_TRUE(INPUT.exx_symmetry_realspace);
         EXPECT_FALSE(INPUT.noncolin);
         EXPECT_FALSE(INPUT.lspinorb);
         EXPECT_DOUBLE_EQ(INPUT.soc_lambda,1.0);

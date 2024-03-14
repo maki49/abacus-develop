@@ -2091,6 +2091,10 @@ bool Input::Read(const std::string& fn)
         {
             read_value(ifs, exx_opt_orb_tolerence);
         }
+        else if (strcmp("exx_symmetry_realspace", word) == 0)
+        {
+            read_value(ifs, exx_symmetry_realspace);
+        }
         else if (strcmp("noncolin", word) == 0)
         {
             read_bool(ifs, noncolin);
