@@ -3,7 +3,7 @@
 
 #include "Exx_LRI.h"
 #include "module_ri/Mix_DMk_2D.h"
-#include "module_ri/symmetry_rotation.h"
+#include "module_ri/exx_symmetry/symmetry_rotation.h"
 #include <memory>
 
 class LCAO_Matrix;
@@ -72,7 +72,6 @@ public:
 private:
     std::shared_ptr<Exx_LRI<Tdata>> exx_ptr;
     Mix_DMk_2D mix_DMk_2D;
-    int two_level_step = 0;
 
     bool exx_spacegroup_symmetry = false;
     ModuleSymmetry::Symmetry_rotation symrot_;
