@@ -16,7 +16,7 @@ namespace ModuleSymmetry
         ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_full;
         // openmp slows down this for loop, why?
-        for (auto& apR_isym_irapR : this->full_map_to_irreducible_sector_)
+        for (auto& apR_isym_irapR : this->irs_.full_map_to_irreducible_sector_)
         {
             const Tap& ap = apR_isym_irapR.first.first;
             const TC& R = apR_isym_irapR.first.second;
@@ -26,8 +26,8 @@ namespace ModuleSymmetry
             // rotate the matrix and pack data
             // H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
             if (HR_irreduceble.find(irap.first) != HR_irreduceble.end() && HR_irreduceble.at(irap.first).find({ irap.second, irR }) != HR_irreduceble.at(irap.first).end())
-            HR_full[ap.first][{ap.second, R}] = rotate_atompair_serial(HR_irreduceble.at(irap.first).at({ irap.second, irR }),
-                isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], mode);
+                HR_full[ap.first][{ap.second, R}] = rotate_atompair_serial(HR_irreduceble.at(irap.first).at({ irap.second, irR }),
+                    isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], mode);
             else
                 std::cout << "not found: current atom pair =(" << ap.first << "," << ap.second << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "), irreducible atom pair =(" << irap.first << "," << irap.second << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";
         }
@@ -113,7 +113,7 @@ namespace ModuleSymmetry
         }
         return RI::Global_Func::convert<Tdata>(TAT);
     }
-    
+
     template<typename Tdata>
     void Symmetry_rotation::print_HR(const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR, const std::string name, const double& threshold)
     {
@@ -139,7 +139,7 @@ namespace ModuleSymmetry
 
         // 1. pick out H(R) in the irreducible sector from full H(R)
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_irreduceble;
-        for (auto& irap_Rs : this->irreducible_sector_)
+        for (auto& irap_Rs : this->irs_.irreducible_sector_)
         {
             const Tap& irap = irap_Rs.first;
             for (auto& irR : irap_Rs.second)
