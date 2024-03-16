@@ -18,7 +18,7 @@
 #include <deque>
 #include <mpi.h>
 
-#include "symmetry_rotation.h"
+#include "exx_symmetry/symmetry_rotation.h"
 
 	class Parallel_Orbitals;
 	
@@ -48,14 +48,14 @@ public:
     std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> get_Hexxs() const { return Hexxs; }
 
 	std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> Hexxs;
-    double Eexx;
+	Tdata Eexx;
 	ModuleBase::matrix force_exx;
 	ModuleBase::matrix stress_exx;
 
 private:
 	const Exx_Info::Exx_Info_RI &info;
 	MPI_Comm mpi_comm;
-	const K_Vectors *p_kv = nullptr;
+	const K_Vectors *p_kv;
 
 	std::vector<std::vector<std::vector<Numerical_Orbital_Lm>>> lcaos;
 	std::vector<std::vector<std::vector<Numerical_Orbital_Lm>>> abfs;
@@ -70,7 +70,7 @@ private:
         const ModuleSymmetry::Symmetry_rotation* p_symrot = nullptr);
 
     void post_process_Hexx(std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Hexxs_io) const;
-    double post_process_Eexx(const double& Eexx_in) const;
+	Tdata post_process_Eexx( const Tdata &Eexx_in ) const;
 
 	friend class RPA_LRI<double, Tdata>;
 	friend class RPA_LRI<std::complex<double>, Tdata>;

@@ -56,10 +56,9 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
         if (this->exx_spacegroup_symmetry)
         {
             const std::array<int, 3>& period = RI_Util::get_Born_vonKarmen_period(kv);
-            this->symrot_.get_return_lattice_all(ucell.symm, ucell.atoms, ucell.st);
-            this->symrot_.cal_Ms(kv, ucell, pv);
             this->symrot_.find_irreducible_sector(ucell.symm, ucell.atoms, ucell.st,
                 RI_Util::get_Born_von_Karmen_cells(period), period, ucell.lat);
+            this->symrot_.cal_Ms(kv, ucell, pv);
         }
     }
 
@@ -105,7 +104,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const elecstate::DensityMatri
 				Ds = GlobalV::GAMMA_ONLY_LOCAL
 					? RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_gamma_out(), *dm.get_paraV_pointer())
                 : RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), this->exx_spacegroup_symmetry);
-            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.symmetry_rotate_realspace)
+            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.exx_symmetry_realspace)
                 this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer(), &this->symrot_);
             else
                 this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer());
@@ -216,7 +215,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
             // exit(0);
 
             // if (this->two_level_step)exit(0);
-            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.symmetry_rotate_realspace)
+            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.exx_symmetry_realspace)
                     this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer(), &this->symrot_);
             // this->symrot_.print_HR(this->exx_ptr->Hexxs[0], "Hexxs_restored", 1e-10);   // test
             else

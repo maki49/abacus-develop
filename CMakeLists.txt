@@ -715,7 +715,8 @@ endif()
 
 if (ENABLE_LIBRI)
   target_link_libraries(${ABACUS_BIN_NAME}
-          ri)
+          ri
+          exx_symmetry)
 endif()
 
 install(PROGRAMS ${ABACUS_BIN_PATH}
