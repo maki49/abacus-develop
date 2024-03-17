@@ -36,8 +36,8 @@ namespace hsolver
         else if (this->method == "lapack")
         {
             std::vector<T> Amat_full = pHamilt->matrix();
-            eigenvalue.resize(nsk * npairs);
-            LR_Util::diag_lapack(nsk * npairs, Amat_full.data(), eigenvalue.data());
+            eigenvalue.resize(nks * npairs);
+            LR_Util::diag_lapack(nks * npairs, Amat_full.data(), eigenvalue.data());
             psi.fix_kb(0, 0);
             // copy eigenvectors
             for (int i = 0;i < psi.size();++i) psi.get_pointer()[i] = Amat_full[i];

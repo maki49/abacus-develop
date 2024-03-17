@@ -23,6 +23,7 @@ namespace hamilt
     class OperatorLRHxc : public Operator<T, Device>
     {
     public:
+        //when nspin=2, nks is 2 times of real number of k-points. else (nspin=1 or 4), nks is the real number of k-points
         OperatorLRHxc(const int& nspin,
             const int& naos,
             const int& nocc,
@@ -41,8 +42,6 @@ namespace hamilt
             pX(pX_in), pc(pc_in), pmat(pmat_in)
         {
             ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
-            this->nks = std::is_same<T, double>::value ? 1 : this->kv.kvec_d.size();
-            this->nsk = std::is_same<T, double>::value ? nspin : nks;
             this->cal_type = calculation_type::lcao_gint;
             this->act_type = 2;
             this->is_first_node = true;
@@ -54,8 +53,6 @@ namespace hamilt
         virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
     private:
         //global sizes
-        int nks = 1;    // when nspin=2, nks is 2 times of real number of k-points.
-        int nsk = 1; // nspin for gamma_only, nks for multi-k
         int nspin = 1;
         int naos;
         int nocc;

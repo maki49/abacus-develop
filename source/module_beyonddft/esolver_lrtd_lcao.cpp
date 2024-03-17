@@ -64,7 +64,13 @@ inline void redirect_log(const bool& out_alllog)
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::parameter_check()
 {
-    if (std::is_same<T, std::complex<double>>::value && this->nsk / this->nspin > 1 && this->input.lr_solver == "lapack")
+    if (input.lr_solver != "dav" && input.lr_solver != "lapack")
+        throw std::invalid_argument("ESolver_LRTD: unknown type of lr_solver");
+    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "pbe" && xc_kernel != "hf")
+        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
+    if (this->nspin != 1 && this->nspin != 2)
+        throw std::invalid_argument("LR-TDDFT only supports nspin = 1 or 2 now");
+    if (std::is_same<T, std::complex<double>>::value && this->kv.nks / this->nspin > 1 && this->input.lr_solver == "lapack")
         throw std::invalid_argument("ESolver_LRTD: explicitly contruct A matrix is not supported for multi-k due to the complex density matrix.");
 }
 
@@ -78,9 +84,6 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     // xc kernel
     this->xc_kernel = inp.xc_kernel;
     std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
-    //check the input first
-    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "pbe" && xc_kernel != "hf")
-        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
 
     // move the ground state info 
     this->psi_ks = ks_sol.psi;
@@ -92,7 +95,6 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     //kv
     this->nspin = GlobalV::NSPIN;
     this->kv = std::move(ks_sol.kv);
-    this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
 
     this->parameter_check();
 
@@ -137,7 +139,6 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<
     }
 #endif
     this->init_A(inp.lr_thr);
-    this->lr_solver = inp.lr_solver;
     this->pelec = new elecstate::ElecStateLCAO<T>();
 }
 
@@ -150,9 +151,6 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     // xc kernel
     this->xc_kernel = inp.xc_kernel;
     std::transform(xc_kernel.begin(), xc_kernel.end(), xc_kernel.begin(), tolower);
-    //check the input first
-    if (xc_kernel != "rpa" && xc_kernel != "lda" && xc_kernel != "pbe" && xc_kernel != "hf")
-        throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
 
     // necessary steps in ESolver_FP
     ESolver_FP::Init(inp, ucell);
@@ -168,11 +166,10 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
     this->nspin = GlobalV::NSPIN;
     std::cout << "nspin: " << this->nspin << std::endl;
     this->kv.set(ucell.symm, GlobalV::global_kpoint_card, nspin, ucell.G, ucell.latvec);
-    this->nsk = std::is_same<T, double>::value ? this->nspin : this->kv.nks;
     ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "INIT K-POINTS");
     Print_Info::setup_parameters(ucell, this->kv);
 
-    // this->parameter_check();
+    this->parameter_check();
 
     // necessary steps in ESolver_KS_LCAO::Init_Basis_lcao
     // read orbitals
@@ -289,14 +286,13 @@ ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(Input& inp, UnitCell& ucell) : 
         ModuleBase::Ylm::set_coefficients();    // set Ylm only for Gint 
 
     this->init_A(inp.lr_thr);
-    this->lr_solver = inp.lr_solver;
     this->pelec = new elecstate::ElecState();
 }
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::Run(int istep, UnitCell& cell)
 {
     ModuleBase::TITLE("ESolver_LRTD", "Run");
-    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->lr_solver);
+    this->phsol->solve(this->p_hamilt, *this->X, this->pelec, this->input.lr_solver);
     return;
 }
 
@@ -343,7 +339,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 
     // setup ParaX
     LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc);//nvirt - row, nocc - col 
-    this->X = new psi::Psi<T>(this->nsk, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
+    this->X = new psi::Psi<T>(this->kv.nks, this->nstates, this->paraX_.get_local_size(), nullptr, false);  // band(state)-first
     this->X->zero_out();
 
     // set the initial guess of X
@@ -374,7 +370,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
         int occ_global = std::get<0>(ix2ioiv[i]);   // occ
         int virt_global = std::get<1>(ix2ioiv[i]);   // virt
         if (this->paraX_.in_this_processor(virt_global, occ_global))
-            for (int isk = 0;isk < this->nsk;++isk)
+            for (int isk = 0;isk < this->kv.nks;++isk)
                 (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
     }
     this->X->fix_b(0);  //recover the pointer
@@ -419,7 +415,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_A(const double lr_thr)
         this->gint, this->pot, this->kv, &this->paraX_, &this->paraC_, &this->paraMat_);
 
     // init HSolver
-    this->phsol = new hsolver::HSolverLR<T>(this->nsk, this->npairs);
+    this->phsol = new hsolver::HSolverLR<T>(this->kv.nks, this->npairs);
     this->phsol->set_diagethr(0, 0, std::max(1e-13, lr_thr));
 }
 

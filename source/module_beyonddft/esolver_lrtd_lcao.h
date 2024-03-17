@@ -87,7 +87,6 @@ namespace ModuleESolver
         int npairs;
         /// how many 2-particle states to be solved
         int nstates = 1;
-        int nsk = 1; //nspin*nks
         int nspin = 1;
 
         Grid_Technique gt;
@@ -96,7 +95,6 @@ namespace ModuleESolver
         typename TGint<T>::type* gint = nullptr;
 
         std::string xc_kernel;
-        std::string lr_solver;
 
         void set_gint();
 

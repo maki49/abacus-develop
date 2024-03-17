@@ -30,7 +30,7 @@ namespace hamilt
             const K_Vectors& kv_in,
             Parallel_2D* pX_in,
             Parallel_2D* pc_in,
-            Parallel_Orbitals* pmat_in) : nocc(nocc), nvirt(nvirt), pX(pX_in), nsk(eig_ks.nr)
+            Parallel_Orbitals* pmat_in) : nocc(nocc), nvirt(nvirt), pX(pX_in), nks(kv_in.nks)
         {
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
@@ -71,7 +71,7 @@ namespace hamilt
     private:
         int nocc;
         int nvirt;
-        int nsk;
+        int nks;
         Parallel_2D* pX = nullptr;
         T one();
         HContainer<double>* hR = nullptr;

@@ -22,8 +22,7 @@ public:
         const UnitCell& ucell, const K_Vectors& kv_in, Parallel_2D& pX_in, Parallel_2D& pc_in, Parallel_Orbitals& pmat_in) :
         eig(eig), X(X), nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
         gint(gint), rho_basis(rho_basis), psi_ks(psi_ks),
-        ucell(ucell), kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in),
-        nsk(std::is_same<T, double>::value ? nspin : kv_in.kvec_d.size()) {};
+        ucell(ucell), kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in) {};
     /// $$2/3\Omega\sum_{ia\sigma} |\braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2\int \rho_{\alpha\beta}(\mathbf{r}) \mathbf{r} d\mathbf{r}$$
     void oscillator_strength();
     /// @brief calculate the optical absorption spectrum
@@ -32,7 +31,6 @@ public:
     void transition_analysis();
 private:
     const int nspin;
-    const int nsk;
     const int naos;
     const int nocc;
     const int nvirt;

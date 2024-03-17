@@ -27,11 +27,11 @@ namespace hamilt
             LR_Util::setup_2d_division(pmat, px.get_block_size(), naos, naos, px.comm_2D, px.blacs_ctxt);
         else assert(pmat.get_local_size() > 0);
 
-        int nsk = c.get_nk();
-        assert(nsk == X_istate.get_nk());
+        int nks = c.get_nk();
+        assert(nks == X_istate.get_nk());
 
-        std::vector<container::Tensor> dm_trans(nsk, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { pmat.get_col_size(), pmat.get_row_size() }));
-        for (int isk = 0;isk < nsk;++isk)
+        std::vector<container::Tensor> dm_trans(nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { pmat.get_col_size(), pmat.get_row_size() }));
+        for (int isk = 0;isk < nks;++isk)
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
@@ -78,11 +78,11 @@ namespace hamilt
             LR_Util::setup_2d_division(pmat, px.get_block_size(), naos, naos, px.comm_2D, px.blacs_ctxt);
         else assert(pmat.get_local_size() > 0);
 
-        int nsk = c.get_nk();
-        assert(nsk == X_istate.get_nk());
+        int nks = c.get_nk();
+        assert(nks == X_istate.get_nk());
 
-        std::vector<container::Tensor> dm_trans(nsk, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pmat.get_col_size(), pmat.get_row_size() }));
-        for (int isk = 0;isk < nsk;++isk)
+        std::vector<container::Tensor> dm_trans(nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pmat.get_col_size(), pmat.get_row_size() }));
+        for (int isk = 0;isk < nks;++isk)
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);

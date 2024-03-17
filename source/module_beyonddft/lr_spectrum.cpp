@@ -34,7 +34,7 @@ void LR_Spectrum<T>::oscillator_strength()
         std::vector<container::Tensor>  dm_trans_2d = hamilt::cal_dm_trans_blas(X, this->psi_ks, this->nocc, this->nvirt);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
-        for (int isk = 0;isk < this->nsk;++isk)DM_trans.set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
+        for (int isk = 0;isk < this->kv.nks;++isk)DM_trans.set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
         DM_trans.cal_DMR();
         this->gint->transfer_DM2DtoGrid(DM_trans.get_DMR_vector());
 

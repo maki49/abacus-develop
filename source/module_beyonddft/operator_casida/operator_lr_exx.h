@@ -34,14 +34,12 @@ namespace hamilt
             pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in)
         {
             ModuleBase::TITLE("OperatorLREXX", "OperatorLREXX");
-            this->nks = std::is_same<T, double>::value ? 1 : this->kv.kvec_d.size();
-            this->nsk = std::is_same<T, double>::value ? nspin : nks;
             this->cal_type = calculation_type::lcao_exx;
             this->act_type = 2;
             this->is_first_node = false;
 
             // reduce psi_ks for later use
-            this->psi_ks_full.resize(this->nsk, this->psi_ks->get_nbands(), this->naos);
+            this->psi_ks_full.resize(this->kv.nks, this->psi_ks->get_nbands(), this->naos);
             LR_Util::gather_2d_to_full(*this->pc, this->psi_ks->get_pointer(), this->psi_ks_full.get_pointer(), false, this->naos, this->psi_ks->get_nbands());
 
             // get cells in BvK supercell
@@ -58,8 +56,6 @@ namespace hamilt
         virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
     private:
         //global sizes
-        int nks = 1;    // when nspin=2, nks is 2 times of real number of k-points.
-        int nsk = 1; // nspin for gamma_only, nks for multi-k
         int nspin = 1;
         int naos;
         int nocc;

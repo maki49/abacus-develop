@@ -18,6 +18,7 @@ namespace hamilt
     {
         ModuleBase::TITLE("OperatorLRHxc", "act");
         assert(nbands <= psi_in.get_nbands());
+        const int& nks = this->kv.nks;
 
         /// initialize transion density matrix
         if (this->next_op != nullptr)
@@ -34,8 +35,8 @@ namespace hamilt
             }
         }
 
-        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nsk, this->pX->get_local_size());
-        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nsk, this->pX->get_local_size());
+        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nks, this->pX->get_local_size());
+        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, nks, this->pX->get_local_size());
 
         const int& lgd = gint->gridt->lgd;
         for (int ib = 0;ib < nbands;++ib)
@@ -45,7 +46,7 @@ namespace hamilt
             psi_in_bfirst.fix_b(ib);
             psi_out_bfirst.fix_b(ib);
 
-            // 1. transition density matrix (nsk)
+            // 1. transition density matrix (nks)
             // GlobalV::ofs_running << "1. transition density matrix" << std::endl;
             // // output c and X
             // GlobalV::ofs_running << "nvirt:" << nvirt << " nocc:" << nocc << std::endl;
@@ -53,7 +54,7 @@ namespace hamilt
             // GlobalV::ofs_running << "nocc local:" << pX->get_col_size() << std::endl;
 
             // GlobalV::ofs_running << "X: " << std::endl;
-            // for (int ik = 0;ik < nsk;++ik)
+            // for (int ik = 0;ik < nks;++ik)
             // {
             //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
             //     for (int j = 0;j < pX->get_col_size();++j)  //nbands
@@ -69,7 +70,7 @@ namespace hamilt
             // GlobalV::ofs_running << "naos local:" << pc->get_row_size();
             // GlobalV::ofs_running << "nbands local:" << pc->get_col_size() << std::endl;
             // GlobalV::ofs_running.setf(std::ios::fixed);
-            // for (int ik = 0;ik < nsk;++ik)
+            // for (int ik = 0;ik < nks;++ik)
             // {
             //     psi_ks->fix_k(ik);
             //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
@@ -85,7 +86,7 @@ namespace hamilt
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
             // GlobalV::ofs_running << "1. Dm_trans before symmetrization: " << std::endl;
             // GlobalV::ofs_running << "local row:" << pmat->get_row_size() << " local col:" << pmat->get_col_size() << std::endl;
-            // for (int ik = 0;ik < nsk;++ik)
+            // for (int ik = 0;ik < nks;++ik)
             // {
             //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
             //     for (int j = 0;j < pmat->get_col_size();++j)
@@ -105,7 +106,7 @@ namespace hamilt
 #endif
             // GlobalV::ofs_running << "1. Dm_trans after symmetrization: " << std::endl;
             // GlobalV::ofs_running << "local row:" << pmat->get_row_size() << " local col:" << pmat->get_col_size() << std::endl;
-            // for (int ik = 0;ik < nsk;++ik)
+            // for (int ik = 0;ik < nks;++ik)
             // {
             //     GlobalV::ofs_running << "ik=" << ik << ", kv=" << this->kv.kvec_d[ik][0] << ", " << this->kv.kvec_d[ik][1] << ", " << this->kv.kvec_d[ik][2] << std::endl;
             //     for (int j = 0;j < pmat->get_col_size();++j)
@@ -116,10 +117,8 @@ namespace hamilt
             //     }
             // }
 
-            GlobalV::ofs_running << std::endl;
-            GlobalV::ofs_running.setf(std::ios::scientific);
             // tensor to vector, then set DMK
-            for (int isk = 0;isk < this->nsk;++isk)this->DM_trans[ib_dm]->set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
+            for (int isk = 0;isk < nks;++isk)this->DM_trans[ib_dm]->set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
 
             // use cal_DMR to get DMR form DMK by FT
             this->DM_trans[ib_dm]->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
@@ -169,12 +168,12 @@ namespace hamilt
             //         }
             // }
             // // double*** dm_trans_grid;
-            // LR_Util::new_p3(dm_trans_grid, nsk, lgd, lgd);
+            // LR_Util::new_p3(dm_trans_grid, nks, lgd, lgd);
             //         DMgamma_2dtoGrid dm2g;
             // #ifdef __MPI
             //         dm2g.setAlltoallvParameter(pmat->comm_2D, naos, pmat->blacs_ctxt, pmat->nb, lgd, gint->gridt->trace_lo);
             // #endif
-            //         dm2g.cal_dk_gamma_from_2D(LR_Util::ten2mat_double(dm_trans_2d), dm_trans_grid, nsk, naos, lgd, GlobalV::ofs_running);
+            //         dm2g.cal_dk_gamma_from_2D(LR_Util::ten2mat_double(dm_trans_2d), dm_trans_grid, nks, naos, lgd, GlobalV::ofs_running);
 
             // 2. transition electron density
             // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
@@ -209,7 +208,7 @@ namespace hamilt
             // results are stored in gint->pvpR_grid(gamma_only)
             // or gint_k->pvpR_reduced(multi_k)
             // GlobalV::ofs_running << "4.Vxc" << std::endl;
-            std::vector<ct::Tensor> v_hxc_2d(nsk, ct::Tensor(ct::DataTypeToEnum<T>::value, ct::DeviceTypeToEnum<Device>::value, { pmat->get_col_size(), pmat->get_row_size() }));
+            std::vector<ct::Tensor> v_hxc_2d(nks, ct::Tensor(ct::DataTypeToEnum<T>::value, ct::DeviceTypeToEnum<Device>::value, { pmat->get_col_size(), pmat->get_row_size() }));
             for (auto& v : v_hxc_2d) v.zero();
             // V(R) for each spin
             for (int is = 0;is < nspin;++is)
@@ -238,13 +237,13 @@ namespace hamilt
             //     }
             // V(R)->V(k)
             int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER() ? this->pmat->get_row_size() : this->pmat->get_col_size();
-            for (int isk = 0;isk < this->nsk;++isk)
+            for (int isk = 0;isk < nks;++isk)
             {
                 // this->gint->vl_grid_to_2D(this->gint->get_pvpR_grid(), *pmat, lgd, (is == 0), v_hxc_2d[is].c, setter);
                 hamilt::folding_HR(*this->hR, v_hxc_2d[isk].data<T>(), this->kv.kvec_d[isk], nrow, 1);            // V(R) -> V(k)
             }
             // GlobalV::ofs_running << "4. V(k)" << std::endl;
-            // for (int isk = 0;isk < this->nsk;++isk)
+            // for (int isk = 0;isk < nks;++isk)
             // {
             //     for (int j = 0; j < pmat->get_col_size();++j)
             //     {
@@ -254,7 +253,7 @@ namespace hamilt
             //     }
             // }
             // clear useless matrices
-            // LR_Util::delete_p3(dm_trans_grid, nsk, lgd);
+            // LR_Util::delete_p3(dm_trans_grid, nks, lgd);
             LR_Util::delete_p2(rho_trans, nspin);
 
             // GlobalV::ofs_running << "5.AX" << std::endl;
