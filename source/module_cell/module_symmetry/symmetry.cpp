@@ -948,7 +948,7 @@ bool Symmetry::checksym(const ModuleBase::Matrix3& s, ModuleBase::Vector3<double
     // itmin_start = the start atom positions of species itmin
 	//---------------------------------------------------------
     // (s)tart (p)osition of atom (t)ype which has (min)inal number.
-    ModuleBase::Vector3<double> sptmin(pos[itmin_start * 3], pos[itmin_start * 3 + 1], pos[itmin_start * 3 + 2]);
+    ModuleBase::Vector3<double> sptmin(rotpos[itmin_start * 3], rotpos[itmin_start * 3 + 1], rotpos[itmin_start * 3 + 2]);
 
     for (int i = itmin_start; i < itmin_start + na[itmin_type]; ++i)
     {
