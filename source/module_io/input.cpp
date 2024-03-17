@@ -444,6 +444,8 @@ void Input::Default(void)
     exx_opt_orb_ecut = 0.0;
     exx_opt_orb_tolerence = 0.0;
 
+    exx_symmetry_realspace = true;
+
     // added by zhengdy-soc
     noncolin = false;
     lspinorb = false;
