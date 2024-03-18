@@ -18,10 +18,9 @@ namespace hamilt
             const int& nocc,
             const int& nvirt,
             const UnitCell& ucell_in,
+            Grid_Driver& gd_in,
             const psi::Psi<T>* psi_ks_in,
             const ModuleBase::matrix& eig_ks,
-            // elecstate::DensityMatrix<T, double>* DM_trans_in,
-            HContainer<double>*& hR_in,
 #ifdef __EXX
             Exx_LRI<T>* exx_lri_in,
 #endif 
@@ -34,16 +33,13 @@ namespace hamilt
         {
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
-            assert(hR_in != nullptr);
-            this->hR = new HContainer<double>(std::move(*hR_in));
             this->DM_trans.resize(1);
-            this->DM_trans[0] = new elecstate::DensityMatrix<T, double>(&kv_in, pmat_in, nspin);
-            this->DM_trans[0]->init_DMR(*this->hR);
+            this->DM_trans[0] = new elecstate::DensityMatrix<T, T>(&kv_in, pmat_in, nspin);
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks, pX_in, kv_in.nks, nspin, nocc, nvirt);
             //add Hxc operator
             OperatorLRHxc<T>* lr_hxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
-                this->DM_trans, this->hR, gint_in, pot_in, kv_in, pX_in, pc_in, pmat_in);
+                this->DM_trans, gint_in, pot_in, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in);
             this->ops->add(lr_hxc);
 #ifdef __EXX
             if (xc_kernel == "hf")
@@ -60,11 +56,10 @@ namespace hamilt
             {
                 delete this->ops;
             }
-            delete this->hR;
             for (auto& d : this->DM_trans)delete d;
         };
 
-        HContainer<double>* getHR() { return this->hR; }
+        HContainer<T>* getHR() { return this->hR; }
 
         virtual std::vector<T> matrix() override;
 
@@ -74,10 +69,10 @@ namespace hamilt
         int nks;
         Parallel_2D* pX = nullptr;
         T one();
-        HContainer<double>* hR = nullptr;
+        HContainer<T>* hR = nullptr;
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands
         /// Hxc+Exx: size=nbands, store the result of each bands for common use
-        std::vector<elecstate::DensityMatrix<T, double>*> DM_trans;
+        std::vector<elecstate::DensityMatrix<T, T>*> DM_trans;
     };
 }

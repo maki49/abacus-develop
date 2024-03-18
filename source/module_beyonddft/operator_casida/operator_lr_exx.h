@@ -22,7 +22,7 @@ namespace hamilt
             const int& nvirt,
             const UnitCell& ucell_in,
             const psi::Psi<T>* psi_ks_in,
-            std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans_in,
+            std::vector<elecstate::DensityMatrix<T, T>*>& DM_trans_in,
             // HContainer<double>* hR_in,
             Exx_LRI<T>* exx_lri_in,
             const K_Vectors& kv_in,
@@ -66,7 +66,7 @@ namespace hamilt
         psi::Psi<T> psi_ks_full;
 
         /// transition density matrix 
-        std::vector<elecstate::DensityMatrix<T, double>*>& DM_trans;
+        std::vector<elecstate::DensityMatrix<T, T>*>& DM_trans;
 
         /// density matrix of a certain (i, a, k), with full naos*naos size for each key
         /// D^{iak}_{\mu\nu}(k): 1/N_k * c^*_{ak,\mu} c_{ik,\nu}

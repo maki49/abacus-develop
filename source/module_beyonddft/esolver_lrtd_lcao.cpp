@@ -381,39 +381,11 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::init_A(const double lr_thr)
 {
-    //HContainer-based DensityMatrix
-    hamilt::HContainer<double>* pHR = new hamilt::HContainer<TR>(&this->paraMat_);
-    for (int iat1 = 0; iat1 < ucell.nat; iat1++)
-    {
-        auto tau1 = this->ucell.get_tau(iat1);
-        int T1, I1;
-        this->ucell.iat2iait(iat1, &I1, &T1);
-        AdjacentAtomInfo adjs;
-        GlobalC::GridD.Find_atom(this->ucell, tau1, T1, I1, &adjs);
-        for (int ad = 0; ad < adjs.adj_num + 1; ++ad)
-        {
-            const int T2 = adjs.ntype[ad];
-            const int I2 = adjs.natom[ad];
-            int iat2 = this->ucell.itia2iat(T2, I2);
-            if (this->paraMat_.get_row_size(iat1) <= 0 || this->paraMat_.get_col_size(iat2) <= 0) continue;
-            const ModuleBase::Vector3<int>& R_index = adjs.box[ad];
-            const LCAO_Orbitals& orb = LCAO_Orbitals::get_const_instance();
-            if (this->ucell.cal_dtau(iat1, iat2, R_index).norm() * this->ucell.lat0
-                >= orb.Phi[T1].getRcut() + orb.Phi[T2].getRcut()) continue;
-            hamilt::AtomPair<TR> tmp(iat1, iat2, R_index.x, R_index.y, R_index.z, &this->paraMat_);
-            pHR->insert_pair(tmp);
-        }
-    }
-    pHR->allocate(nullptr, true);
-    if (std::is_same<T, double>::value) pHR->fix_gamma();
-
-    pHR->set_paraV(&this->paraMat_);
-    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->psi_ks, this->eig_ks, pHR,
+    this->p_hamilt = new hamilt::HamiltCasidaLR<T>(xc_kernel, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, GlobalC::GridD, this->psi_ks, this->eig_ks,
 #ifdef __EXX
         this->exx_lri.get(),
 #endif
-        this->gint, this->pot, this->kv, &this->paraX_, &this->paraC_, &this->paraMat_);
-
+        this->gint, this->pot, this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
     // init HSolver
     this->phsol = new hsolver::HSolverLR<T>(this->kv.nks, this->npairs);
     this->phsol->set_diagethr(0, 0, std::max(1e-13, lr_thr));

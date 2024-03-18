@@ -7,10 +7,12 @@ add_library(
     lr
     OBJECT
     utils/lr_util.cpp
+    utils/lr_util_hcontainer.cpp
     AX/AX_parallel.cpp
     AX/AX_serial.cpp
     dm_trans/dm_trans_parallel.cpp
     dm_trans/dm_trans_serial.cpp
+    dm_trans/dmr_complex.cpp
     operator_casida/operator_lr_hxc.cpp
     operator_casida/operator_lr_exx.cpp
     potentials/kernel_xc.cpp
