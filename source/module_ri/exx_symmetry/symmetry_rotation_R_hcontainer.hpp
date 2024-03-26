@@ -49,7 +49,7 @@ namespace ModuleSymmetry
             const int& isym = apR_isym_irapR.second.first;
             const Tap& irap = apR_isym_irapR.second.second.first;
             const TC& irR = apR_isym_irapR.second.second.second;
-            assert(irR == this->irs_.rotate_R_by_formula(symm, isym, ap.first, ap.second, R));
+            assert(irR == this->irs_.rotate_R(symm, isym, ap.first, ap.second, R));
             // get in and out pointer from HContainer
             const hamilt::AtomPair<TR>& irap_hc = HR_irreduceble.get_atom_pair(irap.first, irap.second);
             const int irR_hc = irap_hc.find_R(irR[0], irR[1], irR[2]);

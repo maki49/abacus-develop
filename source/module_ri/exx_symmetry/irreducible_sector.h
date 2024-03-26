@@ -18,6 +18,7 @@ namespace ModuleSymmetry
 
     class Irreducible_Sector
     {
+    public:
         struct ap_less_func
         {
             bool operator()(const Tap& lhs, const Tap& rhs) const
@@ -50,7 +51,6 @@ namespace ModuleSymmetry
             }
         };
 
-    public:
         //--------------------------------------------------------------------------------
         /// The main function to find irreducible sector: {abR}
         void find_irreducible_sector(const Symmetry& symm, const Atom* atoms, const Statistics& st,
@@ -73,7 +73,7 @@ namespace ModuleSymmetry
 
         /// gauge='L' means H(R)=<R|H|0>; gauge='R' means H(R)=<0|H|R>
         /// gauge='L': R'=R+O_1-O_2; gauge='R': R'=R+O_2-O_1
-        TC rotate_R_by_formula(const Symmetry& symm, const int isym, const int iat1, const int iat2, const TC& R, const char gauge = 'R')const;
+        TC rotate_R(const Symmetry& symm, const int isym, const int iat1, const int iat2, const TC& R, const char gauge = 'R')const;
         TapR rotate_apR_by_formula(const Symmetry& symm, const int isym, const TapR& iapR, const char gauge = 'R')const;
         /// gauge='L': tau_a + R - tau_b; gauge='R': tau_a - tau_b - R (direct)
         TCdouble get_aRb_direct(const Atom* atoms, const Statistics& st, const int iat1, const int iat2, const TC& R, const char gauge = 'R')const;
