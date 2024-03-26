@@ -838,7 +838,7 @@ void Symmetry::getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, const
     //std::cout << "nop = " <<nop <<std::endl;
     for (int i = 0; i < nop; ++i)
     {
-        bool s_flag = this->checksym(this->symop[i], this->gtrans[i], pos, rotpos, index, itmin_type, itmin_start, istart, na);
+        bool s_flag = this->checksym(symop[i], gtrans[i], pos, rotpos, index, itmin_type, itmin_start, istart, na);
         if (s_flag == 1)
         {
 			//------------------------------

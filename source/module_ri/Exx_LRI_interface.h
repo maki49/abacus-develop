@@ -63,10 +63,10 @@ public:
         const elecstate::DensityMatrix<T, double>& dm/**< double should be Tdata if complex-PBE-DM is supported*/,
         const K_Vectors& kv,
         int& iter);
+    int two_level_step = 0;
 private:
     std::shared_ptr<Exx_LRI<Tdata>> exx_ptr;
     Mix_DMk_2D mix_DMk_2D;
-    int two_level_step = 0;
 
     bool exx_spacegroup_symmetry = false;
     ModuleSymmetry::Symmetry_rotation symrot_;

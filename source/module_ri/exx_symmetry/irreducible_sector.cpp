@@ -2,7 +2,7 @@
 
 namespace ModuleSymmetry
 {
-    TC Irreducible_Sector::rotate_R_by_formula(const Symmetry& symm,
+    TC Irreducible_Sector::rotate_R(const Symmetry& symm,
         const int isym, const int iat1, const int iat2, const TC& R, const char gauge) const
     {
         auto round2int = [symm](const double x) -> int { return x > 0 ? static_cast<int>(x + symm.epsilon) : static_cast<int>(x - symm.epsilon); };
@@ -16,7 +16,7 @@ namespace ModuleSymmetry
         const int isym, const TapR& apR, const char gauge) const
     {
         const Tap& aprot = { symm.get_rotated_atom(isym, apR.first.first), symm.get_rotated_atom(isym, apR.first.second) };
-        return { aprot, this->rotate_R_by_formula(symm, isym, apR.first.first, apR.first.second, apR.second, gauge) };
+        return { aprot, this->rotate_R(symm, isym, apR.first.first, apR.first.second, apR.second, gauge) };
     }
 
     TCdouble Irreducible_Sector::get_aRb_direct(const Atom* atoms, const Statistics& st,

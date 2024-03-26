@@ -48,7 +48,7 @@ public:
     std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> get_Hexxs() const { return Hexxs; }
 
 	std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> Hexxs;
-	Tdata Eexx;
+    double Eexx;
 	ModuleBase::matrix force_exx;
 	ModuleBase::matrix stress_exx;
 
@@ -70,7 +70,7 @@ private:
         const ModuleSymmetry::Symmetry_rotation* p_symrot = nullptr);
 
     void post_process_Hexx(std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Hexxs_io) const;
-	Tdata post_process_Eexx( const Tdata &Eexx_in ) const;
+    double post_process_Eexx(const double& Eexx_in) const;
 
 	friend class RPA_LRI<double, Tdata>;
 	friend class RPA_LRI<std::complex<double>, Tdata>;
