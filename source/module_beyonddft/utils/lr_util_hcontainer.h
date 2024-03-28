@@ -3,7 +3,7 @@
 namespace LR_Util
 {
     template<typename TR>
-    void print_HR(const hamilt::HContainer<TR>& HR, const int& nat, const std::string& label)
+    void print_HR(const hamilt::HContainer<TR>& HR, const int& nat, const std::string& label, const double& threshold = 1e-10)
     {
         std::cout << label << "\n";
         for (int ia = 0;ia < nat;ia++)
@@ -14,19 +14,27 @@ namespace LR_Util
                 {
                     std::cout << "atom pair (" << ia << ", " << ja << "),  "
                         << "R=(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): \n";
-                    auto ptr = ap->get_HR_values(iR).get_pointer();
-                    for (int i = 0;i < ap->get_size();++i)std::cout << ptr[i] << " ";
-                    std::cout << std::endl;
+                    auto& mat = ap->get_HR_values(iR);
+                    std::cout << "rowsize=" << ap->get_row_size() << ", colsize=" << ap->get_col_size() << "\n";
+                    for (int i = 0;i < ap->get_row_size();++i)
+                    {
+                        for (int j = 0;j < ap->get_col_size();++j)
+                        {
+                            auto& v = mat.get_value(i, j);
+                            std::cout << (std::abs(v) > threshold ? v : 0) << " ";
+                        }
+                        std::cout << "\n";
+                    }
                 }
             }
     }
     template <typename TK, typename TR>
-    void print_DMR(const elecstate::DensityMatrix<TK, TR>& DMR, const int& nat, const std::string& label)
+    void print_DMR(const elecstate::DensityMatrix<TK, TR>& DMR, const int& nat, const std::string& label, const double& threshold = 1e-10)
     {
         std::cout << label << "\n";
         int is = 0;
         for (auto& dr : DMR.get_DMR_vector())
-            print_HR(*dr, nat, "DMR[" + std::to_string(is++) + "]");
+            print_HR(*dr, nat, "DMR[" + std::to_string(is++) + "]", threshold);
     }
     void get_DMR_real_imag_part(const elecstate::DensityMatrix<std::complex<double>, std::complex<double>>& DMR,
         elecstate::DensityMatrix<std::complex<double>, double>& DMR_real,

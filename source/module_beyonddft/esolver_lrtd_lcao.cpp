@@ -70,10 +70,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::parameter_check()
         throw std::invalid_argument("ESolver_LRTD: unknown type of xc_kernel");
     if (this->nspin != 1 && this->nspin != 2)
         throw std::invalid_argument("LR-TDDFT only supports nspin = 1 or 2 now");
-    if (std::is_same<T, std::complex<double>>::value && this->kv.nks / this->nspin > 1 && this->input.lr_solver == "lapack")
-        throw std::invalid_argument("ESolver_LRTD: explicitly contruct A matrix is not supported for multi-k due to the complex density matrix.");
 }
-
 template<typename T, typename TR>
 ModuleESolver::ESolver_LRTD<T, TR>::ESolver_LRTD(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol,
     Input& inp, UnitCell& ucell) : input(inp), ucell(ucell)
@@ -326,8 +323,8 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
         GlobalV::ofs_warning << "ESolver_LRTD: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = " << this->nvirt << std::endl;
     else if (nvirt_input > 0) this->nvirt = nvirt_input;
     this->npairs = this->nocc * this->nvirt;
-    if (this->nstates > this->nocc * this->nvirt)
-        throw std::invalid_argument("ESolver_LRTD: nstates > nocc*nvirt");
+    if (this->nstates > this->nocc * this->nvirt * this->kv.nks)
+        throw std::invalid_argument("ESolver_LRTD: nstates > nocc*nvirt*nks");
 
     GlobalV::ofs_running << "Setting LR-TDDFT parameters: " << std::endl;
     GlobalV::ofs_running << "number of occupied bands: " << this->nocc << std::endl;
@@ -364,14 +361,17 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_X(const int& nvirt_input)
 
     // use unit vectors as the initial guess
     // for (int i = 0; i < std::min(this->nstates * GlobalV::PW_DIAG_NDIM, nocc * nvirt); i++)
-    for (int i = 0; i < nstates; i++)
+    for (int s = 0; s < nstates; ++s)
     {
-        this->X->fix_b(i);
-        int occ_global = std::get<0>(ix2ioiv[i]);   // occ
-        int virt_global = std::get<1>(ix2ioiv[i]);   // virt
+        this->X->fix_b(s);
+        int ipair = s % (npairs);
+        int occ_global = std::get<0>(ix2ioiv[ipair]);   // occ
+        int virt_global = std::get<1>(ix2ioiv[ipair]);   // virt
+        int ik = s / (npairs);
         if (this->paraX_.in_this_processor(virt_global, occ_global))
-            for (int isk = 0;isk < this->kv.nks;++isk)
-                (*X)(isk, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global)) = static_cast<T>(1.0);
+            // for (int isk = 0;isk < this->kv.nks;++isk)
+            (*X)(ik, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size() + this->paraX_.global2local_row(virt_global))
+            = (static_cast<T>(1.0) / static_cast<T>(this->kv.nks));
     }
     this->X->fix_b(0);  //recover the pointer
 

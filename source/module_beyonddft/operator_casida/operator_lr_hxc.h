@@ -134,5 +134,8 @@ namespace hamilt
         Grid_Driver& gd;
 
         bool tdm_sym = false; ///< whether transition density matrix is symmetric
+
+        /// test
+        mutable bool first_print = true;
     };
 }

@@ -4,6 +4,7 @@
 #include "module_base/timer.h"
 #include "module_beyonddft/utils/lr_util.h"
 #include "module_beyonddft/utils/lr_util_hcontainer.h"
+#include "module_beyonddft/utils/lr_util_print.h"
 // #include "module_hamilt_lcao/hamilt_lcaodft/DM_gamma_2d_to_grid.h"
 #include "module_hamilt_lcao/module_hcontainer/hcontainer_funcs.h"
 #include "module_beyonddft/dm_trans/dm_trans.h"
@@ -12,38 +13,6 @@
 
 inline double conj(double a) { return a; }
 inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); }
-
-template<typename T>
-inline void print_psi_bandfirst(const psi::Psi<T>& psi, const std::string& label, const int& ib)
-{
-    assert(psi.get_k_first() == 0);
-    std::cout << label << ": band " << ib << "\n";
-    for (int ik = 0;ik < psi.get_nk();++ik)
-    {
-        std::cout << "iks=" << ik << "\n";
-        for (int i = 0;i < psi.get_nbasis();++i)std::cout << psi(ib, ik, i) << " ";
-        std::cout << "\n";
-    }
-}
-template<typename T>
-inline void print_tensor(const container::Tensor& t, const std::string& label, const Parallel_Orbitals* pmat)
-{
-    std::cout << label << "\n";
-    for (int j = 0; j < pmat->get_col_size();++j)
-    {
-        for (int i = 0;i < pmat->get_row_size();++i)
-            std::cout << t.data<T>()[j * pmat->get_row_size() + i] << " ";
-        std::cout << std::endl;
-    }
-    std::cout << "\n";
-}
-inline void print_grid_nonzero(double* rho, const int& nrxx, const int& nnz, const std::string& label, const bool& threshold = 1e-5)
-{
-    std::cout << "first " << nnz << " non-zero elements of " << label << "\n";
-    int inz = 0;int i = 0;
-    while (inz < nnz && i < nrxx)
-        if (rho[++i] - 0.0 > threshold) { std::cout << rho[i] << " ";++inz; };
-}
 
 namespace hamilt
 {
@@ -54,6 +23,9 @@ namespace hamilt
         assert(nbands <= psi_in.get_nbands());
         const int& nks = this->kv.nks;
 
+        //print 
+        // if (this->first_print) LR_Util::print_psi_kfirst(*psi_ks, "psi_ks");
+
         this->init_DM_trans(nbands, this->DM_trans);    // initialize transion density matrix
 
         psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nks, this->pX->get_local_size());
@@ -62,6 +34,8 @@ namespace hamilt
         const int& lgd = gint->gridt->lgd;
         for (int ib = 0;ib < nbands;++ib)
         {
+            // if (this->first_print) LR_Util::print_psi_bandfirst(psi_in_bfirst, "psi_in_bfirst", ib);
+
             // if Hxc-only, the memory of single-band DM_trans is enough.
             // if followed by EXX, we need to allocate memory for all bands.
             int ib_dm = (this->next_op == nullptr) ? 0 : ib;
@@ -78,6 +52,10 @@ namespace hamilt
 #endif
             // tensor to vector, then set DMK
             for (int isk = 0;isk < nks;++isk)this->DM_trans[ib_dm]->set_DMK_pointer(isk, dm_trans_2d[isk].data<T>());
+
+            // if (this->first_print)
+            //     for (int ik = 0;ik < nks;++ik)
+            //         LR_Util::print_tensor<std::complex<double>>(dm_trans_2d[ik], "1.DMK[ik=" + std::to_string(ik) + "]", this->pmat);
 
             // use cal_DMR to get DMR form DMK by FT
             this->DM_trans[ib_dm]->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
@@ -96,7 +74,9 @@ namespace hamilt
             for (int isk = 0;isk < nks;++isk)
                 hamilt::folding_HR(*this->hR, v_hxc_2d[isk].data<T>(), this->kv.kvec_d[isk], nrow, 1);            // V(R) -> V(k)
             // LR_Util::print_HR(*this->hR, this->ucell.nat, "4.VR");
-            // print_tensor<T>(v_hxc_2d[0], "4.V(k)", this->pmat);
+            // if (this->first_print)
+            //     for (int ik = 0;ik < nks;++ik)
+            //         LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", this->pmat);
 
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
@@ -104,7 +84,7 @@ namespace hamilt
 #else
             cal_AX_blas(v_hxc_2d, *this->psi_ks, nocc, nvirt, psi_out_bfirst);
 #endif
-            // print_psi_bandfirst(psi_out_bfirst, "5.AX", ib);
+            // if (this->first_print) LR_Util::print_psi_bandfirst(psi_out_bfirst, "5.AX", ib);
         }
     }
 
@@ -157,7 +137,8 @@ namespace hamilt
         auto dmR_to_hR = [&, this](const int& iband_dm, const char& type) -> void
             {
                 LR_Util::get_DMR_real_imag_part(*this->DM_trans[iband_dm], DM_trans_real_imag, ucell.nat, type);
-                // LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
+                if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
+
                 this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
                 // LR_Util::print_HR(*this->gint->get_DMRGint()[0], this->ucell.nat, "DMR(grid, real)");
 
