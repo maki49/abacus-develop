@@ -137,7 +137,7 @@ namespace hamilt
         auto dmR_to_hR = [&, this](const int& iband_dm, const char& type) -> void
             {
                 LR_Util::get_DMR_real_imag_part(*this->DM_trans[iband_dm], DM_trans_real_imag, ucell.nat, type);
-                if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
+                // if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
 
                 this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
                 // LR_Util::print_HR(*this->gint->get_DMRGint()[0], this->ucell.nat, "DMR(grid, real)");

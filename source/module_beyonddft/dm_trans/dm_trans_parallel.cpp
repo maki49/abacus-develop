@@ -39,7 +39,7 @@ namespace hamilt
             int ivirt = nocc + 1;
             char transa = 'N';
             char transb = 'T';
-            const double alpha = 1;
+            double alpha = 1.0;
             const double beta = 0;
 
             // 1. [X*C_occ^T]^T=C_occ*X^T
@@ -52,6 +52,7 @@ namespace hamilt
                 X_istate.get_pointer(), &i1, &i1, px.desc,
                 &beta, Xc.data<double>(), &i1, &i1, pXc.desc);
 
+            alpha = 1.0 / static_cast<double>(nks);
             // 2. C_virt*[X*C_occ^T]
             pdgemm_(&transa, &transb, &naos, &naos, &nvirt,
                 &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
@@ -88,25 +89,50 @@ namespace hamilt
             X_istate.fix_k(isk);
             int i1 = 1;
             int ivirt = nocc + 1;
+
+            // ============== C_virt * X * C_occ^\dagger=============
+            // char transa = 'N';
+            // char transb = 'C';
+            // // 1. [X*C_occ^\dagger]^\dagger=C_occ*X^\dagger
+            // Parallel_2D pXc;
+            // LR_Util::setup_2d_division(pXc, px.get_block_size(), naos, nvirt, px.comm_2D, px.blacs_ctxt);
+            // container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
+            // Xc.zero();
+            // const std::complex<double> alpha(1.0, 0.0);
+            // const std::complex<double> beta(0.0, 0.0);
+            // pzgemm_(&transa, &transb, &naos, &nvirt, &nocc,
+            //     &alpha, c.get_pointer(), &i1, &i1, pc.desc,
+            //     X_istate.get_pointer(), &i1, &i1, px.desc,
+            //     &beta, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc);
+
+            // // 2. C_virt*[X*C_occ^\dagger]
+            // pzgemm_(&transa, &transb, &naos, &naos, &nvirt,
+            //     &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
+            //     Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc,
+            //     &beta, dm_trans[isk].data<std::complex<double>>(), &i1, &i1, pmat.desc);
+
+            // ============== [C_virt * X * C_occ^\dagger]^T=============
+            // ============== = [C_occ^* * X^T * C_virt^T]^T=============
+            // 1. X*C_occ^\dagger
             char transa = 'N';
             char transb = 'C';
-
-            // 1. [X*C_occ^\dagger]^\dagger=C_occ*X^\dagger
             Parallel_2D pXc;
-            LR_Util::setup_2d_division(pXc, px.get_block_size(), naos, nvirt, px.comm_2D, px.blacs_ctxt);
+            LR_Util::setup_2d_division(pXc, px.get_block_size(), nvirt, naos, px.comm_2D, px.blacs_ctxt);
             container::Tensor Xc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pXc.get_col_size(), pXc.get_row_size() });//row is "inside"(memory contiguity) for pblas
             Xc.zero();
-            const std::complex<double> alpha(1.0, 0.0);
+            std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta(0.0, 0.0);
-            pzgemm_(&transa, &transb, &naos, &nvirt, &nocc,
-                &alpha, c.get_pointer(), &i1, &i1, pc.desc,
-                X_istate.get_pointer(), &i1, &i1, px.desc,
+            pzgemm_(&transa, &transb, &nvirt, &naos, &nocc,
+                &alpha, X_istate.get_pointer(), &i1, &i1, px.desc,
+                c.get_pointer(), &i1, &i1, pc.desc,
                 &beta, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc);
 
-            // 2. C_virt*[X*C_occ^\dagger]
+            // 2. [X*C_occ^\dagger]^TC_virt^T
+            alpha.real(1.0 / static_cast<double>(nks));
+            transa = transb = 'T';
             pzgemm_(&transa, &transb, &naos, &naos, &nvirt,
-                &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
-                Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc,
+                &alpha, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc,
+                c.get_pointer(), &i1, &ivirt, pc.desc,
                 &beta, dm_trans[isk].data<std::complex<double>>(), &i1, &i1, pmat.desc);
         }
         return dm_trans;
