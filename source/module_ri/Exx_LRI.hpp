@@ -96,7 +96,7 @@ void Exx_LRI<Tdata>::init(const MPI_Comm& mpi_comm_in, const K_Vectors& kv_in)
 }
 
 template<typename Tdata>
-void Exx_LRI<Tdata>::cal_exx_ions(const bool test_Cs_rotation, const ModuleSymmetry::Symmetry_rotation* symrot_)
+void Exx_LRI<Tdata>::cal_exx_ions()
 {
     ModuleBase::TITLE("Exx_LRI", "cal_exx_ions");
     ModuleBase::timer::tick("Exx_LRI", "cal_exx_ions");
@@ -153,8 +153,6 @@ void Exx_LRI<Tdata>::cal_exx_ions(const bool test_Cs_rotation, const ModuleSymme
              {"writable_Cws",true}, {"writable_dCws",true}, {"writable_Vws",false}, {"writable_dVws",false} });
     std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Cs = std::get<0>(Cs_dCs);
     this->cv.Cws = LRI_CV_Tools::get_CVws(Cs);
-
-    if (test_Cs_rotation) symrot_->test_Cs_rotation(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, Cs);
 
     this->exx_lri.set_Cs(std::move(Cs), this->info.C_threshold);
 
