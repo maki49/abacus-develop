@@ -43,13 +43,7 @@ protected:
         int myrank, dsize;
         MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
         MPI_Comm_size(MPI_COMM_WORLD, &dsize);
-        pv.set_block_size(1);
-        pv.set_proc_dim(dsize);
-        pv.mpi_create_cart(MPI_COMM_WORLD);
-        std::ofstream ofs;
-        pv.set_local2global(matsize, matsize, ofs, ofs);
-        pv.set_desc(matsize, matsize, pv.get_row_size());
-        pv.set_global2local(matsize, matsize, true, ofs);
+        pv.init(matsize, matsize, 1, MPI_COMM_WORLD);
     }
     ModuleBase::Matrix3 C41 = ModuleBase::Matrix3(0, 1, 0, -1, 0, 0, 0, 0, 1);
     std::vector<std::complex<double>> wigerD_p_C41_ref = { ModuleBase::IMAG_UNIT, 0, 0, 0, 1, 0, 0, 0, -ModuleBase::IMAG_UNIT };
@@ -60,7 +54,7 @@ protected:
     const int matsize = 5;  //2s1p
 };
 
-// inline void outmat(ModuleBase::ComplexMatrix& mat, int size, std::string name)
+// inline void outmat(RI::Tensor<std::complex<double>>& mat, int size, std::string name)
 // {
 //     std::cout << name << std::endl;
 //     for (int i = 0;i < size;++i)
@@ -77,7 +71,7 @@ TEST_F(SymmetryRotationTest, Wignerd)
 }
 TEST_F(SymmetryRotationTest, WignerD)
 {
-    ModuleBase::ComplexMatrix wignerD_p_C41(3, 3);
+    RI::Tensor<std::complex<double>> wignerD_p_C41({ 3, 3 });
     int l = 1;
     for (int m1 = -l;m1 <= l;++m1)
         for (int m2 = -l;m2 <= l;++m2)
@@ -104,7 +98,7 @@ TEST_F(SymmetryRotationTest, EulerAngle)
 
 TEST_F(SymmetryRotationTest, OvlpYS)
 {
-    ModuleBase::ComplexMatrix c_mm_p(3, 3);
+    RI::Tensor<std::complex<double>> c_mm_p({ 3, 3 });
     int l = 1;
     for (int m1 = -l;m1 <= l;++m1)
         for (int m2 = -l;m2 <= l;++m2)
@@ -119,7 +113,7 @@ TEST_F(SymmetryRotationTest, OvlpYS)
 TEST_F(SymmetryRotationTest, RotMat)
 {
     symrot.cal_rotmat_Slm(&C41, 1);
-    ModuleBase::ComplexMatrix& rotmat = symrot.get_rotmat_Slm()[0][1];
+    RI::Tensor<std::complex<double>>& rotmat = symrot.get_rotmat_Slm()[0][1];
     int l = 1;
     for (int m1 = -l;m1 <= l;++m1)
         for (int m2 = -l;m2 <= l;++m2)
@@ -148,7 +142,7 @@ TEST_F(SymmetryRotationTest, SetBlockToMat2d)
     for (int j = 0;j < pv.get_col_size();++j)
         for (int i = 0;i < pv.get_row_size();++i)
             obj_mat[j * pv.get_row_size() + i] = std::complex<double>(static_cast<double>(pv.local2global_row(i)), static_cast<double>(pv.local2global_col(j)));
-    ModuleBase::ComplexMatrix block(2, 2);
+    RI::Tensor<std::complex<double>> block({ 2, 2 });
     block(0, 0) = 0; block(0, 1) = -1; block(1, 0) = -2; block(1, 1) = -3;
     symrot.set_block_to_mat2d(2, 3, block, obj_mat, pv);
     for (int i = 2;i < 4;++i)

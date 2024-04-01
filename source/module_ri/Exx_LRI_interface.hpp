@@ -54,7 +54,6 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
                 XC_Functional::set_xc_type("scan");
             }
         }
-        bool test_Cs_rotation = true;  // for test
         // initialize the rotation matrix in AO representation
         this->exx_spacegroup_symmetry = (GlobalV::NSPIN < 4 && ModuleSymmetry::Symmetry::symm_flag == 1);
         if (this->exx_spacegroup_symmetry)
@@ -62,12 +61,11 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
             const std::array<int, 3>& period = RI_Util::get_Born_vonKarmen_period(kv);
             this->symrot_.find_irreducible_sector(ucell.symm, ucell.atoms, ucell.st,
                 RI_Util::get_Born_von_Karmen_cells(period), period, ucell.lat);
-            if (test_Cs_rotation)
-                this->symrot_.set_Cs_rotation(this->exx_ptr->get_abfs_nchis());
+            // this->symrot_.set_Cs_rotation(this->exx_ptr->get_abfs_nchis());
             this->symrot_.cal_Ms(kv, ucell, pv);
         }
 
-        this->exx_ptr->cal_exx_ions(test_Cs_rotation, &this->symrot_);
+        this->exx_ptr->cal_exx_ions();
     }
 
 		if (Exx_Abfs::Jle::generate_matrix)
@@ -105,15 +103,13 @@ void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const elecstate::DensityMatri
         if (!GlobalC::exx_info.info_global.separate_loop && this->two_level_step)
         {
             const bool flag_restart = (iter == 1) ? true : false;
-            if (this->exx_spacegroup_symmetry)
-                this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), flag_restart);
-            else
-                this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
+            if (this->exx_spacegroup_symmetry) { this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), flag_restart); }
+            else { this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart); }
 			const std::vector<std::map<int,std::map<std::pair<int, std::array<int, 3>>,RI::Tensor<Tdata>>>>
 				Ds = PARAM.globalv.gamma_only_local
                 ? RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_gamma_out(), *dm.get_paraV_pointer(), GlobalV::NSPIN)
                 : RI_2D_Comm::split_m2D_ktoR<Tdata>(*this->exx_ptr->p_kv, this->mix_DMk_2D.get_DMk_k_out(), *dm.get_paraV_pointer(), GlobalV::NSPIN, this->exx_spacegroup_symmetry);
-            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.symmetry_rotate_realspace) { this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer(), &this->symrot_); }
+            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.exx_symmetry_realspace) { this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer(), &this->symrot_); }
             else { this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer()); }
         }
     }
@@ -228,7 +224,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
                 // this->symrot_.test_HR_rotation(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, 'H', *(dynamic_cast<hamilt::HamiltLCAO<T, double>*>(&hamilt)->getHR()));
                 // exit(0);
 
-            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.symmetry_rotate_realspace)
+            if (this->exx_spacegroup_symmetry && GlobalC::exx_info.info_global.exx_symmetry_realspace)
             {
                 this->exx_ptr->cal_exx_elec(Ds, *dm.get_paraV_pointer(), &this->symrot_);
                 // this->symrot_.print_HR(this->exx_ptr->Hexxs[0], "Hexxs_irreducible");   // test
