@@ -71,62 +71,58 @@ namespace ModuleSymmetry
         return T;
     }
 
-    inline RI::Tensor<std::complex<double>> TAT_HR(const RI::Tensor<std::complex<double>>& A,
+    inline void TAT_HR(std::complex<double>* TAT, const std::complex<double>* A,
         const RI::Tensor<std::complex<double>>& T1, const RI::Tensor<std::complex<double>>& T2)
     {
         const char notrans = 'N', transpose = 'T', dagger = 'C';
         const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
         // H'^T = T2^T * H^T * T1^*
         const int& nw2 = T2.shape[0], & nw1 = T1.shape[0];
-        RI::Tensor<std::complex<double>> AT2(A.shape);
-        zgemm_(&notrans, &notrans, &nw2, &nw1, &nw2, &alpha, T2.ptr(), &nw2, A.ptr(), &nw2, &beta, AT2.ptr(), &nw2);
-        RI::Tensor<std::complex<double>> TAT(A.shape);
-        zgemm_(&notrans, &dagger, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw2, T1.ptr(), &nw1, &beta, TAT.ptr(), &nw2);
+        const RI::Shape_Vector& shape = { static_cast<size_t>(nw1),static_cast<size_t>(nw2) };
+        RI::Tensor<std::complex<double>> AT2(shape);
+        zgemm_(&notrans, &notrans, &nw2, &nw1, &nw2, &alpha, T2.ptr(), &nw2, A, &nw2, &beta, AT2.ptr(), &nw2);
+        zgemm_(&notrans, &dagger, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw2, T1.ptr(), &nw1, &beta, TAT, &nw2);
         // row-maj version
         // BlasConnector::gemm(notrans, notrans, nw1, nw2, nw2,
         //     alpha, A_complex.ptr(), nw2, T2.ptr(), nw2, beta, AT2.ptr(), nw2);
         // BlasConnector::gemm(dagger, notrans, nw1, nw2, nw1,
         //     alpha, T1.ptr(), nw1, AT2.ptr(), nw2, beta, TAT.ptr(), nw2);
-        return TAT;
     }
-    inline RI::Tensor<double> TAT_HR(const RI::Tensor<double>& A,
+    inline void TAT_HR(double* TAT, const double* A,
         const RI::Tensor<double>& T1, const RI::Tensor<double>& T2)
     {
         const char notrans = 'N', transpose = 'T', dagger = 'C';
         const double alpha(1.0), beta(0.0);
         // H'^T = T2^T * H^T * T1^*
         const int& nw2 = T2.shape[0], & nw1 = T1.shape[0];
-        RI::Tensor<double> AT2(A.shape);
-        dgemm_(&notrans, &notrans, &nw2, &nw1, &nw2, &alpha, T2.ptr(), &nw2, A.ptr(), &nw2, &beta, AT2.ptr(), &nw2);
-        RI::Tensor<double> TAT(A.shape);
-        dgemm_(&notrans, &dagger, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw2, T1.ptr(), &nw1, &beta, TAT.ptr(), &nw2);
-        return TAT;
+        const RI::Shape_Vector& shape = { static_cast<size_t>(nw1),static_cast<size_t>(nw2) };
+        RI::Tensor<double> AT2(shape);
+        dgemm_(&notrans, &notrans, &nw2, &nw1, &nw2, &alpha, T2.ptr(), &nw2, A, &nw2, &beta, AT2.ptr(), &nw2);
+        dgemm_(&notrans, &dagger, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw2, T1.ptr(), &nw1, &beta, TAT, &nw2);
     }
-    inline RI::Tensor<std::complex<double>> TAT_DR(const RI::Tensor<std::complex<double>>& A,
+    inline void TAT_DR(std::complex<double>* TAT, const std::complex<double>* A,
         const RI::Tensor<std::complex<double>>& T1, const RI::Tensor<std::complex<double>>& T2)
     {
         const char notrans = 'N', transpose = 'T', dagger = 'C';
         const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
         //T2^\dagger * D^T * T1 = [(D^T)^T * (T2^T)^\dagger]^T * (T1^T)^T
         const int& nw2 = T2.shape[0], & nw1 = T1.shape[0];
-        RI::Tensor<std::complex<double>> AT2(A.shape);
-        zgemm_(&transpose, &dagger, &nw1, &nw2, &nw2, &alpha, A.ptr(), &nw2, T2.ptr(), &nw2, &beta, AT2.ptr(), &nw1);
-        RI::Tensor<std::complex<double>> TAT(A.shape);
-        zgemm_(&transpose, &transpose, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw1, T1.ptr(), &nw1, &beta, TAT.ptr(), &nw2);
-        return TAT;
+        const RI::Shape_Vector& shape = { static_cast<size_t>(nw1),static_cast<size_t>(nw2) };
+        RI::Tensor<std::complex<double>> AT2(shape);
+        zgemm_(&transpose, &dagger, &nw1, &nw2, &nw2, &alpha, A, &nw2, T2.ptr(), &nw2, &beta, AT2.ptr(), &nw1);
+        zgemm_(&transpose, &transpose, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw1, T1.ptr(), &nw1, &beta, TAT, &nw2);
     }
-    inline RI::Tensor<double> TAT_DR(const RI::Tensor<double>& A,
+    inline void TAT_DR(double* TAT, const double* A,
         const RI::Tensor<double>& T1, const RI::Tensor<double>& T2)
     {
         const char notrans = 'N', transpose = 'T', dagger = 'C';
         const double alpha(1.0), beta(0.0);
         //T2^\dagger * D^T * T1 = [(D^T)^T * (T2^T)^\dagger]^T * (T1^T)^T
         const int& nw2 = T2.shape[0], & nw1 = T1.shape[0];
-        RI::Tensor<double> AT2(A.shape);
-        dgemm_(&transpose, &dagger, &nw1, &nw2, &nw2, &alpha, A.ptr(), &nw2, T2.ptr(), &nw2, &beta, AT2.ptr(), &nw1);
-        RI::Tensor<double> TAT(A.shape);
-        dgemm_(&transpose, &transpose, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw1, T1.ptr(), &nw1, &beta, TAT.ptr(), &nw2);
-        return TAT;
+        const RI::Shape_Vector& shape = { static_cast<size_t>(nw1),static_cast<size_t>(nw2) };
+        RI::Tensor<double> AT2(shape);
+        dgemm_(&transpose, &dagger, &nw1, &nw2, &nw2, &alpha, A, &nw2, T2.ptr(), &nw2, &beta, AT2.ptr(), &nw1);
+        dgemm_(&transpose, &transpose, &nw2, &nw1, &nw1, &alpha, AT2.ptr(), &nw1, T1.ptr(), &nw1, &beta, TAT, &nw2);
     }
 
     template<typename Tdata>
@@ -142,7 +138,8 @@ namespace ModuleSymmetry
         const RI::Tensor<Tdata>& T1 = this->set_rotation_matrix<Tdata>(a1, isym);
         const RI::Tensor<Tdata>& T2 = sametype ? T1 : this->set_rotation_matrix<Tdata>(a2, isym);
         // rotate
-        const RI::Tensor<Tdata>& TAT = (mode == 'H') ? TAT_HR(A, T1, T2) : TAT_DR(A, T1, T2);
+        RI::Tensor<Tdata>TAT(A.shape);
+        (mode == 'H') ? TAT_HR(TAT.ptr(), A.ptr(), T1, T2) : TAT_DR(TAT.ptr(), A.ptr(), T1, T2);
         if (output)
         {
             print_tensor(A, "A");
@@ -151,6 +148,22 @@ namespace ModuleSymmetry
             print_tensor(TAT, "TAT");
         }
         return TAT;
+    }
+    template<typename Tdata>
+    void Symmetry_rotation::rotate_atompair_serial(Tdata* TAT, const Tdata* A,
+        const int& nw1, const int& nw2, const int isym,
+        const Atom& a1, const Atom& a2, const char mode)const
+    {   // due to col-contiguous, actually what we know is T^T and H^T (or D^T), 
+        // and what we calculate is(H'^T = T ^ T * H ^ T * T^*) or (D'^T = T ^ \dagger * D ^ T * T)
+        assert(mode == 'H' || mode == 'D');
+        bool sametype = (a1.label == a2.label);
+        assert(nw1 == a1.nw);//col
+        assert(nw2 == a2.nw);//row
+        // contrut T matrix 
+        const RI::Tensor<Tdata>& T1 = this->set_rotation_matrix<Tdata>(a1, isym);
+        const RI::Tensor<Tdata>& T2 = sametype ? T1 : this->set_rotation_matrix<Tdata>(a2, isym);
+        // rotate
+        (mode == 'H') ? TAT_HR(TAT, A, T1, T2) : TAT_DR(TAT, A, T1, T2);
     }
 
     template<typename Tdata>

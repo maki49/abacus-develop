@@ -118,8 +118,8 @@ namespace ModuleSymmetry
         RI::Tensor<Tdata> rotate_atompair_serial(const RI::Tensor<Tdata>& A, const int isym,
             const Atom& a1, const Atom& a2, const char mode, bool output = false)const;
         template<typename Tdata>    // pointer type, blas
-        RI::Tensor<Tdata> rotate_atompair_serial(const Tdata* A, const int& nw1, const int& nw2, const int isym,
-            const Atom& a1, const Atom& a2, const char mode, bool output = false)const {};
+        void rotate_atompair_serial(Tdata* TAT, const Tdata* A, const int& nw1, const int& nw2, const int isym,
+            const Atom& a1, const Atom& a2, const char mode)const;
         template<typename TR>    // HContainer type, pblas
         void rotate_atompair_parallel(const TR* Alocal_in, const int isym, const Atom* atoms, const Statistics& st,
             const Tap& ap_in, const Tap& ap_out, const char mode, const Parallel_Orbitals& pv, TR* Alocal_out, const bool output = false)const;
