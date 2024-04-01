@@ -18,7 +18,7 @@
 #include <deque>
 #include <mpi.h>
 
-#include "exx_symmetry/symmetry_rotation.h"
+#include "exx_symmetry/symmetry_rotation.h" //tmp
 
 	class Parallel_Orbitals;
 	
@@ -46,6 +46,7 @@ public:
 	void cal_exx_force();
 	void cal_exx_stress();
     std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> get_Hexxs() const { return Hexxs; }
+    std::vector<std::vector<int>> get_abfs_nchis() const;
 
 	std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> Hexxs;
     double Eexx;
@@ -64,7 +65,7 @@ private:
 	LRI_CV<Tdata> cv;
 	RI::Exx<TA,Tcell,Ndim,Tdata> exx_lri;
 
-	void cal_exx_ions();
+    void cal_exx_ions(const bool test_Cs_rotation = false, const ModuleSymmetry::Symmetry_rotation* symrot_ = nullptr);
 
     void cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>>& Ds, const Parallel_Orbitals& pv,
         const ModuleSymmetry::Symmetry_rotation* p_symrot = nullptr);
