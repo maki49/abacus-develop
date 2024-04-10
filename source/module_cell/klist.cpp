@@ -830,7 +830,7 @@ void K_Vectors::ibz_kpoint(const ModuleSymmetry::Symmetry &symm, bool use_symm,s
         {
 			//if it's a new ibz kpoint.
 			//nkstot_ibz indicate the index of ibz kpoint.
-            this->kvec_d_ibz[nkstot_ibz] = kvec_rot;
+            this->kvec_d_ibz[nkstot_ibz] = kvec_d[i];
             // output in kpoints file
             ibz_index[i] = nkstot_ibz;
 
