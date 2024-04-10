@@ -45,6 +45,8 @@ private:
     const ModulePW::PW_Basis& rho_basis;
     const UnitCell& ucell;
 
-    std::vector<ModuleBase::Vector3<double>> transition_dipole_;   // \braket{ \psi_{i} | \mathbf{r} | \psi_{a} }
+    void cal_gint_rho(double** rho, const int& nspin, const int& nrxx);
+
+    std::vector<ModuleBase::Vector3<T>> transition_dipole_;   // \braket{ \psi_{i} | \mathbf{r} | \psi_{a} }
     std::vector<double> oscillator_strength_;// 2/3\Omega |\sum_{ia\sigma} \braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2
 };
