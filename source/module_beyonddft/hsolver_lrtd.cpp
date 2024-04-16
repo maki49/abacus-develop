@@ -1,7 +1,9 @@
 #include "hsolver_lrtd.h"
 #include "module_hsolver/diago_david.h"
+#include "module_hsolver/diago_dav_subspace.h"
 #include "module_hsolver/diago_cg.h"
 #include "module_beyonddft/utils/lr_util.h"
+#include "module_beyonddft/utils/lr_util_print.h"
 
 namespace hsolver
 {
@@ -28,6 +30,12 @@ namespace hsolver
             this->pdiagh = new DiagoDavid<T, Device>(precondition.data());      //waiting for complex<T> removement
             this->pdiagh->method = this->method;
         }
+        else if (this->method == "dav_subspace")
+        {
+            Diago_DavSubspace<T>::PW_DIAG_NDIM = GlobalV::PW_DIAG_NDIM;
+            this->pdiagh = new Diago_DavSubspace<T, Device>(precondition.data());
+            this->pdiagh->method = this->method;
+        }
         // else if (this->method == "cg")
         // {
         //     this->pdiagh = new DiagoCG<T, Device>(precondition.data());
@@ -52,7 +60,13 @@ namespace hsolver
             // T ethr = this->set_diagether(1, 1, static_cast<T>(1e-2));
             std::cout << "ethr: " << this->diag_ethr << std::endl;
             // 4. solve Hamiltonian
-            this->pdiagh->diag(pHamilt, psi, eigenvalue.data());
+            if (this->method == "dav_subspace")
+            {
+                std::vector<bool> is_occ(psi.get_nbands(), true);
+                dynamic_cast<Diago_DavSubspace<T, Device>*>(this->pdiagh)->diag(pHamilt, psi, eigenvalue.data(), is_occ);
+            }
+            else
+                this->pdiagh->diag(pHamilt, psi, eigenvalue.data());
         }
 
         // 5. copy eigenvalue to pes
@@ -64,6 +78,17 @@ namespace hsolver
         std::cout << "eigenvalues:" << std::endl;
         for (auto& e : eigenvalue)std::cout << e << " ";
         std::cout << std::endl;
+        if (out_wfc_lr)
+        {
+            if (GlobalV::MY_RANK == 0)
+            {
+                std::ofstream ofs(GlobalV::global_out_dir + "Excitation_Energy.dat");
+                ofs << std::setprecision(8) << std::scientific;
+                for (auto& e : eigenvalue)ofs << e << " ";
+                ofs.close();
+            }
+            LR_Util::write_psi_bandfirst(psi, GlobalV::global_out_dir + "Excitation_Amplitude", GlobalV::MY_RANK);
+        }
 
         // normalization is already satisfied
         // std::cout << "check normalization of eigenvectors:" << std::endl;
@@ -75,7 +100,7 @@ namespace hsolver
         //         for (int ib = 0;ib < psi.get_nbasis();++ib)
         //         {
         //             norm2 += square(psi(ist, ik, ib));
-        //             std::cout << "norm2_now=" << norm2 << std::endl;
+        //             // std::cout << "norm2_now=" << norm2 << std::endl;
         //         }
         //     }
         //     std::cout << "state " << ist << ", norm2=" << norm2 << std::endl;

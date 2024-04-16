@@ -50,15 +50,15 @@ namespace ModuleESolver
 
         ///input: input, call, basis(LCAO), psi(ground state), elecstate
         // initialize sth. independent of the ground state
-        virtual void Init(Input& inp, UnitCell& cell) override {};
+        virtual void init(Input& inp, UnitCell& cell) override {};
 
         virtual void init_after_vc(Input& inp, UnitCell& cell) override {};
-        virtual void Run(int istep, UnitCell& ucell) override;
-        virtual void postprocess() override;
+        virtual void run(int istep, UnitCell& ucell) override;
+        virtual void post_process() override;
 
-        virtual double cal_Energy()  override { return 0.0; };
-        virtual void cal_Force(ModuleBase::matrix& force) override {};
-        virtual void cal_Stress(ModuleBase::matrix& stress) override {};
+        virtual double cal_energy()  override { return 0.0; };
+        virtual void cal_force(ModuleBase::matrix& force) override {};
+        virtual void cal_stress(ModuleBase::matrix& stress) override {};
 
     protected:
         const Input& input;
@@ -110,7 +110,7 @@ namespace ModuleESolver
         /// @brief allocate and initialize X
         void init_X(const int& nvirt_input);
         /// @brief allocate and initialize A matrix, density matrix and eignensolver
-        void init_A(hamilt::HContainer<double>* pHR_in, const double lr_thr);
+        void init_A(const double lr_thr);
         /// @brief read in the ground state wave function, band energy and occupation
         void read_ks_wfc();
         /// @brief  read in the ground state charge density

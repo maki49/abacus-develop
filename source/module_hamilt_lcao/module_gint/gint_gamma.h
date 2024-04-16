@@ -54,7 +54,7 @@ class Gint_Gamma : public Gint
 
 private:
 
-    double*** DM;   //pointer to LOC.DM
+    double*** DM = nullptr;   //pointer to LOC.DM
 
     ///------------------------------------------------------
     /// in gint_gamma_vl.cpp 

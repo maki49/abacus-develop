@@ -622,6 +622,7 @@ class Input
     std::string lr_solver; // the solver for LR-TDDFT
     double lr_thr;  // convergence threshold of the LR-TDDFT eigensolver
     std::vector<double> abs_wavelen_range;  // the range of wavelength(nm) to output the absorption spectrum 
+    bool out_wfc_lr;
 
   private:
     //==========================================================

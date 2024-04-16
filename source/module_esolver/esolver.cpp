@@ -146,7 +146,7 @@ void init_esolver(ESolver*& p_esolver)
 		}
 	}
 #ifdef __LCAO
-	else if (esolver_type == "ksdft_lcao")
+    else if (esolver_type == "ksdft_lcao" || "ksdft_lr_lcao")
 	{
 		if (GlobalV::GAMMA_ONLY_LOCAL)
 		{

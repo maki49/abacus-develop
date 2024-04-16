@@ -9,7 +9,7 @@ namespace hamilt
     //output: col first, consistent with blas
     // c: nao*nbands in para2d, nbands*nao in psi  (row-para and constructed: nao)
     // X: nvirt*nocc in para2d, nocc*nvirt in psi (row-para and constructed: nvirt)
-    std::vector<container::Tensor> cal_dm_trans_pblas(
+    template<>std::vector<container::Tensor> cal_dm_trans_pblas(
         const psi::Psi<double, psi::DEVICE_CPU>& X_istate,
         const Parallel_2D& px,
         const psi::Psi<double, psi::DEVICE_CPU>& c,
@@ -17,7 +17,9 @@ namespace hamilt
         int naos,
         int nocc,
         int nvirt,
-        Parallel_2D& pmat)
+        Parallel_2D& pmat,
+        const bool renorm_k,
+        const int nspin)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_trans_pblas");
         assert(px.comm_2D == pc.comm_2D);
@@ -39,7 +41,7 @@ namespace hamilt
             int ivirt = nocc + 1;
             char transa = 'N';
             char transb = 'T';
-            double alpha = 1.0;
+            const double alpha = 1.0;
             const double beta = 0;
 
             // 1. [X*C_occ^T]^T=C_occ*X^T
@@ -52,7 +54,6 @@ namespace hamilt
                 X_istate.get_pointer(), &i1, &i1, px.desc,
                 &beta, Xc.data<double>(), &i1, &i1, pXc.desc);
 
-            alpha = 1.0 / static_cast<double>(nks);
             // 2. C_virt*[X*C_occ^T]
             pdgemm_(&transa, &transb, &naos, &naos, &nvirt,
                 &alpha, c.get_pointer(), &i1, &ivirt, pc.desc,
@@ -61,7 +62,7 @@ namespace hamilt
         }
         return dm_trans;
     }
-    std::vector<container::Tensor> cal_dm_trans_pblas(
+    template<> std::vector<container::Tensor> cal_dm_trans_pblas(
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& X_istate,
         const Parallel_2D& px,
         const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c,
@@ -69,7 +70,9 @@ namespace hamilt
         int naos,
         int nocc,
         int nvirt,
-        Parallel_2D& pmat)
+        Parallel_2D& pmat,
+        const bool renorm_k,
+        const int nspin)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_trans_pblas");
         assert(px.comm_2D == pc.comm_2D);
@@ -128,7 +131,7 @@ namespace hamilt
                 &beta, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc);
 
             // 2. [X*C_occ^\dagger]^TC_virt^T
-            alpha.real(1.0 / static_cast<double>(nks));
+            alpha.real(renorm_k ? 1.0 / static_cast<double>(nks) : 1.0);
             transa = transb = 'T';
             pzgemm_(&transa, &transb, &naos, &naos, &nvirt,
                 &alpha, Xc.data<std::complex<double>>(), &i1, &i1, pXc.desc,

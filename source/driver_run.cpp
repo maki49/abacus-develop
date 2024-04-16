@@ -46,7 +46,7 @@ void Driver::driver_run(void)
 
     //! 3: initialize Esolver and fill json-structure 
 #ifdef __LCAO
-    if (GlobalV::ESOLVER_TYPE == "lr")s
+    if (GlobalV::ESOLVER_TYPE == "lr")
         // use constructor rather than Init function to initialize reference (instead of pointers) to ucell
         if (GlobalV::GAMMA_ONLY_LOCAL)
             p_esolver = new ModuleESolver::ESolver_LRTD<double, double>(INPUT, GlobalC::ucell);
@@ -81,8 +81,8 @@ void Driver::driver_run(void)
         }
     }
 
-    //! 5: clean up esolver
-    p_esolver->postprocess();
+    //! 5: post process and clean up esolver
+    p_esolver->post_process();
 
 #ifdef __LCAO
     //---------beyond DFT: set up the next ESolver---------
@@ -96,8 +96,8 @@ void Driver::driver_run(void)
         else
             p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)), INPUT, GlobalC::ucell);
         ModuleESolver::clean_esolver(p_esolver);
-        p_esolver_lr->Run(0, GlobalC::ucell);
-        p_esolver_lr->postprocess();
+        p_esolver_lr->run(0, GlobalC::ucell);
+        p_esolver_lr->post_process();
 
         std::cout << "before clean lr" << std::endl;
         ModuleESolver::clean_esolver(p_esolver_lr);

@@ -90,30 +90,6 @@ namespace hamilt
             std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
                 RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, *this->pmat);
 
-            // output DM_trans
-            // GlobalV::ofs_running << "DM_trans in OperatorLREXX::act" << std::endl;
-            // for (int is = 0;is < nks;++is)
-            // {
-            //     GlobalV::ofs_running << "is = " << is << std::endl;
-            //     for (auto& mabR : Ds_trans[is
-            //     ])
-            //     {
-            //         int ia = mabR.first;
-            //         GlobalV::ofs_running << "ia = " << ia << std::endl;
-            //         for (auto& mbR : mabR.second)
-            //         {
-            //             GlobalV::ofs_running << "ib = " << mbR.first.first << ", R=" << mbR.first.second[0] <<
-            //                 " " << mbR.first.second[1] << " " << mbR.first.second[2] << ", size=" << mbR.second.shape[0] << ", " << mbR.second.shape[1] << std::endl;
-            //             auto& t = mbR.second;
-            //             for (int i = 0;i < t.shape[0];++i)
-            //             {
-            //                 for (int j = 0;j < t.shape[1];++j)
-            //                     GlobalV::ofs_running << t(i, j) << " ";
-            //                 GlobalV::ofs_running << std::endl;
-            //             }
-            //         }
-            //     }
-            // }
             // 2. cal_Hs
             for (int is = 0;is < nks;++is)
             {
@@ -136,7 +112,9 @@ namespace hamilt
                         for (int is = 0;is < this->nspin;++is)
                         {
                             this->cal_DM_onebase(this->pX->local2global_col(io), this->pX->local2global_row(iv), ik, is);       //set Ds_onebase
-                            psi_out_bfirst(ik, io * this->pX->get_row_size() + iv) -= 0.5 * //minus for exchange, 0.5 for spin
+                            psi_out_bfirst(ik, io * this->pX->get_row_size() + iv) -=
+                                0.5 * //minus for exchange, 0.5 for spin
+                                GlobalC::exx_info.info_global.hybrid_alpha *
                                 this->exx_lri->exx_lri.post_2D.cal_energy(this->Ds_onebase[is], this->exx_lri->Hexxs[is]);
                         }
                     }

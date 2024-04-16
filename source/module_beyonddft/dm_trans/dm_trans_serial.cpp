@@ -5,7 +5,13 @@
 #include "module_beyonddft/utils/lr_util.h"
 namespace hamilt
 {
-    std::vector<container::Tensor> cal_dm_trans_forloop_serial(const psi::Psi<double, psi::DEVICE_CPU>& X_istate, const psi::Psi<double, psi::DEVICE_CPU>& c, const int& nocc, const int& nvirt)
+    template<> std::vector<container::Tensor> cal_dm_trans_forloop_serial(
+        const psi::Psi<double, psi::DEVICE_CPU>& X_istate,
+        const psi::Psi<double, psi::DEVICE_CPU>& c,
+        const int& nocc,
+        const int& nvirt,
+        const bool renorm_k,
+        const int nspin)
     {
         // cxc_out_test(X_istate, c);
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_trans_forloop");
@@ -28,7 +34,7 @@ namespace hamilt
                     for (size_t j = 0;j < nocc;++j)
                     {
                         for (size_t b = 0; b < nvirt;++b)
-                            dm_trans[isk].data<double>()[mu * naos + nu] += c(j, mu) * X_istate(j * nvirt + b) * c(nocc + b, nu) / static_cast<double>(nks);
+                            dm_trans[isk].data<double>()[mu * naos + nu] += c(j, mu) * X_istate(j * nvirt + b) * c(nocc + b, nu);
                     }
                 }
             }
@@ -36,8 +42,13 @@ namespace hamilt
         return dm_trans;
     }
 
-    std::vector<container::Tensor> cal_dm_trans_forloop_serial(const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& X_istate,
-        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c, const int& nocc, const int& nvirt)
+    template<> std::vector<container::Tensor> cal_dm_trans_forloop_serial(
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& X_istate,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c,
+        const int& nocc,
+        const int& nvirt,
+        const bool renorm_k,
+        const int nspin)
     {
         // cxc_out_test(X_istate, c);
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_trans_forloop");
@@ -61,7 +72,7 @@ namespace hamilt
                     {
                         for (size_t b = 0; b < nvirt;++b)
                             dm_trans[isk].data<std::complex<double>>()[nu * naos + mu] +=
-                            std::conj(c(j, mu)) * X_istate(j * nvirt + b) * c(nocc + b, nu) / static_cast<double>(nks);
+                            std::conj(c(j, mu)) * X_istate(j * nvirt + b) * c(nocc + b, nu) / static_cast<double>(nks / nspin);
                     }
                 }
             }
@@ -70,7 +81,13 @@ namespace hamilt
     }
 
 
-    std::vector<container::Tensor> cal_dm_trans_blas(const psi::Psi<double, psi::DEVICE_CPU>& X_istate, const psi::Psi<double, psi::DEVICE_CPU>& c, const int& nocc, const int& nvirt)
+    template<> std::vector<container::Tensor> cal_dm_trans_blas(
+        const psi::Psi<double, psi::DEVICE_CPU>& X_istate,
+        const psi::Psi<double, psi::DEVICE_CPU>& c,
+        const int& nocc,
+        const int& nvirt,
+        const bool renorm_k,
+        const int nspin)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_trans_blas");
         int nks = c.get_nk();
@@ -85,14 +102,13 @@ namespace hamilt
             // 1. [X*C_occ^T]^T=C_occ*X^T
             char transa = 'N';
             char transb = 'T';
-            double alpha = 1.0;
+            const double alpha = 1.0;
             const double beta = 0.0;
             container::Tensor Xc(DAT::DT_DOUBLE, DEV::CpuDevice, { nvirt, naos });
             dgemm_(&transa, &transb, &naos, &nvirt, &nocc, &alpha,
                 c.get_pointer(), &naos, X_istate.get_pointer(), &nvirt,
                 &beta, Xc.data<double>(), &naos);
             // 2. C_virt*[X*C_occ^T]
-            alpha = 1.0 / static_cast<double>(nks);
             dgemm_(&transa, &transb, &naos, &naos, &nvirt, &alpha,
                 c.get_pointer(nocc), &naos, Xc.data<double>(), &naos, &beta,
                 dm_trans[isk].data<double>(), &naos);
@@ -101,7 +117,13 @@ namespace hamilt
     }
 
 
-    std::vector<container::Tensor> cal_dm_trans_blas(const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& X_istate, const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c, const int& nocc, const int& nvirt)
+    template<> std::vector<container::Tensor> cal_dm_trans_blas(
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& X_istate,
+        const psi::Psi<std::complex<double>, psi::DEVICE_CPU>& c,
+        const int& nocc,
+        const int& nvirt,
+        const bool renorm_k,
+        const int nspin)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_trans_blas");
         int nks = c.get_nk();
@@ -113,7 +135,6 @@ namespace hamilt
         {
             c.fix_k(isk);
             X_istate.fix_k(isk);
-
 
             char transa = 'N';
             char transb = 'C';
@@ -141,7 +162,7 @@ namespace hamilt
                 &beta, Xc.data<std::complex<double>>(), &nvirt);
             // 2. [X*C_occ^\dagger]^TC_virt^T
             transa = transb = 'T';
-            alpha.real(1.0 / static_cast<double>(nks));
+            alpha.real(renorm_k ? 1.0 / static_cast<double>(nks / nspin) : 1.0);
             zgemm_(&transa, &transb, &naos, &naos, &nvirt, &alpha,
                 Xc.data<std::complex<double>>(), &nvirt, c.get_pointer(nocc), &naos, &beta,
                 dm_trans[isk].data<std::complex<double>>(), &naos);
