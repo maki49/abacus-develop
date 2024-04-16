@@ -630,6 +630,7 @@ void Input::Default(void)
     lr_solver = "dav";
     lr_thr = 1e-2;
     abs_wavelen_range = { 0.0, 0.0 };
+    out_wfc_lr = false;
     return;
 }
 
@@ -2291,6 +2292,10 @@ bool Input::Read(const std::string &fn)
             ifs >> abs_wavelen_range[0] >> abs_wavelen_range[1];
             std::string line;
             getline(ifs, line);
+        }
+        else if (strcmp("out_wfc_lr", word) == 0)
+        {
+            read_value(ifs, out_wfc_lr);
         }
         //----------------------------------------------------------------------------------
         else

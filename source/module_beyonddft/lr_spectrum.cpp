@@ -4,7 +4,7 @@
 #include "module_base/parallel_reduce.h"
 #include "module_beyonddft/utils/lr_util.h"
 #include "module_beyonddft/utils/lr_util_hcontainer.h"
-
+#include "module_beyonddft/utils/lr_util_print.h"
 template<typename T>
 void LR_Spectrum<T>::cal_gint_rho(double** rho, const int& nspin, const int& nrxx)
 {

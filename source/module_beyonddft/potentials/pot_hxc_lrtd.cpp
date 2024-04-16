@@ -3,7 +3,7 @@
 #include "module_elecstate/potentials/H_Hartree_pw.h"
 #include "module_base/timer.h"
 #include "module_hamilt_general/module_xc/xc_functional.h"
-
+#include <set>
 namespace elecstate
 {
     // constructor for exchange-correlation kernel
@@ -22,7 +22,8 @@ namespace elecstate
         // this->xc_kernel_components_.resize(1, nullptr);
         // this->xc_kernel_components_[0] = new KernelHartree(rho_basis_in);
         this->pot_hartree = new PotHartree(this->rho_basis_);
-        if (this->xc_kernel == "lda" || this->xc_kernel == "pbe")
+        std::set<std::string> local_xc = { "lda", "pbe", "hse" };
+        if (local_xc.find(this->xc_kernel) != local_xc.end())
         {
             XC_Functional::set_xc_type(this->xc_kernel);
             this->xc_kernel_components_ = new KernelXC();
@@ -37,7 +38,7 @@ namespace elecstate
         const int nspin = v_eff.nr;
         v_eff += H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), v_eff.nr, rho);
         if (xc_kernel == "rpa" || xc_kernel == "hf")  return;
-        else if (XC_Functional::get_func_type() == 1 || XC_Functional::get_func_type() == 2)//LDA or GGA
+        else if (XC_Functional::get_func_type() == 1 || XC_Functional::get_func_type() == 2 || XC_Functional::get_func_type() == 4)//LDA or GGA or HYBGGA
             if (1 == nspin)// for LDA-spin0, just fxc*rho where fxc=v2rho2; for GGA, v2rho2 has been replaced by the true fxc
                 for (int ir = 0;ir < nrxx;++ir)
                     v_eff(0, ir) += this->xc_kernel_components_->get_kernel("v2rho2")(0, ir) * rho[0][ir];

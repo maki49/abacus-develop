@@ -371,9 +371,13 @@
     - [sccut](#sccut)
     - [sc\_file](#sc_file)
   - [Beyond DFT](#beyond-dft)
-    - [nstates](#nstates)
     - [xc\_kernel](#xc_kernel)
     - [lr\_solverl](#lr_solver)
+    - [lr\_thr](#lr_thr)
+    - [nvirt](#nvirt)
+    - [nstates](#nstates)
+    - [abs\_wavelen\_range](#abs_wavelen_range)
+    - [out\_wfc\_lr](#out_wfc_lr)
 [back to top](#full-list-of-input-keywords)
 
 ## System variables
@@ -3440,7 +3444,37 @@ for `nspin 2` case. The difference is that `lambda`, `target_mag`, and `constrai
 
 ## Beyond DFT
 
-These parameters are used to solve the excited states using. e.g. lr-tddft
+These parameters are used to solve the excited states using. e.g. LR-TDDFT.
+
+### xc_kernel
+
+- **Type**: String
+- **Description**: The exchange-correlation kernel used in the calculation. 
+Currently supported: `RPA`, `LDA`, `PBE`, `HSE`, `HF`.
+- **Default**: LDA
+
+### lr_solver
+
+- **Type**: String
+- **Description**: The method to solve the Casida equation in LR-TDDFT.
+  - `dav`: Construct $AX$ and diagonalize the Hamiltonian matrix iteratively with Davidson algorithm.
+  - `lapack`: Construct the full $A$ matrix and directly diagonalize with LAPACK.
+  - `spectrum`: Caluclate absorption spectrum only without solving Casida equation. The `OUT.${suffix}/` directory should contain the
+  files for LR-TDDFT eigenstates and eigenvalues, i.e. `Excitation_Energy.dat` and `Excitation_Amplitude_${processor_rank}.dat`
+   output by setting `out_wfc_lr` to true.
+- **Default**: dav
+
+### lr_thr
+
+- **Type**: Real
+- **Description**: The convergence threshold of iterative diagonalization fo LR-TDDFT.
+- **Default**: 1e-6
+
+### nvirt
+
+- **Type**: Integer
+- **Description**: The number of virtual orbitals used in the LR-TDDFT calculation.
+- **Default**: 1
 
 ### nstates
 
@@ -3448,16 +3482,18 @@ These parameters are used to solve the excited states using. e.g. lr-tddft
 - **Description**:  The number of 2-particle states to be solved
 - **Default**: 0
 
-### xc_kernel
+### abs_wavelen_range
 
-- **Type**: String
-- **Description**: The exchange-correlation kernel used in the calculation. Currently, only `RPA` and `LDA` is supported.
-- **Default**: LDA
+- **Type**: Real Real
+- **Description**: The range of the wavelength for the absorption spectrum calculation.
+- **Default**: 0.0 0.0
 
-### lr_solver
+### out_wfc_lr
 
-- **Type**: String
-- **Description**: The diagonalization method for LR-TDDFT.
-- **Default**: LDA
+- **Type**: Boolean
+- **Description**: Whether to output the eigenstates (excitation energy) and eigenvectors (excitation amplitude) of the LR-TDDFT calculation.
+The output files are `OUT.${suffix}/Excitation_Energy.dat` and `OUT.${suffix}/Excitation_Amplitude_${processor_rank}.dat`.
+- **Default**: False
+
 
 [back to top](#full-list-of-input-keywords)

@@ -2,6 +2,7 @@
 #include "module_hsolver/diago_david.h"
 #include "module_hsolver/diago_cg.h"
 #include "module_beyonddft/utils/lr_util.h"
+#include "module_beyonddft/utils/lr_util_print.h"
 
 namespace hsolver
 {
@@ -64,6 +65,17 @@ namespace hsolver
         std::cout << "eigenvalues:" << std::endl;
         for (auto& e : eigenvalue)std::cout << e << " ";
         std::cout << std::endl;
+        if (out_wfc_lr)
+        {
+            if (GlobalV::MY_RANK == 0)
+            {
+                std::ofstream ofs(GlobalV::global_out_dir + "Excitation_Energy.dat");
+                ofs << std::setprecision(8) << std::scientific;
+                for (auto& e : eigenvalue)ofs << e << " ";
+                ofs.close();
+            }
+            LR_Util::write_psi_bandfirst(psi, GlobalV::global_out_dir + "Excitation_Amplitude", GlobalV::MY_RANK);
+        }
 
         // normalization is already satisfied
         // std::cout << "check normalization of eigenvectors:" << std::endl;
@@ -75,7 +87,7 @@ namespace hsolver
         //         for (int ib = 0;ib < psi.get_nbasis();++ib)
         //         {
         //             norm2 += square(psi(ist, ik, ib));
-        //             std::cout << "norm2_now=" << norm2 << std::endl;
+        //             // std::cout << "norm2_now=" << norm2 << std::endl;
         //         }
         //     }
         //     std::cout << "state " << ist << ", norm2=" << norm2 << std::endl;

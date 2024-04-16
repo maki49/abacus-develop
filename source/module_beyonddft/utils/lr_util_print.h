@@ -18,6 +18,41 @@ namespace LR_Util
             std::cout << "\n";
         }
     }
+    template<typename T>
+    void write_psi_bandfirst(const psi::Psi<T>& psi, const std::string& filename, const int& rank, const double& threshold = 1e-10, const int& precision = 8)
+    {
+        assert(psi.get_k_first() == 0);
+        std::ofstream ofs(filename + "_" + std::to_string(rank) + ".dat");
+        ofs << std::setprecision(precision) << std::scientific;
+        ofs << psi.get_nbands() << " " << psi.get_nk() << " " << psi.get_nbasis() << "\n";
+        for (int ib = 0;ib < psi.get_nbands();++ib)
+        {
+            for (int ik = 0;ik < psi.get_nk();++ik)
+            {
+                for (int i = 0;i < psi.get_nbasis();++i)
+                {
+                    const auto& v = psi(ib, ik, i);
+                    ofs << (std::abs(v) > threshold ? v : 0) << " ";
+                }
+                ofs << "\n";
+            }
+        }
+        ofs.close();
+    }
+    template<typename T>
+    psi::Psi<T> read_psi_bandfirst(const std::string& filename, const int& rank)
+    {
+        std::ifstream ifs(filename + "_" + std::to_string(rank) + ".dat");
+        int nbands, nks, nbasis;
+        ifs >> nbands >> nks >> nbasis;
+        psi::Psi<T> psi(nks, nbands, nbasis, nullptr, false);
+        for (int ib = 0;ib < psi.get_nbands();++ib)
+            for (int ik = 0;ik < psi.get_nk();++ik)
+                for (int i = 0;i < psi.get_nbasis();++i)
+                    ifs >> psi(ib, ik, i);
+        ifs.close();
+        return psi;
+    }
     template<typename T >
     void print_psi_kfirst(const psi::Psi<T>& psi, const std::string& label, const double& threshold = 1e-10)
     {
@@ -38,7 +73,7 @@ namespace LR_Util
         }
     }
     template<typename T>
-    void print_tensor(const container::Tensor& t, const std::string& label, const Parallel_Orbitals* pmat, const double& threshold = 1e-10)
+    void print_tensor(const container::Tensor& t, const std::string& label, const Parallel_2D* pmat, const double& threshold = 1e-10)
     {
         std::cout << label << "\n";
         for (int j = 0; j < pmat->get_col_size();++j)
