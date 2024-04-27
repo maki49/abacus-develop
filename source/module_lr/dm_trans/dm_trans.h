@@ -1,5 +1,4 @@
 #pragma once
-// use tensor or basematrix in the future
 #include <ATen/core/tensor.h>
 #include "module_psi/psi.h"
 #include <vector>

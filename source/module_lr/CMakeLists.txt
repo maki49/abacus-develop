@@ -3,6 +3,7 @@ if(ENABLE_LCAO)
   add_subdirectory(ao_to_mo_transformer)
   add_subdirectory(dm_trans)
   add_subdirectory(ri_benchmark)
+  add_subdirectory(Grad)
 
   list(APPEND objects
     utils/lr_util.cpp
