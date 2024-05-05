@@ -237,7 +237,7 @@ void Diago_DavSubspace<T, Device>::diag_once(hamilt::Hamilt<T, Device>* phm_in,
                                  this->nbase_x,
                                  this->zero,
                                  psi.get_pointer(), // C dim * n_band
-                                 psi.get_nbasis());
+                                 psi.get_k_first() ? psi.get_nbasis() : psi.get_nk() * psi.get_nbasis());
 
             if (!this->notconv || (dav_iter == DiagoIterAssist<T, Device>::PW_DIAG_NMAX))
             {
@@ -679,7 +679,7 @@ void Diago_DavSubspace<T, Device>::refresh(const int& dim,
     // update basis
     for (size_t i = 0; i < nband; i++)
     {
-        syncmem_complex_op()(this->ctx, this->ctx, &basis(i, 0), &psi(i, 0), this->dim);
+        syncmem_complex_op()(this->ctx, this->ctx, &basis(i, 0), psi.get_k_first()? &psi(i, 0) : &psi(i,0,0), this->dim);
     }
     gemm_op<T, Device>()(this->ctx,
                          'N',

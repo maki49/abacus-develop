@@ -65,7 +65,7 @@ inline void redirect_log(const bool& out_alllog)
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LRTD<T, TR>::parameter_check()
 {
-    std::set<std::string> lr_solvers = { "dav", "lapack" , "spectrum" };
+    std::set<std::string> lr_solvers = { "dav", "lapack" , "spectrum", "dav_subspace" };
     std::set<std::string> xc_kernels = { "rpa", "lda", "pbe", "hf" , "hse" };
     if (lr_solvers.find(this->input.lr_solver) == lr_solvers.end())
         throw std::invalid_argument("ESolver_LRTD: unknown type of lr_solver");
