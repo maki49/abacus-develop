@@ -5,6 +5,7 @@
 #include "module_base/mathzone.h"
 #include "module_base/constants.h"
 #include "module_base/timer.h"
+#include <cstring>  //for memcpy
 
 namespace ModuleSymmetry
 {
@@ -810,7 +811,7 @@ void Symmetry::lattice_type(
 }
 
 
-void Symmetry::getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, double* pos)
+void Symmetry::getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, double* pos, double* vec)
 {
     ModuleBase::TITLE("Symmetry", "getgroup");
 
@@ -835,7 +836,7 @@ void Symmetry::getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, doubl
     for (int i = 0; i < nop; ++i)
     {
     //    std::cout << "symop = " << symop[i].e11 <<" "<< symop[i].e12 <<" "<< symop[i].e13 <<" "<< symop[i].e21 <<" "<< symop[i].e22 <<" "<< symop[i].e23 <<" "<< symop[i].e31 <<" "<< symop[i].e32 <<" "<< symop[i].e33 << std::endl;
-        this->checksym(this->symop[i], this->gtrans[i], pos);
+        this->checksym(this->symop[i], this->gtrans[i], pos, vec);
       //  std::cout << "s_flag =" <<s_flag<<std::endl;
         if (s_flag == 1)
         {
@@ -914,7 +915,33 @@ void Symmetry::getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, doubl
     return;
 }
 
-void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtrans, double* pos)
+// in-place version
+inline void reorder_vec(double* vec, const int* index, const int& it, const int* istart, const int* na)
+{
+    std::vector<double> tmp(na[it]);
+    for (int j = istart[it]; j < istart[it] + na[it]; ++j)
+    {
+        const int i = j - istart[it];
+        const int jnew = istart[it] + index[j];
+        tmp[i * 3] = vec[jnew * 3];
+        tmp[i * 3 + 1] = vec[jnew * 3 + 1];
+        tmp[i * 3 + 2] = vec[jnew * 3 + 2];
+    }
+    std::memcpy(vec + istart[it] * 3, tmp.data(), na[it] * 3 * sizeof(double));
+}
+// direct copy version
+inline void reorder_vec(const double* vec, double* rotvec, const int* index, const int& it, const int* istart, const int* na)
+{
+    for (int j = istart[it]; j < istart[it] + na[it]; ++j)
+    {
+        const int jnew = istart[it] + index[j];
+        rotvec[j * 3] = vec[jnew * 3];
+        rotvec[j * 3 + 1] = vec[jnew * 3 + 1];
+        rotvec[j * 3 + 2] = vec[jnew * 3 + 2];
+    }
+}
+
+void Symmetry::checksym(ModuleBase::Matrix3& s, ModuleBase::Vector3<double>& gtrans, double* pos, double* vec)
 {
 	//----------------------------------------------
     // checks whether a point group symmetry element 
@@ -924,6 +951,9 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
     bool no_diff = 0;
     ModuleBase::Vector3<double> trans(2.0, 2.0, 2.0);
     s_flag = 0;
+
+    std::vector<double> rotvec;
+    if (vec)rotvec.resize(3 * nat, 0.0);
 
     for (int it = 0; it < ntype; it++)
     {
@@ -939,6 +969,7 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
         }
         //order original atomic positions for current species
         this->atom_ordering_new(pos + istart[it] * 3, na[it], index + istart[it]);
+        if (vec) reorder_vec(vec, index, it, istart, na);
 
         //Rotate atoms of current species
         for (int j = istart[it]; j < istart[it] + na[it]; ++j)
@@ -947,18 +978,22 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
             const int yy=j*3+1;
             const int zz=j*3+2;
 
+            auto rot = [&](const double* x, double* rx)->void
+                {
+                    rx[xx] = x[xx] * s.e11
+                        + x[yy] * s.e21
+                        + x[zz] * s.e31;
 
-            rotpos[xx] = pos[xx] * s.e11
-                         + pos[yy] * s.e21
-                         + pos[zz] * s.e31;
+                    rx[yy] = x[xx] * s.e12
+                        + x[yy] * s.e22
+                        + x[zz] * s.e32;
 
-            rotpos[yy] = pos[xx] * s.e12
-                         + pos[yy] * s.e22
-                         + pos[zz] * s.e32;
+                    rx[zz] = x[xx] * s.e13
+                        + x[yy] * s.e23
+                        + x[zz] * s.e33;
+                };
 
-            rotpos[zz] = pos[xx] * s.e13
-                         + pos[yy] * s.e23
-                         + pos[zz] * s.e33;
+            rot(pos, rotpos);
 
            // std::cout << "pos = " << pos[xx] <<" "<<pos[yy] << " "<<pos[zz]<<std::endl;
            // std::cout << "rotpos = " << rotpos[xx] <<" "<<rotpos[yy] << " "<<rotpos[zz]<<std::endl;
@@ -968,9 +1003,11 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
             this->check_boundary(rotpos[xx]);
             this->check_boundary(rotpos[yy]);
             this->check_boundary(rotpos[zz]);
+            if (vec)  rot(vec, rotvec.data());
         }
         //order rotated atomic positions for current species
         this->atom_ordering_new(rotpos + istart[it] * 3, na[it], index + istart[it]);
+        if (vec) reorder_vec(rotvec.data(), index, it, istart, na);
     }
 
 	/*
@@ -984,8 +1021,6 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
 	GlobalV::ofs_running << " rotpos" << std::endl;
 	print_pos(rotpos, nat);
 	*/
-
-    ModuleBase::Vector3<double> diff;
 
 	//---------------------------------------------------------
     // itmin_start = the start atom positions of species itmin
@@ -1027,6 +1062,7 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
             }
             //order translated atomic positions for current species
             this->atom_ordering_new(rotpos + istart[it] * 3, na[it], index + istart[it]);
+            if (vec) reorder_vec(rotvec.data(), index, it, istart, na);
         }
 
         no_diff = true;
@@ -1035,20 +1071,11 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
         {
             for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
             {
-                //take the difference of the rotated and the original coordinates
-                diff.x = this->check_diff( pos[ia*3+0], rotpos[ia*3+0]);
-                diff.y = this->check_diff( pos[ia*3+1], rotpos[ia*3+1]);
-                diff.z = this->check_diff( pos[ia*3+2], rotpos[ia*3+2]);
-                //only if all "diff" are zero vectors, flag will remain "1"
-                if (	no_diff == false||
-                        !equal(diff.x,0.0)||
-                        !equal(diff.y,0.0)||
-                        !equal(diff.z,0.0)
-                   )
-                {
-                    no_diff = 0;
-                }
+                no_diff = no_diff && this->check_diff_vec3_nat(pos, rotpos, ia);
+                if (vec) no_diff = no_diff && this->check_diff_vec3_nat(vec, rotvec.data(), ia);
+                if (!no_diff) break;
             }
+            if (!no_diff) break;
         }
 			
 
@@ -1092,11 +1119,13 @@ void Symmetry::checksym(ModuleBase::Matrix3 &s, ModuleBase::Vector3<double> &gtr
     return;
 }
 
-void Symmetry::pricell(double* pos, const Atom* atoms)
+void Symmetry::pricell(double* pos, const Atom* atoms, double* vec)
 {
     bool no_diff = 0;
     s_flag = 0;
     ptrans.clear();
+    std::vector<double> rotvec;
+    if (vec) rotvec.resize(3 * nat, 0.0);
 
     for (int it = 0; it < ntype; it++)
     {
@@ -1113,6 +1142,8 @@ void Symmetry::pricell(double* pos, const Atom* atoms)
 
         //order original atomic positions for current species
         this->atom_ordering_new(pos + istart[it] * 3, na[it], index + istart[it]);
+        // reorder vec using the same index
+        if (vec) reorder_vec(vec, index, it, istart, na);
         //copy pos to rotpos
         for (int j = istart[it]; j < istart[it] + na[it]; ++j)
         {
@@ -1125,7 +1156,6 @@ void Symmetry::pricell(double* pos, const Atom* atoms)
         }
     }
 
-    ModuleBase::Vector3<double> diff;
     double tmp_ptrans[3];
 
 	//---------------------------------------------------------
@@ -1156,6 +1186,7 @@ void Symmetry::pricell(double* pos, const Atom* atoms)
             }
             //order translated atomic positions for current species
             this->atom_ordering_new(rotpos + istart[it] * 3, na[it], index + istart[it]);
+            if (vec) reorder_vec(vec, rotvec.data(), index, it, istart, na);
         }
 
         no_diff = true;
@@ -1164,18 +1195,9 @@ void Symmetry::pricell(double* pos, const Atom* atoms)
         {
             for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
             {
-                //take the difference of the rotated and the original coordinates
-                diff.x = this->check_diff( pos[ia*3+0], rotpos[ia*3+0]);
-                diff.y = this->check_diff( pos[ia*3+1], rotpos[ia*3+1]);
-                diff.z = this->check_diff( pos[ia*3+2], rotpos[ia*3+2]);
-                //only if all "diff" are zero vectors, flag will remain "1"
-                if (!equal(diff.x,0.0)||
-                    !equal(diff.y,0.0)||
-                    !equal(diff.z,0.0))
-                {
-                    no_diff = false;
-                    break;
-                }
+                no_diff = this->check_diff_vec3_nat(pos, rotpos, ia);
+                if (vec) no_diff = no_diff && this->check_diff_vec3_nat(vec, rotvec.data(), ia);
+                if (!no_diff) break;
             }
             if(!no_diff) break;
         }

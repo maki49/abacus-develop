@@ -25,8 +25,8 @@ class Symmetry_Basic
 	void check_boundary(double &x)const;
 	double get_translation_vector(const double &x1, const double &x2);
 	void check_translation(double &x, const double &t) const;
-	double check_diff(const double &x1, const double &x2);
-	
+    double check_diff(const double& x1, const double& x2) const;
+    bool check_diff_vec3_nat(const double* a, const double* b, const int& i) const;
 	void veccon(
 			double *va,
 			double *vb,

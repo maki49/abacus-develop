@@ -101,10 +101,10 @@ public:
 	
 	void change_lattice(void);
 
-    void getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, double* pos);
-    void checksym(ModuleBase::Matrix3& s, ModuleBase::Vector3<double>& gtrans, double* pos);
+    void getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, double* pos, double* vec = nullptr);
+    void checksym(ModuleBase::Matrix3& s, ModuleBase::Vector3<double>& gtrans, double* pos, double* vec = nullptr);
     /// @brief  primitive cell analysis
-    void pricell(double* pos, const Atom* atoms);
+    void pricell(double* pos, const Atom* atoms, double* vec = nullptr);
 	void rho_symmetry(double *rho, const int &nr1, const int &nr2, const int &nr3);
 	void rhog_symmetry(std::complex<double> *rhogtot, int* ixyz2ipw, const int &nx, 
 			const int &ny, const int &nz, const int & fftnx, const int &fftny, const int &fftnz);

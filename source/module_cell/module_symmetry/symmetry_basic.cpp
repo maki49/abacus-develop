@@ -67,7 +67,7 @@ void Symmetry_Basic::check_translation(double &x, const double &t) const
 	return;
 }
 
-double Symmetry_Basic::check_diff(const double &x1, const double &x2)
+double Symmetry_Basic::check_diff(const double& x1, const double& x2)const
 {
 	double diff = x1 - x2;
 	diff = fmod(diff + 100,1);
@@ -79,6 +79,12 @@ double Symmetry_Basic::check_diff(const double &x1, const double &x2)
 	return diff;
 }
 
+bool Symmetry_Basic::check_diff_vec3_nat(const double* a, const double* b, const int& i)const
+{
+    return (this->equal(this->check_diff(a[i * 3 + 0], b[i * 3 + 0]), 0.0) &&
+        this->equal(this->check_diff(a[i * 3 + 1], b[i * 3 + 1]), 0.0) &&
+        this->equal(this->check_diff(a[i * 3 + 2], b[i * 3 + 2]), 0.0));
+}
 
 void Symmetry_Basic::order_atoms(double* pos, const int& nat, const int* index) const
 {
