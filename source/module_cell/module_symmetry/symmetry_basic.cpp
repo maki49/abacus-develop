@@ -1102,12 +1102,7 @@ void Symmetry_Basic::atom_ordering_new(double *posi, const int natom, int *subin
 		tmpy[i] = posi[i*3+1];
 		tmpz[i] = posi[i*3+2];
 	}
-	double x_max = *max_element(tmpx.begin(),tmpx.end());
-	double x_min = *min_element(tmpx.begin(),tmpx.end());
-	double y_max = *max_element(tmpy.begin(),tmpy.end());
-	double y_min = *min_element(tmpy.begin(),tmpy.end());
-	double z_max = *max_element(tmpz.begin(),tmpz.end());
-	double z_min = *min_element(tmpz.begin(),tmpz.end());
+    // double x_max = *max_element(tmpx.begin(),tmpx.end());
 
 	double*  weighted_func = new double[natom];
 	
@@ -1133,14 +1128,17 @@ void Symmetry_Basic::atom_ordering_new(double *posi, const int natom, int *subin
 		int nxequal=ix_right-i;
 		if(nxequal>1)	//need a new sort
 		{
-			subindex[0] = 0;
+            std::vector<int> tmpindex(nxequal, 0);
 			for(int j=0; j<nxequal; ++j)
 			{
 				weighted_func[j]=1/epsilon*tmpy[i+j]+tmpz[i+j];
 			}
-			ModuleBase::heapsort(nxequal, weighted_func, subindex);
-			this->order_atoms(&posi[i*3], nxequal, subindex);
-		}
+            ModuleBase::heapsort(nxequal, weighted_func, tmpindex.data());
+            this->order_atoms(&posi[i * 3], nxequal, tmpindex.data());
+            //rearange subindex using tmpindex
+            for (int j = 0; j < nxequal; ++j)tmpindex[j] = subindex[i + tmpindex[j]];
+            for (int j = 0; j < nxequal; ++j)subindex[i + j] = tmpindex[j];
+        }
 		i=ix_right;
 	}
 	
