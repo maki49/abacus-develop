@@ -30,7 +30,7 @@ namespace hamilt
                     {
                         for (int mu = 0;mu < naos;++mu)
                         {
-                            AX_istate(i * nvirt + a) += c(nocc + a, mu) * V_istate[isk].data<double>()[mu * naos + nu] * c(i, nu);
+                            AX_istate(i * nvirt + a) += c(nocc + a, mu) * V_istate[isk].data<double>()[nu * naos + mu] * c(i, nu);
                         }
                     }
                 }
@@ -63,7 +63,7 @@ namespace hamilt
                     {
                         for (int mu = 0;mu < naos;++mu)
                         {
-                            AX_istate(i * nvirt + a) += std::conj(c(nocc + a, mu)) * std::conj(V_istate[isk].data<std::complex<double>>()[mu * naos + nu]) * c(i, nu);
+                            AX_istate(i * nvirt + a) += std::conj(c(nocc + a, mu)) * V_istate[isk].data<std::complex<double>>()[nu * naos + mu] * c(i, nu);
                         }
                     }
                 }
@@ -92,7 +92,7 @@ namespace hamilt
             // Vc[naos*nocc]
             container::Tensor Vc(DAT::DT_DOUBLE, DEV::CpuDevice, { nocc, naos });// (Vc)^T
             Vc.zero();
-            char transa = 'T';
+            char transa = 'N';
             char transb = 'N';  //c is col major
             const double alpha = 1.0;
             const double beta = add_on ? 1.0 : 0.0;
@@ -100,6 +100,7 @@ namespace hamilt
                 V_istate[isk].data<double>(), &naos, c.get_pointer(), &naos, &beta,
                 Vc.data<double>(), &naos);
 
+            transa = 'T';
             //AX_istate=c^TVc (nvirt major)
             dgemm_(&transa, &transb, &nvirt, &nocc, &naos, &alpha,
                 c.get_pointer(nocc), &naos, Vc.data<double>(), &naos, &beta,
@@ -127,13 +128,15 @@ namespace hamilt
             // Vc[naos*nocc] (V is hermitian)
             container::Tensor Vc(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nocc, naos });// (Vc)^T
             Vc.zero();
-            char transa = 'C';
+            char transa = 'N';
             char transb = 'N';  //c is col major
             const std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta = add_on ? std::complex<double>(1.0, 0.0) : std::complex<double>(0.0, 0.0);
             zgemm_(&transa, &transb, &naos, &nocc, &naos, &alpha,
                 V_istate[isk].data<std::complex<double>>(), &naos, c.get_pointer(), &naos, &beta,
                 Vc.data<std::complex<double>>(), &naos);
+
+            transa = 'C';
             //AX_istate=c^\dagger Vc (nvirt major)
             zgemm_(&transa, &transb, &nvirt, &nocc, &naos, &alpha,
                 c.get_pointer(nocc), &naos, Vc.data<std::complex<double>>(), &naos, &beta,

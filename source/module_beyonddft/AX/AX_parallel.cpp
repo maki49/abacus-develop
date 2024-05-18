@@ -3,6 +3,7 @@
 #include "module_base/scalapack_connector.h"
 #include "module_base/tool_title.h"
 #include "module_beyonddft/utils/lr_util.h"
+#include "module_beyonddft/utils/lr_util_print.h"
 namespace hamilt
 {
     //output: col first, consistent with blas
@@ -45,7 +46,7 @@ namespace hamilt
             int i1 = 1;
             int ivirt = nocc + 1;
 
-            char transa = 'T';
+            char transa = 'N';
             char transb = 'N';
             const double alpha = 1.0;
             const double beta = add_on ? 1.0 : 0.0;
@@ -54,6 +55,7 @@ namespace hamilt
                 c.get_pointer(), &i1, &i1, pc.desc,
                 &beta, Vc.data<double>(), &i1, &i1, pVc.desc);
 
+            transa = 'T';
             // AX_istate = c ^ TVc
             // descC puts M(nvirt) to row
             pdgemm_(&transa, &transb, &nvirt, &nocc, &naos,
@@ -101,7 +103,7 @@ namespace hamilt
             int i1 = 1;
             int ivirt = nocc + 1;
 
-            char transa = 'C';
+            char transa = 'N';
             char transb = 'N';
             const std::complex<double> alpha(1.0, 0.0);
             const std::complex<double> beta = add_on ? std::complex<double>(1.0, 0.0) : std::complex<double>(0.0, 0.0);
@@ -110,6 +112,7 @@ namespace hamilt
                 c.get_pointer(), &i1, &i1, pc.desc,
                 &beta, Vc.data<std::complex<double>>(), &i1, &i1, pVc.desc);
 
+            transa = 'C';
             // AX_istate = c ^ TVc
             // descC puts M(nvirt) to row
             pzgemm_(&transa, &transb, &nvirt, &nocc, &naos,
