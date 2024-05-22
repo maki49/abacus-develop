@@ -714,7 +714,8 @@ if(ENABLE_LCAO)
     hcontainer
     deltaspin
     numerical_atomic_orbitals
-    lr)
+    lr
+    lr_grad)
   if(USE_ELPA)
     target_link_libraries(${ABACUS_BIN_NAME} genelpa)
   endif()

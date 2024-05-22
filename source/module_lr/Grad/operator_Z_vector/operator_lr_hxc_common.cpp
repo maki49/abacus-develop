@@ -1,12 +1,12 @@
 #include "operator_lr_hxc_common.h"
 #include "module_base/timer.h"
-#include "module_beyonddft/utils/lr_util.h"
-#include "module_beyonddft/utils/lr_util_hcontainer.h"
-#include "module_beyonddft/utils/lr_util_print.h"
+#include "module_lr/utils/lr_util.h"
+#include "module_lr/utils/lr_util_hcontainer.h"
+#include "module_lr/utils/lr_util_print.h"
 #include "module_hamilt_lcao/module_hcontainer/hcontainer_funcs.h"
-#include "module_beyonddft/dm_trans/dm_trans.h"
-#include "module_beyonddft/AX/AX.h"
-#include "module_beyonddft/dm_diff/dm_diff.h"
+#include "module_lr/dm_trans/dm_trans.h"
+#include "module_lr/AX/AX.h"
+#include "module_lr/Grad/dm_diff/dm_diff.h"
 inline double conj(double a) { return a; }
 inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); }
 

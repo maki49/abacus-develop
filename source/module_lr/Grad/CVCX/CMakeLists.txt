@@ -1,0 +1,11 @@
+if(ENABLE_LCAO)
+  add_library(
+    lr_grad
+    OBJECT
+    CVCX_parallel.cpp
+    CVCX_serial.cpp
+  )
+  if(BUILD_TESTING)
+    add_subdirectory(test)
+  endif()
+endif()
