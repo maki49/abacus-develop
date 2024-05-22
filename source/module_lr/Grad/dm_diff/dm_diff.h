@@ -2,7 +2,7 @@
 #include <ATen/core/tensor.h>
 #include "module_psi/psi.h"
 #include <vector>
-#include "module_beyonddft/utils/lr_util.h"
+#include "module_lr/utils/lr_util.h"
 namespace hamilt
 {
     // use templates in the future.

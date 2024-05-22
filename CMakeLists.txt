@@ -769,6 +769,7 @@ if(ENABLE_LCAO)
     hcontainer
     numerical_atomic_orbitals
     lr
+    lr_grad
     rdmft)
   if(USE_ELPA)
     target_link_libraries(${ABACUS_BIN_NAME} genelpa)

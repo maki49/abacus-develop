@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "mpi.h"
 #include <ATen/core/tensor.h>
-#include "module_beyonddft/utils/lr_util.h"
+#include "module_lr/utils/lr_util.h"
 #include "../dm_diff.h"
 
 struct matsize
