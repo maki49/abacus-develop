@@ -5,19 +5,16 @@
 
 #ifdef USE_LIBXC
 #include <xc.h>
-void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const double& tpiba, const Charge* chg_gs)
+
+void elecstate::KernelXC::get_rho_drho_sigma(const int& nspin,
+    const double& tpiba,
+    const Charge* chg_gs,
+    const bool& is_gga,
+    std::vector<double>& rho,
+    std::vector<std::vector<ModuleBase::Vector3<double>>>& drho,
+    std::vector<double>& sigma)
 {
-    ModuleBase::TITLE("XC_Functional", "f_xc_libxc");
-    ModuleBase::timer::tick("XC_Functional", "f_xc_libxc");
-    // https://www.tddft.org/programs/libxc/manual/libxc-5.1.x/
-
-    std::vector<xc_func_type> funcs = XC_Functional::init_func((1 == nspin) ? XC_UNPOLARIZED : XC_POLARIZED);
-    int nrxx = chg_gs->nrxx;
-
-    // converting rho (extract it as a subfuntion in the future)
-    // -----------------------------------------------------------------------------------
-    std::vector<double> rho(nspin * nrxx);    // r major / spin contigous
-    std::vector<double> amag;
+    const int& nrxx = chg_gs->nrxx;
     if (1 == nspin || 2 == nspin)
     {
 #ifdef _OPENMP
@@ -29,22 +26,62 @@ void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, cons
     }
     else
     {
-        amag.resize(nrxx);
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
-        for (int ir = 0; ir < nrxx; ++ir)
+        throw std::domain_error("nspin =" + std::to_string(nspin)
+            + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
+    }
+    if (is_gga)
+    {
+        // 1. \nabla \rho
+        drho.resize(nspin);
+        for (int is = 0; is < nspin; ++is)
         {
-            const double arhox = std::abs(chg_gs->rho[0][ir] + chg_gs->rho_core[ir]);
-            amag[ir] = std::sqrt(std::pow(chg_gs->rho[1][ir], 2) + std::pow(chg_gs->rho[2][ir], 2) + std::pow(chg_gs->rho[3][ir], 2));
-            const double amag_clip = (amag[ir] < arhox) ? amag[ir] : arhox;
-            rho[ir * nspin + 0] = (arhox + amag_clip) / 2.0;
-            rho[ir * nspin + 1] = (arhox - amag_clip) / 2.0;
+            std::vector<double> rhor(nrxx);
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static, 1024)
+#endif
+            for (int ir = 0; ir < nrxx; ++ir) rhor[ir] = rho[ir * nspin + is];
+            drho[is].resize(nrxx);
+            LR_Util::grad(rhor.data(), drho[is].data(), *(chg_gs->rhopw), tpiba);
+        }
+        // 2. |\nabla\rho|^2
+        sigma.resize(nrxx * ((1 == nspin) ? 1 : 3));
+        if (1 == nspin)
+        {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static, 1024)
+#endif
+            for (int ir = 0; ir < nrxx; ++ir)
+                sigma[ir] = drho[0][ir] * drho[0][ir];
+        }
+        else
+        {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static, 256)
+#endif
+            for (int ir = 0; ir < nrxx; ++ir)
+            {
+                sigma[ir * 3] = drho[0][ir] * drho[0][ir];
+                sigma[ir * 3 + 1] = drho[0][ir] * drho[1][ir];
+                sigma[ir * 3 + 2] = drho[1][ir] * drho[1][ir];
+            }
         }
     }
+}
+
+void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const double& tpiba, const Charge* chg_gs)
+{
+    ModuleBase::TITLE("XC_Functional", "f_xc_libxc");
+    ModuleBase::timer::tick("XC_Functional", "f_xc_libxc");
+    // https://www.tddft.org/programs/libxc/manual/libxc-5.1.x/
+
+    std::vector<xc_func_type> funcs = XC_Functional::init_func((1 == nspin) ? XC_UNPOLARIZED : XC_POLARIZED);
+    const int& nrxx = chg_gs->nrxx;
 
     // -----------------------------------------------------------------------------------
-    // for GGA
+    // getting rho, grad rho, and sigma
+    std::vector<double> rho(nspin * nrxx);    // r major / spin contigous
+    std::vector<std::vector<ModuleBase::Vector3<double>>> gdr;  // \nabla \rho
+    std::vector<double> sigma;  // |\nabla\rho|^2
     const bool is_gga = [&funcs]()
         {
             for (xc_func_type& func : funcs)
@@ -58,54 +95,12 @@ void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, cons
             }
             return false;
         }();
-        std::vector<std::vector<ModuleBase::Vector3<double>>> gdr;  // \nabla \rho
-        std::vector<double> sigma;  // |\nabla\rho|^2
-        std::vector<double> sgn;        // sgn for threshold mask
-        if (is_gga)
-        {
-            // 0. set up sgn for threshold mask
-            // in the case of GGA correlation for polarized case,
-            // a cutoff for grho is required to ensure that libxc gives reasonable results
-            
-            // 1. \nabla \rho
-            gdr.resize(nspin);
-            for (int is = 0; is < nspin; ++is)
-            {
-                std::vector<double> rhor(nrxx);
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, 1024)
-#endif
-                for (int ir = 0; ir < nrxx; ++ir) rhor[ir] = rho[ir * nspin + is];
-                gdr[is].resize(nrxx);
-                LR_Util::grad(rhor.data(), gdr[is].data(), *(chg_gs->rhopw), tpiba);
-            }
-            // 2. |\nabla\rho|^2
-            sigma.resize(nrxx * ((1 == nspin) ? 1 : 3));
-            if (1 == nspin)
-            {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, 1024)
-#endif
-                for (int ir = 0; ir < nrxx; ++ir)
-                    sigma[ir] = gdr[0][ir] * gdr[0][ir];
-            }
-            else
-            {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, 256)
-#endif
-                for (int ir = 0; ir < nrxx; ++ir)
-                {
-                    sigma[ir * 3] = gdr[0][ir] * gdr[0][ir];
-                    sigma[ir * 3 + 1] = gdr[0][ir] * gdr[1][ir];
-                    sigma[ir * 3 + 2] = gdr[1][ir] * gdr[1][ir];
-                }
-            }
-        }
-        // -----------------------------------------------------------------------------------
-        //==================== XC Kernels (f_xc)=============================
-        this->kernel_set_.emplace("vrho", std::vector<double>(nspin * nrxx));
-        this->kernel_set_.emplace("v2rho2", std::vector<double>(((1 == nspin) ? 1 : 3) * nrxx));//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
+    this->get_rho_drho_sigma(nspin, tpiba, chg_gs, is_gga, rho, gdr, sigma);
+    // -----------------------------------------------------------------------------------
+
+    //==================== XC Kernels (f_xc)=============================
+    this->kernel_set_.emplace("vrho", std::vector<double>(nspin * nrxx));
+    this->kernel_set_.emplace("v2rho2", std::vector<double>(((1 == nspin) ? 1 : 3) * nrxx));//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
         if (is_gga)
         {
             this->kernel_set_.emplace("vsigma", std::vector<double>(((1 == nspin) ? 1 : 3) * nrxx)); //(nrxx*): 2 for rho * 3 for sigma: 00, 01, 02, 10, 11, 12
@@ -257,11 +252,11 @@ void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, cons
         } // end for( xc_func_type &func : funcs )
         XC_Functional::finish_func(funcs);
 
-        if (1 == GlobalV::NSPIN || 2 == GlobalV::NSPIN) return;
-        // else if (4 == GlobalV::NSPIN)
+        if (1 == nspin || 2 == nspin) return;
+        // else if (4 == nspin)
         else//NSPIN != 1,2,4 is not supported
         {
-            throw std::domain_error("GlobalV::NSPIN =" + std::to_string(GlobalV::NSPIN)
+            throw std::domain_error("nspin =" + std::to_string(nspin)
                 + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
         }
 }
