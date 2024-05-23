@@ -11,10 +11,10 @@ namespace elecstate
     public:
         virtual ~KernelBase() = default;
         virtual void cal_kernel(const Charge* chg_gs, const UnitCell* ucell, int& nspin) = 0;
-        virtual ModuleBase::matrix& get_kernel(const std::string& name) { return kernel_set_[name]; }
+        virtual std::vector<double>& get_kernel(const std::string& name) { return kernel_set_[name]; }
     protected:
         const ModulePW::PW_Basis* rho_basis_ = nullptr;
-        std::map<std::string, ModuleBase::matrix> kernel_set_; // [kernel_type][nspin][nrxx]
+        std::map<std::string, std::vector<double>> kernel_set_; // [kernel_type][nrxx][nspin]
     };
 
     class KernelXC : public KernelBase
