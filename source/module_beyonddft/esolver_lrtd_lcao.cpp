@@ -13,6 +13,9 @@
 #include "module_cell/module_neighbor/sltk_atom_arrange.h"
 #include "module_beyonddft/utils/lr_util_print.h"
 
+// gradient
+#include "module_beyonddft/Grad/Z_vector_equation/hamilt_zeq_right.h"
+
 #ifdef __EXX
 template<>
 void ModuleESolver::ESolver_LRTD<double>::move_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
@@ -327,6 +330,21 @@ void ModuleESolver::ESolver_LRTD<T, TR>::post_process()
     for (int i = 0;i < freq.size();++i)freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff);
     double eta = 0.01;
     spectrum.optical_absorption(freq, eta);
+
+    // cal analytic gradient
+    if (this->cal_grad)
+    {
+        // 1. the right-hand side of Z-vector equation
+        psi::Psi<T> R(this->kv.nks, this->nstates, this->paraX_.get_local_size(), nullptr, false);
+        hamilt::Z_vector_R<T> ops_R(this->nspin, this->nbasis, this->nocc, this->nvirt,
+            this->ucell, GlobalC::GridD, this->psi_ks, this->eig_ks,
+#ifdef __EXX
+            this->exx_lri.get(),
+#endif 
+            this->gint, this->pot, this->kv, &this->paraX_, &this->paraC_, &this->paraMat_);
+        ops_R.ops->hPsi(*this->X, R);  // act each operators on X
+    }
+
 }
 
 template<typename T, typename TR>

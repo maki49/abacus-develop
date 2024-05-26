@@ -99,13 +99,14 @@ namespace hamilt
         // 2. transition electron density
         // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
         double** rho_trans;
-        LR_Util::new_p2(rho_trans, nspin, this->pot->nrxx);
-        for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], this->pot->nrxx);
+        const int& nrxx = this->pot->get_nrxx();
+        LR_Util::new_p2(rho_trans, nspin, nrxx);
+        for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], nrxx);
         Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho, false);
         this->gint->cal_gint(&inout_rho);
 
         // 3. v_hxc = f_hxc * rho_trans
-        ModuleBase::matrix vr_hxc(nspin, this->pot->nrxx);   //grid
+        ModuleBase::matrix vr_hxc(nspin, nrxx);   //grid
         this->pot->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
         LR_Util::delete_p2(rho_trans, nspin);
 
@@ -113,7 +114,7 @@ namespace hamilt
         // V(R) for each spin
         for (int is = 0;is < nspin;++is)
         {
-            double* vr_hxc_is = &vr_hxc.c[is * this->pot->nrxx];   //v(r) at current spin
+            double* vr_hxc_is = &vr_hxc.c[is * nrxx];   //v(r) at current spin
             Gint_inout inout_vlocal(vr_hxc_is, is, Gint_Tools::job_type::vlocal);
             this->gint->get_hRGint()->set_zero();
             this->gint->cal_gint(&inout_vlocal);
@@ -144,23 +145,24 @@ namespace hamilt
 
                 // 2. transition electron density
                 double** rho_trans;
-                LR_Util::new_p2(rho_trans, nspin, this->pot->nrxx);
-                for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], this->pot->nrxx);
+                const int& nrxx = this->pot->get_nrxx();
+                LR_Util::new_p2(rho_trans, nspin, nrxx);
+                for (int is = 0;is < nspin;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], nrxx);
                 Gint_inout inout_rho((double**)nullptr, rho_trans, Gint_Tools::job_type::rho, false);
                 this->gint->cal_gint(&inout_rho);
-                // print_grid_nonzero(rho_trans[0], this->pot->nrxx, 10, "rho_trans");
+                // print_grid_nonzero(rho_trans[0],nrxx, 10, "rho_trans");
 
                 // 3. v_hxc = f_hxc * rho_trans
-                ModuleBase::matrix vr_hxc(nspin, this->pot->nrxx);   //grid
+                ModuleBase::matrix vr_hxc(nspin, nrxx);   //grid
                 this->pot->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
-                // print_grid_nonzero(vr_hxc.c, this->pot->nrxx, 10, "vr_hxc");
+                // print_grid_nonzero(vr_hxc.c,nrxx, 10, "vr_hxc");
 
                 LR_Util::delete_p2(rho_trans, nspin);
 
                 // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\mu(r)
                 for (int is = 0;is < nspin;++is)
                 {
-                    double* vr_hxc_is = &vr_hxc.c[is * this->pot->nrxx];   //v(r) at current spin
+                    double* vr_hxc_is = &vr_hxc.c[is * nrxx];   //v(r) at current spin
                     Gint_inout inout_vlocal(vr_hxc_is, is, Gint_Tools::job_type::vlocal);
                     this->gint->get_hRGint()->set_zero();
                     this->gint->cal_gint(&inout_vlocal);

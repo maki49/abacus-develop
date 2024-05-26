@@ -58,7 +58,7 @@ namespace hamilt
 
         // virtual psi::Psi<T> act(const psi::Psi<T>& psi_in) const override;
         virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
-    private:
+    protected:
         template<typename TR>   //T=double, TR=double; T=std::complex<double>, TR=std::complex<double>/double
         void initialize_HR(hamilt::HContainer<TR>* hR, const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals* pmat) const
         {

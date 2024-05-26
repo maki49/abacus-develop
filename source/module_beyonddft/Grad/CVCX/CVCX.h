@@ -41,7 +41,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<T, psi::DEVICE_CPU>& AX_istate,
-        const bool add_on = true);
+        const bool add_on = true,
+        const T factor = (T)1.0);
 #endif
     // virt
     ///  $\sum_{b\mu\nu}X^*_{bi}C^*_{\mu b}K_{\mu\nu}C_{\nu a}$
@@ -77,6 +78,7 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<T, psi::DEVICE_CPU>& AX_istate,
-        const bool add_on = true);
+        const bool add_on = true,
+        const T factor = (T)1.0);
 #endif
 }

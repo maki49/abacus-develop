@@ -20,7 +20,7 @@ namespace elecstate
         if (XC_Functional::get_func_type() == 1 || XC_Functional::get_func_type() == 2 || XC_Functional::get_func_type() == 4)//LDA or GGA or HYBGGA
             if (1 == nspin)// for LDA-spin0, just fxc*rho where fxc=v2rho2; for GGA, v2rho2 has been replaced by the true fxc
                 for (int ir = 0;ir < nrxx;++ir)
-                    v_eff(0, ir) += this->xc_kernel_components_.get_kernel("v3rho3")(0, ir) * rho[0][ir] * rho[0][ir];
+                    v_eff(0, ir) += this->xc_kernel_components_.get_kernel("v3rho3").at(ir) * rho[0][ir] * rho[0][ir];
             else  //remain for spin 4
                 throw std::domain_error("nspin =" + std::to_string(nspin)
                     + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));

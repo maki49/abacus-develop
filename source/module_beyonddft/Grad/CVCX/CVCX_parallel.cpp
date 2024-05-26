@@ -18,7 +18,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<double, psi::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const double factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_occ_pblas");
         assert(pmat.comm_2D == pc.comm_2D);
@@ -65,7 +66,7 @@ namespace hamilt
             pdgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cx.data<double>(), &i1, &i1, pcx.desc,
                 cv.data<double>(), &i1, &i1, pcv.desc,
-                add_on ? &one : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
         }
     }
 
@@ -81,7 +82,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const std::complex<double> factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_occ_pblas");
         assert(pmat.comm_2D == pc.comm_2D);
@@ -129,7 +131,7 @@ namespace hamilt
             pzgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc,
                 cv.data<std::complex<double>>(), &i1, &i1, pcv.desc,
-                add_on ? &one : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
         }
     }
 
@@ -145,7 +147,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<double, psi::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const double factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_virt_pblas");
         assert(pmat.comm_2D == pc.comm_2D);
@@ -193,7 +196,7 @@ namespace hamilt
             pdgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cv.data<double>(), &i1, &i1, pcv.desc,
                 cx.data<double>(), &i1, &i1, pcx.desc,
-                add_on ? &one : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
         }
     }
 
@@ -209,7 +212,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<std::complex<double>, psi::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const std::complex<double> factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_virt_pblas");
         assert(pmat.comm_2D == pc.comm_2D);
@@ -257,7 +261,7 @@ namespace hamilt
             pzgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cv.data<std::complex<double>>(), &i1, &i1, pcv.desc,
                 cx.data<std::complex<double>>(), &i1, &i1, pcx.desc,
-                add_on ? &one : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
         }
     }
 }

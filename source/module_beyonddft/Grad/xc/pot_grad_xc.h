@@ -1,13 +1,12 @@
 #pragma once
-#include "module_elecstate/potentials/pot_base.h"
-#include "module_elecstate/potentials/H_Hartree_pw.h"
 #include "module_beyonddft/potentials/kernel.h"
+#include "module_beyonddft/potentials/pot_hxc_lrtd.h"
 
 namespace elecstate
 {
     /// the "potential" contributing to RHS of Z-vector equation
     /// from the derivative of xc kernel
-    class PotGradXCLR : public PotBase
+    class PotGradXCLR : public PotHxcLR
     {
     public:
         // constructor for exchange-correlation kernel
