@@ -9,10 +9,15 @@ namespace elecstate
     {
     public:
         // constructor for exchange-correlation kernel
-        PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/);
+        PotHxcLR(const std::string& xc_kernel_in,
+            const ModulePW::PW_Basis* rho_basis_in,
+            const UnitCell* ucell_in,
+            const Charge* chg_gs/*ground state*/,
+            const bool& grad = false);
         ~PotHxcLR() {}
         void cal_v_eff(const Charge* chg/*excited state*/, const UnitCell* ucell, ModuleBase::matrix& v_eff) override {};
         void cal_v_eff(double** rho, const UnitCell* ucell, ModuleBase::matrix& v_eff);
+        const KernelXC& get_kernel_componets() const { return this->xc_kernel_components_; }
         int nrxx;
         int nspin;
         PotHartree* pot_hartree;

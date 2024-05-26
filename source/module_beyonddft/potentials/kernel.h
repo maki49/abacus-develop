@@ -12,15 +12,16 @@ namespace elecstate
         KernelXC() {};
         ~KernelXC() {};
 
-        void cal_kernel(const Charge* chg_gs/* ground state*/, const UnitCell* ucell, int& nspin);
+        void cal_kernel(const Charge* chg_gs/* ground state*/, const UnitCell* ucell,
+            const int& nspin, const bool& grad = false);
 
-        const std::vector<double>& get_kernel(const std::string& name) { return kernel_set_[name]; }
-        const std::vector<double>& get_factor_rho() { return to_mul_rho_; }
-        const double& get_factor_rho(const int& index) { return to_mul_rho_.at(index); }
-        const std::vector<ModuleBase::Vector3<double>>& get_factor_drho() { return to_mul_drho_; }
-        const ModuleBase::Vector3<double>& get_factor_drho(const int& index) { return to_mul_drho_.at(index); }
-        const std::vector<double>& get_factor_d2rho() { return to_mul_d2rho_; }
-        const double& get_factor_d2rho(const int& index) { return to_mul_d2rho_.at(index); }
+        const std::vector<double>& get_kernel(const std::string& name) const { return kernel_set_.at(name); }
+        const std::vector<double>& get_factor_rho()const { return to_mul_rho_; }
+        const double& get_factor_rho(const int& index)const { return to_mul_rho_.at(index); }
+        const std::vector<ModuleBase::Vector3<double>>& get_factor_drho()const { return to_mul_drho_; }
+        const ModuleBase::Vector3<double>& get_factor_drho(const int& index) const { return to_mul_drho_.at(index); }
+        const std::vector<double>& get_factor_d2rho() const { return to_mul_d2rho_; }
+        const double& get_factor_d2rho(const int& index) const { return to_mul_d2rho_.at(index); }
 
 
     protected:

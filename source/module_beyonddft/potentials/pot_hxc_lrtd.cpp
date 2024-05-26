@@ -8,7 +8,8 @@
 namespace elecstate
 {
     // constructor for exchange-correlation kernel
-    PotHxcLR::PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/)
+    PotHxcLR::PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in,
+        const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/, const bool& grad)
         :xc_kernel(xc_kernel_in)
     {
         std::cout << "xc_kernel_in: " << xc_kernel_in << std::endl;
@@ -27,7 +28,7 @@ namespace elecstate
         if (local_xc.find(this->xc_kernel) != local_xc.end())
         {
             XC_Functional::set_xc_type(this->xc_kernel);
-            this->xc_kernel_components_.cal_kernel(chg_gs, ucell_in, this->nspin);
+            this->xc_kernel_components_.cal_kernel(chg_gs, ucell_in, this->nspin, grad);
         }
     }
 

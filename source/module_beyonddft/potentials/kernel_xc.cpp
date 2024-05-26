@@ -262,10 +262,13 @@ void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, cons
 }
 #endif
 
-void elecstate::KernelXC::cal_kernel(const Charge* chg_gs/* ground state*/, const UnitCell* ucell, int& nspin)
+void elecstate::KernelXC::cal_kernel(const Charge* chg_gs/* ground state*/, const UnitCell* ucell,
+    const int& nspin, const bool& grad)
 {
 #ifdef USE_LIBXC
     this->f_xc_libxc(nspin, ucell->omega, ucell->tpiba, chg_gs);
+    if (grad)
+        this->g_xc_libxc(nspin, ucell->omega, ucell->tpiba, chg_gs);
 #else
     ModuleBase::WARNING_QUIT("KernelXC", "to calculate xc-kernel in LR-TDDFT, compile with LIBXC");
 #endif
