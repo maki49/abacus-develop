@@ -49,9 +49,7 @@ class Operator
     virtual hpsi_info hPsi(hpsi_info& input)const;
 
     /// range-independent version of hPsi
-    // (need to be override in some derived class, but not written as pure virtual function 
-    // to avoid error in other derived class)
-    virtual void hPsi(const psi::Psi<T, Device>& psi_in, psi::Psi<T, Device>& psi_out)const {};
+    virtual void hPsi(const psi::Psi<T, Device>& psi_in, psi::Psi<T, Device>& psi_out)const;
 
     virtual void init(const int ik_in);
 

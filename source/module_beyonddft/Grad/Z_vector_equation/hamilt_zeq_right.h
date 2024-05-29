@@ -39,17 +39,17 @@ namespace hamilt
             // 1. $2\sum_bX_{ib}K_{ab}[D^X]-2\sum_jX_{ja}K_{ij}[D^X]$
             this->ops = new OperatorLRHxcCommon<T>(nspin, naos, nocc, nvirt, psi_ks_in,
                 this->DM_trans, gint_in, pot_in, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in,
-                DTYPE::X, ATYPE::CXC, 2.0);
+                DTYPE::X, ATYPE::CXC, -2.0);
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
             OperatorLRHxcCommon<T>* op_ht = new OperatorLRHxcCommon<T>(nspin, naos, nocc, nvirt, psi_ks_in,
                 this->DM_trans, gint_in, pot_in, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in,
-                DTYPE::Diff, ATYPE::CC, 2.0);
+                DTYPE::Diff, ATYPE::CC, -2.0);
             this->ops->add(op_ht);
             // 3. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
-            this->pot_grad = new elecstate::PotGradXCLR(pot_in->get_kernel_componets(), pot_in->get_rho_basis(), &ucell_in, nullptr);
+            this->pot_grad = new elecstate::PotGradXCLR(pot_in->get_kernel_componets(), pot_in->get_rho_basis(), &ucell_in, pot_in->nrxx);
             OperatorLRHxcCommon<T>* op_gxc = new OperatorLRHxcCommon<T>(nspin, naos, nocc, nvirt, psi_ks_in,
                 this->DM_trans, gint_in, this->pot_grad, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in,
-                DTYPE::X, ATYPE::CC, 2.0);
+                DTYPE::X, ATYPE::CC, -2.0);
 #ifdef __EXX
             // add EXX operators here
 #endif
@@ -60,8 +60,6 @@ namespace hamilt
             delete this->ops;
             for (auto& d : this->DM_trans)delete d;
         };
-
-        HContainer<T>* getHR() { return this->hR; }
 
     private:
         int nocc;

@@ -15,24 +15,6 @@ inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); 
 namespace hamilt
 {
     template<typename T, typename Device>
-    void OperatorLRHxcCommon<T, Device>::hPsi(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out) const
-    {
-        auto call_act = [&, this](const Operator<T>* op) -> void {
-            assert(op->get_act_type() == 2);
-            op->act(psi_in, psi_out, psi_in.get_nbands());
-            };
-        ModuleBase::timer::tick("Operator", "hPsi");
-        call_act(this);
-        Operator<T>* node((Operator<T>*)this->next_op);
-        while (node != nullptr)
-        {
-            call_act(node);
-            node = (Operator<T>*)(node->next_op);
-        }
-        ModuleBase::timer::tick("Operator", "hPsi");
-    }
-
-    template<typename T, typename Device>
     void OperatorLRHxcCommon<T, Device>::act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const
     {
         if (psi_in.get_k_first())
@@ -126,6 +108,9 @@ namespace hamilt
             }
             // if (this->first_print) LR_Util::print_psi_bandfirst(psi_out_bfirst, "5.AX", ib);
         }
+        // reset the pointers
+        psi_in_bfirst.fix_kb(0, 0);
+        psi_out_bfirst.fix_kb(0, 0);
     }
 
     template class OperatorLRHxcCommon<double>;

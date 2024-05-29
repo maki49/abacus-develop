@@ -7,8 +7,8 @@
 namespace elecstate
 {
     // constructor for exchange-correlation kernel
-    PotGradXCLR::PotGradXCLR(const KernelXC& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/)
-        :xc_kernel_components_(xc_kernel_in), nrxx(chg_gs->nrxx),
+    PotGradXCLR::PotGradXCLR(const KernelXC& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const int& nrxx)
+        :xc_kernel_components_(xc_kernel_in), nrxx(nrxx),
         nspin((GlobalV::NSPIN == 1 || (GlobalV::NSPIN == 4 && !GlobalV::DOMAG && !GlobalV::DOMAG_Z)) ? 1 : 2)
     {}
 

@@ -128,7 +128,5 @@ namespace ModuleESolver
 
         std::unique_ptr<TwoCenterBundle> two_center_bundle;
 #endif
-
-        bool cal_grad = false;
     };
 }

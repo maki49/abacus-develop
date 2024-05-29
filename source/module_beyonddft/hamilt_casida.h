@@ -59,8 +59,6 @@ namespace hamilt
             for (auto& d : this->DM_trans)delete d;
         };
 
-        HContainer<T>* getHR() { return this->hR; }
-
         virtual std::vector<T> matrix() override;
 
     private:

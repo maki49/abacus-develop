@@ -12,9 +12,8 @@
 #include "module_io/print_info.h"
 #include "module_cell/module_neighbor/sltk_atom_arrange.h"
 #include "module_beyonddft/utils/lr_util_print.h"
-
 // gradient
-#include "module_beyonddft/Grad/Z_vector_equation/hamilt_zeq_right.h"
+#include "module_beyonddft/Grad/Z_vector_equation/zeq_solver.h"
 
 #ifdef __EXX
 template<>
@@ -332,19 +331,16 @@ void ModuleESolver::ESolver_LRTD<T, TR>::post_process()
     spectrum.optical_absorption(freq, eta);
 
     // cal analytic gradient
-    if (this->cal_grad)
+    if (this->input.lr_grad)
     {
-        // 1. the right-hand side of Z-vector equation
-        psi::Psi<T> R(this->kv.nks, this->nstates, this->paraX_.get_local_size(), nullptr, false);
-        hamilt::Z_vector_R<T> ops_R(this->nspin, this->nbasis, this->nocc, this->nvirt,
+        const psi::Psi<T>& Z = hamilt::Z_vector(this->X, this->nstates,
+            this->nspin, this->nbasis, this->nocc, this->nvirt,
             this->ucell, GlobalC::GridD, this->psi_ks, this->eig_ks,
-#ifdef __EXX
+#ifdef __EXX    
             this->exx_lri.get(),
-#endif 
-            this->gint, this->pot, this->kv, &this->paraX_, &this->paraC_, &this->paraMat_);
-        ops_R.ops->hPsi(*this->X, R);  // act each operators on X
+#endif
+            this->gint, this->pot, this->kv, this->paraX_, this->paraC_, this->paraMat_);
     }
-
 }
 
 template<typename T, typename TR>
@@ -443,7 +439,8 @@ void ModuleESolver::ESolver_LRTD<T, TR>::init_pot(const Charge& chg_gs)
         this->pot = new elecstate::PotHxcLR(xc_kernel,
             this->pw_rho,
             &ucell,
-            &chg_gs);
+            &chg_gs,
+            this->input.lr_grad);
     };
 }
 

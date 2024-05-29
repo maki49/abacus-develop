@@ -2391,6 +2391,10 @@ bool Input::Read(const std::string& fn)
         {
             read_value(ifs, out_wfc_lr);
         }
+        else if (strcmp("lr_grad", word) == 0)
+        {
+            read_value(ifs, lr_grad);
+        }
         //----------------------------------------------------------------------------------
         else
         {

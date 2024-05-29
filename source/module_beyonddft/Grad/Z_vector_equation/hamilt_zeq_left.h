@@ -1,19 +1,20 @@
 #pragma once
 #include "module_hamilt_general/hamilt.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_beyonddft/operator_casida/operator_lr_diag.h"
-#include "module_beyonddft/operator_casida/operator_lr_hxc.h"
-#include "module_beyonddft/operator_casida/operator_lr_exx.h"
+#include "module_beyonddft/Grad/xc/pot_grad_xc.h"
+#include "module_beyonddft/Grad/operator_lr_hxc_common/operator_lr_hxc_common.h"
+// #include "module_beyonddft/Grad/operator_lr_hxc_common/operator_lr_exx_common.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
 namespace hamilt
 {
     template<typename T>
-    class HamiltCasidaLR : public Hamilt<T, psi::DEVICE_CPU>
+    class Z_vector_L : public Hamilt<T, psi::DEVICE_CPU>
     {
+        using DTYPE = typename hamilt::OperatorLRHxcCommon<T>::DM_TYPE;
+        using ATYPE = typename hamilt::OperatorLRHxcCommon<T>::AX_TYPE;
     public:
         template<typename TGint>
-        HamiltCasidaLR(std::string& xc_kernel,
-            const int& nspin,
+        Z_vector_L(const int& nspin,
             const int& naos,
             const int& nocc,
             const int& nvirt,
@@ -31,37 +32,27 @@ namespace hamilt
             Parallel_2D* pc_in,
             Parallel_Orbitals* pmat_in) : nocc(nocc), nvirt(nvirt), pX(pX_in), nks(kv_in.nks)
         {
-            ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
-            this->classname = "HamiltCasidaLR";
+            ModuleBase::TITLE("Z_vector_L", "Z_vector_L");
+            this->classname = "Z_vector_L";
             this->DM_trans.resize(1);
             this->DM_trans[0] = new elecstate::DensityMatrix<T, T>(&kv_in, pmat_in, nspin);
-            // add the diag operator  (the first one)
+            // 1. $2\sum_bX_{ib}K_{ab}[D^X]-2\sum_jX_{ja}K_{ij}[D^X]$
             this->ops = new OperatorLRDiag<T>(eig_ks, pX_in, kv_in.nks, nspin, nocc, nvirt);
-            //add Hxc operator
-            OperatorLRHxc<T>* lr_hxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
-                this->DM_trans, gint_in, pot_in, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in);
-            this->ops->add(lr_hxc);
+            // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
+            OperatorLRHxcCommon<T>* op_hz = new OperatorLRHxcCommon<T>(nspin, naos, nocc, nvirt, psi_ks_in,
+                this->DM_trans, gint_in, pot_in, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in,
+                DTYPE::X, ATYPE::CC, 2.0);
+            this->ops->add(op_hz);
 #ifdef __EXX
-            if (xc_kernel == "hf")
-            {   //add Exx operator
-                Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc, nvirt, ucell_in, psi_ks_in,
-                    this->DM_trans, exx_lri_in, kv_in, pX_in, pc_in, pmat_in);
-                this->ops->add(lr_exx);
-            }
+            // add EXX operators here
 #endif
         }
-        ~HamiltCasidaLR()
+        ~Z_vector_L()
         {
-            if (this->ops != nullptr)
-            {
-                delete this->ops;
-            }
+            delete this->pot_grad;
+            delete this->ops;
             for (auto& d : this->DM_trans)delete d;
         };
-
-        HContainer<T>* getHR() { return this->hR; }
-
-        virtual std::vector<T> matrix() override;
 
     private:
         int nocc;
@@ -74,5 +65,7 @@ namespace hamilt
         /// Hxc only: size=1, calculate on the same address for each bands
         /// Hxc+Exx: size=nbands, store the result of each bands for common use
         std::vector<elecstate::DensityMatrix<T, T>*> DM_trans;
+
+        elecstate::PotGradXCLR* pot_grad = nullptr;
     };
 }

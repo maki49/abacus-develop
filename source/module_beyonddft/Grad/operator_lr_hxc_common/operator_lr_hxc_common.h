@@ -47,8 +47,8 @@ namespace hamilt
         // virtual psi::Psi<T> act(const psi::Psi<T>& psi_in) const override;
         virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
 
-        /// range-independent version of hPsi
-        virtual void hPsi(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out)const override;
+        /// range-independent version of hPsi (have been put into the base class)
+        // virtual void hPsi(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out)const override;
 
     protected:
 

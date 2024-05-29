@@ -1,3 +1,4 @@
+#pragma once
 #include <ATen/tensor.h>
 #include "module_psi/psi.h"
 namespace LR_Util

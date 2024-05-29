@@ -393,6 +393,7 @@
     - [nstates](#nstates)
     - [abs\_wavelen\_range](#abs_wavelen_range)
     - [out\_wfc\_lr](#out_wfc_lr)
+    - [lr\_grad](#lr_grad)
 [back to top](#full-list-of-input-keywords)
 
 ## System variables
@@ -3684,5 +3685,11 @@ Currently supported: `RPA`, `LDA`, `PBE`, `HSE`, `HF`.
 The output files are `OUT.${suffix}/Excitation_Energy.dat` and `OUT.${suffix}/Excitation_Amplitude_${processor_rank}.dat`.
 - **Default**: False
 
+### lr_grad
+
+- **Type**: Boolean
+- **Description**: Whether to calculate the analytical gradient of the LR-TDDFT calculation.
+If set to true, please make sure your [Libxc](https://libxc.gitlab.io/) is compiled with the `-DDISABLE_KXC=OFF`.
+- **Default**: False
 
 [back to top](#full-list-of-input-keywords)

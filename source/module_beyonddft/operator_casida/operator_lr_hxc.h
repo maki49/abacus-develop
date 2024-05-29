@@ -133,7 +133,7 @@ namespace hamilt
         const UnitCell& ucell;
         Grid_Driver& gd;
 
-        bool tdm_sym = false; ///< whether transition density matrix is symmetric
+        bool tdm_sym = true; ///< whether transition density matrix is symmetric
 
         /// test
         mutable bool first_print = true;
