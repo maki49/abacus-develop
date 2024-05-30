@@ -57,8 +57,8 @@ namespace hsolver
         {
             // 3. set precondition and diagethr
             for (int i = 0;i < psi.get_nk() * psi.get_nbasis();++i)precondition[i] = static_cast<Real>(1.0);
-            // T ethr = this->set_diagether(1, 1, static_cast<T>(1e-2));
-            std::cout << "ethr: " << this->diag_ethr << std::endl;
+            hsolver::DiagoIterAssist<T, Device>::PW_DIAG_THR = this->diag_ethr;
+            std::cout << "ethr: " << hsolver::DiagoIterAssist<T, Device>::PW_DIAG_THR << std::endl;
             // 4. solve Hamiltonian
             if (this->method == "dav_subspace")
             {
