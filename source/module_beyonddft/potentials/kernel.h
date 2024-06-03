@@ -15,12 +15,7 @@ namespace elecstate
         void cal_kernel(const Charge* chg_gs/* ground state*/, const UnitCell* ucell, int& nspin);
 
         const std::vector<double>& get_kernel(const std::string& name) { return kernel_set_[name]; }
-        const std::vector<double>& get_factor_rho() { return to_mul_rho_; }
-        const double& get_factor_rho(const int& index) { return to_mul_rho_.at(index); }
-        const std::vector<ModuleBase::Vector3<double>>& get_factor_drho() { return to_mul_drho_; }
-        const ModuleBase::Vector3<double>& get_factor_drho(const int& index) { return to_mul_drho_.at(index); }
-        const std::vector<double>& get_factor_d2rho() { return to_mul_d2rho_; }
-        const double& get_factor_d2rho(const int& index) { return to_mul_d2rho_.at(index); }
+        const std::vector<ModuleBase::Vector3<double>>& get_grad_kernel(const std::string& name) { return grad_kernel_set_[name]; }
 
 
     protected:
@@ -29,9 +24,7 @@ namespace elecstate
 
         const ModulePW::PW_Basis* rho_basis_ = nullptr;
         std::map<std::string, std::vector<double>> kernel_set_; // [kernel_type][nrxx][nspin]
-        std::vector<double> to_mul_rho_;
-        std::vector<ModuleBase::Vector3<double>> to_mul_drho_;
-        std::vector<double> to_mul_d2rho_;
+        std::map<std::string, std::vector<ModuleBase::Vector3<double>>> grad_kernel_set_;// [kernel_type][nrxx][nspin],  intermediate terms for GGA
     };
 }
 

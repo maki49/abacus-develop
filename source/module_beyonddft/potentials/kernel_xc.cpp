@@ -144,114 +144,76 @@ void elecstate::KernelXC::f_xc_libxc(const int& nspin, const double& omega, cons
             // some formulas for GGA
             if (func.info->family == XC_FAMILY_GGA || func.info->family == XC_FAMILY_HYB_GGA)
             {
-                this->to_mul_rho_.resize(nrxx);
-                this->to_mul_drho_.resize(nrxx);
-                this->to_mul_d2rho_.resize(nrxx);
                 const std::vector<double>& v2r2 = this->kernel_set_["v2rho2"];
                 const std::vector<double>& v2rs = this->kernel_set_["v2rhosigma"];
                 const std::vector<double>& v2s2 = this->kernel_set_["v2sigma2"];
                 const std::vector<double>& vs = this->kernel_set_["vsigma"];
                 const double tpiba2 = tpiba * tpiba;
-                // method 1
-                // if (1 == nspin)
-                // {
-                //     // ============= to be multiplied by transition density ===========
-                //     // 1. $\nabla\cdot(f^{\rho\sigma}*\nabla\rho)$
-                //     std::vector<double> div_v2rhosigma_gdrho_r(nrxx);
-                //     std::vector<ModuleBase::Vector3<double>> v2rhosigma_gdrho_r(nrxx);
-                //     for (int ir = 0; ir < nrxx; ++ir)v2rhosigma_gdrho_r[ir] = gdr[0][ir] * v2rs.at(ir);
-                //     XC_Functional::grad_dot(v2rhosigma_gdrho_r.data(), div_v2rhosigma_gdrho_r.data(), chg_gs->rhopw, tpiba);
-                //     // 2. $\nabla^2(f^{\sigma\sigma}*\sigma)$
-                //     std::vector<double> v2sigma2_sigma_r(nrxx);
-                //     for (int ir = 0; ir < nrxx; ++ir) v2sigma2_sigma_r[ir] = v2s2.at(ir) * sigma[ir];
-                //     gdr[0].resize(nrxx);
-                //     LR_Util::laplace(v2sigma2_sigma_r.data(), v2sigma2_sigma_r.data(), *(chg_gs->rhopw), tpiba2);
-                //     // 3. $\nabla^2(v^\sigma)$
-                //     std::vector<double> lap_vsigma(nrxx);
-                //     LR_Util::laplace(vs.data(), lap_vsigma.data(), *(chg_gs->rhopw), tpiba2);
-                //     // add up
-                //     BlasConnector::axpy(nrxx, 1.0, v2r2.data(), 1, to_mul_rho_.data(), 1);
-                //     BlasConnector::axpy(nrxx, -4.0, div_v2rhosigma_gdrho_r.data(), 1, to_mul_rho_.data(), 1);
-                //     BlasConnector::axpy(nrxx, 4.0, v2sigma2_sigma_r.data(), 1, to_mul_rho_.data(), 1);
-                //     BlasConnector::axpy(nrxx, 2.0, lap_vsigma.data(), 1, to_mul_rho_.data(), 1);
 
-                //     // ============= to be multiplied by transition density gradient===========
-                //     // 1. $-2 f^{\rho\sigma}*\nabla\rho$
-                //     std::vector<ModuleBase::Vector3<double>> v2rhosigma_gdrho(nrxx);
-                //     for (int ir = 0; ir < nrxx; ++ir)v2rhosigma_gdrho[ir] = -2.0 * gdr[0][ir] * v2rs.at(ir);
-                //     // 2. $\nabla(4f^{\sigma\sigma}*sigma+2v^{\sigma})$
-                //     std::vector<double> v2sigma2_sigma_vsigma(nrxx);
-                //     for (int ir = 0; ir < nrxx; ++ir)v2sigma2_sigma_vsigma[ir] = 4.0 * sigma.at(ir) * v2s2.at(ir) + 2.0 * vs.at(ir);
-                //     std::vector<ModuleBase::Vector3<double>> grad_v2sigma2_sigma_vsigma(nrxx);
-                //     LR_Util::grad(v2sigma2_sigma_vsigma.data(), grad_v2sigma2_sigma_vsigma.data(), *(chg_gs->rhopw), tpiba);
-                //     // add up
-                //     for (int ir = 0; ir < nrxx; ++ir)
-                //         this->to_mul_drho_[ir] = v2rhosigma_gdrho[ir] + grad_v2sigma2_sigma_vsigma[ir];
-                // }
                 if (1 == nspin)
                 {
-                    // ============= to be multiplied by transition rho ===========
-                    // 1. $\nabla\cdot(f^{\rho\sigma}*\nabla\rho)$
-                    std::vector<double> div_v2rhosigma_gdrho_r(nrxx);
-                    std::vector<ModuleBase::Vector3<double>> v2rhosigma_gdrho_r(nrxx);
-                    for (int ir = 0; ir < nrxx; ++ir)v2rhosigma_gdrho_r[ir] = gdr[0][ir] * v2rs.at(ir);
-                    XC_Functional::grad_dot(v2rhosigma_gdrho_r.data(), div_v2rhosigma_gdrho_r.data(), chg_gs->rhopw, tpiba);
-                    BlasConnector::axpy(nrxx, 1.0, v2r2.data(), 1, to_mul_rho_.data(), 1);
-                    // BlasConnector::axpy(nrxx, -2.0, div_v2rhosigma_gdrho_r.data(), 1, to_mul_rho_.data(), 1);
-
-                    // ============= to be multiplied by transition drho and d2rho===========
-                    // 1. $\nabla(4f^{\sigma\sigma}*\sigma+2v^{\sigma})$ and its gradient
-                    for (int ir = 0; ir < nrxx; ++ir) to_mul_d2rho_[ir] = -(4.0 * sigma.at(ir) * v2s2.at(ir) + 2.0 * vs.at(ir));
-                    LR_Util::grad(to_mul_d2rho_.data(), to_mul_drho_.data(), *(chg_gs->rhopw), tpiba);
-
+                    // 0. drho
+                    this->grad_kernel_set_.emplace("drho_gs", std::vector<ModuleBase::Vector3<double>>(nrxx));
+                    for (int ir = 0; ir < nrxx; ++ir)this->grad_kernel_set_["drho_gs"][ir] = gdr[0][ir];
+                    // 1. $2f^{\rho\sigma}*\nabla\rho$
+                    this->grad_kernel_set_.emplace("2_v2rhosigma_drho", std::vector<ModuleBase::Vector3<double>>(nrxx));
+                    for (int ir = 0; ir < nrxx; ++ir)this->grad_kernel_set_["2_v2rhosigma_drho"][ir] = gdr[0][ir] * v2rs.at(ir) * 2.;
+                    // 2. $4f^{\sigma\sigma}*\nabla\rho$
+                    this->grad_kernel_set_.emplace("4_v2sigma2_drho", std::vector<ModuleBase::Vector3<double>>(nrxx));
+                    for (int ir = 0; ir < nrxx; ++ir)this->grad_kernel_set_["4_v2sigma2_drho"][ir] = sigma.at(ir) * v2s2.at(ir) * 4.;
                 }
-                else if (2 == nspin)    // wrong, to be fixed
+                // else if (2 == nspin)    // wrong, to be fixed
+                // {
+                //     // 1. $\nabla\cdot(f^{\rho\sigma}*\nabla\rho)$
+                //     std::vector<double> div_v2rhosigma_gdrho_r(3 * nrxx);
+                //     std::vector<ModuleBase::Vector3<double>> v2rhosigma_gdrho_r(3 * nrxx);
+                //     for (int ir = 0; ir < nrxx; ++ir)
+                //     {
+                //         v2rhosigma_gdrho_r[ir] = gdr[0][ir] * v2rs.at(ir * 6) * 4.0
+                //             + gdr[1][ir] * v2rs.at(ir * 6 + 1) * 2.0;   //up-up
+                //         v2rhosigma_gdrho_r[nrxx + ir] = gdr[0][ir] * (v2rs.at(ir * 6 + 3) * 2.0 + v2rs.at(ir * 6 + 1))
+                //             + gdr[1][ir] * (v2rs.at(ir * 6 + 2) * 2.0 + v2rs.at(ir * 6 + 4));   //up-down
+                //         v2rhosigma_gdrho_r[2 * nrxx + ir] = gdr[1][ir] * v2rs.at(ir * 6 + 5) * 4.0
+                //             + gdr[0][ir] * v2rs.at(ir * 6 + 4) * 2.0;   //down-down
+                //     }
+                //     for (int isig = 0;isig < 3;++isig)
+                //         XC_Functional::grad_dot(v2rhosigma_gdrho_r.data() + isig * nrxx, div_v2rhosigma_gdrho_r.data() + isig * nrxx, chg_gs->rhopw, tpiba);
+                //     // 2. $\nabla^2(f^{\sigma\sigma}*\sigma)$
+                //     std::vector<double> v2sigma2_sigma_r(3 * nrxx);
+                //     for (int ir = 0; ir < nrxx; ++ir)
+                //     {
+                //         v2sigma2_sigma_r[ir] = v2s2.at(ir * 6) * sigma[ir * 3] * 4.0
+                //             + v2s2.at(ir * 6 + 1) * sigma[ir * 3 + 1] * 4.0
+                //             + v2s2.at(ir * 6 + 3) * sigma[ir * 3 + 2];   //up-up
+                //         v2sigma2_sigma_r[nrxx + ir] = v2s2.at(ir * 6 + 1) * sigma[ir * 3] * 2.0
+                //             + v2s2.at(ir * 6 + 4) * sigma[ir * 3 + 2] * 2.0
+                //             + (v2s2.at(ir * 6 + 2) * 4.0 + v2s2.at(ir * 6 + 3)) * sigma[ir * 3 + 1];   //up-down
+                //         v2sigma2_sigma_r[2 * nrxx + ir] = v2s2.at(ir * 6 + 5) * sigma[ir * 3 + 2] * 4.0
+                //             + v2s2.at(ir * 6 + 4) * sigma[ir * 3 + 1] * 4.0
+                //             + v2s2.at(ir * 6 + 3) * sigma[ir * 3];   //down-down
+                //     }
+                //     for (int isig = 0;isig < 3;++isig)
+                //         LR_Util::laplace(v2sigma2_sigma_r.data() + isig * nrxx, v2sigma2_sigma_r.data() + isig * nrxx, *(chg_gs->rhopw), tpiba2);
+                //     // 3. $\nabla^2(v^\sigma)$
+                //     std::vector<double> lap_vsigma(3 * nrxx);
+                //     for (int ir = 0;ir < nrxx;++ir)
+                //     {
+                //         lap_vsigma[ir] = vs.at(ir * 3) * 2.0;
+                //         lap_vsigma[nrxx + ir] = vs.at(ir * 3 + 1);
+                //         lap_vsigma[2 * nrxx + ir] = vs.at(ir * 3 + 2) * 2.0;
+                //     }
+                //     for (int isig = 0;isig < 3;++isig)
+                //         LR_Util::laplace(lap_vsigma.data() + isig * nrxx, lap_vsigma.data() + isig * nrxx, *(chg_gs->rhopw), tpiba2);
+                //     // add to v2rho2
+                //     BlasConnector::axpy(3 * nrxx, 1.0, v2r2.data(), 1, to_mul_rho_.data(), 1);
+                //     BlasConnector::axpy(3 * nrxx, -1.0, div_v2rhosigma_gdrho_r.data(), 1, to_mul_rho_.data(), 1);
+                //     BlasConnector::axpy(3 * nrxx, 1.0, v2sigma2_sigma_r.data(), 1, to_mul_rho_.data(), 1);
+                //     BlasConnector::axpy(3 * nrxx, 1.0, lap_vsigma.data(), 1, to_mul_rho_.data(), 1);
+                // }
+                else
                 {
-                    // 1. $\nabla\cdot(f^{\rho\sigma}*\nabla\rho)$
-                    std::vector<double> div_v2rhosigma_gdrho_r(3 * nrxx);
-                    std::vector<ModuleBase::Vector3<double>> v2rhosigma_gdrho_r(3 * nrxx);
-                    for (int ir = 0; ir < nrxx; ++ir)
-                    {
-                        v2rhosigma_gdrho_r[ir] = gdr[0][ir] * v2rs.at(ir * 6) * 4.0
-                            + gdr[1][ir] * v2rs.at(ir * 6 + 1) * 2.0;   //up-up
-                        v2rhosigma_gdrho_r[nrxx + ir] = gdr[0][ir] * (v2rs.at(ir * 6 + 3) * 2.0 + v2rs.at(ir * 6 + 1))
-                            + gdr[1][ir] * (v2rs.at(ir * 6 + 2) * 2.0 + v2rs.at(ir * 6 + 4));   //up-down
-                        v2rhosigma_gdrho_r[2 * nrxx + ir] = gdr[1][ir] * v2rs.at(ir * 6 + 5) * 4.0
-                            + gdr[0][ir] * v2rs.at(ir * 6 + 4) * 2.0;   //down-down
-                    }
-                    for (int isig = 0;isig < 3;++isig)
-                        XC_Functional::grad_dot(v2rhosigma_gdrho_r.data() + isig * nrxx, div_v2rhosigma_gdrho_r.data() + isig * nrxx, chg_gs->rhopw, tpiba);
-                    // 2. $\nabla^2(f^{\sigma\sigma}*\sigma)$
-                    std::vector<double> v2sigma2_sigma_r(3 * nrxx);
-                    for (int ir = 0; ir < nrxx; ++ir)
-                    {
-                        v2sigma2_sigma_r[ir] = v2s2.at(ir * 6) * sigma[ir * 3] * 4.0
-                            + v2s2.at(ir * 6 + 1) * sigma[ir * 3 + 1] * 4.0
-                            + v2s2.at(ir * 6 + 3) * sigma[ir * 3 + 2];   //up-up
-                        v2sigma2_sigma_r[nrxx + ir] = v2s2.at(ir * 6 + 1) * sigma[ir * 3] * 2.0
-                            + v2s2.at(ir * 6 + 4) * sigma[ir * 3 + 2] * 2.0
-                            + (v2s2.at(ir * 6 + 2) * 4.0 + v2s2.at(ir * 6 + 3)) * sigma[ir * 3 + 1];   //up-down
-                        v2sigma2_sigma_r[2 * nrxx + ir] = v2s2.at(ir * 6 + 5) * sigma[ir * 3 + 2] * 4.0
-                            + v2s2.at(ir * 6 + 4) * sigma[ir * 3 + 1] * 4.0
-                            + v2s2.at(ir * 6 + 3) * sigma[ir * 3];   //down-down
-                    }
-                    for (int isig = 0;isig < 3;++isig)
-                        LR_Util::laplace(v2sigma2_sigma_r.data() + isig * nrxx, v2sigma2_sigma_r.data() + isig * nrxx, *(chg_gs->rhopw), tpiba2);
-                    // 3. $\nabla^2(v^\sigma)$
-                    std::vector<double> lap_vsigma(3 * nrxx);
-                    for (int ir = 0;ir < nrxx;++ir)
-                    {
-                        lap_vsigma[ir] = vs.at(ir * 3) * 2.0;
-                        lap_vsigma[nrxx + ir] = vs.at(ir * 3 + 1);
-                        lap_vsigma[2 * nrxx + ir] = vs.at(ir * 3 + 2) * 2.0;
-                    }
-                    for (int isig = 0;isig < 3;++isig)
-                        LR_Util::laplace(lap_vsigma.data() + isig * nrxx, lap_vsigma.data() + isig * nrxx, *(chg_gs->rhopw), tpiba2);
-                    // add to v2rho2
-                    BlasConnector::axpy(3 * nrxx, 1.0, v2r2.data(), 1, to_mul_rho_.data(), 1);
-                    BlasConnector::axpy(3 * nrxx, -1.0, div_v2rhosigma_gdrho_r.data(), 1, to_mul_rho_.data(), 1);
-                    BlasConnector::axpy(3 * nrxx, 1.0, v2sigma2_sigma_r.data(), 1, to_mul_rho_.data(), 1);
-                    BlasConnector::axpy(3 * nrxx, 1.0, lap_vsigma.data(), 1, to_mul_rho_.data(), 1);
+                    throw std::domain_error("nspin =" + std::to_string(nspin)
+                        + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
                 }
             }
         } // end for( xc_func_type &func : funcs )
