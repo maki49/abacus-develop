@@ -3684,5 +3684,9 @@ Currently supported: `RPA`, `LDA`, `PBE`, `HSE`, `HF`.
 The output files are `OUT.${suffix}/Excitation_Energy.dat` and `OUT.${suffix}/Excitation_Amplitude_${processor_rank}.dat`.
 - **Default**: False
 
+### abs_broadening
+- **Type**: Real
+- **Description**: The broadening factor $\eta$ for the absorption spectrum calculation.
+- **Default**: 0.01
 
 [back to top](#full-list-of-input-keywords)

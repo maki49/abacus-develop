@@ -37,3 +37,4 @@ out_alllog	1
 
 nvirt 19
 abs_wavelen_range  40 180
+abs_broadening 0.01

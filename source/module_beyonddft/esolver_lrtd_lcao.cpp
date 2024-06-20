@@ -325,8 +325,7 @@ void ModuleESolver::ESolver_LRTD<T, TR>::post_process()
     double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
     double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
     for (int i = 0;i < freq.size();++i)freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff);
-    double eta = 0.01;
-    spectrum.optical_absorption(freq, eta);
+    spectrum.optical_absorption(freq, input.abs_broadening);
 }
 
 template<typename T, typename TR>

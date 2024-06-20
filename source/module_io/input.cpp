@@ -654,6 +654,7 @@ void Input::Default(void)
     lr_solver = "dav";
     lr_thr = 1e-2;
     abs_wavelen_range = { 0.0, 0.0 };
+    abs_broadening = 0.01;
     out_wfc_lr = false;
     return;
 }
@@ -2391,6 +2392,10 @@ bool Input::Read(const std::string& fn)
         {
             read_value(ifs, out_wfc_lr);
         }
+        else if (strcmp("abs_broadening", word) == 0)
+        {
+            read_value(ifs, abs_broadening);
+        }
         //----------------------------------------------------------------------------------
         else
         {
@@ -3766,6 +3771,7 @@ void Input::Bcast()
     Parallel_Common::bcast_string(xc_kernel);
     Parallel_Common::bcast_string(lr_solver);
     Parallel_Common::bcast_double(lr_thr);
+    Parallel_Common::bcast_double(abs_broadening);
     if (abs_wavelen_range.size())Parallel_Common::bcast_double(abs_wavelen_range.data(), abs_wavelen_range.size());
     return;
 }
