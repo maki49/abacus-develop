@@ -49,7 +49,8 @@ class DiagoIterAssist
         int psi_nr,
         int psi_nc,
         psi::Psi<T, Device> &evc,
-        Real *en);
+        Real* en,
+        const int ik = 0);
 
     static void diagH_LAPACK(
         const int nstart,

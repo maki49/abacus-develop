@@ -16,10 +16,15 @@
 
 namespace hamilt
 {
-
-template<typename T, typename Device>
-HamiltPW<T, Device>::HamiltPW(elecstate::Potential* pot_in, ModulePW::PW_Basis_K* wfc_basis, K_Vectors* pkv)
-{
+    template<typename T, typename Device>
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+    HamiltPW<T, Device>::HamiltPW(elecstate::Potential* pot_in, ModulePW::PW_Basis_K* wfc_basis, K_Vectors* pkv, Exx_Lip<T, Device>& exx_lip)
+    {
+        this->exx_lip_ptr = &exx_lip;
+#else 
+    HamiltPW<T, Device>::HamiltPW(elecstate::Potential * pot_in, ModulePW::PW_Basis_K * wfc_basis, K_Vectors * pkv)
+    {
+#endif
     this->classname = "HamiltPW";
     this->ppcell = &GlobalC::ppcell;
     this->qq_nt = this->ppcell->template get_qq_nt_data<Real>();

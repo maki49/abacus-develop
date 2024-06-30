@@ -44,6 +44,8 @@
 #include <ATen/kernels/blas.h>
 #include <ATen/kernels/lapack.h>
 
+#include <sys/time.h>   // tmp, for exx_lip
+
 namespace ModuleESolver
 {
 
@@ -162,6 +164,12 @@ void ESolver_KS_PW<T, Device>::before_all_runners(Input& inp, UnitCell& ucell)
     // 1) call before_all_runners() of ESolver_KS
     ESolver_KS<T, Device>::before_all_runners(inp, ucell);
 
+    if (ucell.atoms[0].ncpp.xc_func == "HF" || ucell.atoms[0].ncpp.xc_func == "PBE0"
+        || ucell.atoms[0].ncpp.xc_func == "HSE")
+    {
+        XC_Functional::set_xc_type("pbe");
+    }
+
     // 2) initialize HSolver
     if (this->phsol == nullptr)
     {
@@ -223,6 +231,11 @@ void ESolver_KS_PW<T, Device>::before_all_runners(Input& inp, UnitCell& ucell)
     {
         this->pelec->fixed_weights(GlobalV::ocp_kb, GlobalV::NBANDS, GlobalV::nelec);
     }
+
+
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+    this->exx_lip.init(GlobalC::exx_info.info_lip, ucell.symm, &this->kv, this->p_wf_init, kspw_psi, this->pw_wfc, this->pw_rho, this->sf, &ucell, this->pelec);
+#endif
 }
 
 template <typename T, typename Device>
@@ -392,7 +405,11 @@ void ESolver_KS_PW<T, Device>::before_scf(const int istep)
     // allocate HamiltPW
     if (this->p_hamilt == nullptr)
     {
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+        this->p_hamilt = new hamilt::HamiltPW<T, Device>(this->pelec->pot, this->pw_wfc, &this->kv, this->exx_lip);
+#else
         this->p_hamilt = new hamilt::HamiltPW<T, Device>(this->pelec->pot, this->pw_wfc, &this->kv);
+#endif
     }
 
     //----------------------------------------------------------
@@ -543,6 +560,12 @@ void ESolver_KS_PW<T, Device>::iter_init(const int istep, const int iter)
     // use 'rho(in)' and 'v_h and v_xc'(in)
     this->pelec->f_en.deband_harris = this->pelec->cal_delta_eband();
 
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+    // if (!GlobalC::exx_global.info.separate_loop)
+    if (GlobalC::exx_info.info_global.cal_exx && !GlobalC::exx_info.info_global.separate_loop)
+        this->exx_lip.cal_exx();
+#endif
+
     //(2) save change density as previous charge,
     // prepared fox mixing.
     if (GlobalV::MY_STOGROUP == 0)
@@ -615,7 +638,7 @@ void ESolver_KS_PW<T, Device>::hamilt2density(const int istep, const int iter, c
     // add exx
 #ifdef __LCAO
 #ifdef __EXX
-    this->pelec->set_exx(GlobalC::exx_lip.get_exx_energy()); // Peize Lin add 2019-03-09
+    this->pelec->set_exx(this->exx_lip.get_exx_energy()); // Peize Lin add 2019-03-09
 #endif
 #endif
 
@@ -1155,6 +1178,64 @@ void ESolver_KS_PW<T, Device>::nscf()
     ModuleBase::timer::tick("ESolver_KS_PW", "nscf");
     return;
 }
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+template <typename T, typename Device>
+bool ESolver_KS_PW<T, Device>::do_after_converge(int& iter)
+{
+    if (GlobalC::exx_info.info_global.cal_exx)
+    {
+        // no separate_loop case
+        if (!GlobalC::exx_info.info_global.separate_loop)
+        {
+            GlobalC::exx_info.info_global.hybrid_step = 1;
+
+            // in no_separate_loop case, scf loop only did twice
+            // in first scf loop, exx updated once in beginning,
+            // in second scf loop, exx updated every iter
+
+            if (this->two_level_step)
+                return true;
+            else
+            {
+                // update exx and redo scf
+                XC_Functional::set_xc_type(GlobalC::ucell.atoms[0].ncpp.xc_func);
+                iter = 0;
+                std::cout << " Entering 2nd SCF, where EXX is updated" << std::endl;
+                this->two_level_step++;
+                return false;
+            }
+        }
+        // has separate_loop case
+        // exx converged or get max exx steps
+        else if (this->two_level_step == GlobalC::exx_info.info_global.hybrid_step
+            || (iter == 1 && this->two_level_step != 0))
+            return true;
+        else
+        {
+            // update exx and redo scf
+            if (this->two_level_step == 0)
+            {
+                XC_Functional::set_xc_type(GlobalC::ucell.atoms[0].ncpp.xc_func);
+            }
+
+            std::cout << " Updating EXX " << std::flush;
+            timeval t_start;       gettimeofday(&t_start, NULL);
+
+            this->exx_lip.cal_exx();
+            iter = 0;
+            this->two_level_step++;
+
+            timeval t_end;       gettimeofday(&t_end, NULL);
+            std::cout << "and rerun SCF\t"
+                << std::setprecision(3) << std::setiosflags(std::ios::scientific)
+                << (double)(t_end.tv_sec - t_start.tv_sec) + (double)(t_end.tv_usec - t_start.tv_usec) / 1000000.0
+                << std::defaultfloat << " (s)" << std::endl;
+            return false;
+        }
+    }
+    else { return true; }
+}
+#endif // __EXX
 
 template class ESolver_KS_PW<std::complex<float>, base_device::DEVICE_CPU>;
 template class ESolver_KS_PW<std::complex<double>, base_device::DEVICE_CPU>;

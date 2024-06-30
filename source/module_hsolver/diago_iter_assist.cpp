@@ -11,6 +11,11 @@
 #include "module_hsolver/kernels/dngvd_op.h"
 #include "module_hsolver/kernels/math_kernel_op.h"
 
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+#include "module_hamilt_pw/hamilt_pwdft/hamilt_pw.h"
+#include "module_hamilt_pw/hamilt_pwdft/global.h"   //tmp, for exx_info
+#endif
+
 namespace hsolver
 {
 
@@ -129,7 +134,8 @@ void DiagoIterAssist<T, Device>::diagH_subspace_init(hamilt::Hamilt<T, Device>* 
                                                      int psi_nr,
                                                      int psi_nc,
                                                      psi::Psi<T, Device>& evc,
-                                                     Real* en)
+    Real* en,
+    const int ik)
 {
     ModuleBase::TITLE("DiagoIterAssist", "diagH_subspace_init");
     ModuleBase::timer::tick("DiagoIterAssist", "diagH_subspace_init");
@@ -242,6 +248,14 @@ void DiagoIterAssist<T, Device>::diagH_subspace_init(hamilt::Hamilt<T, Device>* 
 
         gemm_op<T, Device>()(ctx, 'C', 'N', nstart, nstart, dmin, &one, ppsi, dmax, spsi, dmax, &zero, scc, nstart);
         delmem_complex_op()(ctx, temp);
+
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+        if (GlobalV::BASIS_TYPE == "lcao_in_pw" && GlobalC::exx_info.info_global.cal_exx)
+            for (int n = 0; n < nstart; ++n)
+                for (int m = 0; m < nstart; ++m)
+                    hcc[n * nstart + m] += (Real)GlobalC::exx_info.info_global.hybrid_alpha *
+                    dynamic_cast<hamilt::HamiltPW<T, Device>*>(pHamilt)->exx_lip_ptr->get_exx_matrix()[ik][m][n];
+#endif
     }
 
     if (GlobalV::NPROC_IN_POOL > 1)
@@ -265,6 +279,11 @@ void DiagoIterAssist<T, Device>::diagH_subspace_init(hamilt::Hamilt<T, Device>* 
     }*/
 
     DiagoIterAssist::diagH_LAPACK(nstart, n_band, hcc, scc, nstart, en, vcc);
+
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+    if (GlobalV::BASIS_TYPE == "lcao_in_pw" && GlobalC::exx_info.info_global.cal_exx)
+        dynamic_cast<hamilt::HamiltPW<T, Device>*>(pHamilt)->exx_lip_ptr->set_hvec(ik, vcc);
+#endif
 
     //=======================
     // diagonize the H-matrix

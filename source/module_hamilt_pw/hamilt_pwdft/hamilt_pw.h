@@ -7,7 +7,9 @@
 #include "module_hamilt_general/hamilt.h"
 #include "module_hamilt_pw/hamilt_pwdft/VNL_in_pw.h"
 #include "module_hsolver/kernels/math_kernel_op.h"
-
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+#include "module_ri/exx_lip.h"
+#endif
 namespace hamilt
 {
 
@@ -20,7 +22,12 @@ class HamiltPW : public Hamilt<T, Device>
     // otherwise return the real type of T(complex<float>, complex<double>)
     using Real = typename GetTypeReal<T>::type;
   public:
-    HamiltPW(elecstate::Potential* pot_in, ModulePW::PW_Basis_K* wfc_basis, K_Vectors* p_kv);
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+      HamiltPW(elecstate::Potential* pot_in, ModulePW::PW_Basis_K* wfc_basis, K_Vectors* p_kv, Exx_Lip<T, Device>& exx_lip);
+      Exx_Lip<T, Device>* exx_lip_ptr = nullptr;
+#else
+      HamiltPW(elecstate::Potential* pot_in, ModulePW::PW_Basis_K* wfc_basis, K_Vectors* p_kv);
+#endif
     template<typename T_in, typename Device_in = Device>
     explicit HamiltPW(const HamiltPW<T_in, Device_in>* hamilt);
     ~HamiltPW();

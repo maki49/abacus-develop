@@ -388,7 +388,8 @@ void HSolverPW<T, Device>::solve(hamilt::Hamilt<T, Device>* pHamilt, // ESolver_
             transform.get_nbands(),
             transform.get_nbasis(),
             psi,                                  // psi in pw basis
-            eigenvalues.data() + ik * pes->ekb.nc // eigenvalues
+            eigenvalues.data() + ik * pes->ekb.nc, // eigenvalues
+            ik//tmp, for exx_lip
         );
 
         if (skip_charge)

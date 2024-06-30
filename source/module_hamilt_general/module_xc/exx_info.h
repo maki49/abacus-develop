@@ -24,14 +24,17 @@ struct Exx_Info
 
 	struct Exx_Info_Lip
 	{
-		const Conv_Coulomb_Pot_K::Ccp_Type &ccp_type;
-		const double &hse_omega;
-		double lambda;
+        Conv_Coulomb_Pot_K::Ccp_Type ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Ccp;
+        // the default values are the same as the documentation.
+        double hse_omega = 0.11;
+        double lambda = 0.3;
 
-		Exx_Info_Lip( const Exx_Info::Exx_Info_Global &info_global )
+        Exx_Info_Lip() = default;
+        Exx_Info_Lip(const Exx_Info::Exx_Info_Global& info_global)
 			:ccp_type(info_global.ccp_type),
-			 hse_omega(info_global.hse_omega){}
-	};
+            hse_omega(info_global.hse_omega) {}
+        // Exx_Info_Lip& operator=(const Exx_Info_Lip& info) = default;
+    };
 	Exx_Info_Lip info_lip;	
 
 

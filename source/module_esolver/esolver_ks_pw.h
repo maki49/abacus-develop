@@ -7,6 +7,11 @@
 #include <memory>
 #include <module_base/macros.h>
 
+#ifdef __LCAO
+#ifdef __EXX
+#include "module_ri/exx_lip.h"
+#endif
+#endif
 namespace ModuleESolver
 {
 
@@ -74,6 +79,13 @@ class ESolver_KS_PW : public ESolver_KS<T, Device>
 
     using castmem_2d_d2h_op
         = base_device::memory::cast_memory_op<std::complex<double>, T, base_device::DEVICE_CPU, Device>;
+
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+    Exx_Lip<T, Device> exx_lip;
+    int two_level_step = 0;
+    virtual bool do_after_converge(int& iter) override;
+#endif
+
 };
 } // namespace ModuleESolver
 #endif

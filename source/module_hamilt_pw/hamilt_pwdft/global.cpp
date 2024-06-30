@@ -5,8 +5,8 @@
 namespace GlobalC
 {
 #ifdef __EXX
-Exx_Info exx_info;
-Exx_Lip exx_lip(exx_info.info_lip);
+    Exx_Info exx_info;
+    // Exx_Lip exx_lip(exx_info.info_lip);
 #endif
 pseudopot_cell_vnl ppcell;
 UnitCell ucell;

@@ -9,7 +9,6 @@
 #include "module_relax/relax_driver.h"
 #ifdef __EXX
 #include "module_hamilt_general/module_xc/exx_info.h"
-#include "module_ri/exx_lip.h"
 #endif
 #include "module_elecstate/magnetism.h"
 #include "module_hamilt_general/module_xc/xc_functional.h"
@@ -254,8 +253,7 @@ static const char* _hipfftGetErrorString(hipfftResult_t error)
 namespace GlobalC
 {
 #ifdef __EXX
-extern Exx_Info exx_info;
-extern Exx_Lip exx_lip;
+    extern Exx_Info exx_info;
 #endif
 extern pseudopot_cell_vnl ppcell;
 } // namespace GlobalC
