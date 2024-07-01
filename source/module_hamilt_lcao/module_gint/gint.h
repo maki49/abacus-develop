@@ -92,10 +92,7 @@ class Gint {
     void cpu_force_interface(Gint_inout* inout);
 
     void cpu_force_meta_interface(Gint_inout* inout);
-    
-    ///  move operator for the next ESolver to directly use its infomation
-    Gint& operator=(Gint&& rhs);
-    
+
     //------------------------------------------------------
     // in gint_vl.cpp
     //------------------------------------------------------

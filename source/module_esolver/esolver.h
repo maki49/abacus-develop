@@ -4,6 +4,7 @@
 #include "module_base/matrix.h"
 #include "module_cell/unitcell.h"
 #include "module_io/input.h"
+#include "module_parameter/input_parameter.h"
 
 namespace ModuleESolver
 {
@@ -84,7 +85,7 @@ std::string determine_type(void);
  *
  * @return [out] A pointer to an ESolver object that will be initialized.
  */
-ESolver * init_esolver(Input & input, UnitCell & ucell);
+ESolver* init_esolver(Input& input, const Input_para& input_para, UnitCell& ucell);
 
 void clean_esolver(ESolver*& pesolver, const bool lcao_cblacs_exit = false);
 

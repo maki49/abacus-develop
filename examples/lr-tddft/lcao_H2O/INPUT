@@ -5,7 +5,7 @@ pseudo_dir              ../../../tests/PP_ORB
 orbital_dir                 ../../../tests/PP_ORB
 calculation             scf
 nbands                23
-symmetry               	0
+symmetry               	-1
 
 #Parameters (2.Iteration)
 ecutwfc                 50
@@ -28,7 +28,7 @@ mixing_gg0 0
 lr_nstates 2
 xc_kernel lda
 lr_solver dav
-lr_thr 1e-6
+lr_thr 1e-2
 pw_diag_ndim 2
 
 esolver_type ks-lr

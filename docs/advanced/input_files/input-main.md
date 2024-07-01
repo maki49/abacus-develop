@@ -409,12 +409,12 @@
     - [pexsi\_mu\_guard](#pexsi_mu_guard)
     - [pexsi\_elec\_thr](#pexsi_elec_thr)
     - [pexsi\_zero\_thr](#pexsi_zero_thr)
-  - [Beyond DFT](#beyond-dft)
+  - [Linear Response TDDFT](#linear-response-tddft)
     - [xc\_kernel](#xc_kernel)
     - [lr\_solverl](#lr_solver)
     - [lr\_thr](#lr_thr)
     - [nvirt](#nvirt)
-    - [lr_nstates](#lr_nstates)
+    - [lr\_nstates](#lr_nstates)
     - [abs\_wavelen\_range](#abs_wavelen_range)
     - [out\_wfc\_lr](#out_wfc_lr)
 [back to top](#full-list-of-input-keywords)
@@ -3776,7 +3776,7 @@ These variables are used to control the usage of PEXSI (Pole Expansion and Selec
 
 [back to top](#full-list-of-input-keywords)
 
-## Beyond DFT
+## Linear Response TDDFT
 
 These parameters are used to solve the excited states using. e.g. LR-TDDFT.
 

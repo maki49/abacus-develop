@@ -66,12 +66,12 @@ VPATH=./src_global:\
 ./src_ri:\
 ./module_ri:\
 ./module_parameter:\
-./module_beyonddft:\
-./module_beyonddft/AX:\
-./module_beyonddft/dm_trans:\
-./module_beyonddft/operator_casida:\
-./module_beyonddft/potentials:\
-./module_beyonddft/utils:\
+./module_lr:\
+./module_lr/AX:\
+./module_lr/dm_trans:\
+./module_lr/operator_casida:\
+./module_lr/potentials:\
+./module_lr/utils:\
 ./\
 
 OBJS_ABACUS_PW=${OBJS_MAIN}\

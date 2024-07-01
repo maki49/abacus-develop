@@ -7,7 +7,7 @@
 #include "esolver_ks_lcaopw.h"
 #include "esolver_ks_lcao.h"
 #include "esolver_ks_lcao_tddft.h"
-#include "module_beyonddft/esolver_lrtd_lcao.h"
+#include "module_lr/esolver_lrtd_lcao.h"
 extern "C"
 {
 #include "module_base/blacs_connector.h"
@@ -122,7 +122,7 @@ std::string determine_type()
 
 
 //Some API to operate E_Solver
-ESolver * init_esolver(Input & input, UnitCell & ucell)
+ESolver* init_esolver(Input& input, const Input_para& input_para, UnitCell& ucell)
 {
 	//determine type of esolver based on INPUT information
 	const std::string esolver_type = determine_type();
@@ -187,9 +187,9 @@ ESolver * init_esolver(Input & input, UnitCell & ucell)
     {
         // use constructor rather than Init function to initialize reference (instead of pointers) to ucell
         if (GlobalV::GAMMA_ONLY_LOCAL)
-            return new ModuleESolver::ESolver_LRTD<double, double>(input, ucell);
-        else if (GlobalV::NSPIN < 4)
-            return new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(input, ucell);
+            return new LR::ESolver_LR<double, double>(input_para, input, ucell);
+        else if (GlobalV::NSPIN < 2)
+            return new LR::ESolver_LR<std::complex<double>, double>(input_para, input, ucell);
         else
             throw std::runtime_error("LR-TDDFT is not implemented for spin polarized case");
     }
@@ -214,25 +214,23 @@ ESolver * init_esolver(Input & input, UnitCell & ucell)
         // force and stress is not needed currently,
         // they will be supported after the analytical gradient
         // of LR-TDDFT is implemented.
-
-        p_esolver->after_all_runners();
-        std::cout << "setting up the esolver for excited state" << std::endl;
+        // after_all_runners() is for output, it is not needed here.
+        std::cout << "Setting up the esolver for excited state..." << std::endl;
         // initialize the 2nd ESolver_LR at the temporary pointer
         ModuleESolver::ESolver* p_esolver_lr = nullptr;
-        if (INPUT.gamma_only)
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<double, double>(
+        if (GlobalV::GAMMA_ONLY_LOCAL)
+            p_esolver_lr = new LR::ESolver_LR<double, double>(
                 std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<double, double>*>(p_esolver)),
-                INPUT,
+                input_para,
                 ucell);
         else
-            p_esolver_lr = new ModuleESolver::ESolver_LRTD<std::complex<double>, double>(
+            p_esolver_lr = new LR::ESolver_LR<std::complex<double>, double>(
                 std::move(*dynamic_cast<ModuleESolver::ESolver_KS_LCAO<std::complex<double>, double>*>(p_esolver)),
-                INPUT,
+                input_para,
                 ucell);
         // clean the 1st ESolver_KS and swap the pointer
         ModuleESolver::clean_esolver(p_esolver, false); // do not call Cblacs_exit, remain it for the 2nd ESolver
-        p_esolver = p_esolver_lr;
-        p_esolver_lr = nullptr;
+        return p_esolver_lr;
     }
 #endif
 	else if (esolver_type == "sdft_pw")
