@@ -629,12 +629,12 @@ void Input_Conv::Convert(void)
     if (dft_functional_lower == "hf" || dft_functional_lower == "pbe0" || dft_functional_lower == "scan0")
     {
         GlobalC::exx_info.info_global.cal_exx = true;
-        GlobalC::exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf;
+        GlobalC::exx_info.info_global.ccp_type = GlobalC::exx_info.info_lip.ccp_type=Conv_Coulomb_Pot_K::Ccp_Type::Hf;
     }
     else if (dft_functional_lower == "hse")
     {
         GlobalC::exx_info.info_global.cal_exx = true;
-        GlobalC::exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hse;
+        GlobalC::exx_info.info_global.ccp_type = GlobalC::exx_info.info_lip.ccp_type=Conv_Coulomb_Pot_K::Ccp_Type::Hse;
     }
     else if (dft_functional_lower == "opt_orb")
     {
@@ -652,7 +652,7 @@ void Input_Conv::Convert(void)
         // GlobalC::exx_info.info_global.cal_exx = true;
         GlobalC::exx_info.info_global.hybrid_alpha = std::stod(INPUT.exx_hybrid_alpha);
         XC_Functional::get_hybrid_alpha(std::stod(INPUT.exx_hybrid_alpha));
-        GlobalC::exx_info.info_global.hse_omega = INPUT.exx_hse_omega;
+        GlobalC::exx_info.info_global.hse_omega = GlobalC::exx_info.info_lip.hse_omega = INPUT.exx_hse_omega;
         GlobalC::exx_info.info_global.separate_loop = INPUT.exx_separate_loop;
         GlobalC::exx_info.info_global.hybrid_step = INPUT.exx_hybrid_step;
         GlobalC::exx_info.info_global.mixing_beta_for_loop1 = INPUT.exx_mixing_beta;

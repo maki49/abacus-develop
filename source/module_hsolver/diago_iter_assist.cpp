@@ -253,7 +253,7 @@ void DiagoIterAssist<T, Device>::diagH_subspace_init(hamilt::Hamilt<T, Device>* 
         if (GlobalV::BASIS_TYPE == "lcao_in_pw" && GlobalC::exx_info.info_global.cal_exx)
             for (int n = 0; n < nstart; ++n)
                 for (int m = 0; m < nstart; ++m)
-                    hcc[n * nstart + m] += (Real)GlobalC::exx_info.info_global.hybrid_alpha *
+                    hcc[n * nstart + m] += (T)GlobalC::exx_info.info_global.hybrid_alpha *
                     dynamic_cast<hamilt::HamiltPW<T, Device>*>(pHamilt)->exx_lip_ptr->get_exx_matrix()[ik][m][n];
 #endif
     }

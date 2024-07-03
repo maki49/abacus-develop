@@ -45,7 +45,8 @@ void Exx_Lip<T, Device>::cal_exx()
             // parallel incompleted.need to loop iq in other pool
         {
             int iq = (ik < (k_pack->kv_ptr->get_nks() / GlobalV::NSPIN)) ? (iq_tmp % (q_pack->kv_ptr->get_nks() / GlobalV::NSPIN)) :
-                (iq_tmp % (q_pack->kv_ptr->get_nks() / GlobalV::NSPIN) + (q_pack->kv_ptr->get_nks() / GlobalV::NSPIN)); 			qkg2_exp(ik, iq);
+                (iq_tmp % (q_pack->kv_ptr->get_nks() / GlobalV::NSPIN) + (q_pack->kv_ptr->get_nks() / GlobalV::NSPIN));
+            qkg2_exp(ik, iq);
             //t_qkg2_exp += my_time(t);
             for (int ib = 0; ib < GlobalV::NBANDS; ++ib)
             {
