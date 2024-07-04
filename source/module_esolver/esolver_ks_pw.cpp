@@ -44,8 +44,10 @@
 #include <ATen/kernels/blas.h>
 #include <ATen/kernels/lapack.h>
 
+#ifdef __LCAO
 #include <sys/time.h>   // tmp, for exx_lip
-
+#include "module_io/write_Vxc_lip.hpp"
+#endif
 namespace ModuleESolver
 {
 
@@ -1065,6 +1067,15 @@ void ESolver_KS_PW<T, Device>::after_all_runners()
                      INPUT.cond_nonlocal,
                      this->pelec->wg);
     }
+#if((defined __LCAO)&&(defined __EXX) && !(defined __CUDA)&& !(defined __ROCM))
+    if (INPUT.out_mat_xc)
+    {
+        ModuleIO::write_Vxc(GlobalV::NSPIN, GlobalV::NLOCAL,
+            GlobalV::DRANK, *this->kspw_psi, GlobalC::ucell, this->sf,
+            *this->pw_wfc, *this->pw_rho, *this->pw_rhod,
+            GlobalC::ppcell.vloc, *this->pelec->charge, this->kv, this->exx_lip, this->pelec->wg);
+    }
+    #endif 
 }
 
 template <typename T, typename Device>

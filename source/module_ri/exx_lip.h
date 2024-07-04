@@ -66,6 +66,10 @@ public:
     {
         memcpy(&(*this->k_pack->hvec_array)(ik, 0, 0), hvec, sizeof(T) * GlobalV::NLOCAL * GlobalV::NBANDS);
     }
+    psi::Psi<T,Device> get_hvec() const
+    {
+        return *k_pack->hvec_array;
+    }
 
 private:
 
@@ -76,7 +80,7 @@ private:
     {
         K_Vectors* kv_ptr;
         // wavefunc* wf_ptr;
-        psi::Psi<T, Device>* kspw_psi_ptr;
+        psi::Psi<T, Device>* kspw_psi_ptr;  ///< PW  wavefunction
         psi::WFInit<T, Device>* wf_ptr;
         ModuleBase::matrix wf_wg;
 
