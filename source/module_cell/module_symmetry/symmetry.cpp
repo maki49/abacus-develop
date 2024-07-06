@@ -269,18 +269,98 @@ void Symmetry::analy_sys(const Lattice& lat, const Statistics& st, Atom* atoms, 
     this->gtrans_convert(gtrans, gtrans, nrotk, optlat, latvec1);
 
     this->set_atom_map(atoms);
+    //test: output atom map
+    for (int isym = 0;isym < this->nrotk;++isym)
+    {
+        for (int iat = 0;iat < this->nat;++iat)
+            std::cout << this->isym_rotiat_[isym][iat] << " ";
+        std::cout << std::endl;
+    }
 
     if (GlobalV::CALCULATION == "relax")
     {
         this->all_mbl = this->is_all_movable(atoms, st);
         if (!this->all_mbl)
         {
-            std::cout << "WARNING: Symmetry cannot be kept when not all atoms are movable.\n ";
-            std::cout << "Continue with symmetry=0 ... \n";
-            ModuleSymmetry::Symmetry::symm_flag = 0;
+            std::cout << "analyze dynamic symmetry" << std::endl;
+
+            std::vector<double> vec(3 * nat);
+            std::generate(vec.begin(), vec.end(), []() {return  static_cast<double>(std::rand()) / RAND_MAX - 0.5; });
+            //symmetrize using the current symmetry
+            std::cout << "original svec: " << std::endl;
+            for (int iat = 0;iat < st.nat;++iat)
+                std::cout << vec[3 * iat] << " " << vec[3 * iat + 1] << " " << vec[3 * iat + 2] << std::endl;
+            std::cout << std::endl;
+            this->symmetrize_vec3_nat(vec.data());
+            // test: output original symmetrized vec
+            std::cout << "original symmetrized vec: " << std::endl;
+            for (int iat = 0;iat < st.nat;++iat)
+                std::cout << vec[3 * iat] << " " << vec[3 * iat + 1] << " " << vec[3 * iat + 2] << std::endl;
+            std::cout << std::endl;
+            for (int iat = 0;iat < st.nat;++iat)
+            {
+                int it = st.iat2it[iat];
+                int ia = st.iat2ia[iat];
+                if (!atoms[it].mbl[ia].x) vec[3 * iat] = 0.0;
+                if (!atoms[it].mbl[ia].y) vec[3 * iat + 1] = 0.0;
+                if (!atoms[it].mbl[ia].z) vec[3 * iat + 2] = 0.0;
+            }
+            std::cout << "restricted vec: " << std::endl;
+            for (int iat = 0;iat < st.nat;++iat)
+                std::cout << vec[3 * iat] << " " << vec[3 * iat + 1] << " " << vec[3 * iat + 2] << std::endl;
+            std::cout << std::endl;
+            // convert the velocity field to optlat
+            std::vector<ModuleBase::Vector3<double>> vec3(nat);
+            for (int iat = 0;iat < nat;++iat)
+            {
+                vec3[iat].x = vec[3 * iat];
+                vec3[iat].y = vec[3 * iat + 1];
+                vec3[iat].z = vec[3 * iat + 2];
+            }
+            this->gtrans_convert(vec3.data(), vec3.data(), nat, latvec1, optlat);
+            for (int iat = 0;iat < nat;++iat)
+            {
+                vec[3 * iat] = vec3[iat].x;
+                vec[3 * iat + 1] = vec3[iat].y;
+                vec[3 * iat + 2] = vec3[iat].z;
+            }
+            std::cout << "vec in optlat: " << std::endl;
+            for (int iat = 0;iat < st.nat;++iat)
+                std::cout << vec[3 * iat] << " " << vec[3 * iat + 1] << " " << vec[3 * iat + 2] << std::endl;
+            std::cout << std::endl;
+            // analyze dynamic symmetry with the constrained vec
+            this->pricell(this->newpos, atoms, vec.data());
+            // if (!pricell_loop && GlobalV::NSPIN == 2)
+            this->getgroup(this->nrot, this->nrotk, ofs_running, this->newpos, vec.data());
+            this->pointgroup(this->nrot, this->pgnumber, this->pgname, this->gmatrix, ofs_running);
+            ModuleBase::GlobalFunc::OUT(ofs_running, "DYNAMIC POINT GROUP", this->pgname);
+            this->pointgroup(this->nrotk, this->spgnumber, this->spgname, this->gmatrix, ofs_running);
+            ModuleBase::GlobalFunc::OUT(ofs_running, "DYNAMIC POINT GROUP IN SPACE GROUP", this->spgname);
+            if (!this->valid_group)
+            {   // select the operations that have the inverse
+                std::vector<int>invmap(this->nrotk, -1);
+                this->gmatrix_invmap(this->gmatrix, this->nrotk, invmap.data());
+                int nrotk_new = 0;
+                for (int isym = 0;isym < this->nrotk;++isym)
+                {
+                    if (invmap[isym] != -1)
+                    {
+                        if (nrotk_new < isym)
+                        {
+                            this->gmatrix[nrotk_new] = this->gmatrix[isym];
+                            this->gtrans[nrotk_new] = this->gtrans[isym];
+                        }
+                        ++nrotk_new;
+                    }
+                }
+                this->nrotk = nrotk_new;
+            }
+            this->gmatrix_convert_int(gmatrix, kgmatrix, nrotk, optlat, lat.G);
+            this->gmatrix_convert_int(gmatrix, gmatrix, nrotk, optlat, latvec1);
+            this->gtrans_convert(gtrans, gtrans, nrotk, optlat, latvec1);
+            this->set_atom_map(atoms);
         }
     }
-
     delete[] newpos;
     delete[] na;
     delete[] rotpos;
@@ -918,7 +998,7 @@ void Symmetry::getgroup(int& nrot, int& nrotk, std::ofstream& ofs_running, doubl
 // in-place version
 inline void reorder_vec(double* vec, const int* index, const int& it, const int* istart, const int* na)
 {
-    std::vector<double> tmp(na[it]);
+    std::vector<double> tmp(3 * na[it]);
     for (int j = istart[it]; j < istart[it] + na[it]; ++j)
     {
         const int i = j - istart[it];
@@ -926,6 +1006,18 @@ inline void reorder_vec(double* vec, const int* index, const int& it, const int*
         tmp[i * 3] = vec[jnew * 3];
         tmp[i * 3 + 1] = vec[jnew * 3 + 1];
         tmp[i * 3 + 2] = vec[jnew * 3 + 2];
+    }
+    std::memcpy(vec + istart[it] * 3, tmp.data(), na[it] * 3 * sizeof(double));
+}
+inline void reorder_vec_to(double* vec, const int* index, const int& it, const int* istart, const int* na)
+{
+    std::vector<double> tmp(3 * na[it]);
+    for (int j = istart[it]; j < istart[it] + na[it]; ++j)
+    {
+        const int jnew = istart[it] + index[j];
+        tmp[index[j] * 3] = vec[j * 3];
+        tmp[index[j] * 3 + 1] = vec[j * 3 + 1];
+        tmp[index[j] * 3 + 2] = vec[j * 3 + 2];
     }
     std::memcpy(vec + istart[it] * 3, tmp.data(), na[it] * 3 * sizeof(double));
 }
@@ -1009,6 +1101,38 @@ void Symmetry::checksym(ModuleBase::Matrix3& s, ModuleBase::Vector3<double>& gtr
         this->atom_ordering_new(rotpos + istart[it] * 3, na[it], index + istart[it]);
         if (vec) reorder_vec(rotvec.data(), index, it, istart, na);
     }
+    if (vec)
+    {
+        std::cout << "symop:" << std::endl;
+        std::cout << s.e11 << " " << s.e12 << " " << s.e13 << std::endl;
+        std::cout << s.e21 << " " << s.e22 << " " << s.e23 << std::endl;
+        std::cout << s.e31 << " " << s.e32 << " " << s.e33 << std::endl;
+
+        std::cout << "ordered pos: " << std::endl;
+        for (int iat = 0;iat < nat;++iat)
+            std::cout << pos[3 * iat] << " " << pos[3 * iat + 1] << " " << pos[3 * iat + 2] << std::endl;
+        std::cout << std::endl;
+
+        std::cout << "vec: " << std::endl;
+        for (int iat = 0;iat < nat;++iat)
+            std::cout << vec[3 * iat] << " " << vec[3 * iat + 1] << " " << vec[3 * iat + 2] << std::endl;
+        std::cout << std::endl;
+
+        std::cout << "index after 1st sort of rotpos in checksym" << std::endl;
+        for (int i = 0;i < nat;++i)
+            std::cout << index[i] << " ";
+        std::cout << std::endl;
+
+        std::cout << "ordered rotpos: " << std::endl;
+        for (int iat = 0;iat < nat;++iat)
+            std::cout << rotpos[3 * iat] << " " << rotpos[3 * iat + 1] << " " << rotpos[3 * iat + 2] << std::endl;
+        std::cout << std::endl;
+
+        std::cout << "rotvec: " << std::endl;
+        for (int iat = 0;iat < nat;++iat)
+            std::cout << rotvec[3 * iat] << " " << rotvec[3 * iat + 1] << " " << rotvec[3 * iat + 2] << std::endl;
+        std::cout << std::endl;
+    }
 
 	/*
 	GlobalV::ofs_running << " ============================================= " << std::endl;
@@ -1072,7 +1196,13 @@ void Symmetry::checksym(ModuleBase::Matrix3& s, ModuleBase::Vector3<double>& gtr
             for (int ia = istart[it]; ia < na[it] + istart[it]; ia++)
             {
                 no_diff = no_diff && this->check_diff_vec3_nat(pos, rotpos, ia);
-                if (vec) no_diff = no_diff && this->check_diff_vec3_nat(vec, rotvec.data(), ia);
+                if (vec)
+                {   // vec[index[i]]=rotvec[i]
+                    no_diff = no_diff &&
+                        (this->equal(this->check_diff(vec[index[ia] * 3 + 0], rotvec[ia * 3 + 0]), 0.0) &&
+                            this->equal(this->check_diff(vec[index[ia] * 3 + 1], rotvec[ia * 3 + 1]), 0.0) &&
+                            this->equal(this->check_diff(vec[index[ia] * 3 + 2], rotvec[ia * 3 + 2]), 0.0));
+                }
                 if (!no_diff) break;
             }
             if (!no_diff) break;
@@ -1127,6 +1257,10 @@ void Symmetry::pricell(double* pos, const Atom* atoms, double* vec)
     std::vector<double> rotvec;
     if (vec) rotvec.resize(3 * nat, 0.0);
 
+    // std::cout << "pos before 1st sort in pricell" << std::endl;
+    // for (int iat = 0;iat < nat;++iat)
+    //     std::cout << pos[3 * iat] << " " << pos[3 * iat + 1] << " " << pos[3 * iat + 2] << std::endl;
+    // std::cout << std::endl;
     for (int it = 0; it < ntype; it++)
     {
 		//------------------------------------
@@ -1155,6 +1289,21 @@ void Symmetry::pricell(double* pos, const Atom* atoms, double* vec)
             rotpos[zz] = pos[zz];
         }
     }
+    // if (vec)
+    // {
+    //     std::cout << "pos after 1st sort in pricell" << std::endl;
+    //     for (int iat = 0;iat < nat;++iat)
+    //         std::cout << pos[3 * iat] << " " << pos[3 * iat + 1] << " " << pos[3 * iat + 2] << std::endl;
+    //     std::cout << std::endl;
+    //     std::cout << "index after 1st sort in pricell" << std::endl;
+    //     for (int i = 0;i < nat;++i)
+    //         std::cout << index[i] << " ";
+    //     std::cout << std::endl;
+    //     std::cout << "vec now: " << std::endl;
+    //     for (int iat = 0;iat < nat;++iat)
+    //         std::cout << vec[3 * iat] << " " << vec[3 * iat + 1] << " " << vec[3 * iat + 2] << std::endl;
+    //     std::cout << std::endl;
+    // }
 
     double tmp_ptrans[3];
 
@@ -1777,6 +1926,7 @@ void Symmetry::symmetrize_vec3_nat(double* v)const   // pengfei 2016-12-20
 	}
     for (int j = 0;j < nat; ++j)
     {
+        std::cout << "j=" << j << ", n[j]=" << n[j] << std::endl;
         v[j * 3] = vtot[j * 3] / n[j];
         v[j * 3 + 1] = vtot[j * 3 + 1] / n[j];
         v[j * 3 + 2] = vtot[j * 3 + 2] / n[j];
