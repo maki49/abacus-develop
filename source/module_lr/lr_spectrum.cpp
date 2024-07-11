@@ -187,7 +187,7 @@ void LR::LR_Spectrum<T>::transition_analysis()
         std::setw(45) << "Transition dipole x, y, z (a.u.)" << std::setw(30) << "Oscillator strength(a.u.)" << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
     for (int istate = 0;istate < X.get_nbands();++istate)
-        ofs << std::setw(8) << istate << std::setw(15) << std::setprecision(3) << eig[istate] << std::setw(15) << eig[istate] * ModuleBase::Ry_to_eV
+        ofs << std::setw(8) << istate << std::setw(15) << std::setprecision(6) << eig[istate] << std::setw(15) << eig[istate] * ModuleBase::Ry_to_eV
         << std::setw(15) << transition_dipole_[istate].x << std::setw(15) << transition_dipole_[istate].y << std::setw(15) << transition_dipole_[istate].z
         << std::setw(30) << oscillator_strength_[istate] << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
