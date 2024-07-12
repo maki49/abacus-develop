@@ -794,8 +794,9 @@ void DensityMatrix<double, double>::write_DMK(const std::string directory, const
     {
         for (int j = 0; j < this->_paraV->ncol; ++j)
         {
-            if (j % 8 == 0)
+            if (j % 8 == 0) {
                 ofs << "\n";
+}
             ofs << " " << this->_DMK[ik + this->_nks * (ispin - 1)][i * this->_paraV->ncol + j];
         }
     }
@@ -829,8 +830,9 @@ void DensityMatrix<std::complex<double>, double>::write_DMK(const std::string di
     {
         for (int j = 0; j < this->_paraV->ncol; ++j)
         {
-            if (j % 8 == 0)
+            if (j % 8 == 0) {
                 ofs << "\n";
+}
             ofs << " " << this->_DMK[ik + this->_nks * (ispin - 1)][i * this->_paraV->ncol + j].real();
         }
     }

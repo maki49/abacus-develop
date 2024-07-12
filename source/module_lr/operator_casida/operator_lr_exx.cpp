@@ -9,12 +9,16 @@ namespace LR
     {
         ModuleBase::TITLE("OperatorLREXX", "allocate_Ds_onebase");
         this->Ds_onebase.resize(this->nspin);
-        for (int is = 0;is < this->nspin;++is)
-            for (int iat1 = 0;iat1 < ucell.nat;++iat1)
-                for (int iat2 = 0;iat2 < ucell.nat;++iat2)
-                    for (auto cell : this->BvK_cells)
+        for (int is = 0;is < this->nspin;++is) {
+            for (int iat1 = 0;iat1 < ucell.nat;++iat1) {
+                for (int iat2 = 0;iat2 < ucell.nat;++iat2) {
+                    for (auto cell : this->BvK_cells) {
                         this->Ds_onebase[is][iat1][std::make_pair(iat2, cell)] =
                         RI::Tensor<T>({ static_cast<size_t>(ucell.atoms[ucell.iat2it[iat1]].nw),  static_cast<size_t>(ucell.atoms[ucell.iat2it[iat2]].nw) });
+}
+}
+}
+}
     }
 
     template<>
@@ -86,7 +90,8 @@ namespace LR
             std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans[ib]->get_DMK_vector();
             assert(DMk_trans_vector.size() == nks);
             std::vector<const std::vector<T>*> DMk_trans_pointer(nks);
-            for (int is = 0;is < nks;++is) DMk_trans_pointer[is] = &DMk_trans_vector[is];
+            for (int is = 0;is < nks;++is) { DMk_trans_pointer[is] = &DMk_trans_vector[is];
+}
             // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
             std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
                 RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, *this->pmat);
