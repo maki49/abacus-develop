@@ -26,7 +26,7 @@ namespace LR
         if (local_xc.find(this->xc_kernel) != local_xc.end())
         {
             XC_Functional::set_xc_type(this->xc_kernel);    // for hse, (1-alpha) and omega are set here
-            this->xc_kernel_components_.cal_kernel(chg_gs, ucell_in, this->nspin);
+            this->xc_kernel_components_.f_xc_libxc(nspin, ucell_in->omega, ucell_in->tpiba, chg_gs);
         }
     }
 
