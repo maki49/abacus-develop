@@ -12,7 +12,6 @@ namespace LR
         const Charge* chg_gs/*ground state*/, SpinType st_in)
         :xc_kernel(xc_kernel_in), tpiba_(ucell_in->tpiba), spin_type_(st_in)
     {
-        std::cout << "xc_kernel_in: " << xc_kernel_in << std::endl;
         this->rho_basis_ = rho_basis_in;
         this->nrxx = chg_gs->nrxx;
         this->nspin = (GlobalV::NSPIN == 1 || (GlobalV::NSPIN == 4 && !GlobalV::DOMAG && !GlobalV::DOMAG_Z)) ? 1 : 2;
@@ -38,15 +37,16 @@ namespace LR
         ModuleBase::timer::tick("PotHxcLR", "cal_v_eff");
         auto& fxc = this->xc_kernel_components_;
 
-        const int nspin = v_eff.nr; // spin2 need change
+        const int& nspin_solve = v_eff.nr;
+        assert(nspin_solve == 1);
         // Hartree
         switch (this->spin_type_)
         {
         case SpinType::S1:   // check the coefficient:  does S1 already include the factor 2?
-            v_eff += elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), v_eff.nr, rho);
+            v_eff += elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), nspin_solve, rho);
             break;
         case SpinType::S2_singlet:
-            v_eff += 2 * elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), v_eff.nr, rho);
+            v_eff += 2 * elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), nspin_solve, rho);
         default:
             break;
         }
@@ -79,7 +79,7 @@ namespace LR
                 {
                     for (int ir = 0;ir < nrxx;++ir)
                     {
-                        const int irs0 = 2 * ir;
+                        const int irs0 = 3 * ir;
                         const int irs1 = irs0 + 1;
                         v_eff(0, ir) += ModuleBase::e2 * (fxc.get_kernel("v2rho2").at(irs0) + fxc.get_kernel("v2rho2").at(irs1)) * rho[ir];
                     }
@@ -90,13 +90,14 @@ namespace LR
                 {
                     for (int ir = 0;ir < nrxx;++ir)
                     {
-                        const int irs0 = 2 * ir;
+                        const int irs0 = 3 * ir;
                         const int irs1 = irs0 + 1;
                         v_eff(0, ir) += ModuleBase::e2 * (fxc.get_kernel("v2rho2").at(irs0) - fxc.get_kernel("v2rho2").at(irs1)) * rho[ir];
                     }
                 };
+            break;
         default:
-            throw std::domain_error("nspin =" + std::to_string(nspin)
+            throw std::domain_error("SpinType =" + std::to_string(s)
                 + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
             break;
         }
@@ -142,13 +143,13 @@ namespace LR
                     BlasConnector::axpy(nrxx, ModuleBase::e2, vxc_tmp.data(), 1, v_eff.c, 1);
                 };
             break;
-        case SpinType::S2_singlet:
-            break;
-        case SpinType::S2_triplet:
-            break;
+            // case SpinType::S2_singlet:
+            //     break;
+            // case SpinType::S2_triplet:
+            //     break;
         default:
-            throw std::domain_error("nspin =" + std::to_string(nspin)
-                + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
+            throw std::domain_error("SpinType =" + std::to_string(s) + "for GGA or HYB_GGA is unfinished in "
+                + std::string(__FILE__) + " line " + std::to_string(__LINE__));
             break;
         }
         else

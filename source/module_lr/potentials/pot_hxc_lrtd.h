@@ -7,12 +7,12 @@ namespace LR
 {
     class PotHxcLR : public elecstate::PotBase
     {
+    public:
         /// S1: K^Hartree + K^xc
         /// S2_singlet: 2*K^Hartree + K^xc_{upup} + K^xc_{updown}
         /// S2_triplet: K^xc_{upup} - K^xc_{updown}
-        enum SpinType { S1 = 0, S2_singlet = 1, S2_triplet = 2 } spin_type_ = SpinType::S1;
-        enum XCType { None = 0, LDA = 1, GGA = 2, HYB_GGA = 4 } xc_type_ = XCType::None;
-    public:
+        enum SpinType { S1 = 0, S2_singlet = 1, S2_triplet = 2 };
+        enum XCType { None = 0, LDA = 1, GGA = 2, HYB_GGA = 4 };
         /// constructor for exchange-correlation kernel
         PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/,
             SpinType st_in = S1);
@@ -20,6 +20,7 @@ namespace LR
         void cal_v_eff(const Charge* chg/*excited state*/, const UnitCell* ucell, ModuleBase::matrix& v_eff) override {};
         void cal_v_eff(double** rho, const UnitCell* ucell, ModuleBase::matrix& v_eff);
         int nrxx;
+    private:
         int nspin;
         elecstate::PotHartree* pot_hartree;
         /// different components of local and semi-local xc kernels:
@@ -29,6 +30,8 @@ namespace LR
         KernelXC xc_kernel_components_;
         const std::string xc_kernel;
         const double& tpiba_;
+        SpinType spin_type_ = SpinType::S1;
+        XCType xc_type_ = XCType::None;
 
         using Tfunc = std::function<void(const double* const /**<[in] rho*/,
             ModuleBase::matrix& /**<[out] v_eff */)>;

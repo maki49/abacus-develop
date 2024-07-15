@@ -87,6 +87,7 @@ namespace LR
                 DM_trans.resize(nbands);
                 for (int ib = prev_size;ib < nbands;++ib)
                 {
+                    // the first dimenstion of DensityMatrix is nk=nks/nspin 
                     DM_trans[ib] = new elecstate::DensityMatrix<T, TR>(&this->kv, this->pmat, this->nspin);
                     DM_trans[ib]->init_DMR(*this->hR);
                 }
@@ -95,10 +96,11 @@ namespace LR
         void grid_calculation(const int& nbands, const int& iband_dm)const;
 
         //global sizes
-        int nspin = 1;
-        int naos;
-        int nocc;
-        int nvirt;
+        const int& nspin;
+        const int nspin_solve = 1;    ///< in singlet-triplet calculation, the Casida equation is solved respectively so nspin_solve in a single problem is 1
+        const int& naos;
+        const int& nocc;
+        const int& nvirt;
         const K_Vectors& kv;
         /// ground state wavefunction
         const psi::Psi<T, Device>* psi_ks = nullptr;
@@ -109,7 +111,7 @@ namespace LR
         /// transition hamiltonian in AO representation
         hamilt::HContainer<T>* hR = nullptr;
 
-        //parallel info
+        /// parallel info
         Parallel_2D* pc = nullptr;
         Parallel_2D* pX = nullptr;
         Parallel_Orbitals* pmat = nullptr;
