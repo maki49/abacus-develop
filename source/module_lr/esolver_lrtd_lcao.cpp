@@ -83,7 +83,8 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::set_dimension()
 {
     this->nspin = GlobalV::NSPIN;
-    if (nspin == 2) std::cout << "** Assuming the spin-up and spin-down states are degenerate. **" << std::endl;
+    if (nspin == 2) { std::cout << "** Assuming the spin-up and spin-down states are degenerate. **" << std::endl;
+}
     this->nstates = input.lr_nstates;
     this->nbasis = GlobalV::NLOCAL;
     // calculate the number of occupied and unoccupied states

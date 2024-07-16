@@ -63,18 +63,21 @@ namespace LR
                     const int T2 = adjs.ntype[ad];
                     const int I2 = adjs.natom[ad];
                     int iat2 = this->ucell.itia2iat(T2, I2);
-                    if (pmat->get_row_size(iat1) <= 0 || pmat->get_col_size(iat2) <= 0) continue;
+                    if (pmat->get_row_size(iat1) <= 0 || pmat->get_col_size(iat2) <= 0) { continue;
+}
                     const ModuleBase::Vector3<int>& R_index = adjs.box[ad];
                     const LCAO_Orbitals& orb = LCAO_Orbitals::get_const_instance();
                     if (ucell.cal_dtau(iat1, iat2, R_index).norm() * this->ucell.lat0
-                        >= orb.Phi[T1].getRcut() + orb.Phi[T2].getRcut()) continue;
+                        >= orb.Phi[T1].getRcut() + orb.Phi[T2].getRcut()) { continue;
+}
                     hamilt::AtomPair<TR> tmp(iat1, iat2, R_index.x, R_index.y, R_index.z, pmat);
                     hR->insert_pair(tmp);
                 }
             }
             hR->allocate(nullptr, true);
             hR->set_paraV(pmat);
-            if (std::is_same<T, double>::value) hR->fix_gamma();
+            if (std::is_same<T, double>::value) { hR->fix_gamma();
+}
         }
         template<typename TR>
         void init_DM_trans(const int& nbands, std::vector<elecstate::DensityMatrix<T, TR>*>& DM_trans)const
@@ -83,7 +86,9 @@ namespace LR
             if (this->next_op != nullptr)
             {
                 int prev_size = DM_trans.size();
-                if (prev_size > nbands)for (int ib = nbands;ib < prev_size;++ib)delete DM_trans[ib];
+                if (prev_size > nbands) {for (int ib = nbands;ib < prev_size;++ib) {delete DM_trans[ib];
+}
+}
                 DM_trans.resize(nbands);
                 for (int ib = prev_size;ib < nbands;++ib)
                 {
