@@ -24,11 +24,11 @@ namespace LR
             const psi::Psi<T>* psi_ks_in,
             const ModuleBase::matrix& eig_ks,
 #ifdef __EXX
-            std::shared_ptr<Exx_LRI<T>> exx_lri_in,
+            std::weak_ptr<Exx_LRI<T>> exx_lri_in,
             const double& exx_alpha,
 #endif 
             TGint* gint_in,
-            std::shared_ptr<PotHxcLR> pot_in,
+            std::weak_ptr<PotHxcLR> pot_in,
             const K_Vectors& kv_in,
             Parallel_2D* pX_in,
             Parallel_2D* pc_in,
@@ -37,7 +37,7 @@ namespace LR
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
             this->DM_trans.resize(1);
-            this->DM_trans[0] = std::make_shared<elecstate::DensityMatrix<T, T>>(&kv_in, pmat_in, nspin);
+            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&kv_in, pmat_in, nspin);
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks, pX_in, nk, nocc, nvirt);
             //add Hxc operator
@@ -61,8 +61,6 @@ namespace LR
             }
         };
 
-        std::shared_ptr<hamilt::HContainer<T>> getHR() { return this->hR; }
-
         virtual std::vector<T> matrix() override;
 
     private:
@@ -71,10 +69,9 @@ namespace LR
         int nk;
         Parallel_2D* pX = nullptr;
         T one();
-        std::shared_ptr<hamilt::HContainer<T>> hR = nullptr;
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands
         /// Hxc+Exx: size=nbands, store the result of each bands for common use
-        std::vector<std::shared_ptr<elecstate::DensityMatrix<T, T>>> DM_trans;
+        std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>> DM_trans;
     };
 }

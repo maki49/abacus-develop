@@ -16,7 +16,7 @@ namespace LR
         this->nrxx = chg_gs->nrxx;
         this->nspin = (GlobalV::NSPIN == 1 || (GlobalV::NSPIN == 4 && !GlobalV::DOMAG && !GlobalV::DOMAG_Z)) ? 1 : 2;
 
-        this->pot_hartree = std::make_shared<elecstate::PotHartree>(this->rho_basis_);
+        this->pot_hartree = LR_Util::make_unique<elecstate::PotHartree>(this->rho_basis_);
         std::set<std::string> local_xc = { "lda", "pbe", "hse" };
         if (local_xc.find(this->xc_kernel) != local_xc.end())
         {

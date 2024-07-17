@@ -23,7 +23,7 @@ namespace LR
         int nrxx;
     private:
         int nspin;
-        std::shared_ptr<elecstate::PotHartree> pot_hartree;
+        std::unique_ptr<elecstate::PotHartree> pot_hartree;
         /// different components of local and semi-local xc kernels:
         /// LDA: v2rho2
         /// GGA: v2rho2, v2rhosigma, v2sigma2
