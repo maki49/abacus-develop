@@ -119,7 +119,7 @@ namespace LR
             this->gint->cal_gint(&inout_vlocal);
         }
         this->hR->set_zero();   // clear hR for each bands
-        this->gint->transfer_pvpR(this->hR, &GlobalC::ucell);    //grid to 2d block
+        this->gint->transfer_pvpR(&*this->hR, &GlobalC::ucell);    //grid to 2d block
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
     }
 

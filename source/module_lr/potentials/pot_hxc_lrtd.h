@@ -3,6 +3,7 @@
 #include "module_elecstate/potentials/H_Hartree_pw.h"
 #include "kernel.h"
 #include <unordered_map>
+#include <memory>
 namespace LR
 {
     class PotHxcLR : public elecstate::PotBase
@@ -22,7 +23,7 @@ namespace LR
         int nrxx;
     private:
         int nspin;
-        elecstate::PotHartree* pot_hartree;
+        std::shared_ptr<elecstate::PotHartree> pot_hartree;
         /// different components of local and semi-local xc kernels:
         /// LDA: v2rho2
         /// GGA: v2rho2, v2rhosigma, v2sigma2

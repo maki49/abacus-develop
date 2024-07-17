@@ -24,7 +24,7 @@ namespace LR
             const psi::Psi<T>* psi_ks_in,
             const ModuleBase::matrix& eig_ks,
 #ifdef __EXX
-            Exx_LRI<T>* exx_lri_in,
+            std::shared_ptr<Exx_LRI<T>> exx_lri_in,
             const double& exx_alpha,
 #endif 
             TGint* gint_in,
@@ -37,12 +37,12 @@ namespace LR
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
             this->classname = "HamiltCasidaLR";
             this->DM_trans.resize(1);
-            this->DM_trans[0] = new elecstate::DensityMatrix<T, T>(&kv_in, pmat_in, nspin);
+            this->DM_trans[0] = std::make_shared<elecstate::DensityMatrix<T, T>>(&kv_in, pmat_in, nspin);
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks, pX_in, nk, nocc, nvirt);
             //add Hxc operator
             OperatorLRHxc<T>* lr_hxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
-                this->DM_trans, gint_in, &(*pot_in), ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in);
+                this->DM_trans, gint_in, pot_in, ucell_in, gd_in, kv_in, pX_in, pc_in, pmat_in);
             this->ops->add(lr_hxc);
 #ifdef __EXX
             if (xc_kernel == "hf" || xc_kernel == "hse")
@@ -59,10 +59,9 @@ namespace LR
             {
                 delete this->ops;
             }
-            for (auto& d : this->DM_trans)delete d;
         };
 
-        hamilt::HContainer<T>* getHR() { return this->hR; }
+        std::shared_ptr<hamilt::HContainer<T>> getHR() { return this->hR; }
 
         virtual std::vector<T> matrix() override;
 
@@ -72,10 +71,10 @@ namespace LR
         int nk;
         Parallel_2D* pX = nullptr;
         T one();
-        hamilt::HContainer<T>* hR = nullptr;
+        std::shared_ptr<hamilt::HContainer<T>> hR = nullptr;
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands
         /// Hxc+Exx: size=nbands, store the result of each bands for common use
-        std::vector<elecstate::DensityMatrix<T, T>*> DM_trans;
+        std::vector<std::shared_ptr<elecstate::DensityMatrix<T, T>>> DM_trans;
     };
 }
