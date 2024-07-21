@@ -1798,7 +1798,8 @@ void Symmetry::set_atom_map(const Atom* atoms)
 
 inline bool check_full_atom_map(const std::vector<std::vector<int>>& m)
 {
-    if (m.empty()) return false;
+    if (m.empty()) { return false;
+}
     for (const auto& v1 : m) { for (const auto& v2 : v1) { if (v2 == -1) { return false; } } }
     return true;
 }
