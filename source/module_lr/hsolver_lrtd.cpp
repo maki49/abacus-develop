@@ -14,7 +14,7 @@ namespace LR
         psi::Psi<T, Device>& psi,
         elecstate::ElecState* pes,
         const std::string method_in,
-        const bool skip_charge)
+        const bool hermitian)
     {
         ModuleBase::TITLE("HSolverLR", "solve");
         assert(psi.get_nk() == nk);
@@ -153,8 +153,11 @@ namespace LR
 
 
         // 6. output eigenvalues and eigenvectors
-        std::cout << "eigenvalues:" << std::endl;
+        std::cout << "eigenvalues: (Ry)" << std::endl;
         for (auto& e : eigenvalue)std::cout << e << " ";
+        std::cout << std::endl;
+        std::cout << "eigenvalues: (eV)" << std::endl;
+        for (auto& e : eigenvalue)std::cout << e * ModuleBase::Ry_to_eV << " ";
         std::cout << std::endl;
         if (out_wfc_lr)
         {

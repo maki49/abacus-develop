@@ -6,3 +6,8 @@ AddTest(
   LIBS base ${math_libs} device
   SOURCES dm_mixing_test.cpp ../Mix_DMk_2D.cpp ../Mix_Matrix.cpp
 )
+AddTest(
+  TARGET ri_cv_io_test
+  LIBS base ${math_libs} device
+  SOURCES ri_cv_io_test.cpp
+)
