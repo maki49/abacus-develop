@@ -73,7 +73,7 @@ private:
 	LRI_CV<Tdata> cv;
 	RI::Exx<TA,Tcell,Ndim,Tdata> exx_lri;
 
-	void cal_exx_ions();
+    void cal_exx_ions(const bool write_cv = false);
 	void cal_exx_elec(const std::vector<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>> &Ds, const Parallel_Orbitals &pv);
 	void post_process_Hexx( std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> &Hexxs_io ) const;
     double post_process_Eexx(const double& Eexx_in) const;

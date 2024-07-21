@@ -244,6 +244,7 @@
     - [exx\_opt\_orb\_tolerence](#exx_opt_orb_tolerence)
     - [exx\_real\_number](#exx_real_number)
     - [rpa\_ccp\_rmesh\_times](#rpa_ccp_rmesh_times)
+    - [out\_ri\_cv](#out_ri_cv)
   - [Molecular dynamics](#molecular-dynamics)
     - [md\_type](#md_type)
     - [md\_nstep](#md_nstep)
@@ -2425,6 +2426,12 @@ These variables are relevant when using hybrid functionals.
 - **Type**: Real
 - **Description**: How many times larger the radial mesh required is to that of atomic orbitals in the postprocess calculation of the **bare** Coulomb matrix for RPA, GW, etc.
 - **Default**: 10
+
+### out_ri_cv
+
+- **Type**: Boolean
+- **Description**: Whether to output the coefficient tensor C(R) and ABFs-representation Coulomb matrix V(R) for each atom pair and cell in real space.
+- **Default**: false
 
 [back to top](#full-list-of-input-keywords)
 
