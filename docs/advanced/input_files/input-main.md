@@ -245,6 +245,7 @@
     - [exx\_real\_number](#exx_real_number)
     - [exx\_symmetry\_realspace](#exx_symmetry_realspace)
     - [rpa\_ccp\_rmesh\_times](#rpa_ccp_rmesh_times)
+    - [out\_ri\_cv](#out_ri_cv)
   - [Molecular dynamics](#molecular-dynamics)
     - [md\_type](#md_type)
     - [md\_nstep](#md_nstep)
@@ -2435,6 +2436,12 @@ These variables are relevant when using hybrid functionals.
   - False: only rotate k-space density matrix D(k) from irreducible k-points to accelerate diagonalization
   - True: rotate both D(k) and Hexx(R) to accelerate both diagonalization and EXX calculation
 - **Default**: True
+
+### out_ri_cv
+
+- **Type**: Boolean
+- **Description**: Whether to output the coefficient tensor C(R) and ABFs-representation Coulomb matrix V(R) for each atom pair and cell in real space.
+- **Default**: false
 
 [back to top](#full-list-of-input-keywords)
 
