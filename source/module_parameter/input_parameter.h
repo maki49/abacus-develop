@@ -356,6 +356,7 @@ struct Input_para
                                                 ///< functions for opt ABFs
     double rpa_ccp_rmesh_times = 10.0;          ///< how many times larger the radial mesh required for
                                                 ///< calculating Columb potential is to that of atomic orbitals
+    bool out_ri_cv = false;   ///<Whether to output the coefficient tensor C and ABFs-representation Coulomb matrix V
 
     // ==============   #Parameters (16.tddft) ======================
     double td_force_dt = 0.02;      ///<"fs"
