@@ -52,7 +52,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
                 XC_Functional::set_xc_type("scan");
             }
         }
-        this->exx_ptr->cal_exx_ions();
+        this->exx_ptr->cal_exx_ions(PARAM.inp.out_ri_cv);
     }
 
 		if (Exx_Abfs::Jle::generate_matrix)

@@ -2003,5 +2003,11 @@ void ReadInput::item_others()
         read_sync_double(input.abs_broadening);
         this->add_item(item);
     }
+    {
+        Input_Item item("ri_hartree");
+        item.annotation = "whether to use the RI approximation for the Hartree term in LR-TDDFT";
+        read_sync_bool(input.ri_hartree);
+        this->add_item(item);
+    }
 }
 } // namespace ModuleIO

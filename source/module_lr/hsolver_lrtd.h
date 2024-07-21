@@ -24,6 +24,6 @@ namespace LR
             psi::Psi<T, Device>& psi,
             elecstate::ElecState* pes,
             const std::string method_in,
-            const bool skip_charge = false) override;
+            const bool hermitian = true) override;
     };
 };

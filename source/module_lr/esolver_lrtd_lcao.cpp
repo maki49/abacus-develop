@@ -13,6 +13,7 @@
 #include "module_cell/module_neighbor/sltk_atom_arrange.h"
 #include "module_lr/utils/lr_util_print.h"
 #include "module_base/scalapack_connector.h"
+#include "module_lr/ri_benchmark/ri_benchmark.h"    //tmp
 
 #ifdef __EXX
 template<>
@@ -378,6 +379,17 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
     this->setup_eigenvectors_X();
     this->pelec->ekb.create(nspin, this->nstates);
 
+    // for aims benchmark
+    bool read_aims_wfc = true;  //tmp
+    if (input.ri_hartree && read_aims_wfc)
+    {
+        int ncore = 0;
+        std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(GlobalV::global_out_dir + "band_out", nocc, nvirt, ncore);
+        assert(eig_ks_vec.size() == this->nbands);
+        for (int i = 0;i < nbands;++i) { this->eig_ks(0, i) = eig_ks_vec[i]; }
+        RI_Benchmark::read_aims_eigenvectors<T>(*this->psi_ks, GlobalV::global_out_dir + "KS_eigenvectors.out", ncore, nbands, nbasis);
+    }
+
     if (this->input.lr_solver != "spectrum")
     {
         // allocate and initialize A matrix and density matrix
@@ -389,7 +401,7 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
 #ifdef __EXX
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
-                this->gint_, this->pot[is], this->kv, & this->paraX_, & this->paraC_, & this->paraMat_);
+                this->gint_, this->pot[is], this->kv, & this->paraX_, & this->paraC_, & this->paraMat_, (input.ri_hartree && (is == 0)));
             // solve the Casida equation
             HSolverLR<T> hsol(nk, this->npairs, is, this->input.out_wfc_lr);
             hsol.set_diagethr(0, 0, std::max(1e-13, this->input.lr_thr));
