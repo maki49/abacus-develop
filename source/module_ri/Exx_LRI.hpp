@@ -30,7 +30,7 @@ void Exx_LRI<Tdata>::init(const MPI_Comm &mpi_comm_in, const K_Vectors &kv_in)
 	ModuleBase::TITLE("Exx_LRI","init");
 	ModuleBase::timer::tick("Exx_LRI", "init");
 
-//	if(GlobalC::exx_info.info_global.separate_loop)
+    //	if(PARAM.exx_info.info_global.separate_loop)
 //	{
 //		Hexx_para.mixing_mode = Exx_Abfs::Parallel::Communicate::Hexx::Mixing_Mode::No;
 //		Hexx_para.mixing_beta = 0;
@@ -86,7 +86,7 @@ void Exx_LRI<Tdata>::init(const MPI_Comm &mpi_comm_in, const K_Vectors &kv_in)
 
 
 	for( size_t T=0; T!=this->abfs.size(); ++T )
-		GlobalC::exx_info.info_ri.abfs_Lmax = std::max( GlobalC::exx_info.info_ri.abfs_Lmax, static_cast<int>(this->abfs[T].size())-1 );
+        PARAM.set_exx_abfs_Lmax(std::max(PARAM.exx_info.info_ri.abfs_Lmax, static_cast<int>(this->abfs[T].size()) - 1));
 
 	this->cv.set_orbitals(
 		this->lcaos, this->abfs, this->abfs_ccp,

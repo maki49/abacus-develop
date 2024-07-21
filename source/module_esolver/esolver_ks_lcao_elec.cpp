@@ -189,9 +189,9 @@ void ESolver_KS_LCAO<TK, TR>::beforesolver(const int istep)
             two_center_bundle_,
             DM
 #ifdef __EXX
-            , GlobalC::exx_info.info_ri.real_number ? &this->exd->two_level_step : &this->exc->two_level_step
-            , GlobalC::exx_info.info_ri.real_number ? &exx_lri_double->Hexxs : nullptr
-            , GlobalC::exx_info.info_ri.real_number ? nullptr : &exx_lri_complex->Hexxs
+            , PARAM.exx_info.info_ri.real_number ? &this->exd->two_level_step : &this->exc->two_level_step
+            , PARAM.exx_info.info_ri.real_number ? &exx_lri_double->Hexxs : nullptr
+            , PARAM.exx_info.info_ri.real_number ? nullptr : &exx_lri_complex->Hexxs
 #endif
         );
     }
@@ -282,7 +282,7 @@ void ESolver_KS_LCAO<TK, TR>::before_scf(const int istep)
 
     // Peize Lin add 2016-12-03
 #ifdef __EXX // set xc type before the first cal of xc in pelec->init_scf
-    if (GlobalC::exx_info.info_ri.real_number)
+    if (PARAM.exx_info.info_ri.real_number)
     {
         this->exd->exx_beforescf(this->kv, *this->p_chgmix);
     }

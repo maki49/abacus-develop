@@ -23,7 +23,6 @@
 #include "module_cell/module_paw/paw_cell.h"
 #endif
 #ifdef __EXX
-#include "module_hamilt_pw/hamilt_pwdft/global.h"
 #include "module_ri/serialization_cereal.h"
 #endif
 
@@ -151,7 +150,7 @@ void UnitCell::bcast_unitcell() {
     }
 
 #ifdef __EXX
-    ModuleBase::bcast_data_cereal(GlobalC::exx_info.info_ri.files_abfs,
+    ModuleBase::bcast_data_cereal(PARAM.get_exx_abfs_file(),
                                   MPI_COMM_WORLD,
                                   0);
 #endif

@@ -175,11 +175,6 @@ namespace GlobalV
     std::ofstream ofs_running;
 }
 
-namespace GlobalC
-{
-	Exx_Info exx_info;
-}
-
 UnitCell::UnitCell(){};
 UnitCell::~UnitCell(){};
 

@@ -89,12 +89,12 @@ namespace ModuleESolver
         if (GlobalV::CALCULATION == "scf" || GlobalV::CALCULATION == "relax"
             || GlobalV::CALCULATION == "cell-relax"
             || GlobalV::CALCULATION == "md")
-            if (GlobalC::exx_info.info_global.cal_exx)
+            if (PARAM.exx_info.info_global.cal_exx)
             {
                 XC_Functional::set_xc_first_loop(cell);
-                this->exx_lip = std::unique_ptr<Exx_Lip<T>>(new Exx_Lip<T>(GlobalC::exx_info.info_lip,
+                this->exx_lip = std::unique_ptr<Exx_Lip<T>>(new Exx_Lip<T>(PARAM.exx_info.info_lip,
                     cell.symm, &this->kv, this->p_wf_init, this->kspw_psi, this->pw_wfc, this->pw_rho, this->sf, &cell, this->pelec));
-                // this->exx_lip.init(GlobalC::exx_info.info_lip, cell.symm, &this->kv, this->p_wf_init, this->kspw_psi, this->pw_wfc, this->pw_rho, this->sf, &cell, this->pelec);
+                // this->exx_lip.init(PARAM.exx_info.info_lip, cell.symm, &this->kv, this->p_wf_init, this->kspw_psi, this->pw_wfc, this->pw_rho, this->sf, &cell, this->pelec);
             }
 #endif
     }
@@ -104,7 +104,7 @@ namespace ModuleESolver
     {
         ESolver_KS_PW<T>::iter_init(istep, iter);
 #ifdef __EXX
-        if (GlobalC::exx_info.info_global.cal_exx && !GlobalC::exx_info.info_global.separate_loop && this->two_level_step)
+        if (PARAM.exx_info.info_global.cal_exx && !PARAM.exx_info.info_global.separate_loop && this->two_level_step)
             this->exx_lip->cal_exx();
 #endif
     }
@@ -162,7 +162,7 @@ namespace ModuleESolver
         }
         // add exx
 #ifdef __EXX
-        if (GlobalC::exx_info.info_global.cal_exx)
+        if (PARAM.exx_info.info_global.cal_exx)
             this->pelec->set_exx(this->exx_lip->get_exx_energy()); // Peize Lin add 2019-03-09
 #endif
 
@@ -195,13 +195,11 @@ namespace ModuleESolver
     template <typename T>
     bool ESolver_KS_LIP<T>::do_after_converge(int& iter)
     {
-        if (GlobalC::exx_info.info_global.cal_exx)
+        if (PARAM.exx_info.info_global.cal_exx)
         {
             // no separate_loop case
-            if (!GlobalC::exx_info.info_global.separate_loop)
+            if (!PARAM.exx_info.info_global.separate_loop)
             {
-                GlobalC::exx_info.info_global.hybrid_step = 1;
-
                 // in no_separate_loop case, scf loop only did twice
                 // in first scf loop, exx updated once in beginning,
                 // in second scf loop, exx updated every iter
@@ -220,7 +218,7 @@ namespace ModuleESolver
             }
             // has separate_loop case
             // exx converged or get max exx steps
-            else if (this->two_level_step == GlobalC::exx_info.info_global.hybrid_step
+            else if (this->two_level_step == PARAM.exx_info.info_global.hybrid_step
                 || (iter == 1 && this->two_level_step != 0))
                 return true;
             else

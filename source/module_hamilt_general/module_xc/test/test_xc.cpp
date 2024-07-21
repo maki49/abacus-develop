@@ -22,11 +22,6 @@ namespace GlobalV
     int NSPIN = 1;
 }
 
-namespace GlobalC
-{
-	Exx_Info exx_info;
-}
-
 class XCTest_PBE : public testing::Test
 {
     protected:

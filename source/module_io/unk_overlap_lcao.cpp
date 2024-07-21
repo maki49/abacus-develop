@@ -31,7 +31,7 @@ void unkOverlap_lcao::init(const Grid_Technique& gt, const int nkstot)
     int Lmax_used, Lmax;
     int exx_lmax = 0;
 #ifdef __EXX
-    exx_lmax = GlobalC::exx_info.info_ri.abfs_Lmax;
+    exx_lmax = PARAM.exx_info.info_ri.abfs_Lmax;
 #endif
 
     const int ntype = GlobalC::ORB.get_ntype();

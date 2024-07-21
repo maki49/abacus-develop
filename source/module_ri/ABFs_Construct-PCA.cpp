@@ -83,10 +83,10 @@ namespace PCA
 		const ModuleBase::Element_Basis_Index::IndexLNM
 			index_abfs = ModuleBase::Element_Basis_Index::construct_index( range_abfs );
 
-		const int Lmax_bak = GlobalC::exx_info.info_ri.abfs_Lmax;
-		GlobalC::exx_info.info_ri.abfs_Lmax = std::numeric_limits<int>::min();
+        const int Lmax_bak = PARAM.exx_info.info_ri.abfs_Lmax;
+        PARAM.set_exx_abfs_Lmax(std::numeric_limits<int>::min());
 		for( std::size_t T=0; T!=abfs.size(); ++T )
-			GlobalC::exx_info.info_ri.abfs_Lmax = std::max( GlobalC::exx_info.info_ri.abfs_Lmax, static_cast<int>(abfs[T].size())-1 );
+            PARAM.set_exx_abfs_Lmax(std::max(PARAM.exx_info.info_ri.abfs_Lmax, static_cast<int>(abfs[T].size()) - 1));
 
 		Matrix_Orbs21 m_abfslcaos_lcaos;
 		m_abfslcaos_lcaos.init( 1, kmesh_times, 1 );
@@ -97,7 +97,7 @@ namespace PCA
 			delta_R[it][it] = {0.0};
 		m_abfslcaos_lcaos.init_radial_table(delta_R);
 
-		GlobalC::exx_info.info_ri.abfs_Lmax = Lmax_bak;
+        PARAM.set_exx_abfs_Lmax(Lmax_bak);
 		
 		std::vector<std::vector<std::pair<std::vector<double>,RI::Tensor<double>>>> eig(abfs.size());
 		for( std::size_t T=0; T!=abfs.size(); ++T )

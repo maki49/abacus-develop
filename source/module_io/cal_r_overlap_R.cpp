@@ -19,7 +19,7 @@ void cal_r_overlap_R::initialize_orb_table()
     int Lmax = 0;
     int exx_lmax = 0;
 #ifdef __EXX
-    exx_lmax = GlobalC::exx_info.info_ri.abfs_Lmax;
+    exx_lmax = PARAM.exx_info.info_ri.abfs_Lmax;
 #endif
 
     const int ntype = GlobalC::ORB.get_ntype();

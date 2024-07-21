@@ -23,11 +23,6 @@ namespace GlobalV
     int NSPIN = 1;
 }
 
-namespace GlobalC
-{
-	Exx_Info exx_info;
-}
-
 class XCTest_HSE : public testing::Test
 {
     protected:

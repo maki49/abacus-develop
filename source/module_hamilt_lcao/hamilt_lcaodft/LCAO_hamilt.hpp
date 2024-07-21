@@ -35,7 +35,7 @@ void sparse_format::cal_HR_exx(
     ModuleBase::TITLE("sparse_format", "cal_HR_exx");
     ModuleBase::timer::tick("sparse_format", "cal_HR_exx");
 
-    const Tdata frac = GlobalC::exx_info.info_global.hybrid_alpha;
+    const Tdata frac = PARAM.exx_info.info_global.hybrid_alpha;
 
     std::map<int, std::array<double, 3>> atoms_pos;
     for (int iat = 0; iat < GlobalC::ucell.nat; ++iat) {

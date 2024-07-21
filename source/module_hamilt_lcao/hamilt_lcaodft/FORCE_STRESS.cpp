@@ -267,32 +267,32 @@ void Force_Stress_LCAO<T>::getForceStress(const bool isforce,
     // Force and Stress contribution from exx
     ModuleBase::matrix force_exx;
     ModuleBase::matrix stress_exx;
-    if (GlobalC::exx_info.info_global.cal_exx)
+    if (PARAM.exx_info.info_global.cal_exx)
     {
         if (isforce)
         {
-            if (GlobalC::exx_info.info_ri.real_number)
+            if (PARAM.exx_info.info_ri.real_number)
             {
                 exx_lri_double.cal_exx_force();
-                force_exx = GlobalC::exx_info.info_global.hybrid_alpha * exx_lri_double.force_exx;
+                force_exx = PARAM.exx_info.info_global.hybrid_alpha * exx_lri_double.force_exx;
             }
             else
             {
                 exx_lri_complex.cal_exx_force();
-                force_exx = GlobalC::exx_info.info_global.hybrid_alpha * exx_lri_complex.force_exx;
+                force_exx = PARAM.exx_info.info_global.hybrid_alpha * exx_lri_complex.force_exx;
             }
         }
         if (isstress)
         {
-            if (GlobalC::exx_info.info_ri.real_number)
+            if (PARAM.exx_info.info_ri.real_number)
             {
                 exx_lri_double.cal_exx_stress();
-                stress_exx = GlobalC::exx_info.info_global.hybrid_alpha * exx_lri_double.stress_exx;
+                stress_exx = PARAM.exx_info.info_global.hybrid_alpha * exx_lri_double.stress_exx;
             }
             else
             {
                 exx_lri_complex.cal_exx_stress();
-                stress_exx = GlobalC::exx_info.info_global.hybrid_alpha * exx_lri_complex.stress_exx;
+                stress_exx = PARAM.exx_info.info_global.hybrid_alpha * exx_lri_complex.stress_exx;
             }
         }
     }
@@ -324,7 +324,7 @@ void Force_Stress_LCAO<T>::getForceStress(const bool isforce,
                 }
 #ifdef __EXX
                 // Force contribution from exx
-                if (GlobalC::exx_info.info_global.cal_exx)
+                if (PARAM.exx_info.info_global.cal_exx)
                 {
                     fcs(iat, i) += force_exx(iat, i);
                 }
@@ -582,7 +582,7 @@ void Force_Stress_LCAO<T>::getForceStress(const bool isforce,
                 }
 #ifdef __EXX
                 // Stress contribution from exx
-                if (GlobalC::exx_info.info_global.cal_exx)
+                if (PARAM.exx_info.info_global.cal_exx)
                 {
                     scs(i, j) += stress_exx(i, j);
                 }

@@ -474,6 +474,10 @@ void ReadInput::item_others()
                 ModuleBase::WARNING_QUIT("ReadInput", "exx_hybrid_step must > 0");
             }
         };
+        item.reset_value = [](const Input_Item& item, Parameter& para)
+            {
+                if (para.input.exx_separate_loop == 0) { para.input.exx_hybrid_step = 1; }
+            };
         this->add_item(item);
     }
     {

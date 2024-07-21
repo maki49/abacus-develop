@@ -38,7 +38,7 @@ template<typename T, typename Tdata>
 void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charge_Mixing& chgmix)
 {
 #ifdef __MPI
-    if (GlobalC::exx_info.info_global.cal_exx)
+    if (PARAM.exx_info.info_global.cal_exx)
     {
         if (GlobalC::restart.info_load.load_H_finish && !GlobalC::restart.info_load.restart_exx) { XC_Functional::set_xc_type(GlobalC::ucell.atoms[0].ncpp.xc_func);
         } else
@@ -65,10 +65,10 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
 		}
 		
 		// set initial parameter for mix_DMk_2D
-		if(GlobalC::exx_info.info_global.cal_exx)
+        if (PARAM.exx_info.info_global.cal_exx)
 		{
 			this->mix_DMk_2D.set_nks(kv.get_nks(), GlobalV::GAMMA_ONLY_LOCAL);
-			if(GlobalC::exx_info.info_global.separate_loop) {
+            if (PARAM.exx_info.info_global.separate_loop) {
                 this->mix_DMk_2D.set_mixing(nullptr);
 			} else {
 				this->mix_DMk_2D.set_mixing(chgmix.get_mixing());
@@ -82,9 +82,9 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const K_Vectors& kv, const Charg
 template<typename T, typename Tdata>
 void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const elecstate::DensityMatrix<T, double>& dm, const int& iter)
 {
-    if (GlobalC::exx_info.info_global.cal_exx)
+    if (PARAM.exx_info.info_global.cal_exx)
     {
-        if (!GlobalC::exx_info.info_global.separate_loop && this->two_level_step)
+        if (!PARAM.exx_info.info_global.separate_loop && this->two_level_step)
         {
 			const bool flag_restart = (iter==1) ? true : false;
             this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
@@ -111,7 +111,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_hamilt2density(elecstate::ElecState& elec,
             if (GlobalV::MY_RANK == 0) {GlobalC::restart.load_disk("Eexx", 0, 1, &this->exx_ptr->Eexx);
 }
             Parallel_Common::bcast_double(this->exx_ptr->Eexx);
-            this->exx_ptr->Eexx /= GlobalC::exx_info.info_global.hybrid_alpha;
+            this->exx_ptr->Eexx /= PARAM.exx_info.info_global.hybrid_alpha;
         }
         elec.set_exx(this->get_Eexx());
     }
@@ -127,7 +127,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
     const elecstate::DensityMatrix<T, double>& dm,
     const K_Vectors& kv,
     int& iter)
-{   // only called if (GlobalC::exx_info.info_global.cal_exx)
+{   // only called if (PARAM.exx_info.info_global.cal_exx)
     auto restart_reset = [this]()
         { // avoid calling restart related procedure in the subsequent ion steps
             GlobalC::restart.info_load.restart_exx = true;
@@ -135,9 +135,9 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
         };
 
         // no separate_loop case
-        if (!GlobalC::exx_info.info_global.separate_loop)
+    if (!PARAM.exx_info.info_global.separate_loop)
         {
-            GlobalC::exx_info.info_global.hybrid_step = 1;
+        assert(PARAM.exx_info.info_global.hybrid_step == 1);
 
             // in no_separate_loop case, scf loop only did twice
             // in first scf loop, exx updated once in beginning,
@@ -160,7 +160,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
         }
         // has separate_loop case
         // exx converged or get max exx steps
-        else if (this->two_level_step == GlobalC::exx_info.info_global.hybrid_step
+    else if (this->two_level_step == PARAM.exx_info.info_global.hybrid_step
             || (iter == 1 && this->two_level_step != 0))
         {
             restart_reset();

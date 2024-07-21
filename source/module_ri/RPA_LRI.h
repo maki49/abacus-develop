@@ -33,9 +33,7 @@ template <typename T, typename Tdata> class RPA_LRI
     using TatomR = std::array<double, Ndim>; // tmp
 
   public:
-    RPA_LRI(const Exx_Info::Exx_Info_RI &info_in) : info(info_in)
-    {
-    }
+      RPA_LRI(const Exx_Info::Exx_Info_RI& info_in) : info(info_in), exx_lri_rpa(info) {}
     ~RPA_LRI(){};
     void init(const MPI_Comm &mpi_comm_in, const K_Vectors &kv_in);
     void cal_rpa_cv();
@@ -72,9 +70,8 @@ template <typename T, typename Tdata> class RPA_LRI
     std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Cs_period;
     // RI::RPA<TA,Tcell,Ndim,Tdata> rpa_lri;
 
-    // Tdata post_process_Erpa( const Tdata &Erpa_in ) const;
+    Exx_LRI<double> exx_lri_rpa;
 };
-Exx_LRI<double> exx_lri_rpa(GlobalC::exx_info.info_ri);
 #include "RPA_LRI.hpp"
 
 #endif

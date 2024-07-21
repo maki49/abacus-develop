@@ -25,7 +25,7 @@ void Exx_Opt_Orb::generate_matrix(const K_Vectors &kv) const
 		lcaos = Exx_Abfs::Construct_Orbs::change_orbs( GlobalC::ORB, this->kmesh_times );
 
 	const std::vector<std::vector<std::vector<Numerical_Orbital_Lm>>>
-		abfs = Exx_Abfs::Construct_Orbs::abfs_same_atom( lcaos, this->kmesh_times, GlobalC::exx_info.info_ri.pca_threshold );
+        abfs = Exx_Abfs::Construct_Orbs::abfs_same_atom(lcaos, this->kmesh_times, PARAM.exx_info.info_ri.pca_threshold);
 
 // ofs_mpi<<"memory:\t"<<get_memory(10)<<std::endl;
 	
@@ -34,9 +34,9 @@ void Exx_Opt_Orb::generate_matrix(const K_Vectors &kv) const
 
 // ofs_mpi<<"memory:\t"<<get_memory(10)<<std::endl;
 	
-	GlobalC::exx_info.info_ri.abfs_Lmax = Exx_Abfs::Jle::Lmax;
+    PARAM.set_exx_abfs_Lmax(Exx_Abfs::Jle::Lmax);
 	for( size_t T=0; T!=abfs.size(); ++T )
-		GlobalC::exx_info.info_ri.abfs_Lmax = std::max( GlobalC::exx_info.info_ri.abfs_Lmax, static_cast<int>(abfs[T].size())-1 );
+        PARAM.set_exx_abfs_Lmax(std::max(PARAM.exx_info.info_ri.abfs_Lmax, static_cast<int>(abfs[T].size()) - 1));
 
 	const ModuleBase::Element_Basis_Index::Range    range_lcaos = Exx_Abfs::Abfs_Index::construct_range( lcaos );
 	const ModuleBase::Element_Basis_Index::IndexLNM index_lcaos = ModuleBase::Element_Basis_Index::construct_index( range_lcaos );
@@ -181,7 +181,7 @@ void Exx_Opt_Orb::generate_matrix(const K_Vectors &kv) const
 					if( TA==TB && IA==IB )
 					{
 						const size_t T=TA, I=IA;
-						if(GlobalC::exx_info.info_ri.pca_threshold<=1)
+                        if (PARAM.exx_info.info_ri.pca_threshold <= 1)
 						{
 							// < abfs | abfs >.I
 							const std::vector<std::vector<RI::Tensor<double>>> ms_abfs_abfs_I = cal_I( ms_abfs_abfs, T,I,T,I );
@@ -227,7 +227,7 @@ void Exx_Opt_Orb::generate_matrix(const K_Vectors &kv) const
 					}
 					else
 					{
-						if(GlobalC::exx_info.info_ri.pca_threshold<=1)
+                        if (PARAM.exx_info.info_ri.pca_threshold <= 1)
 						{
 							// < abfs | abfs >.I
 							const std::vector<std::vector<RI::Tensor<double>>> ms_abfs_abfs_I = cal_I( ms_abfs_abfs, TA,IA,TB,IB );

@@ -30,17 +30,17 @@ void Matrix_Orbs11::init(const int mode, const double kmesh_times, const double 
     Rmesh += 1 - Rmesh % 2;
 
     Center2_Orb::init_Table_Spherical_Bessel(2,
-                                             mode,
-                                             Lmax_used,
-                                             Lmax,
-                                             GlobalC::exx_info.info_ri.abfs_Lmax,
-                                             lmax_orb,
-                                             lmax_beta,
-                                             dr,
-                                             dk,
-                                             kmesh,
-                                             Rmesh,
-                                             psb_);
+        mode,
+        Lmax_used,
+        Lmax,
+        PARAM.exx_info.info_ri.abfs_Lmax,
+        lmax_orb,
+        lmax_beta,
+        dr,
+        dk,
+        kmesh,
+        Rmesh,
+        psb_);
 
     //=========================================
     // (3) make Gaunt coefficients table

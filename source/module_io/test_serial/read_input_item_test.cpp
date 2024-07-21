@@ -1190,6 +1190,11 @@ TEST_F(InputTest, Item_test)
         EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(0), "");
         output = testing::internal::GetCapturedStdout();
         EXPECT_THAT(output, testing::HasSubstr("NOTICE"));
+
+        param.input.exx_separate_loop = 0;
+        param.input.exx_hybrid_step = 2;
+        it->second.reset_value(it->second, param);
+        EXPECT_EQ(param.input.exx_hybrid_step, 1);
     }
     { // exx_real_number
         auto it = find_lable("exx_real_number", readinput.input_lists);

@@ -95,8 +95,8 @@ void sparse_format::cal_HSR(const Parallel_Orbitals& pv,
 #ifdef __EXX
 #ifdef __MPI
     // if EXX is considered
-    if (GlobalC::exx_info.info_global.cal_exx) {
-        if (GlobalC::exx_info.info_ri.real_number) {
+    if (PARAM.exx_info.info_global.cal_exx) {
+        if (PARAM.exx_info.info_ri.real_number) {
             sparse_format::cal_HR_exx(pv,
                 HS_Arrays,
                 current_spin,

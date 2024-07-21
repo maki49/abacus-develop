@@ -131,6 +131,10 @@ void Driver::reading()
     ss1 << GlobalV::global_out_dir << GlobalV::global_in_card;
     read_input.write_parameters(PARAM, ss1.str());
 
+#ifdef __EXX
+    // set exx_info before Convert() (seems the best place, *not* temp)
+    PARAM.set_exx_info();
+#endif
     // (*temp*) copy the variables from INPUT to each class
     Input_Conv::tmp_convert();
     Input_Conv::Convert();

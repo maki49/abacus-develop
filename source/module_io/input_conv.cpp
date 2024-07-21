@@ -471,46 +471,9 @@ void Input_Conv::Convert()
                    PARAM.inp.dft_functional.end(),
                    dft_functional_lower.begin(),
                    tolower);
-    if (dft_functional_lower == "hf" || dft_functional_lower == "pbe0" || dft_functional_lower == "scan0")
+    if (dft_functional_lower == "opt_orb") { Exx_Abfs::Jle::generate_matrix = true; }
+    if (PARAM.exx_info.info_global.cal_exx || dft_functional_lower == "opt_orb" || PARAM.inp.rpa)
     {
-        GlobalC::exx_info.info_global.cal_exx = true;
-        GlobalC::exx_info.info_global.ccp_type
-            = Conv_Coulomb_Pot_K::Ccp_Type::Hf;
-    } else if (dft_functional_lower == "hse") {
-        GlobalC::exx_info.info_global.cal_exx = true;
-        GlobalC::exx_info.info_global.ccp_type
-            = Conv_Coulomb_Pot_K::Ccp_Type::Hse;
-    } else if (dft_functional_lower == "opt_orb") {
-        GlobalC::exx_info.info_global.cal_exx = false;
-        Exx_Abfs::Jle::generate_matrix = true;
-    } else {
-        GlobalC::exx_info.info_global.cal_exx = false;
-    }
-
-    if (GlobalC::exx_info.info_global.cal_exx || Exx_Abfs::Jle::generate_matrix || PARAM.inp.rpa)
-    {
-        // EXX case, convert all EXX related variables
-        // GlobalC::exx_info.info_global.cal_exx = true;
-        GlobalC::exx_info.info_global.hybrid_alpha = std::stod(PARAM.inp.exx_hybrid_alpha);
-        XC_Functional::get_hybrid_alpha(std::stod(PARAM.inp.exx_hybrid_alpha));
-        GlobalC::exx_info.info_global.hse_omega = PARAM.inp.exx_hse_omega;
-        GlobalC::exx_info.info_global.separate_loop = PARAM.inp.exx_separate_loop;
-        GlobalC::exx_info.info_global.hybrid_step = PARAM.inp.exx_hybrid_step;
-        GlobalC::exx_info.info_global.mixing_beta_for_loop1 = PARAM.inp.exx_mixing_beta;
-        GlobalC::exx_info.info_lip.lambda = PARAM.inp.exx_lambda;
-
-        GlobalC::exx_info.info_ri.real_number = std::stoi(PARAM.inp.exx_real_number);
-        GlobalC::exx_info.info_ri.pca_threshold = PARAM.inp.exx_pca_threshold;
-        GlobalC::exx_info.info_ri.C_threshold = PARAM.inp.exx_c_threshold;
-        GlobalC::exx_info.info_ri.V_threshold = PARAM.inp.exx_v_threshold;
-        GlobalC::exx_info.info_ri.dm_threshold = PARAM.inp.exx_dm_threshold;
-        GlobalC::exx_info.info_ri.cauchy_threshold = PARAM.inp.exx_cauchy_threshold;
-        GlobalC::exx_info.info_ri.C_grad_threshold = PARAM.inp.exx_c_grad_threshold;
-        GlobalC::exx_info.info_ri.V_grad_threshold = PARAM.inp.exx_v_grad_threshold;
-        GlobalC::exx_info.info_ri.cauchy_force_threshold = PARAM.inp.exx_cauchy_force_threshold;
-        GlobalC::exx_info.info_ri.cauchy_stress_threshold = PARAM.inp.exx_cauchy_stress_threshold;
-        GlobalC::exx_info.info_ri.ccp_rmesh_times = std::stod(PARAM.inp.exx_ccp_rmesh_times);
-
         Exx_Abfs::Jle::Lmax = PARAM.inp.exx_opt_orb_lmax;
         Exx_Abfs::Jle::Ecut_exx = PARAM.inp.exx_opt_orb_ecut;
         Exx_Abfs::Jle::tolerence = PARAM.inp.exx_opt_orb_tolerence;

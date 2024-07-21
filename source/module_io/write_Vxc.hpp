@@ -361,7 +361,7 @@ void write_Vxc(int nspin,
         const std::vector<TK>& vlocxc_k_mo = cVc(vxc_k_ao.get_hk(), &psi(ik, 0, 0), nbasis, nbands, *pv, p2d);
 
 #ifdef __EXX
-        if (GlobalC::exx_info.info_global.cal_exx)
+        if (PARAM.exx_info.info_global.cal_exx)
         {
             e_orb_locxc.emplace_back(orbital_energy(ik, nbands, vlocxc_k_mo, p2d));
             ModuleBase::GlobalFunc::ZEROS(vexxonly_k_ao.get_hk(), pv->nloc);
@@ -435,7 +435,7 @@ void write_Vxc(int nspin,
     {
         write_orb_energy(e_orb_tot, "");
 #ifdef __EXX
-        if (GlobalC::exx_info.info_global.cal_exx)
+        if (PARAM.exx_info.info_global.cal_exx)
         {
             write_orb_energy(e_orb_locxc, "local");
             write_orb_energy(e_orb_exx, "exx");

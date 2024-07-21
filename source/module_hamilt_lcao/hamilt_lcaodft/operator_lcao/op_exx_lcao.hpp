@@ -91,7 +91,7 @@ OperatorEXX<OperatorLCAO<TK, TR>>::OperatorEXX(HS_Matrix_K<TK>* hsk_in,
     if (GlobalV::CALCULATION == "nscf")
     {    // if nscf, read HexxR first and reallocate hR according to the read-in HexxR
         const std::string file_name_exx = GlobalV::global_out_dir + "HexxR" + std::to_string(GlobalV::MY_RANK);
-        if (GlobalC::exx_info.info_ri.real_number)
+        if (PARAM.exx_info.info_ri.real_number)
         {
             ModuleIO::read_Hexxs_csr(file_name_exx, GlobalC::ucell, GlobalV::NSPIN, GlobalV::NLOCAL, *Hexxd);
             if (this->add_hexx_type == Add_Hexx_Type::R) { reallocate_hcontainer(*Hexxd, this->hR); }
@@ -168,7 +168,7 @@ OperatorEXX<OperatorLCAO<TK, TR>>::OperatorEXX(HS_Matrix_K<TK>* hsk_in,
             {
                 // read in Hexx(R)
                 const std::string restart_HR_path = GlobalC::restart.folder + "HexxR" + std::to_string(GlobalV::MY_RANK);
-                if (GlobalC::exx_info.info_ri.real_number) {
+                if (PARAM.exx_info.info_ri.real_number) {
                     ModuleIO::read_Hexxs_csr(restart_HR_path, GlobalC::ucell, GlobalV::NSPIN, GlobalV::NLOCAL, *Hexxd);
                 }
                 else {
@@ -193,10 +193,10 @@ void OperatorEXX<OperatorLCAO<TK, TR>>::contributeHR()
     if (XC_Functional::get_func_type() == 4 || XC_Functional::get_func_type() == 5)
     {
         // add H(R) normally
-        if (GlobalC::exx_info.info_ri.real_number)
+        if (PARAM.exx_info.info_ri.real_number)
             RI_2D_Comm::add_HexxR(
                 this->current_spin,
-                GlobalC::exx_info.info_global.hybrid_alpha,
+                PARAM.exx_info.info_global.hybrid_alpha,
                 *this->Hexxd,
                 *this->hR->get_paraV(),
                 GlobalV::NPOL,
@@ -205,7 +205,7 @@ void OperatorEXX<OperatorLCAO<TK, TR>>::contributeHR()
         else
             RI_2D_Comm::add_HexxR(
                 this->current_spin,
-                GlobalC::exx_info.info_global.hybrid_alpha,
+                PARAM.exx_info.info_global.hybrid_alpha,
                 *this->Hexxc,
                 *this->hR->get_paraV(),
                 GlobalV::NPOL,
@@ -246,11 +246,11 @@ void OperatorEXX<OperatorLCAO<TK, TR>>::contributeHk(int ik)
         }
         // cal H(k) from H(R) normally
 
-        if (GlobalC::exx_info.info_ri.real_number)
+        if (PARAM.exx_info.info_ri.real_number)
             RI_2D_Comm::add_Hexx(
                 this->kv,
                 ik,
-                GlobalC::exx_info.info_global.hybrid_alpha,
+                PARAM.exx_info.info_global.hybrid_alpha,
                 *this->Hexxd,
                 *this->hR->get_paraV(),
                 this->hsk->get_hk());
@@ -258,7 +258,7 @@ void OperatorEXX<OperatorLCAO<TK, TR>>::contributeHk(int ik)
             RI_2D_Comm::add_Hexx(
                 this->kv,
                 ik,
-                GlobalC::exx_info.info_global.hybrid_alpha,
+                PARAM.exx_info.info_global.hybrid_alpha,
                 *this->Hexxc,
                 *this->hR->get_paraV(),
                 this->hsk->get_hk());

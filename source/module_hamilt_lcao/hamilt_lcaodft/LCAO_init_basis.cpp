@@ -1,11 +1,5 @@
 #include "LCAO_domain.h"
 
-/// once the GlobalC::exx_info has been deleted, this include can be gone 
-/// mohan note 2024-07-21
-#ifdef __EXX
-#include "module_hamilt_pw/hamilt_pwdft/global.h"
-#endif
-
 namespace LCAO_domain
 {
 
@@ -55,11 +49,6 @@ void init_basis_lcao(Parallel_Orbitals& pv,
     ucell.infoNL.setupNonlocal(ucell.ntype, ucell.atoms, GlobalV::ofs_running, GlobalC::ORB);
 
     two_center_bundle.build_beta(ucell.ntype, ucell.infoNL.Beta);
-
-    int Lmax = 0;
-#ifdef __EXX
-    Lmax = GlobalC::exx_info.info_ri.abfs_Lmax;
-#endif
 
 #ifdef USE_NEW_TWO_CENTER
     two_center_bundle.tabulate();

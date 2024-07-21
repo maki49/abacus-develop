@@ -365,7 +365,7 @@ HamiltLCAO<TK, TR>::HamiltLCAO(Gint_Gamma* GG_in,
     }
 
 #ifdef __EXX
-    if (GlobalC::exx_info.info_global.cal_exx)
+    if (PARAM.exx_info.info_global.cal_exx)
     {
         // Peize Lin add 2016-12-03
         // set xc type before the first cal of xc in pelec->init_scf

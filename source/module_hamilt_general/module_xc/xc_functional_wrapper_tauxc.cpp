@@ -24,10 +24,10 @@ void XC_Functional::tau_xc(const double &rho, const double &grho, const double &
 #ifdef __EXX
         if (func.info->number == XC_MGGA_X_SCAN && get_func_type() == 5)
         {
-            s *= (1.0 - GlobalC::exx_info.info_global.hybrid_alpha);
-            v1 *= (1.0 - GlobalC::exx_info.info_global.hybrid_alpha);
-            v2 *= (1.0 - GlobalC::exx_info.info_global.hybrid_alpha);
-            v3 *= (1.0 - GlobalC::exx_info.info_global.hybrid_alpha);
+            s *= (1.0 - PARAM.exx_info.info_global.hybrid_alpha);
+            v1 *= (1.0 - PARAM.exx_info.info_global.hybrid_alpha);
+            v2 *= (1.0 - PARAM.exx_info.info_global.hybrid_alpha);
+            v3 *= (1.0 - PARAM.exx_info.info_global.hybrid_alpha);
         }
 #endif
         sxc += s * rho;

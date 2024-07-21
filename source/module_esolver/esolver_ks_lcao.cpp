@@ -69,14 +69,14 @@ ESolver_KS_LCAO<TK, TR>::ESolver_KS_LCAO()
     //  which cause the failure of the subsequent procedure reused by ESolver_LCAO_TDDFT
     // 2. always construct but only initialize when if(cal_exx) is true
     //  because some members like two_level_step are used outside if(cal_exx)
-    if (GlobalC::exx_info.info_ri.real_number)
+    if (PARAM.exx_info.info_ri.real_number)
     {
-        this->exx_lri_double = std::make_shared<Exx_LRI<double>>(GlobalC::exx_info.info_ri);
+        this->exx_lri_double = std::make_shared<Exx_LRI<double>>(PARAM.exx_info.info_ri);
         this->exd = std::make_shared<Exx_LRI_Interface<TK, double>>(exx_lri_double);
     }
     else
     {
-        this->exx_lri_complex = std::make_shared<Exx_LRI<std::complex<double>>>(GlobalC::exx_info.info_ri);
+        this->exx_lri_complex = std::make_shared<Exx_LRI<std::complex<double>>>(PARAM.exx_info.info_ri);
         this->exc = std::make_shared<Exx_LRI_Interface<TK, std::complex<double>>>(exx_lri_complex);
     }
 #endif
@@ -195,11 +195,11 @@ void ESolver_KS_LCAO<TK, TR>::before_all_runners(const Input_para& inp, UnitCell
         || GlobalV::CALCULATION == "cell-relax"
         || GlobalV::CALCULATION == "md")
     {
-        if (GlobalC::exx_info.info_global.cal_exx)
+        if (PARAM.exx_info.info_global.cal_exx)
         {
             XC_Functional::set_xc_first_loop(ucell);
             // initialize 2-center radial tables for EXX-LRI
-            if (GlobalC::exx_info.info_ri.real_number) { this->exx_lri_double->init(MPI_COMM_WORLD, this->kv); }
+            if (PARAM.exx_info.info_ri.real_number) { this->exx_lri_double->init(MPI_COMM_WORLD, this->kv); }
             else { this->exx_lri_complex->init(MPI_COMM_WORLD, this->kv); }
         }
     }
@@ -638,7 +638,7 @@ void ESolver_KS_LCAO<TK, TR>::iter_init(const int istep, const int iter)
 
 #ifdef __EXX
     // calculate exact-exchange
-    if (GlobalC::exx_info.info_ri.real_number)
+    if (PARAM.exx_info.info_ri.real_number)
     {
         this->exd->exx_eachiterinit(*dynamic_cast<const elecstate::ElecStateLCAO<TK>*>(this->pelec)->get_DM(), iter);
     }
@@ -754,7 +754,7 @@ void ESolver_KS_LCAO<TK, TR>::hamilt2density(int istep, int iter, double ethr)
 
     // 5) what's the exd used for?
 #ifdef __EXX
-    if (GlobalC::exx_info.info_ri.real_number)
+    if (PARAM.exx_info.info_ri.real_number)
     {
         this->exd->exx_hamilt2density(*this->pelec, this->ParaV, iter);
     }
@@ -960,10 +960,10 @@ void ESolver_KS_LCAO<TK, TR>::iter_finish(int iter)
 
 #ifdef __EXX
     // 3) save exx matrix
-    int two_level_step = GlobalC::exx_info.info_ri.real_number ? this->exd->two_level_step : this->exc->two_level_step;
+    int two_level_step = PARAM.exx_info.info_ri.real_number ? this->exd->two_level_step : this->exc->two_level_step;
 
     if (GlobalC::restart.info_save.save_H && two_level_step > 0
-        && (!GlobalC::exx_info.info_global.separate_loop || iter == 1)) // to avoid saving the same value repeatedly
+        && (!PARAM.exx_info.info_global.separate_loop || iter == 1)) // to avoid saving the same value repeatedly
     {
         ////////// for Add_Hexx_Type::k
         /*
@@ -984,7 +984,7 @@ void ESolver_KS_LCAO<TK, TR>::iter_finish(int iter)
         }*/
         ////////// for Add_Hexx_Type:R
         const std::string& restart_HR_path = GlobalC::restart.folder + "HexxR" + std::to_string(GlobalV::MY_RANK);
-        if (GlobalC::exx_info.info_ri.real_number)
+        if (PARAM.exx_info.info_ri.real_number)
         {
             ModuleIO::write_Hexxs_csr(restart_HR_path, GlobalC::ucell, this->exd->get_Hexxs());
         }
@@ -1109,11 +1109,11 @@ void ESolver_KS_LCAO<TK, TR>::after_scf(const int istep)
 
 #ifdef __EXX
     // 5) write Exx matrix
-    if (GlobalC::exx_info.info_global.cal_exx) // Peize Lin add if 2022.11.14
+    if (PARAM.exx_info.info_global.cal_exx) // Peize Lin add if 2022.11.14
     {
         const std::string file_name_exx = GlobalV::global_out_dir + "HexxR"
                                           + std::to_string(GlobalV::MY_RANK);
-        if (GlobalC::exx_info.info_ri.real_number) {
+        if (PARAM.exx_info.info_ri.real_number) {
             ModuleIO::write_Hexxs_csr(file_name_exx, GlobalC::ucell, this->exd->get_Hexxs());
         } else {
             ModuleIO::write_Hexxs_csr(file_name_exx, GlobalC::ucell, this->exc->get_Hexxs());
@@ -1163,9 +1163,9 @@ void ESolver_KS_LCAO<TK, TR>::after_scf(const int istep)
     if (PARAM.inp.rpa)
     {
         // ModuleRPA::DFT_RPA_interface
-        // rpa_interface(GlobalC::exx_info.info_global);
+        // rpa_interface(PARAM.exx_info.info_global);
         // rpa_interface.rpa_exx_lcao().info.files_abfs = GlobalV::rpa_orbitals;
-        RPA_LRI<TK, double> rpa_lri_double(GlobalC::exx_info.info_ri);
+        RPA_LRI<TK, double> rpa_lri_double(PARAM.exx_info.info_ri);
         rpa_lri_double.cal_postSCF_exx(*dynamic_cast<const elecstate::ElecStateLCAO<TK>*>(this->pelec)->get_DM(),
                                        MPI_COMM_WORLD,
                                        this->kv);
@@ -1268,9 +1268,9 @@ bool ESolver_KS_LCAO<TK, TR>::do_after_converge(int& iter)
     // RUN: " GlobalC::ld.set_init_pdm(true); " can skip the calculation of PDM in the next iter_init
 
 #ifdef __EXX
-    if (GlobalC::exx_info.info_global.cal_exx)
+    if (PARAM.exx_info.info_global.cal_exx)
     {
-        if (GlobalC::exx_info.info_ri.real_number) {
+        if (PARAM.exx_info.info_ri.real_number) {
             return this->exd->exx_after_converge(
                 *this->p_hamilt,
                 *dynamic_cast<const elecstate::ElecStateLCAO<TK>*>(this->pelec)
