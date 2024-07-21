@@ -474,5 +474,11 @@ void ReadInput::item_others()
         read_sync_bool(input.test_skip_ewald);
         this->add_item(item);
     }
+    {
+        Input_Item item("ri_hartree_benchmark");
+        item.annotation = "whether to use the RI approximation for the Hartree term in LR-TDDFT for benchmark (with FHI-aims/ABACUS read-in style)";
+        read_sync_string(input.ri_hartree_benchmark);
+        this->add_item(item);
+    }
 }
 } // namespace ModuleIO

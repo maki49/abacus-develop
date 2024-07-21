@@ -15,7 +15,7 @@ namespace LR
         psi::Psi<T, Device>& psi,
         elecstate::ElecState* pes,
         const std::string method_in,
-        const bool skip_charge)
+        const bool hermitian)
     {
         ModuleBase::TITLE("HSolverLR", "solve");
         assert(psi.get_nk() == nk);
@@ -147,20 +147,19 @@ namespace LR
             //     this->pdiagh = new DiagoCG<T, Device>(precondition.data());
             //     this->pdiagh->method = this->method;
             // }
-            else {
-                throw std::runtime_error("HSolverLR::solve: method not implemented");
-}
+            else {throw std::runtime_error("HSolverLR::solve: method not implemented");}
         }
 
         // 5. copy eigenvalue to pes
-        for (int ist = 0;ist < psi.get_nbands();++ist) { pes->ekb(ispin_solve, ist) = eigenvalue[ist];
-}
+        for (int ist = 0;ist < psi.get_nbands();++ist) { pes->ekb(ispin_solve, ist) = eigenvalue[ist];}
 
 
         // 6. output eigenvalues and eigenvectors
-        std::cout << "eigenvalues:" << std::endl;
-        for (auto& e : eigenvalue) {std::cout << e << " ";
-}
+        std::cout << "eigenvalues: (Ry)" << std::endl;
+        for (auto& e : eigenvalue) { std::cout << e << " ";}
+        std::cout << std::endl;
+        std::cout << "eigenvalues: (eV)" << std::endl;
+        for (auto& e : eigenvalue) {std::cout << e * ModuleBase::Ry_to_eV << " ";}
         std::cout << std::endl;
         if (out_wfc_lr)
         {
@@ -168,8 +167,7 @@ namespace LR
             {
                 std::ofstream ofs(PARAM.globalv.global_out_dir + "Excitation_Energy_" + spin_types[ispin_solve] + ".dat");
                 ofs << std::setprecision(8) << std::scientific;
-                for (auto& e : eigenvalue) {ofs << e << " ";
-}
+                for (auto& e : eigenvalue) {ofs << e << " ";}
                 ofs.close();
             }
             LR_Util::write_psi_bandfirst(psi, PARAM.globalv.global_out_dir + "Excitation_Amplitude_" + spin_types[ispin_solve], GlobalV::MY_RANK);

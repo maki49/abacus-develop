@@ -425,6 +425,7 @@
     - [abs\_wavelen\_range](#abs_wavelen_range)
     - [out\_wfc\_lr](#out_wfc_lr)
     - [abs\_broadening](#abs_broadening)
+    - [ri\_hartree\_benchmark](#ri_hartree_benchmark)
 
 [back to top](#full-list-of-input-keywords)
 ## System variables
@@ -3952,5 +3953,13 @@ The output files are `OUT.${suffix}/Excitation_Energy.dat` and `OUT.${suffix}/Ex
 - **Type**: Real
 - **Description**: The broadening factor $\eta$ for the absorption spectrum calculation.
 - **Default**: 0.01
+
+### ri_hartree_benchmark
+- **Type**: String
+- **Description**: Whether to use the resolution-of-identity (RI) approximation for the Hartree term of kernel in LR-TDDFT for benchmark (with FHI-aims/ABACUS read-in style). Now it only support molecular systems running with a single processor.
+  - `aims`: The `OUT.${suffix}`directory should contain the FHI-aims output files: RI-LVL tensors`Cs` and `coulomb_mat_0.txt`, and KS eigenstates from FHI-aims: `band_out`and `KS_eigenvectors.out`. The Casida equation will be constructed under FHI-aims' KS eigenpairs.
+  - `abacus`: The `OUT.${suffix}`directory should contain the RI-LVL tensors `Cs` and `Vs` (written by setting `out_ri_cv` to 1). The Casida equation will be constructed under ABACUS' KS eigenpairs, with the only difference that the Hartree term is constructed with RI approximation.
+  - `none`: Construct the Hartree term by Poisson equation and grid integration as usual.
+- **Default**: none
 
 [back to top](#full-list-of-input-keywords)
