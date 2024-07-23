@@ -34,14 +34,6 @@ class Parameter
     // Set the start time
     void set_start_time(const std::time_t& start_time);
 
-#ifdef __EXX
-    const Exx_Info& exx_info = exx_info_;
-    void set_exx_info() { this->exx_info_.set(this->inp); }
-    void set_exx_abfs_Lmax(const int l) { this->exx_info_.info_ri.abfs_Lmax = l; }
-    std::vector<std::string>& get_exx_abfs_file() { return this->exx_info_.info_ri.files_abfs; }
-    void set_exx_postscf();
-#endif
-
   private:
     // Only ReadInput can modify the value of Parameter.
     friend class ModuleIO::ReadInput;
@@ -49,7 +41,15 @@ class Parameter
     Input_para input;
     // System parameters
     System_para sys;
+
 #ifdef __EXX
+public:
+    const Exx_Info& exx_info = exx_info_;
+    void set_exx_info() { this->exx_info_.set(this->inp); }
+    void set_exx_abfs_Lmax(const int l) { this->exx_info_.info_ri.abfs_Lmax = l; }
+    std::vector<std::string>& get_exx_abfs_file() { return this->exx_info_.info_ri.files_abfs; }
+    void set_exx_postscf();
+private:
     Exx_Info exx_info_;
 #endif 
 };
