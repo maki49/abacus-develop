@@ -164,7 +164,7 @@ namespace ModuleBase
 namespace GlobalV
 {
     std::string BASIS_TYPE = "";
-    bool CAL_STRESS = 0;
+    bool CAL_STRESS = false;
     int CAL_FORCE = 0;
     int NSPIN;
     int NPOL;

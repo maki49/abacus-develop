@@ -1191,7 +1191,7 @@ TEST_F(InputTest, Item_test)
         output = testing::internal::GetCapturedStdout();
         EXPECT_THAT(output, testing::HasSubstr("NOTICE"));
 
-        param.input.exx_separate_loop = 0;
+        param.input.exx_separate_loop = false;
         param.input.exx_hybrid_step = 2;
         it->second.reset_value(it->second, param);
         EXPECT_EQ(param.input.exx_hybrid_step, 1);
