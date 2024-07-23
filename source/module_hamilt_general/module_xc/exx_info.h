@@ -91,7 +91,6 @@ struct Exx_Info
             // EXX case, convert all EXX related variables
             // info_global.cal_exx = true;
             info_global.hybrid_alpha = std::stod(inp.exx_hybrid_alpha);
-            XC_Functional::get_hybrid_alpha(std::stod(inp.exx_hybrid_alpha));
             info_global.hse_omega = inp.exx_hse_omega;
             info_global.separate_loop = inp.exx_separate_loop;
             info_global.hybrid_step = inp.exx_hybrid_step;

@@ -474,6 +474,7 @@ void Input_Conv::Convert()
     if (dft_functional_lower == "opt_orb") { Exx_Abfs::Jle::generate_matrix = true; }
     if (PARAM.exx_info.info_global.cal_exx || dft_functional_lower == "opt_orb" || PARAM.inp.rpa)
     {
+        XC_Functional::get_hybrid_alpha(std::stod(PARAM.inp.exx_hybrid_alpha));
         Exx_Abfs::Jle::Lmax = PARAM.inp.exx_opt_orb_lmax;
         Exx_Abfs::Jle::Ecut_exx = PARAM.inp.exx_opt_orb_ecut;
         Exx_Abfs::Jle::tolerence = PARAM.inp.exx_opt_orb_tolerence;

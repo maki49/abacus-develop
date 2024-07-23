@@ -147,6 +147,10 @@ void ReadInput::read_parameters(Parameter& param, const std::string& filename_in
     {
         bcastfunc(param);
     }
+
+#ifdef __EXX
+    param.set_exx_info();
+#endif
 }
 
 void ReadInput::create_directory(const Parameter& param)
