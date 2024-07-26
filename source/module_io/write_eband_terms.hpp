@@ -7,7 +7,7 @@
 namespace ModuleIO
 {
     template <typename TK, typename TR>
-    void write_eband_separate_term(const int nspin,
+    void write_eband_terms(const int nspin,
         const int nbasis,
         const int drank,
         const Parallel_Orbitals* pv,
@@ -71,7 +71,7 @@ namespace ModuleIO
             }
             write_orb_energy(kv, nspin0, nbands, e_orb_kinetic, "kinetic", "");
             // ======test=======
-            std::cout << "e_kinetic:" << all_k_all_band_energy(e_orb_kinetic) << std::endl;
+            // std::cout << "e_kinetic:" << all_k_all_band_energy(e_orb_kinetic) << std::endl;
             // ======test=======
         }
 
@@ -95,7 +95,7 @@ namespace ModuleIO
             }
             write_orb_energy(kv, nspin0, nbands, e_orb_pp_local, "vpp_local", "");
             // ======test=======
-            std::cout << "e_pp_local:" << all_k_all_band_energy(e_orb_pp_local) << std::endl;
+            // std::cout << "e_pp_local:" << all_k_all_band_energy(e_orb_pp_local) << std::endl;
             // ======test=======
         }
 
@@ -150,7 +150,7 @@ namespace ModuleIO
             for (auto& op : v_hartree_op) { delete op; }
             write_orb_energy(kv, nspin0, nbands, e_orb_hartree, "vhartree", "");
             // ======test=======
-            std::cout << "e_hartree:" << all_k_all_band_energy(e_orb_hartree) << std::endl;
+            // std::cout << "e_hartree:" << all_k_all_band_energy(e_orb_hartree) << std::endl;
             // ======test=======
         }
 

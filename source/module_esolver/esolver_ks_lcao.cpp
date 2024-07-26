@@ -11,7 +11,7 @@
 #include "module_io/to_qo.h"
 #include "module_io/write_HS.h"
 #include "module_io/write_Vxc.hpp"
-#include "module_io/write_eband_separate_term.hpp"
+#include "module_io/write_eband_terms.hpp"
 #include "module_io/write_istate_info.h"
 #include "module_io/write_proj_band_lcao.h"
 #include "module_parameter/parameter.h"
@@ -522,9 +522,9 @@ void ESolver_KS_LCAO<TK, TR>::after_all_runners()
         );
     }
 
-    if (PARAM.inp.out_eband_separate_term)
+    if (PARAM.inp.out_eband_terms)
     {
-        ModuleIO::write_eband_separate_term<TK, TR>(GlobalV::NSPIN,
+        ModuleIO::write_eband_terms<TK, TR>(GlobalV::NSPIN,
             GlobalV::NLOCAL,
             GlobalV::DRANK,
             &this->ParaV,

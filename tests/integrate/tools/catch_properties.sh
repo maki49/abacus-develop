@@ -240,7 +240,7 @@ if ! test -z "$has_xc"  && [  $has_xc == 1 ]; then
 			xccal=OUT.autotest/k-1-Vxc
 	fi
 	oeref=vxc_out.ref
-	oecal=OUT.autotest/vxc_out
+	oecal=OUT.autotest/vxc_out.dat
 	python3 ../tools/CompareFile.py $xcref $xccal 4
 	echo "CompareVXC_pass $?" >>$1
 	python3 ../tools/CompareFile.py $oeref $oecal 5
@@ -249,19 +249,19 @@ fi
 
 if ! test -z "$has_eband_separate"  && [  $has_eband_separate == 1 ]; then
 	ekref=kinetic_out.ref
-	ekcal=OUT.autotest/kinetic_out
+	ekcal=OUT.autotest/kinetic_out.dat
 	python3 ../tools/CompareFile.py $ekref $ekcal 4
 	echo "CompareOrbKinetic_pass $?" >>$1
 	vlref=vpp_local_out.ref
-	vlcal=OUT.autotest/vpp_local_out
+	vlcal=OUT.autotest/vpp_local_out.dat
 	python3 ../tools/CompareFile.py $vlref $vlcal 4
 	echo "CompareOrbVL_pass $?" >>$1
 	vnlref=vpp_nonlocal_out.ref
-	vnlcal=OUT.autotest/vpp_nonlocal_out
+	vnlcal=OUT.autotest/vpp_nonlocal_out.dat
 	python3 ../tools/CompareFile.py $vnlref $vnlcal 4
 	echo "CompareOrbVNL_pass $?" >>$1
 	vhref=vhartree_out.ref
-	vhcal=OUT.autotest/vhartree_out
+	vhcal=OUT.autotest/vhartree_out.dat
 	python3 ../tools/CompareFile.py $vhref $vhcal 4
 	echo "CompareOrbVHartree_pass $?" >>$1
 fi
