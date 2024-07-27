@@ -44,7 +44,7 @@
 #include "module_hamilt_pw/hamilt_pwdft/hamilt_lcaopw.h"
 #include "module_parameter/parameter.h"
 #ifdef __LCAO
-#include "module_io/write_Vxc_lip.hpp"
+#include "module_io/write_vxc_lip.hpp"
 #endif
 
 namespace ModuleESolver

@@ -10,7 +10,7 @@
 #include "module_io/output_sk.h"
 #include "module_io/to_qo.h"
 #include "module_io/write_HS.h"
-#include "module_io/write_Vxc.hpp"
+#include "module_io/write_vxc.hpp"
 #include "module_io/write_eband_terms.hpp"
 #include "module_io/write_istate_info.h"
 #include "module_io/write_proj_band_lcao.h"
