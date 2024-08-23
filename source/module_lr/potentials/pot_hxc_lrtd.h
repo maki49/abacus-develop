@@ -22,6 +22,7 @@ namespace LR
             const SpinType& st = SpinType::S1, const std::vector<std::string>& lr_init_xc_kernel = { "default" });
         ~PotHxcLR() {}
         void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 });
+        const KernelXC& get_xc_kernel_components() { return xc_kernel_components_; }
         const int& nrxx = nrxx_;
     private:
         const ModulePW::PW_Basis& rho_basis_;

@@ -137,11 +137,21 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
     //==================== XC Kernels (f_xc)=============================
     this->vrho_.resize(nspin * nrxx, 0.);
     this->v2rho2_.resize(((1 == nspin) ? 1 : 3) * nrxx, 0.);//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
+    if (PARAM.inp.cal_force)
+    {
+        this->v3rho3_.resize(((1 == nspin) ? 1 : 3) * nrxx, 0.);//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
+    }
     if (is_gga)
     {
         this->vsigma_.resize(((1 == nspin) ? 1 : 3) * nrxx, 0.);//(nrxx*): 2 for rho * 3 for sigma: 00, 01, 02, 10, 11, 12
         this->v2rhosigma_.resize(((1 == nspin) ? 1 : 6) * nrxx, 0.); //(nrxx*): 2 for rho * 3 for sigma: 00, 01, 02, 10, 11, 12
         this->v2sigma2_.resize(((1 == nspin) ? 1 : 6) * nrxx, 0.);   //(nrxx* ((1 == nspin) ? 1 : 6)): 00, 01, 02, 11, 12, 22
+        if (PARAM.inp.cal_force)
+        {
+            this->v3rho2sigma_.resize(((1 == nspin) ? 1 : 9) * nrxx, 0.); //(nrxx*): 2 for rho * 3 for sigma: 00, 01, 02, 10, 11, 12
+            this->v3rhosigma2_.resize(((1 == nspin) ? 1 : 12) * nrxx, 0.);   //(nrxx* ((1 == nspin) ? 1 : 6)): 00, 01, 02, 11, 12, 22
+            this->v3sigma3_.resize(((1 == nspin) ? 1 : 10) * nrxx, 0.);
+        }
     }
     //MetaGGA ...
 
@@ -166,6 +176,10 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         case XC_FAMILY_LDA:
             xc_lda_vxc(&func, nrxx, rho.data(), vrho_tmp.data());
             xc_lda_fxc(&func, nrxx, rho.data(), v2rho2_tmp.data());
+            if (PARAM.inp.cal_force)
+            {
+                xc_lda_kxc(&func, nrxx, rho.data(), this->v3rho3_.data());
+            }
             break;
         case XC_FAMILY_GGA:
         case XC_FAMILY_HYB_GGA:
@@ -180,6 +194,14 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             cutoff_grid_data_spin2(v2rho2_tmp, sgn);
             cutoff_grid_data_spin2(v2rhosigma_tmp, sgn);
             cutoff_grid_data_spin2(v2sigma2_tmp, sgn);
+            if (PARAM.inp.cal_force)
+            {
+                xc_gga_kxc(&func, nrxx, rho.data(), sigma.data(),
+                    this->v3rho3_.data(),
+                    this->v3rho2sigma_.data(),
+                    this->v3rhosigma2_.data(),
+                    this->v3sigma3_.data());
+            }
             break;
         }
         default:
@@ -294,15 +316,8 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         }
         this->drho_gs_ = std::move(gradrho);
     }
-    if (PARAM.inp.nspin == 1 || PARAM.inp.nspin == 2) {
-        return;
-    // else if (4 == PARAM.inp.nspin)
-    } else//NSPIN != 1,2,4 is not supported
-    {
-        throw std::domain_error("PARAM.inp.nspin =" + std::to_string(PARAM.inp.nspin)
-            + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
-    }
 }
+
 void LR::KernelXC::get_rho_drho_sigma(const int& nspin,
     const double& tpiba,
     const double* const* const rho_gs,
