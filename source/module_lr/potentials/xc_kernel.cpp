@@ -123,73 +123,17 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
     std::vector<xc_func_type> funcs = XC_Functional_Libxc::init_func(
         XC_Functional::get_func_id(),
         (1 == nspin) ? XC_UNPOLARIZED : XC_POLARIZED);
+
     const int& nrxx = rho_basis_.nrxx;
-
-    // converting rho (extract it as a subfuntion in the future)
-    // -----------------------------------------------------------------------------------
-    std::vector<double> rho(nspin * nrxx);    // r major / spin contigous
-
-#ifdef _OPENMP
-#pragma omp parallel for collapse(2) schedule(static, 1024)
-#endif
-    for (int is = 0; is < nspin; ++is) { for (int ir = 0; ir < nrxx; ++ir) { rho[ir * nspin + is] = rho_gs[is][ir]; } }
-    if (rho_core)
-    {
-        const double fac = 1.0 / nspin;
-        for (int is = 0; is < nspin; ++is) { for (int ir = 0; ir < nrxx; ++ir) { rho[ir * nspin + is] += fac * rho_core[ir]; } }
-    }
-
-    // -----------------------------------------------------------------------------------
-    // for GGA
     const bool is_gga = std::any_of(funcs.begin(), funcs.end(), [](const xc_func_type& f) { return f.info->family == XC_FAMILY_GGA || f.info->family == XC_FAMILY_HYB_GGA; });
 
+    std::vector<double> rho(nspin * nrxx);    // r major / spin contigous
+    // for GGA
     std::vector<std::vector<ModuleBase::Vector3<double>>> gradrho;  // \nabla \rho
     std::vector<double> sigma;  // |\nabla\rho|^2
     std::vector<double> sgn;        // sgn for threshold mask
-    if (is_gga)
-    {
-        // 0. set up sgn for threshold mask
-        // in the case of GGA correlation for polarized case,
-        // a cutoff for grho is required to ensure that libxc gives reasonable results
+    this->get_rho_drho_sigma(nspin, tpiba, rho_gs, rho_core, is_gga, rho, gradrho, sigma);
 
-        // 1. \nabla \rho
-        gradrho.resize(nspin);
-        for (int is = 0; is < nspin; ++is)
-        {
-            std::vector<double> rhor(nrxx);
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, 1024)
-#endif
-            for (int ir = 0; ir < nrxx; ++ir) { rhor[ir] = rho[ir * nspin + is];
-}
-            gradrho[is].resize(nrxx);
-            LR_Util::grad(rhor.data(), gradrho[is].data(), rho_basis_, tpiba);
-        }
-        // 2. |\nabla\rho|^2
-        sigma.resize(nrxx * ((1 == nspin) ? 1 : 3));
-        if (1 == nspin)
-        {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, 1024)
-#endif
-            for (int ir = 0; ir < nrxx; ++ir) {
-                sigma[ir] = gradrho[0][ir] * gradrho[0][ir];
-}
-        }
-        else
-        {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, 256)
-#endif
-            for (int ir = 0; ir < nrxx; ++ir)
-            {
-                sigma[ir * 3] = gradrho[0][ir] * gradrho[0][ir];
-                sigma[ir * 3 + 1] = gradrho[0][ir] * gradrho[1][ir];
-                sigma[ir * 3 + 2] = gradrho[1][ir] * gradrho[1][ir];
-            }
-        }
-    }
-    // -----------------------------------------------------------------------------------
     //==================== XC Kernels (f_xc)=============================
     this->vrho_.resize(nspin * nrxx, 0.);
     this->v2rho2_.resize(((1 == nspin) ? 1 : 3) * nrxx, 0.);//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
@@ -359,4 +303,68 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
     }
 }
+void LR::KernelXC::get_rho_drho_sigma(const int& nspin,
+    const double& tpiba,
+    const double* const* const rho_gs,
+    const double* const rho_core,
+    const bool& is_gga,
+    std::vector<double>& rho,
+    std::vector<std::vector<ModuleBase::Vector3<double>>>& gradrho,
+    std::vector<double>& sigma)
+{
+#ifdef _OPENMP
+#pragma omp parallel for collapse(2) schedule(static, 1024)
+#endif
+    for (int is = 0; is < nspin; ++is) { for (int ir = 0; ir < nrxx; ++ir) { rho[ir * nspin + is] = rho_gs[is][ir]; } }
+    if (rho_core)
+    {
+        const double fac = 1.0 / nspin;
+        for (int is = 0; is < nspin; ++is) { for (int ir = 0; ir < nrxx; ++ir) { rho[ir * nspin + is] += fac * rho_core[ir]; } }
+    }
+    if (is_gga)
+    {
+        // 0. set up sgn for threshold mask
+        // in the case of GGA correlation for polarized case,
+        // a cutoff for grho is required to ensure that libxc gives reasonable results
+
+        // 1. \nabla \rho
+        gradrho.resize(nspin);
+        for (int is = 0; is < nspin; ++is)
+        {
+            std::vector<double> rhor(nrxx);
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static, 1024)
+#endif
+            for (int ir = 0; ir < nrxx; ++ir) {
+                rhor[ir] = rho[ir * nspin + is];
+            }
+            gradrho[is].resize(nrxx);
+            LR_Util::grad(rhor.data(), gradrho[is].data(), rho_basis_, tpiba);
+        }
+        // 2. |\nabla\rho|^2
+        sigma.resize(nrxx * ((1 == nspin) ? 1 : 3));
+        if (1 == nspin)
+        {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static, 1024)
+#endif
+            for (int ir = 0; ir < nrxx; ++ir) {
+                sigma[ir] = gradrho[0][ir] * gradrho[0][ir];
+            }
+        }
+        else
+        {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static, 256)
+#endif
+            for (int ir = 0; ir < nrxx; ++ir)
+            {
+                sigma[ir * 3] = gradrho[0][ir] * gradrho[0][ir];
+                sigma[ir * 3 + 1] = gradrho[0][ir] * gradrho[1][ir];
+                sigma[ir * 3 + 2] = gradrho[1][ir] * gradrho[1][ir];
+            }
+        }
+    }
+}
+
 #endif
