@@ -9,7 +9,7 @@ namespace LR
 {
     // constructor for exchange-correlation kernel
     PotHxcLR::PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in,
-        const Charge* chg_gs/*ground state*/, SpinType st_in)
+        const Charge* chg_gs/*ground state*/, SpinType st_in, const bool& grad)
         :xc_kernel(xc_kernel_in), tpiba_(ucell_in->tpiba), spin_type_(st_in)
     {
         this->rho_basis_ = rho_basis_in;
@@ -25,6 +25,7 @@ namespace LR
 #ifdef USE_LIBXC
             this->set_integral_func(this->spin_type_, this->xc_type_);
             this->xc_kernel_components_.f_xc_libxc(nspin, ucell_in->omega, ucell_in->tpiba, chg_gs);
+            if (grad) { this->xc_kernel_components_.g_xc_libxc(nspin, ucell_in->omega, ucell_in->tpiba, chg_gs); }
 #else 
             ModuleBase::WARNING_QUIT("KernelXC", "to calculate xc-kernel in LR-TDDFT, compile with LIBXC");
 #endif
