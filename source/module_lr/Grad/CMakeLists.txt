@@ -7,4 +7,6 @@ OBJECT
 CVCX/CVCX_parallel.cpp
 CVCX/CVCX_serial.cpp
 xc/kernel_grad_xc.cpp
+xc/pot_grad_xc.cpp
+operator_lr_hxc_common/operator_lr_hxc_common.cpp
 )

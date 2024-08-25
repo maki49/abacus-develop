@@ -5,7 +5,7 @@
 #ifdef __MPI
 #include "module_basis/module_ao/parallel_2d.h"
 #endif
-namespace hamilt
+namespace LR
 {
     // occ
     ///  $\sum_{k\mu\nu}C^*_{\mu i}K_{\mu\nu}C_{\nu k}X_{ak}^*$
@@ -27,7 +27,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on = true);
+        const bool add_on = true,
+        const T factor = (T)1.0);
 #ifdef __MPI
     template <typename T>
     void CVCX_occ_pblas(
@@ -41,7 +42,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on = true);
+        const bool add_on = true,
+        const T factor = (T)1.0);
 #endif
     // virt
     ///  $\sum_{b\mu\nu}X^*_{bi}C^*_{\mu b}K_{\mu\nu}C_{\nu a}$
@@ -63,7 +65,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on = true);
+        const bool add_on = true,
+        const T factor = (T)1.0);
 #ifdef __MPI
     template <typename T>
     void CVCX_virt_pblas(
@@ -77,6 +80,7 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on = true);
+        const bool add_on = true,
+        const T factor = (T)1.0);
 #endif
 }

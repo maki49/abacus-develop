@@ -18,6 +18,9 @@
 #include "module_lr/ri_benchmark/ri_benchmark.h"
 #include "module_lr/operator_casida/operator_lr_diag.h" // for precondition
 
+// gradient
+#include "module_lr/Grad/Z_vector_equation/zeq_solver.h"
+
 #ifdef __EXX
 template<>
 void LR::ESolver_LR<double>::move_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
@@ -578,6 +581,16 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
             // spectrum.test_transition_dipoles_velocity_ks(eig_ks.c);
             // spectrum.write_transition_dipole(PARAM.globalv.global_out_dir + "dipole_velocity_ks.dat");
             // =============================================== for test ====================================================
+        }
+        if (PARAM.inp.cal_force)
+        {
+            const psi::Psi<T>& Z = Z_vector(*this->X[is], this->nstates,
+                this->nspin, this->nbasis, this->nocc, this->nvirt,
+                this->ucell, orb_cutoff_, this->gd, this->psi_ks, this->eig_ks,
+#ifdef __EXX    
+                this->exx_lri.get(),
+#endif
+                this->gint_, this->pot[is], this->kv, this->paraX_, this->paraC_, this->paraMat_);
         }
     }
 }

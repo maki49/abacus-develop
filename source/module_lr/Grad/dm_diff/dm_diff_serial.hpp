@@ -4,7 +4,7 @@
 #include "module_base/tool_title.h"
 #include "module_lr/utils/lr_util.h"
 #include "dm_diff.h"
-namespace hamilt
+namespace LR
 {
     template<typename T>
     inline void print_colfirst(const T* ptr, const std::string& name, const int& nrow, const int& ncol)

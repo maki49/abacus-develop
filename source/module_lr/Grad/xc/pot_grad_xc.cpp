@@ -11,7 +11,7 @@ namespace LR
         nspin_(PARAM.inp.nspin == 1 || (PARAM.inp.nspin == 4 && !PARAM.globalv.domag && !PARAM.globalv.domag_z) ? 1 : 2)
     {}
 
-    void PotGradXCLR::cal_v_eff(double** rho, const UnitCell* ucell, ModuleBase::matrix& v_eff)
+    void PotGradXCLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff)
     {
         ModuleBase::TITLE("PotGradXCLR", "cal_v_eff");
         ModuleBase::timer::tick("PotGradXCLR", "cal_v_eff");

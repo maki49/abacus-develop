@@ -69,8 +69,8 @@ TEST_F(DMDiffTest, DoubleSerial)
             psi::Psi<double, base_device::DEVICE_CPU> c(s.nks, s.nocc + s.nvirt, s.naos);
             set_rand(c.get_pointer(), size_c);
             X.fix_b(istate);
-            const std::vector<container::Tensor>& dm_for = hamilt::cal_dm_diff_forloop(X, c, s.naos, s.nocc, s.nvirt);
-            const std::vector<container::Tensor>& dm_blas = hamilt::cal_dm_diff_blas(X, c, s.naos, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_for = cal_dm_diff_forloop(X, c, s.naos, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_blas = cal_dm_diff_blas(X, c, s.naos, s.nocc, s.nvirt);
             for (int isk = 0;isk < s.nks;++isk) check_eq(dm_for[isk].data<double>(), dm_blas[isk].data<double>(), s.naos * s.naos);
         }
 
@@ -88,8 +88,8 @@ TEST_F(DMDiffTest, ComplexSerial)
             psi::Psi<std::complex<double>, base_device::DEVICE_CPU> c(s.nks, s.nocc + s.nvirt, s.naos);
             set_rand(c.get_pointer(), size_c);
             X.fix_b(istate);
-            const std::vector<container::Tensor>& dm_for = hamilt::cal_dm_diff_forloop(X, c, s.naos, s.nocc, s.nvirt);
-            const std::vector<container::Tensor>& dm_blas = hamilt::cal_dm_diff_blas(X, c, s.naos, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_for = cal_dm_diff_forloop(X, c, s.naos, s.nocc, s.nvirt);
+            const std::vector<container::Tensor>& dm_blas = cal_dm_diff_blas(X, c, s.naos, s.nocc, s.nvirt);
             for (int isk = 0;isk < s.nks;++isk) check_eq(dm_for[isk].data<std::complex<double>>(), dm_blas[isk].data<std::complex<double>>(), s.naos * s.naos);
         }
     }
@@ -138,7 +138,7 @@ TEST_F(DMDiffTest, DoubleParallel)
             X.fix_b(istate);
             X_full.fix_b(istate);
 
-            std::vector<container::Tensor> dm_pblas_loc = hamilt::cal_dm_diff_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
+            std::vector<container::Tensor> dm_pblas_loc = cal_dm_diff_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
 
             // gather dm and output
             std::vector<container::Tensor> dm_gather(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
@@ -155,7 +155,7 @@ TEST_F(DMDiffTest, DoubleParallel)
             }
             if (my_rank == 0)
             {
-                const std::vector<container::Tensor>& dm_full = hamilt::cal_dm_diff_blas(X_full, c_full, s.naos, s.nocc, s.nvirt);
+                const std::vector<container::Tensor>& dm_full = cal_dm_diff_blas(X_full, c_full, s.naos, s.nocc, s.nvirt);
                 for (int isk = 0;isk < s.nks;++isk) check_eq(dm_full[isk].data<double>(), dm_gather[isk].data<double>(), s.naos * s.naos);
             }
         }
@@ -197,7 +197,7 @@ TEST_F(DMDiffTest, ComplexParallel)
             X.fix_b(istate);
             X_full.fix_b(istate);
 
-            std::vector<container::Tensor> dm_pblas_loc = hamilt::cal_dm_diff_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
+            std::vector<container::Tensor> dm_pblas_loc = cal_dm_diff_pblas(X, px, c, pc, s.naos, s.nocc, s.nvirt, pmat);
 
             // gather dm and output
             std::vector<container::Tensor> dm_gather(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
@@ -214,7 +214,7 @@ TEST_F(DMDiffTest, ComplexParallel)
             }
             if (my_rank == 0)
             {
-                std::vector<container::Tensor> dm_full = hamilt::cal_dm_diff_blas(X_full, c_full, s.naos, s.nocc, s.nvirt);
+                std::vector<container::Tensor> dm_full = cal_dm_diff_blas(X_full, c_full, s.naos, s.nocc, s.nvirt);
                 for (int isk = 0;isk < s.nks;++isk) check_eq(dm_full[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>(), s.naos * s.naos);
             }
         }
