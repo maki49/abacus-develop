@@ -80,7 +80,7 @@ namespace LR
         int nspin = 1;
         int nk = 1;
         std::string xc_kernel;
-
+        
         Grid_Technique gt_;
         Gint_Gamma gint_g_;
         Gint_k gint_k_;

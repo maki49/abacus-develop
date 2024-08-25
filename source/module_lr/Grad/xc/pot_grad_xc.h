@@ -1,17 +1,17 @@
 #pragma once
-#include "module_elecstate/potentials/pot_base.h"
-#include "module_elecstate/potentials/H_Hartree_pw.h"
+#include "module_lr/potentials/pot_hxc_lrtd.h"
 #include "module_lr/potentials/kernel.h"
 
 namespace LR
 {
     /// the "potential" contributing to RHS of Z-vector equation
     /// from the derivative of xc kernel
-    class PotGradXCLR : public elecstate::PotBase
+    /// question: is there any difference with singlet or triplet?
+    class PotGradXCLR : public PotHxcLR
     {
     public:
         // constructor for exchange-correlation kernel
-        PotGradXCLR(const KernelXC& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/);
+        PotGradXCLR(const KernelXC& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const int& nrxx);
         ~PotGradXCLR() {}
         void cal_v_eff(const Charge* chg/*excited state*/, const UnitCell* ucell, ModuleBase::matrix& v_eff) override {};
         void cal_v_eff(double** rho, const UnitCell* ucell, ModuleBase::matrix& v_eff);

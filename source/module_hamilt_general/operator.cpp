@@ -87,6 +87,24 @@ typename Operator<T, Device>::hpsi_info Operator<T, Device>::hPsi(hpsi_info& inp
     return hpsi_info(this->hpsi, psi::Range(1, 0, 0, nbands / psi_input->npol), hpsi_pointer);
 }
 
+template<typename T, typename Device>
+void Operator<T, Device>::hPsi(const psi::Psi<T, Device>& psi_in, psi::Psi<T, Device>& psi_out) const
+{
+    auto call_act = [&, this](const Operator<T, Device>* op) -> void {
+        assert(op->get_act_type() == 2);
+        op->act(psi_in, psi_out, psi_in.get_nbands());
+        };
+    ModuleBase::timer::tick("Operator", "hPsi");
+    call_act(this);
+    Operator<T, Device>* node((Operator<T, Device>*)this->next_op);
+    while (node != nullptr)
+    {
+        call_act(node);
+        node = (Operator<T>*)(node->next_op);
+    }
+    ModuleBase::timer::tick("Operator", "hPsi");
+}
+
 
 template<typename T, typename Device>
 void Operator<T, Device>::init(const int ik_in) 

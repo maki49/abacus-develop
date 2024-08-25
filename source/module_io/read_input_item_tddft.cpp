@@ -350,5 +350,11 @@ void ReadInput::item_lr_tddft()
         read_sync_double(input.abs_broadening);
         this->add_item(item);
     }
+    {
+        Input_Item item("lr_grad");
+        item.annotation = "whether to calculate the analytical gradient of excitated states in LR-TDDFT";
+        read_sync_bool(input.lr_grad);
+        this->add_item(item);
+    }
 }
 }

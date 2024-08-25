@@ -79,14 +79,14 @@ TEST_F(AXTest, DoubleSerial)
             AX_for.fix_b(istate);
             AX_blas.fix_b(istate);
             // occ
-            hamilt::CVCX_occ_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
-            hamilt::CVCX_occ_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
+            CVCX_occ_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
+            CVCX_occ_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
             AX_for.fix_k(0);
             AX_blas.fix_k(0);
             check_eq(AX_for.get_pointer(), AX_blas.get_pointer(), s.nks * s.nocc * s.nvirt);
             // virt
-            hamilt::CVCX_virt_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
-            hamilt::CVCX_virt_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
+            CVCX_virt_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
+            CVCX_virt_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
             AX_for.fix_k(0);
             AX_blas.fix_k(0);
             check_eq(AX_for.get_pointer(), AX_blas.get_pointer(), s.nks * s.nocc * s.nvirt);
@@ -116,14 +116,14 @@ TEST_F(AXTest, ComplexSerial)
             AX_for.fix_b(istate);
             AX_blas.fix_b(istate);
             // occ
-            hamilt::CVCX_occ_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
-            hamilt::CVCX_occ_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
+            CVCX_occ_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
+            CVCX_occ_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
             AX_for.fix_k(0);
             AX_blas.fix_k(0);
             check_eq(AX_for.get_pointer(), AX_blas.get_pointer(), s.nks * s.nocc * s.nvirt);
             // virt
-            hamilt::CVCX_virt_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
-            hamilt::CVCX_virt_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
+            CVCX_virt_forloop_serial(V, c, X, s.naos, s.nocc, s.nvirt, AX_for);
+            CVCX_virt_blas(V, c, X, s.naos, s.nocc, s.nvirt, AX_blas, false);
             AX_for.fix_k(0);
             AX_blas.fix_k(0);
             check_eq(AX_for.get_pointer(), AX_blas.get_pointer(), s.nks * s.nocc * s.nvirt);
@@ -183,7 +183,7 @@ TEST_F(AXTest, DoubleParallel)
             X_full.fix_b(istate);
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
-            hamilt::CVCX_occ_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
+            CVCX_occ_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
             // gather AX and output
             for (int isk = 0;isk < s.nks;++isk)
             {
@@ -204,14 +204,14 @@ TEST_F(AXTest, DoubleParallel)
             if (my_rank == 0)
             {
                 psi::Psi<double, base_device::DEVICE_CPU>  AX_full_istate(s.nks, 1, s.nocc * s.nvirt, nullptr, false);
-                hamilt::CVCX_occ_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
+                CVCX_occ_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
                 AX_full_istate.fix_b(0);
                 AX_gather.fix_b(istate);
                 check_eq(AX_full_istate.get_pointer(), AX_gather.get_pointer(), s.nks * s.nocc * s.nvirt);
             }
 
             // //============ the same for virtual  ==========
-            hamilt::CVCX_virt_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
+            CVCX_virt_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
             for (int isk = 0;isk < s.nks;++isk)
             {
                 AX_pblas_loc.fix_k(isk);
@@ -221,7 +221,7 @@ TEST_F(AXTest, DoubleParallel)
             if (my_rank == 0)
             {
                 psi::Psi<double, base_device::DEVICE_CPU>  AX_full_istate(s.nks, 1, s.nocc * s.nvirt, nullptr, false);
-                hamilt::CVCX_virt_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
+                CVCX_virt_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
                 AX_full_istate.fix_b(0);
                 AX_gather.fix_b(istate);
                 check_eq(AX_full_istate.get_pointer(), AX_gather.get_pointer(), s.nks * s.nocc * s.nvirt);
@@ -275,7 +275,7 @@ TEST_F(AXTest, ComplexParallel)
             X_full.fix_b(istate);
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
-            hamilt::CVCX_occ_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
+            CVCX_occ_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
 
             // gather AX and output
             for (int isk = 0;isk < s.nks;++isk)
@@ -297,13 +297,13 @@ TEST_F(AXTest, ComplexParallel)
             if (my_rank == 0)
             {
                 psi::Psi<std::complex<double>, base_device::DEVICE_CPU>  AX_full_istate(s.nks, 1, s.nocc * s.nvirt, nullptr, false);
-                hamilt::CVCX_occ_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
+                CVCX_occ_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
                 AX_full_istate.fix_b(0);
                 AX_gather.fix_b(istate);
                 check_eq(AX_full_istate.get_pointer(), AX_gather.get_pointer(), s.nks * s.nocc * s.nvirt);
             }
             // //============ the same for virtual  ==========
-            hamilt::CVCX_virt_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
+            CVCX_virt_pblas(V, pV, c, pc, X, px, s.naos, s.nocc, s.nvirt, AX_pblas_loc, false);
             for (int isk = 0;isk < s.nks;++isk)
             {
                 AX_pblas_loc.fix_k(isk);
@@ -313,7 +313,7 @@ TEST_F(AXTest, ComplexParallel)
             if (my_rank == 0)
             {
                 psi::Psi<std::complex<double>, base_device::DEVICE_CPU>  AX_full_istate(s.nks, 1, s.nocc * s.nvirt, nullptr, false);
-                hamilt::CVCX_virt_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
+                CVCX_virt_blas(V_full, c_full, X_full, s.naos, s.nocc, s.nvirt, AX_full_istate, false);
                 AX_full_istate.fix_b(0);
                 AX_gather.fix_b(istate);
                 check_eq(AX_full_istate.get_pointer(), AX_gather.get_pointer(), s.nks * s.nocc * s.nvirt);

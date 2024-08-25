@@ -3,7 +3,7 @@
 #include "module_psi/psi.h"
 #include <vector>
 #include "module_lr/utils/lr_util.h"
-namespace hamilt
+namespace LR
 {
     // use templates in the future.
 #ifdef __MPI

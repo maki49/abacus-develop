@@ -2,7 +2,7 @@
 #include "module_base/blas_connector.h"
 #include "module_base/tool_title.h"
 #include "module_lr/utils/lr_util.h"
-namespace hamilt
+namespace LR
 {
     //=====================occ========================
     template <>
@@ -73,7 +73,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<double, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const double factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_occ_AX_blas");
         int nks = c.get_nk();
@@ -104,7 +105,7 @@ namespace hamilt
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
             dgemm_(&trans, &trans, &nvirt, &nocc, &naos, &one,
-                cx.data<double>(), &naos, cv.data<double>(), &nocc, add_on ? &one : &zero,
+                cx.data<double>(), &naos, cv.data<double>(), &nocc, add_on ? &factor : &zero,
                 AX_istate.get_pointer(), &nvirt);
         }
     }
@@ -118,7 +119,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const std::complex<double> factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_occ_AX_blas");
         int nks = c.get_nk();
@@ -150,7 +152,7 @@ namespace hamilt
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
             zgemm_(&trans, &trans, &nvirt, &nocc, &naos, &one,
-                cx.data<std::complex<double>>(), &naos, cv.data<std::complex<double>>(), &nocc, add_on ? &one : &zero,
+                cx.data<std::complex<double>>(), &naos, cv.data<std::complex<double>>(), &nocc, add_on ? &factor : &zero,
                 AX_istate.get_pointer(), &nvirt);
         }
     }
@@ -225,7 +227,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<double, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const double factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_virt_AX_blas");
         int nks = c.get_nk();
@@ -256,7 +259,7 @@ namespace hamilt
 
             //AX_istate=[VC]^T[X^TC^T]^T (nvirt major)
             dgemm_(&trans, &trans, &nvirt, &nocc, &naos, &one,
-                cv.data<double>(), &naos, cx.data<double>(), &nocc, add_on ? &one : &zero,
+                cv.data<double>(), &naos, cx.data<double>(), &nocc, add_on ? &factor : &zero,
                 AX_istate.get_pointer(), &nvirt);
         }
     }
@@ -270,7 +273,8 @@ namespace hamilt
         const int& nocc,
         const int& nvirt,
         psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& AX_istate,
-        const bool add_on)
+        const bool add_on,
+        const std::complex<double> factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "CVCX_virt_AX_blas");
         int nks = c.get_nk();
@@ -302,7 +306,7 @@ namespace hamilt
 
             //AX_istate=[VC]^T[X^TC^T]^T (nvirt major)
             zgemm_(&trans, &trans, &nvirt, &nocc, &naos, &one,
-                cv.data<std::complex<double>>(), &naos, cx.data<std::complex<double>>(), &nocc, add_on ? &one : &zero,
+                cv.data<std::complex<double>>(), &naos, cx.data<std::complex<double>>(), &nocc, add_on ? &factor : &zero,
                 AX_istate.get_pointer(), &nvirt);
         }
     }

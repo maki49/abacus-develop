@@ -427,6 +427,7 @@
     - [abs\_broadening](#abs_broadening)
     - [ri\_hartree\_benchmark](#ri_hartree_benchmark)
     - [aims_nbasis](#aims_nbasis)
+    - [lr\_grad](#lr_grad)
 
 [back to top](#full-list-of-input-keywords)
 ## System variables
@@ -3971,5 +3972,12 @@ The output files are `OUT.${suffix}/Excitation_Energy.dat` and `OUT.${suffix}/Ex
 - **Availability**: `ri_hartree_benchmark` = `aims`
 - **Description**: Atomic basis set size for each atom type (with the same order as in `STRU`) in FHI-aims.
 - **Default**: {} (empty list, where ABACUS use its own basis set size)
+
+### lr_grad
+
+- **Type**: Boolean
+- **Description**: Whether to calculate the analytical gradient of the LR-TDDFT calculation.
+If set to true, please make sure your [Libxc](https://libxc.gitlab.io/) is compiled with the `-DDISABLE_KXC=OFF`.
+- **Default**: False
 
 [back to top](#full-list-of-input-keywords)

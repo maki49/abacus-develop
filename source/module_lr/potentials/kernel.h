@@ -28,8 +28,8 @@ namespace LR
             std::vector<double>& sigma);
 #endif
 
-        const std::vector<double>& get_kernel(const std::string& name) { return kernel_set_[name]; }
-        const std::vector<ModuleBase::Vector3<double>>& get_grad_kernel(const std::string& name) { return grad_kernel_set_[name]; }
+        const std::vector<double>& get_kernel(const std::string& name)const { return kernel_set_.at(name); }
+        const std::vector<ModuleBase::Vector3<double>>& get_grad_kernel(const std::string& name)const { return grad_kernel_set_.at(name); }
 
     protected:
 

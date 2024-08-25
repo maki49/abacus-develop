@@ -6,7 +6,7 @@
 #include "module_base/tool_title.h"
 #include "module_lr/utils/lr_util.h"
 #include "dm_diff.h"
-namespace hamilt
+namespace LR
 {
     inline void CvX(
         const double* C,

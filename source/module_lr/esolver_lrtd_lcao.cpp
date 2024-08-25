@@ -16,6 +16,9 @@
 #include "module_parameter/parameter.h"
 #include "module_lr/ri_benchmark/ri_benchmark.h"
 
+// gradient
+#include "module_lr/Grad/Z_vector_equation/zeq_solver.h"
+
 #ifdef __EXX
 template<>
 void LR::ESolver_LR<double>::move_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
@@ -453,6 +456,18 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
         spectrum.oscillator_strength();
         spectrum.transition_analysis(is);
         spectrum.optical_absorption(freq, input.abs_broadening, is);
+
+        // cal analytic gradient
+        if (this->input.lr_grad)
+        {
+            const psi::Psi<T>& Z = Z_vector(*this->X[is], this->nstates,
+                this->nspin, this->nbasis, this->nocc, this->nvirt,
+                this->ucell, orb_cutoff_, GlobalC::GridD, this->psi_ks, this->eig_ks,
+#ifdef __EXX    
+                this->exx_lri.get(),
+#endif
+                this->gint_, this->pot[is], this->kv, this->paraX_, this->paraC_, this->paraMat_);
+        }
     }
 }
 
@@ -542,11 +557,11 @@ void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
     switch (nspin)
     {
     case 1:
-        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S1);
+        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S1, this->input.lr_grad);
         break;
     case 2:
-        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S2_singlet);
-        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S2_triplet);
+        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S2_singlet, this->input.lr_grad);
+        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S2_triplet, this->input.lr_grad);
         break;
     default:
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");

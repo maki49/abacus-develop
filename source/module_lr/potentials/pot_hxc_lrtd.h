@@ -15,14 +15,18 @@ namespace LR
         enum SpinType { S1 = 0, S2_singlet = 1, S2_triplet = 2 };
         enum XCType { None = 0, LDA = 1, GGA = 2, HYB_GGA = 4 };
         /// constructor for exchange-correlation kernel
+        PotHxcLR(const UnitCell* ucell_in) :tpiba_(ucell_in->tpiba) {};
         PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in, const Charge* chg_gs/*ground state*/,
             SpinType st_in = SpinType::S1, const bool& grad = false);
         ~PotHxcLR() {}
         void cal_v_eff(const Charge* chg/*excited state*/, const UnitCell* ucell, ModuleBase::matrix& v_eff) override {};
         void cal_v_eff(double** rho, const UnitCell* ucell, ModuleBase::matrix& v_eff);
+        const ModulePW::PW_Basis* get_rho_basis() const { return this->rho_basis_; }
+        const KernelXC& get_kernel_componets() const { return this->xc_kernel_components_; }
         int nrxx;
-    private:
-        int nspin;
+
+    protected:
+        int nspin = 1;
         std::unique_ptr<elecstate::PotHartree> pot_hartree;
         /// different components of local and semi-local xc kernels:
         /// LDA: v2rho2

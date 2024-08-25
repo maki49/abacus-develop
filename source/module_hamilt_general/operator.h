@@ -48,6 +48,9 @@ class Operator
     typedef std::tuple<const psi::Psi<T, Device>*, const psi::Range, T*> hpsi_info;
     virtual hpsi_info hPsi(hpsi_info& input)const;
 
+    /// range-independent version of hPsi
+    virtual void hPsi(const psi::Psi<T, Device>& psi_in, psi::Psi<T, Device>& psi_out)const;
+
     virtual void init(const int ik_in);
 
     virtual void add(Operator* next);
