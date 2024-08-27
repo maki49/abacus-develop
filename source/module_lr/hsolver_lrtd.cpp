@@ -9,6 +9,13 @@ namespace LR
 {
     inline double square(double x) { return x * x; };
     inline double square(std::complex<double> x) { return x.real() * x.real() + x.imag() * x.imag(); };
+    template<typename T>
+    inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0)
+    {
+        std::cout << label << std::endl;
+        for (auto& e : eigs)std::cout << e * factor << " ";
+        std::cout << std::endl;
+    }
     template<typename T, typename Device>
     void HSolverLR<T, Device>::solve(hamilt::Hamilt<T, Device>* pHamilt,
         psi::Psi<T, Device>& psi,
@@ -37,7 +44,14 @@ namespace LR
         {
             std::vector<T> Amat_full = pHamilt->matrix();
             eigenvalue.resize(nk * npairs);
-            LR_Util::diag_lapack(nk * npairs, Amat_full.data(), eigenvalue.data());
+            if (hermitian) { LR_Util::diag_lapack(nk * npairs, Amat_full.data(), eigenvalue.data()); }
+            else
+            {
+                std::vector<std::complex<double>> eig_complex(nk * npairs);
+                LR_Util::diag_lapack_nh(nk * npairs, Amat_full.data(), eig_complex.data());
+                print_eigs(eig_complex, "Right eigenvalues: of the non-Hermitian matrix: (Ry)");
+                for (int i = 0; i < nk * npairs; i++) { eigenvalue[i] = eig_complex[i].real(); }
+            }
             psi.fix_kb(0, 0);
             // copy eigenvectors
             for (int i = 0;i < psi.size();++i) psi.get_pointer()[i] = Amat_full[i];
@@ -153,12 +167,8 @@ namespace LR
 
 
         // 6. output eigenvalues and eigenvectors
-        std::cout << "eigenvalues: (Ry)" << std::endl;
-        for (auto& e : eigenvalue)std::cout << e << " ";
-        std::cout << std::endl;
-        std::cout << "eigenvalues: (eV)" << std::endl;
-        for (auto& e : eigenvalue)std::cout << e * ModuleBase::Ry_to_eV << " ";
-        std::cout << std::endl;
+        print_eigs(eigenvalue, "eigenvalues: (Ry)");
+        print_eigs(eigenvalue, "eigenvalues: (eV)", ModuleBase::Ry_to_eV);
         if (out_wfc_lr)
         {
             if (GlobalV::MY_RANK == 0)
