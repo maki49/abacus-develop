@@ -30,10 +30,11 @@ namespace LR
             Parallel_2D* pX_in,
             Parallel_2D* pc_in,
             Parallel_Orbitals* pmat_in,
-            const double& alpha = 1.0)
+            const double& alpha = 1.0,
+            const bool& cal_dm_trans = false)
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), exx_lri(exx_lri_in), kv(kv_in),
-            pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in), alpha(alpha)
+            pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in), alpha(alpha), cal_dm_trans(cal_dm_trans)
         {
             ModuleBase::TITLE("OperatorLREXX", "OperatorLREXX");
             this->cal_type = hamilt::calculation_type::lcao_exx;
@@ -64,6 +65,8 @@ namespace LR
         const int& nocc;
         const int& nvirt;
         const double& alpha;
+        const bool cal_dm_trans = false;
+        const bool tdm_sym = false; ///< whether transition density matrix is symmetric
         const K_Vectors& kv;
         /// ground state wavefunction
         const psi::Psi<T>* psi_ks = nullptr;
