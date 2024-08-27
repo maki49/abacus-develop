@@ -405,7 +405,8 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
             // solve the Casida equation
             HSolverLR<T> hsol(nk, this->npairs, is, this->input.out_wfc_lr);
             hsol.set_diagethr(0, 0, std::max(1e-13, this->input.lr_thr));
-            hsol.solve(phamilt, *this->X[is], this->pelec, this->input.lr_solver);    //copy eigenvalues?
+            hsol.solve(phamilt, *this->X[is], this->pelec, this->input.lr_solver,
+                !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel));  //hybrid kernels are non-Hermitian
             delete phamilt;
         }
     }
