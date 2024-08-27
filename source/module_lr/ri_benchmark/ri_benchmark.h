@@ -49,12 +49,14 @@ namespace RI_Benchmark
     void cal_AX(const TLRI<TK>& Cs_a,
         const TLRIX<TK>& Cs_bX,
         const TLRI<TR>& Vs,
-        TK* AX);
+        TK* AX,
+        const double& scale = 2.0);
     /// AX=（CV)(CX), sum over atom quads
     template <typename TK>
     void cal_AX(const TLRI<TK>& CV,
         const TLRIX<TK>& Cs_bX,
-        TK* AX);
+        TK* AX,
+        const double& scale = 2.0);
 
     template<typename FPTYPE>
     std::vector<FPTYPE> read_bands(const std::string& file, const int nocc, const int nvirt, int& ncore);

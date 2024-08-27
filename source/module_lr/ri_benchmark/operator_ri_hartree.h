@@ -36,7 +36,7 @@ namespace RI_Benchmark
             {
                 Amat[i] = Amat1[i] + Amat2[i] + Amat3[i] + Amat4[i];
             }
-            std::cout << "Amat_full (Hartree term) from CVC:" << std::endl;
+            std::cout << "Amat_full (Hartree term) from RI (Unit Hartree):" << std::endl;
             for (int i = 0;i < npairs;++i)
             {
                 for (int j = 0;j < npairs;++j)
@@ -60,10 +60,10 @@ namespace RI_Benchmark
                 TLRIX<T> CsX_vo = cal_CsX(Cs_vo_mo, &X(ib, 0, 0));
                 TLRIX<T> CsX_ov = cal_CsX(Cs_ov_mo, &X(ib, 0, 0));
                 // LR_Util::print_CsX(Cs_bX, nvirt, "Cs_bX of state " + std::to_string(ib));
-                cal_AX(CV_vo, CsX_vo, &AX(ib, 0, 0));
-                cal_AX(CV_vo, CsX_ov, &AX(ib, 0, 0));
-                cal_AX(CV_ov, CsX_vo, &AX(ib, 0, 0));
-                cal_AX(CV_ov, CsX_ov, &AX(ib, 0, 0));
+                cal_AX(CV_vo, CsX_vo, &AX(ib, 0, 0), 4.);
+                cal_AX(CV_vo, CsX_ov, &AX(ib, 0, 0), 4.);
+                cal_AX(CV_ov, CsX_vo, &AX(ib, 0, 0), 4.);
+                cal_AX(CV_ov, CsX_ov, &AX(ib, 0, 0), 4.);
             }
         }
     protected:

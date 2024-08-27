@@ -212,7 +212,8 @@ namespace RI_Benchmark
     void cal_AX(const TLRI<TK>& Cs_a,
         const TLRIX<TK>& Cs_bX,
         const TLRI<TR>& Vs,
-        TK* AX)
+        TK* AX,
+        const double& scale)
     {
         const int& npairs = Cs_a.at(0).begin()->second.shape[1] * Cs_a.at(0).begin()->second.shape[2];
         for (auto& itv1 : Vs)
@@ -236,7 +237,7 @@ namespace RI_Benchmark
                         assert(vector_cb.size() == nabf2); //abf2
                         std::vector<TK> tmp(nabf1);
                         container::BlasConnector::gemv('T', nabf1, nabf2, 1.0, tensor_v.ptr(), nabf2, vector_cb.data(), 1, 0.0, tmp.data(), 1);
-                        container::BlasConnector::gemv('N', npairs, nabf1, 2.0/*Hartree to Ry*/, tensor_ca.ptr(), npairs, tmp.data(), 1, 1.0, AX, 1);
+                        container::BlasConnector::gemv('N', npairs, nabf1, scale/*Hartree to Ry; singlet*/, tensor_ca.ptr(), npairs, tmp.data(), 1, 1.0, AX, 1);
                     }
                 }
             }
@@ -246,7 +247,8 @@ namespace RI_Benchmark
     template <typename TK>
     void cal_AX(const TLRI<TK>& CV,
         const TLRIX<TK>& Cs_bX,
-        TK* AX)
+        TK* AX,
+        const double& scale)
     {
         for (auto& it1 : CV)
         {
@@ -262,7 +264,7 @@ namespace RI_Benchmark
                     const auto& vector_cx = it3.second; // (nabf)
                     const int& nabf = tensor_cv.shape[0];
                     assert(vector_cx.size() == nabf); //abf on at2
-                    container::BlasConnector::gemv('N', npairs, nabf, 2.0/*Hartree to Ry*/, tensor_cv.ptr(), npairs, vector_cx.data(), 1, 1.0, AX, 1);
+                    container::BlasConnector::gemv('N', npairs, nabf, scale/*Hartree to Ry; singlet*/, tensor_cv.ptr(), npairs, vector_cx.data(), 1, 1.0, AX, 1);
                 }
             }
         }

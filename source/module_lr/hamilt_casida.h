@@ -81,7 +81,7 @@ namespace LR
                 }
                 // std::cout << "exx_alpha=" << exx_alpha << std::endl; // the default value of exx_alpha is 0.25 when dft_functional is pbe or hse
                 hamilt::Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc, nvirt, ucell_in, psi_ks_in,
-                    this->DM_trans, exx_lri_in, kv_in, pX_in, pc_in, pmat_in, xc_kernel == "hf" ? 1.0 : exx_alpha);
+                    this->DM_trans, exx_lri_in, kv_in, pX_in, pc_in, pmat_in, xc_kernel == "hf" ? 1.0 : exx_alpha, ri_hartree);
                 this->ops->add(lr_exx);
             }
 #endif
