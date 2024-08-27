@@ -201,6 +201,9 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
             this->move_exx_lri(ks_sol.exx_lri_complex);
         } else    // construct C, V from scratch
         {
+            // set ccp_type according to the xc_kernel
+            if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
+            else if (xc_kernel == "hse") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hse; }
             this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
             this->exx_lri->init(MPI_COMM_WORLD, this->kv, ks_sol.orb_);
             this->exx_lri->cal_exx_ions(input.out_ri_cv);
@@ -368,6 +371,9 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
 #ifdef __EXX
     if ((xc_kernel == "hf" || xc_kernel == "hse") && this->input.lr_solver != "spectrum")
     {
+        // set ccp_type according to the xc_kernel
+        if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
+        else if (xc_kernel == "hse") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hse; }
         this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
         this->exx_lri->init(MPI_COMM_WORLD, this->kv, orb);
         this->exx_lri->cal_exx_ions(input.out_ri_cv);
