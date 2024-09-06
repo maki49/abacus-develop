@@ -102,7 +102,7 @@ namespace ModuleSymmetry
             }
         }
         // test: output return_lattice
-        output_return_lattice(this->return_lattice_);
+        // output_return_lattice(this->return_lattice_);
     }
 
     void Irreducible_Sector::output_full_map_to_irreducible_sector(const int nat)
@@ -139,9 +139,21 @@ namespace ModuleSymmetry
         std::cout << "irreducible sector: " << std::endl;
         for (auto& irap_irR : this->irreducible_sector_)
         {
-            for (auto& irR : irap_irR.second)
-                std::cout << "atompair (" << irap_irR.first.first << ", " << irap_irR.first.second << "), R = (" << irR[0] << ", " << irR[1] << ", " << irR[2] << ") \n";
+            for (auto& irR : irap_irR.second) {std::cout << "atompair (" << irap_irR.first.first << ", " << irap_irR.first.second << "), R = (" << irR[0] << ", " << irR[1] << ", " << irR[2] << ") \n";}
             std::cout << std::endl;
+        }
+    }
+    void Irreducible_Sector::write_irreducible_sector()
+    {
+        if(GlobalV::MY_RANK == 0)
+        {
+            std::ofstream ofs;
+            ofs.open(GlobalV::global_out_dir + "irreducible_sector.dat");
+            for (auto& irap_irR : this->irreducible_sector_)
+            {
+                for (auto& irR : irap_irR.second){ofs << "atompair (" << irap_irR.first.first << ", " << irap_irR.first.second << "), R = (" << irR[0] << ", " << irR[1] << ", " << irR[2] << ") \n";}
+            }
+            ofs.close();
         }
     }
 
@@ -219,7 +231,8 @@ namespace ModuleSymmetry
         for (auto& sector : this->sector_stars_)
             total_apR_in_star += sector.second.size();
         assert(total_apR_in_star == this->full_map_to_irreducible_sector_.size());
-        this->output_full_map_to_irreducible_sector(st.nat);
-        this->output_sector_star();
+        // this->output_full_map_to_irreducible_sector(st.nat);
+        // this->output_sector_star();
+        this->write_irreducible_sector();
     }
 }

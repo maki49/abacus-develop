@@ -90,6 +90,7 @@ namespace ModuleSymmetry
 
         void output_full_map_to_irreducible_sector(const int nat);
         void output_sector_star();
+        void write_irreducible_sector();
 
         //--------------------------------------------------------------------------------
         /// The sub functions judge special symmetry

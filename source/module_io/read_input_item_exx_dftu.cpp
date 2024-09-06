@@ -263,6 +263,9 @@ void ReadInput::item_exx()
         Input_Item item("exx_symmetry_realspace");
         item.annotation = "whether to reduce real-space sector in Hexx calculation";
         read_sync_bool(input.exx_symmetry_realspace);
+        item.reset_value = [](const Input_Item& item, Parameter& para) {
+            if (para.input.symmetry != "1") { para.input.exx_symmetry_realspace = false; }
+            };
         this->add_item(item);
     }
     {

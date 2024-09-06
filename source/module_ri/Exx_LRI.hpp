@@ -133,7 +133,7 @@ void Exx_LRI<Tdata>::cal_exx_ions()
 	this->cv.Vws = LRI_CV_Tools::get_CVws(Vs);
 	this->exx_lri.set_Vs(std::move(Vs), this->info.V_threshold);
 
-	if(PARAM.inp.cal_force || GlobalV::CAL_STRESS)
+	if(PARAM.inp.cal_force || PARAM.inp.cal_stress)
 	{
 		std::array<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>,3>
 			dVs = this->cv.cal_dVs(
@@ -141,7 +141,7 @@ void Exx_LRI<Tdata>::cal_exx_ions()
 				{{"writable_dVws",true}});
 		this->cv.dVws = LRI_CV_Tools::get_dCVws(dVs);
 		this->exx_lri.set_dVs(std::move(dVs), this->info.V_grad_threshold);
-		if(GlobalV::CAL_STRESS)
+		if(PARAM.inp.cal_stress)
 		{
 			std::array<std::array<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>,3>,3> dVRs = LRI_CV_Tools::cal_dMRs(dVs);
 			this->exx_lri.set_dVRs(std::move(dVRs), this->info.V_grad_R_threshold);
@@ -155,18 +155,18 @@ void Exx_LRI<Tdata>::cal_exx_ions()
 	std::pair<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>, std::array<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>,3>>
 		Cs_dCs = this->cv.cal_Cs_dCs(
 			list_As_Cs.first, list_As_Cs.second[0],
-			{{"cal_dC",PARAM.inp.cal_force||GlobalV::CAL_STRESS},
+			{{"cal_dC",PARAM.inp.cal_force||PARAM.inp.cal_stress},
 			 {"writable_Cws",true}, {"writable_dCws",true}, {"writable_Vws",false}, {"writable_dVws",false}});
 	std::map<TA,std::map<TAC,RI::Tensor<Tdata>>> &Cs = std::get<0>(Cs_dCs);
 	this->cv.Cws = LRI_CV_Tools::get_CVws(Cs);
 	this->exx_lri.set_Cs(std::move(Cs), this->info.C_threshold);
 
-	if(PARAM.inp.cal_force || GlobalV::CAL_STRESS)
+	if(PARAM.inp.cal_force || PARAM.inp.cal_stress)
 	{
 		std::array<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>,3> &dCs = std::get<1>(Cs_dCs);
 		this->cv.dCws = LRI_CV_Tools::get_dCVws(dCs);
 		this->exx_lri.set_dCs(std::move(dCs), this->info.C_grad_threshold);
-		if(GlobalV::CAL_STRESS)
+		if(PARAM.inp.cal_stress)
 		{
 			std::array<std::array<std::map<TA,std::map<TAC,RI::Tensor<Tdata>>>,3>,3> dCRs = LRI_CV_Tools::cal_dMRs(dCs);
 			this->exx_lri.set_dCRs(std::move(dCRs), this->info.C_grad_R_threshold);
@@ -187,24 +187,23 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 
 	this->Hexxs.resize(GlobalV::NSPIN);
 	this->Eexx = 0;
-    this->exx_lri.set_symmetry(GlobalC::exx_info.info_global.exx_symmetry_realspace, p_symrot->get_irreducible_sector());
+    (p_symrot) ? this->exx_lri.set_symmetry(true, p_symrot->get_irreducible_sector()) : this->exx_lri.set_symmetry(false, {});
 	for(int is=0; is<GlobalV::NSPIN; ++is)
 	{
-        std::string suffix = ((GlobalV::CAL_FORCE || GlobalV::CAL_STRESS) ? std::to_string(is) : "");
+        std::string suffix = ((PARAM.inp.cal_force || PARAM.inp.cal_stress) ? std::to_string(is) : "");
 
         this->exx_lri.set_Ds(Ds[is], this->info.dm_threshold, suffix);
         this->exx_lri.cal_Hs({ "","",suffix });
 
-        if (!GlobalC::exx_info.info_global.exx_symmetry_realspace)
+        if (!p_symrot)
         {
             this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
                 this->mpi_comm, std::move(this->exx_lri.Hs), std::get<0>(judge[is]), std::get<1>(judge[is]));
         }
         else
         {
-            assert(p_symrot != nullptr);
             // reduce but not repeat
-            auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs); // why not rotate directly without this step?
+            auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs);
             // rotate locally without repeat
             Hs_a2D = p_symrot->restore_HR(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, 'H', Hs_a2D);
             // cal energy using full Hs without repeat
@@ -214,13 +213,12 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
             // get repeated full Hs for abacus
             this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
                 this->mpi_comm, std::move(Hs_a2D), std::get<0>(judge[is]), std::get<1>(judge[is]));
-
         }
         this->Eexx += std::real(this->exx_lri.energy);
 		post_process_Hexx(this->Hexxs[is]);
 	}
-    this->exx_lri.set_symmetry(false, {});
 	this->Eexx = post_process_Eexx(this->Eexx);
+	this->exx_lri.set_symmetry(false, {});
 	ModuleBase::timer::tick("Exx_LRI", "cal_exx_elec");	
 }
 
