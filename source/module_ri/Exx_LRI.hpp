@@ -187,14 +187,13 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 
 	this->Hexxs.resize(GlobalV::NSPIN);
 	this->Eexx = 0;
+    this->exx_lri.set_symmetry(GlobalC::exx_info.info_global.exx_symmetry_realspace, p_symrot->get_irreducible_sector());
 	for(int is=0; is<GlobalV::NSPIN; ++is)
 	{
         std::string suffix = ((GlobalV::CAL_FORCE || GlobalV::CAL_STRESS) ? std::to_string(is) : "");
 
         this->exx_lri.set_Ds(Ds[is], this->info.dm_threshold, suffix);
-        this->exx_lri.cal_Hs({ "","",suffix },
-            (p_symrot == nullptr) ? std::map<std::pair<TA, TA>, std::set<TC> >({}) : p_symrot->get_irreducible_sector(),
-            (p_symrot == nullptr) ? true : false);
+        this->exx_lri.cal_Hs({ "","",suffix });
 
         this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
             this->mpi_comm, std::move(this->exx_lri.Hs), std::get<0>(judge[is]), std::get<1>(judge[is]));
@@ -204,12 +203,13 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
             this->Hexxs[is] = p_symrot->restore_HR(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, 'H', this->Hexxs[is]);
             // cal energy using full Hs
             this->exx_lri.energy = this->exx_lri.post_2D.cal_energy(
-                this->exx_lri.post_2D.saves["Ds_"],
-                this->Hexxs[is]);
+                this->exx_lri.post_2D.saves["Ds_" + suffix],
+                this->Hexxs[is]);   // no need to reduce twice (post2D.set_tensors_map2 is equivalent to comm_map2)
         }
         this->Eexx += std::real(this->exx_lri.energy);
 		post_process_Hexx(this->Hexxs[is]);
 	}
+    this->exx_lri.set_symmetry(false, {});
 	this->Eexx = post_process_Eexx(this->Eexx);
 	ModuleBase::timer::tick("Exx_LRI", "cal_exx_elec");	
 }

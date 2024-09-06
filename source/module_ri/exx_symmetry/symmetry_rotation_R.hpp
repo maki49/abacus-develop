@@ -4,7 +4,7 @@
 #include "module_base/timer.h"
 #include <array>
 #include <RI/global/Global_Func-2.h>
-#include <RI/symmetry/Symmetry_Rotation.h>
+#include <RI/physics/symmetry/Symmetry_Rotation.h>
 
 namespace ModuleSymmetry
 {
