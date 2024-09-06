@@ -124,10 +124,14 @@ namespace ModuleSymmetry
     {
         std::cout << "Found " << this->sector_stars_.size() << " irreducible sector stars:" << std::endl;
         // for (auto& irs_star : this->sector_stars_)
-        for (int istar = 0;istar < this->sector_stars_.size();++istar)
+        for (auto& irap_star : this->sector_stars_)
         {
-            std::cout << "in star " << istar << " with size " << this->sector_stars_[istar].size() << ":\n";
-            for (auto& isym_ap_R : this->sector_stars_[istar])
+            const TapR& irapR = irap_star.first;
+            const auto& star = irap_star.second;
+            const Tap& irap = irapR.first;
+            const TC& irR = irapR.second;
+            std::cout << "in star of irreducible atompair=(" << irap.first << ", " << irap.second << "), R=(" << irR[0] << ", " << irR[1] << ", " << irR[2] << ") with size " << star.size() << ":\n";
+            for (auto& isym_ap_R : star)
                 std::cout << "isym=" << isym_ap_R.first << ", atompair=(" << isym_ap_R.second.first.first << ", " << isym_ap_R.second.first.second << "), R=("
                 << isym_ap_R.second.second[0] << ", " << isym_ap_R.second.second[1] << ", " << isym_ap_R.second.second[2] << ")" << std::endl;
         }
@@ -202,7 +206,8 @@ namespace ModuleSymmetry
             }// end for isym
             if (!sector_star.empty())
             {
-                this->sector_stars_.push_back(sector_star);
+                const TapR& irapR = { irap, irR };
+                this->sector_stars_.emplace(irapR, sector_star);
                 if (this->irreducible_sector_.count(irap))
                     this->irreducible_sector_.at(irap).insert(irR);
                 else
@@ -212,7 +217,7 @@ namespace ModuleSymmetry
         // test
         int total_apR_in_star = 0;
         for (auto& sector : this->sector_stars_)
-            total_apR_in_star += sector.size();
+            total_apR_in_star += sector.second.size();
         assert(total_apR_in_star == this->full_map_to_irreducible_sector_.size());
         this->output_full_map_to_irreducible_sector(st.nat);
         this->output_sector_star();

@@ -195,16 +195,26 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
         this->exx_lri.set_Ds(Ds[is], this->info.dm_threshold, suffix);
         this->exx_lri.cal_Hs({ "","",suffix });
 
-        this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
-            this->mpi_comm, std::move(this->exx_lri.Hs), std::get<0>(judge[is]), std::get<1>(judge[is]));
-
-        if (p_symrot != nullptr)
+        if (!GlobalC::exx_info.info_global.exx_symmetry_realspace)
         {
-            this->Hexxs[is] = p_symrot->restore_HR(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, 'H', this->Hexxs[is]);
-            // cal energy using full Hs
+            this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
+                this->mpi_comm, std::move(this->exx_lri.Hs), std::get<0>(judge[is]), std::get<1>(judge[is]));
+        }
+        else
+        {
+            assert(p_symrot != nullptr);
+            // reduce but not repeat
+            auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs); // why not rotate directly without this step?
+            // rotate locally without repeat
+            Hs_a2D = p_symrot->restore_HR(GlobalC::ucell.symm, GlobalC::ucell.atoms, GlobalC::ucell.st, 'H', Hs_a2D);
+            // cal energy using full Hs without repeat
             this->exx_lri.energy = this->exx_lri.post_2D.cal_energy(
                 this->exx_lri.post_2D.saves["Ds_" + suffix],
-                this->Hexxs[is]);   // no need to reduce twice (post2D.set_tensors_map2 is equivalent to comm_map2)
+                this->exx_lri.post_2D.set_tensors_map2(Hs_a2D));
+            // get repeated full Hs for abacus
+            this->Hexxs[is] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
+                this->mpi_comm, std::move(Hs_a2D), std::get<0>(judge[is]), std::get<1>(judge[is]));
+
         }
         this->Eexx += std::real(this->exx_lri.energy);
 		post_process_Hexx(this->Hexxs[is]);

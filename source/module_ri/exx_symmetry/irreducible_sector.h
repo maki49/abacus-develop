@@ -113,7 +113,7 @@ namespace ModuleSymmetry
 
         // all the {abR}s , where the isym=0 one in each star forms the irreducible sector.
         // [irreducible sector size][isym, ((ab),R)]
-        std::vector<std::map<int, TapR>> sector_stars_;
+        std::map<TapR, std::map<int, TapR>> sector_stars_;
 
         /// the direct lattice vector of {R|t}\tau-\tau' for each atoms and each symmetry operation. [natom][nsym]
         std::vector<std::vector<TCdouble>> return_lattice_;

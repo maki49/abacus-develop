@@ -5,63 +5,110 @@
 #include <array>
 #include <RI/global/Global_Func-2.h>
 #include <RI/physics/symmetry/Symmetry_Rotation.h>
-
 namespace ModuleSymmetry
 {
     template<typename Tdata>
-    std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> Symmetry_rotation::restore_HR(
-        const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
-        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_irreduceble) const
-    {
-        ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
-        ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
-        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_full;
-        // openmp slows down this for loop, why?
-        for (auto& apR_isym_irapR : this->irs_.full_map_to_irreducible_sector_)
-        {
-            const Tap& ap = apR_isym_irapR.first.first;
-            const TC& R = apR_isym_irapR.first.second;
-            const int& isym = apR_isym_irapR.second.first;
-            const Tap& irap = apR_isym_irapR.second.second.first;
-            const TC& irR = apR_isym_irapR.second.second.second;
-            // rotate the matrix and pack data
-            // H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
-            if (HR_irreduceble.find(irap.first) != HR_irreduceble.end() && HR_irreduceble.at(irap.first).find({ irap.second, irR }) != HR_irreduceble.at(irap.first).end())
-                HR_full[ap.first][{ap.second, R}] = rotate_atompair_serial(HR_irreduceble.at(irap.first).at({ irap.second, irR }),
-                    isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], mode);
-            else
-                std::cout << "not found: current atom pair =(" << ap.first << "," << ap.second << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "), irreducible atom pair =(" << irap.first << "," << irap.second << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";
-        }
-        ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
-        return HR_full;
-    }
-
-    template<typename Tdata>
     inline void print_tensor(const RI::Tensor<Tdata>& t, const std::string& name, const double& threshold = 0.0)
     {
-        std::cout << name << ":\n";
+        GlobalV::ofs_running << name << ":\n";
         for (int i = 0;i < t.shape[0];++i)
         {
             for (int j = 0;j < t.shape[1];++j)
-                std::cout << ((std::abs(t(i, j)) > threshold) ? t(i, j) : static_cast<Tdata>(0)) << " ";
-            std::cout << std::endl;
+                GlobalV::ofs_running << ((std::abs(t(i, j)) > threshold) ? t(i, j) : static_cast<Tdata>(0)) << " ";
+            GlobalV::ofs_running << std::endl;
         }
     }
     template<typename Tdata>
     inline void print_tensor3(const RI::Tensor<Tdata>& t, const std::string& name, const double& threshold = 0.0)
     {
-        std::cout << name << ":\n";
+        GlobalV::ofs_running << name << ":\n";
         for (int a = 0;a < t.shape[0];++a)
         {
-            std::cout << "abf: " << a << '\n';
+            GlobalV::ofs_running << "abf: " << a << '\n';
             for (int i = 0;i < t.shape[1];++i)
             {
                 for (int j = 0;j < t.shape[2];++j)
-                    std::cout << ((std::abs(t(a, i, j)) > threshold) ? t(a, i, j) : static_cast<Tdata>(0)) << " ";
-                std::cout << std::endl;
+                    GlobalV::ofs_running << ((std::abs(t(a, i, j)) > threshold) ? t(a, i, j) : static_cast<Tdata>(0)) << " ";
+                GlobalV::ofs_running << std::endl;
             }
-            std::cout << std::endl;
+            GlobalV::ofs_running << std::endl;
         }
+    }
+
+    template<typename Tdata>
+    std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> Symmetry_rotation::restore_HR(
+        const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_irreducible) const
+    {
+        ModuleBase::TITLE("Symmetry_rotation", "restore_HR");
+        ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_full;
+        // irreducile-to-full map ver.
+        for (auto& tmp1 : HR_irreducible)
+        {
+            const int& irap1 = tmp1.first;
+            for (auto& tmp2 : tmp1.second)
+            {
+                const int& irap2 = tmp2.first.first;
+                const Tap& irap = { irap1, irap2 };
+                const TC& irR = tmp2.first.second;
+                const TapR& irapR = { irap, irR };
+                if (this->irs_.sector_stars_.find(irapR) != this->irs_.sector_stars_.end())
+                {
+                    for (auto& isym_apR : this->irs_.sector_stars_.at(irapR))
+                    {
+                        const int& isym = isym_apR.first;
+                        const TapR& apR = isym_apR.second;
+                        const int& ap1 = apR.first.first;
+                        const int& ap2 = apR.first.second;
+                        const TC& R = apR.second;
+                        HR_full[ap1][{ap2, R}] = rotate_atompair_serial(tmp2.second, isym, atoms[st.iat2it[irap1]], atoms[st.iat2it[irap2]], mode);
+                    }
+                }
+                else { std::cout << "Warning: not found: irreducible atom pair =(" << irap1 << "," << irap2 << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";}
+            }
+        }
+        // full-to-irreducible map ver. (problematic in parallel)
+        // openmp slows down this for loop, why?
+        // for (auto& apR_isym_irapR : this->irs_.full_map_to_irreducible_sector_)
+        // {
+        //     const Tap& ap = apR_isym_irapR.first.first;
+        //     const TC& R = apR_isym_irapR.first.second;
+        //     const int& isym = apR_isym_irapR.second.first;
+        //     const Tap& irap = apR_isym_irapR.second.second.first;
+        //     const TC& irR = apR_isym_irapR.second.second.second;
+        //     // rotate the matrix and pack data
+        //     // H_12(R)=T^\dagger(V)H_1'2'(VR+O_1-O_2)T(V)
+        //     if (HR_irreducible.find(irap.first) != HR_irreducible.end() && HR_irreducible.at(irap.first).find({ irap.second, irR }) != HR_irreducible.at(irap.first).end())
+        //         HR_full[ap.first][{ap.second, R}] = rotate_atompair_serial(HR_irreducible.at(irap.first).at({ irap.second, irR }),
+        //             isym, atoms[st.iat2it[irap.first]], atoms[st.iat2it[irap.second]], mode);
+        //     else
+        //         std::cout << "not found: current atom pair =(" << ap.first << "," << ap.second << "), R=(" << R[0] << "," << R[1] << "," << R[2] << "), irreducible atom pair =(" << irap.first << "," << irap.second << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";
+        // }
+        // // test: output HR_irreducile 
+        // for (auto& tmp1 : HR_irreducible)
+        // {
+        //     const int& a1 = tmp1.first;
+        //     for (auto& tmp2 : tmp1.second)
+        //     {
+        //         const int& a2 = tmp2.first.first;
+        //         const TC& R = tmp2.first.second;
+        //         print_tensor(tmp2.second, "HR_irreducible (" + std::to_string(a1) + ", " + std::to_string(a2) + "), R=(" + std::to_string(R[0]) + " " + std::to_string(R[1]) + " " + std::to_string(R[2]) + ")");
+        //     }
+        // }
+        // // test: output HR 
+        // for (auto& tmp1 : HR_full)
+        // {
+        //     const int& a1 = tmp1.first;
+        //     for (auto& tmp2 : tmp1.second)
+        //     {
+        //         const int& a2 = tmp2.first.first;
+        //         const TC& R = tmp2.first.second;
+        //         print_tensor(tmp2.second, "HR_full (" + std::to_string(a1) + ", " + std::to_string(a2) + "), R=(" + std::to_string(R[0]) + " " + std::to_string(R[1]) + " " + std::to_string(R[2]) + ")");
+        //     }
+        // }
+        ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
+        return HR_full;
     }
 
     template<typename Tdata>
@@ -143,7 +190,7 @@ namespace ModuleSymmetry
             {
                 set_block(iw, iw, this->rotmat_Slm_[isym][L], T);
                 iw += nm;
-                std::cout << "L=" << L << ", N=" << N << ", iw=" << iw << "\n";
+                // std::cout << "L=" << L << ", N=" << N << ", iw=" << iw << "\n";
             }
         }
         assert(iw == nabfs);
@@ -192,20 +239,20 @@ namespace ModuleSymmetry
         ModuleBase::TITLE("Symmetry_rotation", "test_HR_rotation");
 
         // 1. pick out H(R) in the irreducible sector from full H(R)
-        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_irreduceble;
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_irreducible;
         for (auto& irap_Rs : this->irs_.irreducible_sector_)
         {
             const Tap& irap = irap_Rs.first;
             for (auto& irR : irap_Rs.second)
             {
                 const std::pair<int, TC> a2_irR = { irap.second, irR };
-                HR_irreduceble[irap.first][a2_irR] = (HR_full.at(irap.first).count(a2_irR) != 0) ?
+                HR_irreducible[irap.first][a2_irR] = (HR_full.at(irap.first).count(a2_irR) != 0) ?
                     HR_full.at(irap.first).at(a2_irR)
                     : RI::Tensor<Tdata>(HR_full.at(irap.first).begin()->second.shape);
             }
         }
         // 2. rotate
-        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_rotated = restore_HR(symm, atoms, st, mode, HR_irreduceble);
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_rotated = restore_HR(symm, atoms, st, mode, HR_irreducible);
         // 3. compare
         for (auto& HR_ia1 : HR_rotated)
         {
