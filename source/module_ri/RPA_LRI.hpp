@@ -8,7 +8,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include "module_ri/exx_symmetry/symmetry_rotation.h"
+#include "module_ri/module_exx_symmetry/symmetry_rotation.h"
 
 #include "RPA_LRI.h"
 #include "module_parameter/parameter.h"

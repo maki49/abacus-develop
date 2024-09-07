@@ -3,7 +3,7 @@
 
 #include "Exx_LRI.h"
 #include "module_ri/Mix_DMk_2D.h"
-#include "module_ri/exx_symmetry/symmetry_rotation.h"
+#include "module_ri/module_exx_symmetry/symmetry_rotation.h"
 #include <memory>
 
 class LCAO_Matrix;

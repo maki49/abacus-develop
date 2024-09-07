@@ -168,4 +168,4 @@ namespace ModuleSymmetry
 }
 
 #include "symmetry_rotation_R.hpp"
-#include "symmetry_rotation_R_hcontainer.hpp"
+#include "symmetry_rotation_R_hcontainer.hpp"      

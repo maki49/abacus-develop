@@ -18,7 +18,7 @@
 #include <deque>
 #include <mpi.h>
 
-#include "exx_symmetry/symmetry_rotation.h"
+#include "module_exx_symmetry/symmetry_rotation.h"
 
 	class Parallel_Orbitals;
 	

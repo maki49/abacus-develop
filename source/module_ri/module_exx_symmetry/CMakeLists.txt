@@ -6,7 +6,7 @@ if (ENABLE_LIBRI)
         symmetry_rotation.cpp
     )
     add_library(
-        exx_symmetry
+        module_exx_symmetry
         OBJECT
         ${objects}
     )
@@ -15,7 +15,7 @@ if (ENABLE_LIBRI)
     endif()
     
     if(ENABLE_COVERAGE)
-        add_coverage(exx_symmetry)
+        add_coverage(module_exx_symmetry)
     endif()
 
   endif()

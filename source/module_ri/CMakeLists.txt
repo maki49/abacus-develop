@@ -1,6 +1,6 @@
 if (ENABLE_LIBRI)
 
-  add_subdirectory(exx_symmetry)
+  add_subdirectory(module_exx_symmetry)
   
   list(APPEND objects
         Matrix_Orbs11.cpp

@@ -1,4 +1,4 @@
-#include "module_ri/exx_symmetry/irreducible_sector.h"
+#include "module_ri/module_exx_symmetry/irreducible_sector.h"
 
 namespace ModuleSymmetry
 {
