@@ -4,6 +4,7 @@ AddTest(
   TARGET XCTest_PBE
   LIBS MPI::MPI_CXX Libxc::xc parameter # required by global.h; for details, `remove_definitions(-D__MPI)`.
   SOURCES test_xc.cpp ../xc_functional.cpp ../xc_functional_wrapper_xc.cpp ../xc_functional_wrapper_gcxc.cpp ../xc_funct_corr_gga.cpp ../xc_funct_corr_lda.cpp ../xc_funct_exch_gga.cpp ../xc_funct_exch_lda.cpp ../xc_funct_hcth.cpp
+  ../xc_functional_libxc_wrapper_gcxc.cpp ../xc_functional_libxc.cpp
 )
 
 AddTest(
@@ -17,6 +18,7 @@ AddTest(
   TARGET XCTest_PZ_SPN
   LIBS MPI::MPI_CXX Libxc::xc parameter # required by global.h; for details, `remove_definitions(-D__MPI)`.
   SOURCES test_xc2.cpp ../xc_functional.cpp ../xc_functional_wrapper_xc.cpp ../xc_functional_wrapper_gcxc.cpp ../xc_funct_corr_gga.cpp ../xc_funct_corr_lda.cpp ../xc_funct_exch_gga.cpp ../xc_funct_exch_lda.cpp ../xc_funct_hcth.cpp
+  ../xc_functional_libxc_wrapper_gcxc.cpp ../xc_functional_libxc_wrapper_xc.cpp ../xc_functional_libxc.cpp
 )
 
 
