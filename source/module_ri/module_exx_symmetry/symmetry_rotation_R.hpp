@@ -13,8 +13,9 @@ namespace ModuleSymmetry
         GlobalV::ofs_running << name << ":\n";
         for (int i = 0;i < t.shape[0];++i)
         {
-            for (int j = 0;j < t.shape[1];++j)
+            for (int j = 0;j < t.shape[1];++j) {
                 GlobalV::ofs_running << ((std::abs(t(i, j)) > threshold) ? t(i, j) : static_cast<Tdata>(0)) << " ";
+}
             GlobalV::ofs_running << std::endl;
         }
     }
@@ -27,8 +28,9 @@ namespace ModuleSymmetry
             GlobalV::ofs_running << "abf: " << a << '\n';
             for (int i = 0;i < t.shape[1];++i)
             {
-                for (int j = 0;j < t.shape[2];++j)
+                for (int j = 0;j < t.shape[2];++j) {
                     GlobalV::ofs_running << ((std::abs(t(a, i, j)) > threshold) ? t(a, i, j) : static_cast<Tdata>(0)) << " ";
+}
                 GlobalV::ofs_running << std::endl;
             }
             GlobalV::ofs_running << std::endl;
@@ -115,9 +117,11 @@ namespace ModuleSymmetry
     inline void set_block(const int starti, const int startj, const RI::Tensor<std::complex<double>>& block,
         RI::Tensor<Tdata>& obj_tensor)
     {   // no changing row/col order
-        for (int i = 0;i < block.shape[0];++i)
-            for (int j = 0;j < block.shape[1];++j)
+        for (int i = 0;i < block.shape[0];++i) {
+            for (int j = 0;j < block.shape[1];++j) {
                 obj_tensor(starti + i, startj + j) = RI::Global_Func::convert<Tdata>(block(i, j));
+}
+}
     }
 
     template<typename Tdata>
@@ -180,7 +184,8 @@ namespace ModuleSymmetry
     RI::Tensor<Tdata> Symmetry_rotation::set_rotation_matrix_abf(const int& type, const int& isym)const
     {
         int  nabfs = 0;
-        for (int l = 0;l < this->abfs_l_nchi_[type].size();++l)nabfs += this->abfs_l_nchi_[type][l] * (2 * l + 1);
+        for (int l = 0;l < this->abfs_l_nchi_[type].size();++l) {nabfs += this->abfs_l_nchi_[type][l] * (2 * l + 1);
+}
         RI::Tensor<Tdata> T({ static_cast<size_t>(nabfs), static_cast<size_t>(nabfs) }); // check if zero
         int iw = 0;
         for (int L = 0;L < this->abfs_l_nchi_[type].size();++L)
@@ -206,9 +211,10 @@ namespace ModuleSymmetry
         assert(C.shape.size() == 3);
         const int& slice_size = C.shape[1] * C.shape[2];
         // step 1: multiply 2 AOs' rotation matrices
-        for (int iabf = 0;iabf < C.shape[0];++iabf)
+        for (int iabf = 0;iabf < C.shape[0];++iabf) {
             this->rotate_atompair_serial(Cout.ptr() + iabf * slice_size, C.ptr() + iabf * slice_size,
                 a1.nw, a2.nw, isym, a1, a2, 'H');
+}
         // step 2: multiply the ABFs' rotation matrix from the left
         const RI::Tensor<Tdata>& Tabfs = this->set_rotation_matrix_abf<Tdata>(type1, isym);
         RI::Sym::T1_HR(Cout.ptr(), Cout.ptr(), Tabfs, slice_size);
