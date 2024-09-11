@@ -1,3 +1,4 @@
+#ifdef __EXX
 #pragma once
 #include "module_cell/unitcell.h"
 #include "module_psi/psi.h"
@@ -76,3 +77,4 @@ namespace RI_Benchmark
     std::vector<TLRI<TR>> split_Ds(const std::vector<std::vector<TR>>& Ds, const std::vector<int>& aims_nbasis, const UnitCell& ucell);
 }
 #include "ri_benchmark.hpp"
+#endif

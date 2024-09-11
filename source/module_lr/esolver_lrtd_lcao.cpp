@@ -563,6 +563,7 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
 
     if (input.ri_hartree_benchmark == "aims")        // for aims benchmark
     {
+#ifdef __EXX
         int ncore = 0;
         std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(GlobalV::global_readin_dir + "band_out", nocc, nvirt, ncore);
         std::cout << "ncore=" << ncore << ", nocc=" << nocc << ", nvirt=" << nvirt << ", nbands=" << this->nbands << std::endl;
@@ -570,6 +571,9 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
         if(eig_ks_vec.size() != this->nbands) {ModuleBase::WARNING_QUIT("ESolver_LR", "read_aims_ebands failed.");};
         for (int i = 0;i < nbands;++i) { this->pelec->ekb(0, i) = eig_ks_vec[i]; }
         RI_Benchmark::read_aims_eigenvectors<T>(*this->psi_ks, GlobalV::global_readin_dir + "KS_eigenvectors.out", ncore, nbands, nbasis);
+#else
+        ModuleBase::WARNING_QUIT("ESolver_LR", "RI benchmark is only supported when compile with LibRI.");
+#endif
     }
     else if (!ModuleIO::read_wfc_nao((PARAM.global_readin_dir, this->paraMat_, *this->psi_ks, this->pelec,
         /*skip_bands=*/this->nocc_max - this->nocc)) {

@@ -62,6 +62,7 @@ namespace LR
 #endif
             if (ri_hartree_benchmark != "none")
             {
+#ifdef __EXX
                 if (spin_type == "Spin Singlet")
                 {
                     if (ri_hartree_benchmark == "aims") 
@@ -81,6 +82,9 @@ namespace LR
                     this->ops->add(ri_hartree_op);
                 }
                 else if (spin_type == "Spin Triplet") {std::cout<<"f_Hxc based on grid integral is not needed."<<std::endl;}
+#else
+                ModuleBase::WARNING_QUIT("ESolver_LR", "RI benchmark is only supported when compile with LibRI.");
+#endif
             }
             else
 #endif
