@@ -304,7 +304,7 @@ struct Input_para
     std::vector<double> abs_wavelen_range = {0., 0.}; ///< the range of wavelength(nm) to output the absorption spectrum
     double abs_broadening = 0.01;                     ///< the broadening (eta) for LR-TDDFT absorption spectrum
     std::string ri_hartree_benchmark = "none"; ///< whether to use the RI approximation for the Hartree potential in LR-TDDFT for benchmark (with FHI-aims/ABACUS read-in style)
-
+    std::vector<int> aims_nbasis = {};  ///< the number of basis functions for each atom type used in FHI-aims (for benchmark)
     // ==============   #Parameters (11.Output) ===========================
     bool out_stru = false;                ///< outut stru file each ion step
     int out_freq_elec = 0;                ///< the frequency ( >= 0) of electronic iter to output charge

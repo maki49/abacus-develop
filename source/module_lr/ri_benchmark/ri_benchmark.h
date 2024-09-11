@@ -28,7 +28,9 @@ namespace RI_Benchmark
         const psi::Psi<TK>& wfc_ks,
         const int& nocc,
         const int& nvirt,
-        const int& occ_first = false);
+        const int& occ_first=false,
+        const bool& read_from_aims=false,
+        const std::vector<int>& aims_nbasis={});
 
     /// A=CVC, sum over atom quads
     template <typename TK, typename TR>
@@ -63,12 +65,14 @@ namespace RI_Benchmark
     template <typename TK>
     void read_aims_eigenvectors(psi::Psi<TK>& wfc_ks, const std::string& file, const int ncore, const int nbands, const int nbasis);
     /// only for blocking by atom pairs
-    template < typename TR>
+    template <typename TR>
     TLRI<TR> read_coulomb_mat(const std::string& file, const TLRI<TR>& Cs);
     /// for any way of blocking
-    template < typename TR>
+    template <typename TR>
     TLRI<TR> read_coulomb_mat_general(const std::string& file, const TLRI<TR>& Cs);
-    template < typename TR>
+    template <typename TR>
     bool compare_Vs(const TLRI<TR>& Vs1, const TLRI<TR>& Vs2, const double thr = 1e-4);
+    template <typename TR>
+    std::vector<TLRI<TR>> split_Ds(const std::vector<std::vector<TR>>& Ds, const std::vector<int>& aims_nbasis, const UnitCell& ucell);
 }
 #include "ri_benchmark.hpp"

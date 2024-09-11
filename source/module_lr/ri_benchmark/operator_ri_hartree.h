@@ -14,11 +14,13 @@ namespace RI_Benchmark
             const int& nvirt,
             const psi::Psi<T>& psi_ks_in,
             const TLRI<TR>& Cs_ao,
-            const TLRI<TR>& Vs)
+            const TLRI<TR>& Vs, 
+            const bool& read_from_aims=false,
+            const std::vector<int>& aims_nbasis={})
             : naos(naos), nocc(nocc), nvirt(nvirt), npairs(nocc* nvirt), psi_ks(psi_ks_in),
             Cs_ao(Cs_ao), Vs(Vs),
-            Cs_vo_mo(cal_Cs_mo(ucell, Cs_ao, psi_ks_in, nocc, nvirt, /*occ_first=*/false)),
-            Cs_ov_mo(cal_Cs_mo(ucell, Cs_ao, psi_ks_in, nocc, nvirt, /*occ_first=*/true)),
+            Cs_vo_mo(cal_Cs_mo(ucell, Cs_ao, psi_ks_in, nocc, nvirt, /*occ_first=*/false, read_from_aims, aims_nbasis)),
+            Cs_ov_mo(cal_Cs_mo(ucell, Cs_ao, psi_ks_in, nocc, nvirt, /*occ_first=*/true, read_from_aims, aims_nbasis)),
             CV_vo(cal_CV(Cs_vo_mo, Vs)),
             CV_ov(cal_CV(Cs_ov_mo, Vs))
         {
@@ -45,8 +47,6 @@ namespace RI_Benchmark
                 }
                 std::cout << std::endl;
             }
-
-            // test aims 
         };
         ~OperatorRIHartree() {}
         void act(const psi::Psi<T>& X_in, psi::Psi<T>& X_out, const int nbands) const override
