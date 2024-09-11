@@ -36,9 +36,12 @@ namespace LR
             Parallel_2D* pX_in,
             Parallel_2D* pc_in,
             Parallel_Orbitals* pmat_in,
-            const std::string& ri_hartree_benchmark = "none") : nocc(nocc), nvirt(nvirt), pX(pX_in), nk(kv_in.get_nks() / nspin)
+            const std::string& spin_type,
+            const std::string& ri_hartree_benchmark = "none",
+            const std::vector<int>& aims_nbasis = {}) : nocc(nocc), nvirt(nvirt), pX(pX_in), nk(kv_in.get_nks() / nspin)
         {
             ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
+            if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
             this->classname = "HamiltCasidaLR";
             this->DM_trans.resize(1);
             this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&kv_in, pmat_in, nspin);
@@ -48,7 +51,7 @@ namespace LR
 #ifdef __EXX
             using TAC = std::pair<int, std::array<int, 3>>;
             using TLRI = std::map<int, std::map<TAC, RI::Tensor<T>>>;
-            const std::string& dir = GlobalV::global_out_dir;
+            const std::string& dir = GlobalV::global_readin_dir;
             TLRI Cs_read; 
             TLRI Vs_read; 
 #ifdef __DEBUG
@@ -59,14 +62,25 @@ namespace LR
 #endif
             if (ri_hartree_benchmark != "none")
             {
-                Cs_read=LRI_CV_Tools::read_Cs_ao<T>(dir + "Cs");
-                if (ri_hartree_benchmark == "aims") { Vs_read = RI_Benchmark::read_coulomb_mat_general<T>(dir + "coulomb_mat_0.txt", Cs_read); }
-                else if (ri_hartree_benchmark == "abacus") { Vs_read = LRI_CV_Tools::read_Vs_abf<T>(dir + "Vs"); }
-                if (!std::set<std::string>({ "rpa", "hf" }).count(xc_kernel)) { throw std::runtime_error("ri_hartree_benchmark is only supported for xc_kernel rpa and hf"); }
-                RI_Benchmark::OperatorRIHartree<T>* ri_hartree_op
-                    = new RI_Benchmark::OperatorRIHartree<T>(ucell_in, naos, nocc, nvirt, *psi_ks_in,
-                        Cs_read, Vs_read);
-                this->ops->add(ri_hartree_op);
+                if (spin_type == "Spin Singlet")
+                {
+                    if (ri_hartree_benchmark == "aims") 
+                    { 
+                        Cs_read = LRI_CV_Tools::read_Cs_ao<T>(dir + "Cs_data_0.txt");
+                        Vs_read = RI_Benchmark::read_coulomb_mat_general<T>(dir + "coulomb_mat_0.txt", Cs_read); 
+                    }
+                    else if (ri_hartree_benchmark == "abacus")
+                    {
+                        Cs_read = LRI_CV_Tools::read_Cs_ao<T>(dir + "Cs");
+                        Vs_read = LRI_CV_Tools::read_Vs_abf<T>(dir + "Vs");
+                    }
+                    if (!std::set<std::string>({ "rpa", "hf" }).count(xc_kernel)) { throw std::runtime_error("ri_hartree_benchmark is only supported for xc_kernel rpa and hf"); }
+                    RI_Benchmark::OperatorRIHartree<T>* ri_hartree_op
+                        = new RI_Benchmark::OperatorRIHartree<T>(ucell_in, naos, nocc, nvirt, *psi_ks_in,
+                            Cs_read, Vs_read, ri_hartree_benchmark == "aims", aims_nbasis);
+                    this->ops->add(ri_hartree_op);
+                }
+                else if (spin_type == "Spin Triplet") {std::cout<<"f_Hxc based on grid integral is not needed."<<std::endl;}
             }
             else
 #endif
@@ -78,7 +92,7 @@ namespace LR
 #ifdef __EXX
             if (xc_kernel == "hf" || xc_kernel == "hse")
             {   //add Exx operator
-                if (ri_hartree_benchmark != "none")
+                if (ri_hartree_benchmark != "none" && spin_type == "Spin Singlet")
                 {
                     exx_lri_in.lock()->reset_Cs(Cs_read);
                     exx_lri_in.lock()->reset_Vs(Vs_read);
@@ -86,8 +100,9 @@ namespace LR
                 // std::cout << "exx_alpha=" << exx_alpha << std::endl; // the default value of exx_alpha is 0.25 when dft_functional is pbe or hse
                 hamilt::Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc, nvirt, ucell_in, psi_ks_in,
                     this->DM_trans, exx_lri_in, kv_in, pX_in, pc_in, pmat_in,
-                     xc_kernel == "hf" ? 1.0 : exx_alpha, //alpha
-                     ri_hartree_benchmark != "none"/*whether to cal_dm_trans first here*/);
+                    xc_kernel == "hf" ? 1.0 : exx_alpha, //alpha
+                    ri_hartree_benchmark != "none"/*whether to cal_dm_trans first here*/,
+                    aims_nbasis);
                 this->ops->add(lr_exx);
             }
 #endif

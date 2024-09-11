@@ -51,24 +51,28 @@ namespace RI_Benchmark
         const psi::Psi<TK>& wfc_ks,
         const int& nocc,
         const int& nvirt,
-        const int& occ_first)
+        const int& occ_first,
+        const bool& read_from_aims,
+        const std::vector<int>& aims_nbasis)
     {
         // assert(wfc_ks.get_nk() == 1);   // currently only gamma-only is supported
         assert(nocc + nvirt <= wfc_ks.get_nbands());
-
+        const bool use_aims_nbasis = (read_from_aims && !aims_nbasis.empty());
         TLRI<TK> Cs_mo;
+        int iw1 = 0;
         for (auto& c1 : Cs_ao)
         {
             const int& iat1 = c1.first;
             const int& it1 = ucell.iat2it[iat1];
-            const int& nw1 = ucell.atoms[it1].nw;
-            const int& iw1 = ucell.get_iat2iwt()[iat1];
+            const int& nw1 = (use_aims_nbasis ? aims_nbasis[it1] : ucell.atoms[it1].nw);
+            if (!use_aims_nbasis) { assert(iw1 == ucell.get_iat2iwt()[iat1]); }
+            int iw2 = 0;
             for (auto& c2 : c1.second)
             {
                 const int& iat2 = c2.first.first;
                 const int& it2 = ucell.iat2it[iat2];
-                const int& nw2 = ucell.atoms[it2].nw;
-                const int& iw2 = ucell.get_iat2iwt()[iat2];
+                const int& nw2 = (use_aims_nbasis ? aims_nbasis[it2] : ucell.atoms[it2].nw);
+                if (!use_aims_nbasis) { assert(iw2 == ucell.get_iat2iwt()[iat2]); }
 
                 const auto& tensor_ao = c2.second;
                 const size_t& nabf = tensor_ao.shape[0];
@@ -96,7 +100,9 @@ namespace RI_Benchmark
                         container::BlasConnector::gemm('T', 'N', nvirt, nocc, nw1, 1.0, psi_a1.data(), nw1, tmp.data(), nw1, 0.0, &Cs_mo[c1.first][c2.first](iabf, 0, 0), nvirt);
                     }
                 }
+                iw2 += nw2;
             }
+            iw1 += nw1;
         }
         return Cs_mo;
     }
@@ -293,7 +299,7 @@ namespace RI_Benchmark
         for (int i = ncore;i < bands.size();++i)
         {
             bands_final.push_back(bands[i]);
-            std::cout << bands_final[i] << "  ";
+            std::cout << bands[i] << "  ";
         }
         std::cout << std::endl;
         return bands_final;
@@ -304,25 +310,31 @@ namespace RI_Benchmark
         std::ifstream ifs;
         ifs.open(file);
         std::string tmp;
-        std::getline(ifs, tmp); //the first line
-        std::stringstream ss(tmp);
-        while (std::getline(ss, tmp, ' ')) {};
-        int nbands_file = std::stoi(tmp);
-        std::cout << "nbands=" << nbands_file << std::endl;
-        for (int iw = 0;iw < nbasis;++iw)
+        int nbands_last = 0;
+        while (ifs.peek() != EOF)
         {
-            ifs >> tmp >> tmp >> tmp >> tmp >> tmp >> tmp;
-            for (int ib = 0;ib < nbands_file;++ib)
+            std::getline(ifs, tmp); //the first line
+            std::stringstream ss(tmp);
+            while (std::getline(ss, tmp, ' ')) {};
+            int nbands_file = std::stoi(tmp);
+            for (int iw = 0;iw < nbasis;++iw)
             {
-                ifs >> tmp;
-                if (ib >= ncore && ib < ncore + nbands)
+                ifs >> tmp >> tmp >> tmp >> tmp >> tmp >> tmp;  //useless cols
+                for (int ib = nbands_last; ib < nbands_file;++ib)
                 {
-                    for (int is = 0;is < wfc_ks.get_nk();++is)
-                    {   //only for gamma_only and spin degenerate
-                        wfc_ks(is, ib - ncore, iw) = std::stod(tmp);
+                    ifs >> tmp;
+                    if (ib >= ncore && ib < ncore + nbands)
+                    {
+                        for (int is = 0;is < wfc_ks.get_nk();++is)
+                        {   //only for gamma_only and spin degenerate
+                            wfc_ks(is, ib - ncore, iw) = std::stod(tmp);
+                        }
                     }
                 }
             }
+            std::getline(ifs, tmp); // the interval line between two blocks
+            std::getline(ifs, tmp); // the interval line between two blocks
+            nbands_last = nbands_file;
         }
         // output wfc
         std::cout << "wfc_gs_read_from_aims:" << std::endl;
@@ -456,5 +468,43 @@ namespace RI_Benchmark
             }
         }
         return true;
+    }
+    template <typename TR>
+    std::vector<TLRI<TR>> split_Ds(const std::vector<std::vector<TR>>& Ds, const std::vector<int>& aims_nbasis, const UnitCell& ucell)
+    {
+        // Due to the hard-coded constructor of elecstate::DensityMatrix, singlet-triplet with nspin=2 cannot use DM_trans with size 1
+        // if(Ds.size()>1) { throw std::runtime_error("split_Ds only supports gamma-only spin-1 Ds now."); }
+        std::vector<TLRI<TR>> Ds_split;
+        for (const auto& D : Ds)
+        {
+            TLRI<TR> D_split;
+            const int nbasis = std::sqrt(D.size());
+            int iw1_start = 0;
+            for (int iat1 = 0;iat1 < ucell.nat;++iat1)
+            {
+                const int& it1 = ucell.iat2it[iat1];
+                const size_t& nw1 = aims_nbasis[it1];
+                int iw2_start = 0;
+                for (int iat2 = 0;iat2 < ucell.nat;++iat2)
+                {
+                    const int& it2 = ucell.iat2it[iat2];
+                    const size_t& nw2 = aims_nbasis[it2];
+                    D_split[iat1][{iat2, { 0,0,0 }}] = RI::Tensor<TR>({ nw1, nw2 });
+                    for (int i = 0;i < nw1;++i)
+                    {
+                        for (int j = 0;j < nw2;++j)
+                        {
+                            D_split[iat1][{iat2, { 0,0,0 }}](i, j) = D[(iw1_start + i)*nbasis+(iw2_start + j)] * 0.5; // consistent with split_m2D_ktoR
+                        }
+                    }
+                    iw2_start += nw2;
+                }
+                assert(iw2_start == nbasis);
+                iw1_start += nw1;
+            }
+            assert(iw1_start == nbasis);
+            Ds_split.push_back(D_split);
+        }
+        return Ds_split;
     }
 }

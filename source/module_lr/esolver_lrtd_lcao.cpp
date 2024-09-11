@@ -112,6 +112,11 @@ void LR::ESolver_LR<T, TR>::set_dimension()
     GlobalV::ofs_running << "number of KS bands: " << this->eig_ks.nc << std::endl;
     GlobalV::ofs_running << "number of electron-hole pairs (2-particle basis size): " << this->npairs << std::endl;
     GlobalV::ofs_running << "number of excited states to be solved: " << this->nstates << std::endl;
+    if (input.ri_hartree_benchmark == "aims" && !input.aims_nbasis.empty())
+    {
+        this->nbasis = [&]() -> int { int nbas = 0; for (int it = 0;it < ucell.ntype;++it) { nbas += ucell.atoms[it].na * input.aims_nbasis[it]; };return nbas;}();
+        std::cout << "nbasis from aims: " << this->nbasis << std::endl;
+    }
 }
 
 template <typename T, typename TR>
@@ -256,7 +261,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
 #ifdef __MPI
     this->paraMat_.set_desc_wfc_Eij(this->nbasis, this->nbands, paraMat_.get_row_size());
     int err = this->paraMat_.set_nloc_wfc_Eij(this->nbands, GlobalV::ofs_running, GlobalV::ofs_warning);
-    this->paraMat_.set_atomic_trace(ucell.get_iat2iwt(), ucell.nat, this->nbasis);
+    if (input.ri_hartree_benchmark != "aims") { this->paraMat_.set_atomic_trace(ucell.get_iat2iwt(), ucell.nat, this->nbasis); }
 #else
     this->paraMat_.nrow_bands = this->nbasis;
     this->paraMat_.ncol_bands = this->nbands;
@@ -288,7 +293,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
         pw_big->nbz,
         pw_big->bz);
     Charge chg_gs;
-    this->read_ks_chg(chg_gs);
+    if (input.ri_hartree_benchmark != "aims") { this->read_ks_chg(chg_gs); }
     this->init_pot(chg_gs);
 
     // search adjacent atoms and init Gint
@@ -391,17 +396,6 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
     this->setup_eigenvectors_X();
     this->pelec->ekb.create(nspin, this->nstates);
 
-    // for aims benchmark
-    bool read_aims_wfc = false;  //tmp
-    if (input.ri_hartree_benchmark == "aims")
-    {
-        int ncore = 0;
-        std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(GlobalV::global_out_dir + "band_out", nocc, nvirt, ncore);
-        assert(eig_ks_vec.size() == this->nbands);
-        for (int i = 0;i < nbands;++i) { this->eig_ks(0, i) = eig_ks_vec[i]; }
-        RI_Benchmark::read_aims_eigenvectors<T>(*this->psi_ks, GlobalV::global_out_dir + "KS_eigenvectors.out", ncore, nbands, nbasis);
-    }
-
     if (this->input.lr_solver != "spectrum")
     {
         // allocate and initialize A matrix and density matrix
@@ -414,7 +408,7 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
                 this->gint_, this->pot[is], this->kv, & this->paraX_, & this->paraC_, & this->paraMat_, 
-                ((is == 0)?input.ri_hartree_benchmark:"none")/*whether to use ri-hartree operator, only for singlet*/);
+                spin_type[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
             // solve the Casida equation
             HSolverLR<T> hsol(nk, this->npairs, is, this->input.out_wfc_lr);
             hsol.set_diagethr(hsol.diag_ethr, 0, 0, std::max(1e-13, this->input.lr_thr));
@@ -425,7 +419,7 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
     }
     else    // read the eigenvalues
     {
-        std::ifstream ifs(PARAM.globalv.global_out_dir + "Excitation_Energy.dat");
+        std::ifstream ifs(PARAM.globalv.global_readin_dir + "Excitation_Energy.dat");
         std::cout << "reading the excitation energies from file: \n";
         for (int is = 0;is < nspin;++is)
         {
@@ -440,6 +434,7 @@ template <typename T, typename TR>
 void LR::ESolver_LR<T, TR>::after_all_runners()
 {
     ModuleBase::TITLE("ESolver_LR", "after_all_runners");
+    if (input.ri_hartree_benchmark != "none") { return; } //no need to calculate the spectrum in the benchmark routine
     //cal spectrum
     std::vector<double> freq(100);
     std::vector<double> abs_wavelen_range({ 20, 200 });//default range
@@ -480,7 +475,7 @@ void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
         for (int is = 0; is < this->nspin; ++is)
         {
             this->X[is] = std::make_shared<psi::Psi<T>>(LR_Util::read_psi_bandfirst<T>(
-                PARAM.globalv.global_out_dir + "Excitation_Amplitude_" + spin_types[is], GlobalV::MY_RANK));
+                PARAM.globalv.global_readin_dir + "Excitation_Amplitude_" + spin_types[is], GlobalV::MY_RANK));
         }
     }
     else
@@ -542,7 +537,8 @@ void LR::ESolver_LR<T, TR>::set_X_initial_guess()
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
 {
-    this->pot.resize(nspin);
+    this->pot.resize(nspin, nullptr);
+    if (this->input.ri_hartree_benchmark != "none") { return; } //no need to initialize potential for Hxc kernel in the RI-benchmark routine
     switch (nspin)
     {
     case 1:
@@ -564,10 +560,21 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
     GlobalV::NB2D = 1;
     this->pelec->ekb.create(this->kv.get_nks(), this->nbands);
     this->pelec->wg.create(this->kv.get_nks(), this->nbands);
-    if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, this->paraMat_, *this->psi_ks, this->pelec,
+
+    if (input.ri_hartree_benchmark == "aims")        // for aims benchmark
+    {
+        int ncore = 0;
+        std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(GlobalV::global_readin_dir + "band_out", nocc, nvirt, ncore);
+        std::cout << "ncore=" << ncore << ", nocc=" << nocc << ", nvirt=" << nvirt << ", nbands=" << this->nbands << std::endl;
+        std::cout << "eig_ks_vec.size()=" << eig_ks_vec.size() << std::endl;
+        if(eig_ks_vec.size() != this->nbands) {ModuleBase::WARNING_QUIT("ESolver_LR", "read_aims_ebands failed.");};
+        for (int i = 0;i < nbands;++i) { this->pelec->ekb(0, i) = eig_ks_vec[i]; }
+        RI_Benchmark::read_aims_eigenvectors<T>(*this->psi_ks, GlobalV::global_readin_dir + "KS_eigenvectors.out", ncore, nbands, nbasis);
+    }
+    else if (!ModuleIO::read_wfc_nao((PARAM.global_readin_dir, this->paraMat_, *this->psi_ks, this->pelec,
         /*skip_bands=*/this->nocc_max - this->nocc)) {
         ModuleBase::WARNING_QUIT("ESolver_LR", "read ground-state wavefunction failed.");
-}
+    }
     this->eig_ks = std::move(this->pelec->ekb);
 }
 

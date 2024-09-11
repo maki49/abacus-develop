@@ -3,6 +3,7 @@
 #include "module_lr/dm_trans/dm_trans.h"
 #include "module_lr/utils/lr_util.h"
 #include "module_lr/utils/lr_util_print.h"
+#include "module_lr/ri_benchmark/ri_benchmark.h"
 namespace LR
 {
     template<typename T>
@@ -12,10 +13,13 @@ namespace LR
         this->Ds_onebase.resize(this->nspin_solve);
         for (int is = 0;is < this->nspin_solve;++is) {
             for (int iat1 = 0;iat1 < ucell.nat;++iat1) {
+                const int it1 = ucell.iat2it[iat1];
                 for (int iat2 = 0;iat2 < ucell.nat;++iat2) {
+                    const int it2=ucell.iat2it[iat2];
                     for (auto cell : this->BvK_cells) {
-                        this->Ds_onebase[is][iat1][std::make_pair(iat2, cell)] =
-                            RI::Tensor<T>({ static_cast<size_t>(ucell.atoms[ucell.iat2it[iat1]].nw),  static_cast<size_t>(ucell.atoms[ucell.iat2it[iat2]].nw) });
+                        this->Ds_onebase[is][iat1][std::make_pair(iat2, cell)] = aims_nbasis.empty() ?
+                            RI::Tensor<T>({ static_cast<size_t>(ucell.atoms[it1].nw),  static_cast<size_t>(ucell.atoms[it2].nw) }) :
+                            RI::Tensor<T>({ static_cast<size_t>( aims_nbasis[it1]),  static_cast<size_t>( aims_nbasis[it2]) });
                     }
                 }
             }
@@ -37,8 +41,10 @@ namespace LR
                             int iat1 = ucell.itia2iat(it1, ia1);
                             int iat2 = ucell.itia2iat(it2, ia2);
                             auto& D2d = this->Ds_onebase[is][iat1][std::make_pair(iat2, cell)];
-                            for (int iw1 = 0;iw1 < ucell.atoms[it1].nw;++iw1)
-                                for (int iw2 = 0;iw2 < ucell.atoms[it2].nw;++iw2)
+                            const int nw1 = aims_nbasis.empty() ? ucell.atoms[it1].nw : aims_nbasis[it1];
+                            const int nw2 = aims_nbasis.empty() ? ucell.atoms[it2].nw : aims_nbasis[it2];
+                            for (int iw1 = 0;iw1 < nw1;++iw1)
+                                for (int iw2 = 0;iw2 < nw2;++iw2)
                                     D2d(iw1, iw2) = this->psi_ks_full(ik, io, ucell.itiaiw2iwt(it1, ia1, iw1)) * this->psi_ks_full(ik, nocc + iv, ucell.itiaiw2iwt(it2, ia2, iw2));
                         }
         }
@@ -60,8 +66,10 @@ namespace LR
                             int iat1 = ucell.itia2iat(it1, ia1);
                             int iat2 = ucell.itia2iat(it2, ia2);
                             auto& D2d = this->Ds_onebase[is][iat1][std::make_pair(iat2, cell)];
-                            for (int iw1 = 0;iw1 < ucell.atoms[it1].nw;++iw1)
-                                for (int iw2 = 0;iw2 < ucell.atoms[it2].nw;++iw2)
+                            const int nw1 = aims_nbasis.empty() ? ucell.atoms[it1].nw : aims_nbasis[it1];
+                            const int nw2 = aims_nbasis.empty() ? ucell.atoms[it2].nw : aims_nbasis[it2];
+                            for (int iw1 = 0;iw1 < nw1;++iw1)
+                                for (int iw2 = 0;iw2 < nw2;++iw2)
                                     D2d(iw1, iw2) = frac * std::conj(this->psi_ks_full(ik, io, ucell.itiaiw2iwt(it1, ia1, iw1))) * this->psi_ks_full(ik, nocc + iv, ucell.itiaiw2iwt(it2, ia2, iw2));
                         }
         }
@@ -106,8 +114,10 @@ namespace LR
             for (int ik = 0;ik < nk;++ik) {DMk_trans_pointer[ik] = &DMk_trans_vector[ik];}
             // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
             std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
-                RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, *this->pmat, this->nspin_solve); //0.5 will be multiplied
-
+                aims_nbasis.empty() ? 
+                RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, *this->pmat, this->nspin_solve)
+                : RI_Benchmark::split_Ds(DMk_trans_vector, aims_nbasis, ucell); //0.5 will be multiplied
+            // LR_Util::print_CV(Ds_trans[0], "Ds_trans in OperatorLREXX", 1e-10);
             // 2. cal_Hs
             auto lri = this->exx_lri.lock();
             for (int is = 0;is < nspin_solve;++is)
