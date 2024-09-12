@@ -11,3 +11,4 @@ AddTest(
   LIBS base ${math_libs} device
   SOURCES ri_cv_io_test.cpp
 )
+install(DIRECTORY support DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

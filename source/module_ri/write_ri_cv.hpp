@@ -1,4 +1,8 @@
 // #include "module_ri/LRI_CV_Tools.h"
+#include <map>
+#include <cstddef>
+#define IZ(x) int x = 0;
+#define SZ(x) std::size_t x = 0;
 
 namespace LRI_CV_Tools
 {
@@ -22,8 +26,8 @@ namespace LRI_CV_Tools
     template<typename T>
     TLRI<T> read_Cs_ao(const std::string& file_path, double threshold)
     {
-        int natom = 0, ncell = 0, ia1 = 0, ia2 = 0, ic_1 = 0, ic_2 = 0, ic_3 = 0;
-        std::size_t nw1 = 0, nw2 = 0, nabf = 0;
+        IZ(natom) IZ(ncell) IZ(ia1) IZ(ia2) IZ(ic_1) IZ(ic_2) IZ(ic_3)
+        SZ(nw1) SZ(nw2) SZ(nabf)
         std::ifstream infile;
         infile.open(file_path);
         infile >> natom >> ncell;   // no use of ncell
@@ -75,8 +79,8 @@ namespace LRI_CV_Tools
     template<typename T>
     TLRI<T> read_Vs_abf(const std::string& file_path, double threshold)
     {
-        int natom = 0, ncell = 0, ia1 = 0, ia2 = 0, ic_1 = 0, ic_2 = 0, ic_3 = 0;
-        std::size_t nabf1 = 0, nabf2 = 0;
+        IZ(natom) IZ(ncell) IZ(ia1) IZ(ia2) IZ(ic_1) IZ(ic_2) IZ(ic_3)
+        SZ(nabf1) SZ(nabf2)
         std::ifstream infile;
         infile.open(file_path);
         infile >> natom >> ncell;   // no use of ncell
@@ -88,8 +92,7 @@ namespace LRI_CV_Tools
             const TC& box = { ic_1, ic_2, ic_3 };
             RI::Tensor<T> tensor_vs({ nabf1, nabf2 });
             for (std::size_t i = 0; i != nabf1; i++)
-                for (std::size_t j = 0; j != nabf2; j++)
-                    infile >> tensor_vs(i, j);
+                for (std::size_t j = 0; j != nabf2; j++){ infile >> tensor_vs(i, j);}
             if (absmax(tensor_vs) >= threshold) { Vs[ia1 - 1][{ia2 - 1, box}] = tensor_vs; }
             // else ++cs_discard;
         }
@@ -115,8 +118,7 @@ namespace LRI_CV_Tools
                 outfile << tensor_v.shape[0] << " " << tensor_v.shape[1] << std::endl;
                 for (int i = 0; i != tensor_v.shape[0]; i++)
                 {
-                    for (int j = 0; j != tensor_v.shape[1]; j++)
-                        outfile << tensor_v(i, j) << " ";
+                    for (int j = 0; j != tensor_v.shape[1]; j++) {outfile << tensor_v(i, j) << " ";}
                     outfile << std::endl;
                 }
             }
