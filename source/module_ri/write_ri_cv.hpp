@@ -24,7 +24,7 @@ namespace LRI_CV_Tools
     }
 
     template<typename T>
-    TLRI<T> read_Cs_ao(const std::string& file_path, double threshold)
+    TLRI<T> read_Cs_ao(const std::string& file_path, const double& threshold)
     {
         IZ(natom) IZ(ncell) IZ(ia1) IZ(ia2) IZ(ic_1) IZ(ic_2) IZ(ic_3)
         SZ(nw1) SZ(nw2) SZ(nabf)
@@ -77,7 +77,7 @@ namespace LRI_CV_Tools
     }
 
     template<typename T>
-    TLRI<T> read_Vs_abf(const std::string& file_path, double threshold)
+    TLRI<T> read_Vs_abf(const std::string& file_path, const double& threshold)
     {
         IZ(natom) IZ(ncell) IZ(ia1) IZ(ia2) IZ(ic_1) IZ(ic_2) IZ(ic_3)
         SZ(nabf1) SZ(nabf2)

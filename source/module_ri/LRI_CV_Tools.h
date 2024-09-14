@@ -101,11 +101,11 @@ namespace LRI_CV_Tools
     template <typename T>
     using TLRI = std::map<int, std::map<TAC, RI::Tensor<T>>>;
     template <typename T>
-    TLRI<T> read_Cs_ao(const std::string& file_path, double threshold = 1e-10);
+    TLRI<T> read_Cs_ao(const std::string& file_path, const double& threshold = 1e-10);
     template <typename T>
     void write_Cs_ao(const TLRI<T>& Vs, const std::string& file_path);
     template <typename T>
-    TLRI<T> read_Vs_abf(const std::string& file_path, double threshold = 1e-10);
+    TLRI<T> read_Vs_abf(const std::string& file_path, const double& threshold = 1e-10);
     template <typename T>
     void write_Vs_abf(const TLRI<T>& Vs, const std::string& file_path);
 }

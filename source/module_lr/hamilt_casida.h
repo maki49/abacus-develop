@@ -51,7 +51,7 @@ namespace LR
 #ifdef __EXX
             using TAC = std::pair<int, std::array<int, 3>>;
             using TLRI = std::map<int, std::map<TAC, RI::Tensor<T>>>;
-            const std::string& dir = GlobalV::global_readin_dir;
+            const std::string& dir = PARAM.globalv.global_readin_dir;
             TLRI Cs_read; 
             TLRI Vs_read; 
 #ifdef __DEBUG

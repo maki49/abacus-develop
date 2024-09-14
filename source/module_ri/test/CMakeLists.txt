@@ -8,7 +8,7 @@ AddTest(
 )
 AddTest(
   TARGET ri_cv_io_test
-  LIBS base ${math_libs} device
+  LIBS base ${math_libs} device parameter
   SOURCES ri_cv_io_test.cpp
 )
 install(DIRECTORY support DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
