@@ -9,7 +9,7 @@ namespace LRI_CV_Tools
     using TC = std::array<int, 3>;
     using TAC = std::pair<int, TC>;
     template <typename T>
-    using TLRI = std::map<int, std::map<TAC, RI::Tensor<T>>>;
+    using TLRI = std::map<int, std::map<TAC, RI::Tensor<T>>>;;
 
     template<typename T>
     inline double absmax(const RI::Tensor<T>& t)
@@ -91,8 +91,9 @@ namespace LRI_CV_Tools
             infile >> ia1 >> ia2 >> ic_1 >> ic_2 >> ic_3 >> nabf1 >> nabf2;
             const TC& box = { ic_1, ic_2, ic_3 };
             RI::Tensor<T> tensor_vs({ nabf1, nabf2 });
-            for (std::size_t i = 0; i != nabf1; i++)
+            for (std::size_t i = 0; i != nabf1; i++) {
                 for (std::size_t j = 0; j != nabf2; j++){ infile >> tensor_vs(i, j);}
+}
             if (absmax(tensor_vs) >= threshold) { Vs[ia1 - 1][{ia2 - 1, box}] = tensor_vs; }
             // else ++cs_discard;
         }
