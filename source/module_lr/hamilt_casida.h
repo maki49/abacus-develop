@@ -46,7 +46,7 @@ namespace LR
             this->DM_trans.resize(1);
             this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(pmat_in, 1, kv_in.kvec_d, nk);
             // add the diag operator  (the first one)
-            this->ops = new OperatorLRDiag<T>(eig_ks, pX_in, nk, nocc, nvirt);
+            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX_in, nk, nocc, nvirt);
             //add Hxc operator
 #ifdef __EXX
             using TAC = std::pair<int, std::array<int, 3>>;
