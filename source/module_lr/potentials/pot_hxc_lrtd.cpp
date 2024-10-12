@@ -43,7 +43,7 @@ namespace LR
         // Hartree
         switch (this->spin_type_)
         {
-        case SpinType::S1:   // check the coefficient:  does S1 already include the factor 2?
+        case SpinType::S1: case SpinType::S2_up: case SpinType::S2_down:
             v_eff += elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), nspin_solve, rho);
             break;
         case SpinType::S2_singlet:
@@ -95,6 +95,18 @@ namespace LR
                         const int irs1 = irs0 + 1;
                         v_eff(0, ir) += ModuleBase::e2 * (fxc.get_kernel("v2rho2").at(irs0) - fxc.get_kernel("v2rho2").at(irs1)) * rho[ir];
                     }
+                };
+            break;
+        case SpinType::S2_up:
+            funcs[s] = [this, &fxc](const double* const rho, ModuleBase::matrix& v_eff)->void
+                {
+                    for (int ir = 0;ir < nrxx;++ir) { v_eff(0, ir) += ModuleBase::e2 * fxc.get_kernel("v2rho2").at(3 * ir) * rho[ir]; }
+                };
+            break;
+        case SpinType::S2_down:
+            funcs[s] = [this, &fxc](const double* const rho, ModuleBase::matrix& v_eff)->void
+                {
+                    for (int ir = 0;ir < nrxx;++ir) { v_eff(0, ir) += ModuleBase::e2 * fxc.get_kernel("v2rho2").at(3 * ir + 2) * rho[ir]; }
                 };
             break;
         default:

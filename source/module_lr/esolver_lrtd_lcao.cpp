@@ -588,8 +588,8 @@ void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S1);
         break;
     case 2:
-        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S2_singlet);
-        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S2_triplet);
+        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, nupdown ? PotHxcLR::SpinType::S2_up : PotHxcLR::SpinType::S2_singlet);
+        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, nupdown ? PotHxcLR::SpinType::S2_down : PotHxcLR::SpinType::S2_triplet);
         break;
     default:
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");
