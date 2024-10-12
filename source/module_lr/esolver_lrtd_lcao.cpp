@@ -67,6 +67,21 @@ inline void redirect_log(const bool& out_alllog)
     }
 }
 
+inline int cal_nupdown_form_occ(const ModuleBase::matrix& wg)
+{   // only for nspin=2
+    const int& nk = wg.nr / 2;
+    auto occ_sum_k = [&](const int& is, const int& ib)->double { double o = 0.0; for (int ik = 0;ik < nk;++ik) { o += wg(is * nk + ik, ib); } return o;};
+    int nupdown = 0;
+    for (int ib = 0;ib < wg.nc;++ib)
+    {
+        const int nu = static_cast<int>(std::lround(occ_sum_k(0, ib)));
+        const int nd = static_cast<int>(std::lround(occ_sum_k(1, ib)));
+        if (!(nu + nd)) { break; }
+        nupdown += nu - nd;
+    }
+    return nupdown;
+}
+
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::parameter_check()const
 {
@@ -87,38 +102,45 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::set_dimension()
 {
     this->nspin = PARAM.inp.nspin;
-    if (nspin == 2) { std::cout << "** Assuming the spin-up and spin-down states are degenerate. **" << std::endl;
-}
     this->nstates = input.lr_nstates;
     this->nbasis = PARAM.globalv.nlocal;
     // calculate the number of occupied and unoccupied states
     // which determines the basis size of the excited states
     this->nocc_max = LR_Util::cal_nocc(LR_Util::cal_nelec(ucell));
-    this->nocc = std::max(1, std::min(input.nocc, this->nocc_max));
-    this->nvirt = PARAM.inp.nbands - this->nocc_max;   //nbands-nocc
-    if (input.nvirt > this->nvirt) {
-        GlobalV::ofs_warning << "ESolver_LR: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = " << this->nvirt << std::endl;
-    } else if (input.nvirt > 0) { this->nvirt = input.nvirt;
-}
-    this->nbands = this->nocc + this->nvirt;
-    this->npairs = this->nocc * this->nvirt;
+    this->nocc_in = std::max(1, std::min(input.nocc, this->nocc_max));
+    this->nvirt_in = PARAM.inp.nbands - this->nocc_max;   //nbands-nocc
+    if (input.nvirt > this->nvirt_in) { GlobalV::ofs_warning << "ESolver_LR: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = " << this->nvirt_in << std::endl; }
+    else if (input.nvirt > 0) { this->nvirt_in = input.nvirt; }
+    this->nbands = this->nocc_in + this->nvirt_in;
     this->nk = this->kv.get_nks() / this->nspin;
-    if (this->nstates > this->nocc * this->nvirt * this->nk) {
-        throw std::invalid_argument("ESolver_LR: nstates > nocc*nvirt*nk");
-}
-
+    this->nocc = { nocc_in, nocc_in };
+    this->nvirt = { nvirt_in, nvirt_in };
+    this->npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
     GlobalV::ofs_running << "Setting LR-TDDFT parameters: " << std::endl;
-    GlobalV::ofs_running << "number of occupied bands: " << this->nocc << std::endl;
-    GlobalV::ofs_running << "number of virtual bands: " << this->nvirt << std::endl;
+    GlobalV::ofs_running << "number of occupied bands: " << nocc_in << std::endl;
+    GlobalV::ofs_running << "number of virtual bands: " << nvirt_in << std::endl;
     GlobalV::ofs_running << "number of Atom orbitals (LCAO-basis size): " << this->nbasis << std::endl;
     GlobalV::ofs_running << "number of KS bands: " << this->eig_ks.nc << std::endl;
-    GlobalV::ofs_running << "number of electron-hole pairs (2-particle basis size): " << this->npairs << std::endl;
     GlobalV::ofs_running << "number of excited states to be solved: " << this->nstates << std::endl;
     if (input.ri_hartree_benchmark == "aims" && !input.aims_nbasis.empty())
     {
         this->nbasis = [&]() -> int { int nbas = 0; for (int it = 0;it < ucell.ntype;++it) { nbas += ucell.atoms[it].na * input.aims_nbasis[it]; };return nbas;}();
         std::cout << "nbasis from aims: " << this->nbasis << std::endl;
     }
+}
+
+template<typename T, typename TR>
+void LR::ESolver_LR<T, TR>::reset_dim_spin2()
+{
+    if (nspin != 2) { return; }
+    if (nupdown == 0) { std::cout << "** Assuming the spin-up and spin-down states are degenerate. **" << std::endl; }
+    else
+    {
+        nupdown > 0 ? ((nocc[1] -= nupdown) && (nvirt[1] += nupdown)) : ((nocc[0] += nupdown) && (nvirt[0] -= nupdown));
+        // npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
+        std::cout << "** Solve the spin-up and spin-down states separately for open-shell system. **" << std::endl;
+    }
+    if (nstates > std::min(npairs[0], npairs[1]) * nk) { throw std::invalid_argument("ESolver_LR: nstates > nocc*nvirt*nk"); }
 }
 
 template <typename T, typename TR>
@@ -171,7 +193,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
     {
         this->psi_ks = new psi::Psi<T>(this->kv.get_nks(), this->paraC_.get_col_size(), this->paraC_.get_row_size());
         this->eig_ks.create(this->kv.get_nks(), this->nbands);
-        const int start_band = this->nocc_max - this->nocc;
+        const int start_band = this->nocc_max - std::max(nocc[0], nocc[1]);
         for (int ik = 0;ik < this->kv.get_nks();++ik)
         {
             Cpxgemr2d(this->nbasis, this->nbands, &(*ks_sol.psi)(ik, 0, 0), 1, start_band + 1, ks_sol.pv.desc_wfc,
@@ -182,6 +204,11 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
 #else
     move_gs();
 #endif
+    if (nspin == 2)
+    {
+        this->nupdown = cal_nupdown_form_occ(ks_sol.pelec->wg);
+        reset_dim_spin2();
+    }
 
     //grid integration
     this->gt_ = std::move(ks_sol.GridT);
@@ -275,6 +302,11 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
         this->paraMat_.ncol_bands,
         this->paraMat_.get_row_size());
     this->read_ks_wfc();
+    if (nspin == 2)
+    {
+        this->nupdown = cal_nupdown_form_occ(this->pelec->wg);
+        reset_dim_spin2();
+    }
 
     LR_Util::setup_2d_division(this->paraC_, 1, this->nbasis, this->nbands
 #ifdef __MPI
@@ -410,10 +442,10 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
 #ifdef __EXX
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
-                this->gint_, this->pot[is], this->kv, & this->paraX_, & this->paraC_, & this->paraMat_, 
+                this->gint_, this->pot[is], this->kv, this->paraX_, & this->paraC_, & this->paraMat_,
                 spin_type[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
             // solve the Casida equation
-            HSolverLR<T> hsol(nk, this->npairs, is, this->input.out_wfc_lr);
+            HSolverLR<T> hsol(nk, this->npairs[is], is, this->input.out_wfc_lr);
             hsol.set_diagethr(hsol.diag_ethr, 0, 0, std::max(1e-13, this->input.lr_thr));
             hsol.solve(phamilt, *this->X[is], this->pelec, this->input.lr_solver/*,
                 !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel)*/);  //whether the kernel is Hermitian
@@ -451,8 +483,8 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
     for (int is = 0;is < this->nspin;++is)
     {
         LR_Spectrum<T> spectrum(&this->pelec->ekb.c[is * this->nstates], *this->X[is],
-            this->nspin, this->nbasis, this->nocc, this->nvirt, this->gint_, *this->pw_rho, *this->psi_ks,
-            this->ucell, this->kv, this->paraX_, this->paraC_, this->paraMat_);
+            this->nspin, this->nbasis, this->nocc[is], this->nvirt[is], this->gint_, *this->pw_rho, *this->psi_ks,
+            this->ucell, this->kv, this->paraX_[is], this->paraC_, this->paraMat_);
         spectrum.oscillator_strength();
         spectrum.transition_analysis(is);
         spectrum.optical_absorption(freq, input.abs_broadening, is);
@@ -464,11 +496,16 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
 {
     ModuleBase::TITLE("ESolver_LR", "setup_eigenvectors_X");
-    LR_Util::setup_2d_division(this->paraX_, 1, this->nvirt, this->nocc
+    for (int is = 0;is < nspin;++is)
+    {
+        Parallel_2D px;
+        LR_Util::setup_2d_division(px, /*nb2d=*/1, this->nvirt[is], this->nocc[is]
 #ifdef __MPI
-        , this->paraC_.blacs_ctxt
+            , this->paraC_.blacs_ctxt
 #endif
-    );//nvirt - row, nocc - col 
+        );//nvirt - row, nocc - col 
+        this->paraX_.emplace_back(std::move(px));
+    }
     this->X.resize(this->nspin);
     const std::vector<std::string> spin_types = { "Spin Singlet", "Spin Triplet" };
     // if spectrum-only, read the LR-eigenstates from file and return
@@ -487,7 +524,7 @@ void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
         {
             this->X[is] = std::make_shared<psi::Psi<T>>(this->nk,
                 this->nstates,
-                this->paraX_.get_local_size(),
+                this->paraX_[is].get_local_size(),
                 nullptr,
                 false); // band(state)-first
             this->X[is]->zero_out();
@@ -500,37 +537,40 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::set_X_initial_guess()
 {
     // set the initial guess of X
-  // if (E_{lumo}-E_{homo-1} < E_{lumo+1}-E{homo}), mode = 0, else 1(smaller first)
-    bool ix_mode = false;   //default
-    if (this->eig_ks.nc > nocc + 1 && nocc >= 2 && eig_ks(0, nocc) - eig_ks(0, nocc - 2) - 1e-5 > eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1)) { ix_mode = true; }
-    GlobalV::ofs_running << "setting the initial guess of X: " << std::endl;
-    if (nocc >= 2 && eig_ks.nc > nocc) { GlobalV::ofs_running << "E_{lumo}-E_{homo-1}=" << eig_ks(0, nocc) - eig_ks(0, nocc - 2) << std::endl; }
-    if (nocc >= 1 && eig_ks.nc > nocc + 1) { GlobalV::ofs_running << "E_{lumo+1}-E{homo}=" << eig_ks(0, nocc + 1) - eig_ks(0, nocc - 1) << std::endl; }
-    GlobalV::ofs_running << "mode of X-index: " << ix_mode << std::endl;
-
-    /// global index map between (i,c) and ix
-    ModuleBase::matrix ioiv2ix;
-    std::vector<std::pair<int, int>> ix2ioiv;
-    std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>> indexmap =
-        LR_Util::set_ix_map_diagonal(ix_mode, nocc, nvirt);
-
-    ioiv2ix = std::move(std::get<0>(indexmap));
-    ix2ioiv = std::move(std::get<1>(indexmap));
-
-    // use unit vectors as the initial guess
-    // for (int i = 0; i < std::min(this->nstates * PARAM.inp.pw_diag_ndim, nocc * nvirt); i++)
     for (int is = 0;is < this->nspin;++is)
     {
+        const int& no = this->nocc[is];
+        const int& nv = this->nvirt[is];
+        const int& np = this->npairs[is];
+        const Parallel_2D& px = this->paraX_[is];
+
+        // if (E_{lumo}-E_{homo-1} < E_{lumo+1}-E{homo}), mode = 0, else 1(smaller first)
+        bool ix_mode = false;   //default
+        if (this->eig_ks.nc > no + 1 && no >= 2 && eig_ks(is, no) - eig_ks(is, no - 2) - 1e-5 > eig_ks(is, no + 1) - eig_ks(is, no - 1)) { ix_mode = true; }
+        GlobalV::ofs_running << "setting the initial guess of X: " << std::endl;
+        if (no >= 2 && eig_ks.nc > no) { GlobalV::ofs_running << "E_{lumo}-E_{homo-1}=" << eig_ks(is, no) - eig_ks(is, no - 2) << std::endl; }
+        if (no >= 1 && eig_ks.nc > no + 1) { GlobalV::ofs_running << "E_{lumo+1}-E{homo}=" << eig_ks(is, no + 1) - eig_ks(is, no - 1) << std::endl; }
+        GlobalV::ofs_running << "mode of X-index: " << ix_mode << std::endl;
+
+        /// global index map between (i,c) and ix
+        ModuleBase::matrix ioiv2ix;
+        std::vector<std::pair<int, int>> ix2ioiv;
+        std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>> indexmap =
+            LR_Util::set_ix_map_diagonal(ix_mode, no, nv);
+
+        ioiv2ix = std::move(std::get<0>(indexmap));
+        ix2ioiv = std::move(std::get<1>(indexmap));
+
         for (int s = 0; s < nstates; ++s)
         {
             this->X[is]->fix_b(s);
-            int ipair = s % (npairs);
+            int ipair = s % np;
             int occ_global = std::get<0>(ix2ioiv[ipair]);   // occ
             int virt_global = std::get<1>(ix2ioiv[ipair]);   // virt
-            int ik = s / (npairs);
-            if (this->paraX_.in_this_processor(virt_global, occ_global))
-                (*X[is])(ik, this->paraX_.global2local_col(occ_global) * this->paraX_.get_row_size()
-                    + this->paraX_.global2local_row(virt_global))
+            int ik = s / np;
+            if (px.in_this_processor(virt_global, occ_global))
+                (*X[is])(ik, px.global2local_col(occ_global) * px.get_row_size()
+                    + px.global2local_row(virt_global))
                 = (static_cast<T>(1.0) / static_cast<T>(nk));
         }
         this->X[is]->fix_b(0);  //recover the pointer
@@ -567,8 +607,8 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
     {
 #ifdef __EXX
         int ncore = 0;
-        std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(PARAM.globalv.global_readin_dir + "band_out", nocc, nvirt, ncore);
-        std::cout << "ncore=" << ncore << ", nocc=" << nocc << ", nvirt=" << nvirt << ", nbands=" << this->nbands << std::endl;
+        std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(PARAM.globalv.global_readin_dir + "band_out", nocc_in, nvirt_in, ncore);
+        std::cout << "ncore=" << ncore << ", nocc=" << nocc_in << ", nvirt=" << nvirt_in << ", nbands=" << this->nbands << std::endl;
         std::cout << "eig_ks_vec.size()=" << eig_ks_vec.size() << std::endl;
         if(eig_ks_vec.size() != this->nbands) {ModuleBase::WARNING_QUIT("ESolver_LR", "read_aims_ebands failed.");};
         for (int i = 0;i < nbands;++i) { this->pelec->ekb(0, i) = eig_ks_vec[i]; }
@@ -578,7 +618,7 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
 #endif
     }
     else if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, this->paraMat_, *this->psi_ks, this->pelec,
-        /*skip_bands=*/this->nocc_max - this->nocc)) {
+        /*skip_bands=*/this->nocc_max - this->nocc_in)) {
         ModuleBase::WARNING_QUIT("ESolver_LR", "read ground-state wavefunction failed.");
     }
     this->eig_ks = std::move(this->pelec->ekb);

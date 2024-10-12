@@ -14,6 +14,11 @@
 
 inline double conj(double a) { return a; }
 inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); }
+template<typename T>
+inline psi::Psi<T> get_psi_spin(const psi::Psi<T>& psi_in, const int& is, const int& nk)
+{
+    return psi::Psi<T>(&psi_in(is * nk, 0, 0), psi_in, nk, psi_in.get_nbands());
+}
 
 namespace LR
 {
@@ -23,14 +28,16 @@ namespace LR
         ModuleBase::TITLE("OperatorLRHxc", "act");
         assert(nbands <= psi_in.get_nbands());
         const int& nk = this->kv.get_nks() / this->nspin;
+        const int& sl = ispin_ks[0];
+        const int& sr = ispin_ks[1];
 
         //print 
         // if (this->first_print) LR_Util::print_psi_kfirst(*psi_ks, "psi_ks");
 
         this->init_DM_trans(nbands, this->DM_trans);    // initialize transion density matrix
 
-        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nk, this->pX->get_local_size());
-        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, nk, this->pX->get_local_size());
+        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nk, pX[sr].get_local_size());
+        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, nk, pX[sr].get_local_size());
 
         const int& lgd = gint->gridt->lgd;
         for (int ib = 0;ib < nbands;++ib)
@@ -45,10 +52,10 @@ namespace LR
 
             // 1. transition density matrix
 #ifdef __MPI
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, pX[sr], get_psi_spin(*psi_ks, sr, nk), *pc, naos, nocc[sr], nvirt[sr], *pmat);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
 #else
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, *psi_ks, nocc, nvirt);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, get_psi_spin(*psi_ks, sr, nk), nocc[sr], nvirt[sr]);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
             // tensor to vector, then set DMK
@@ -80,9 +87,9 @@ namespace LR
 
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            cal_AX_pblas(v_hxc_2d, *this->pmat, *this->psi_ks, *this->pc, naos, nocc, nvirt, *this->pX, psi_out_bfirst);
+            cal_AX_pblas(v_hxc_2d, *this->pmat, get_psi_spin(*psi_ks, sl, nk), *this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], psi_out_bfirst);
 #else
-            cal_AX_blas(v_hxc_2d, *this->psi_ks, nocc, nvirt, psi_out_bfirst);
+            cal_AX_blas(v_hxc_2d, get_psi_spin(*psi_ks, sl, nk), nocc[sl], nvirt[sl], psi_out_bfirst);
 #endif
             // if (this->first_print) LR_Util::print_psi_bandfirst(psi_out_bfirst, "5.AX", ib);
         }

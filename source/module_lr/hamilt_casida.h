@@ -19,8 +19,8 @@ namespace LR
         HamiltCasidaLR(std::string& xc_kernel,
             const int& nspin,
             const int& naos,
-            const int& nocc,
-            const int& nvirt,
+            const std::vector<int>& nocc,
+            const std::vector<int>& nvirt,
             const UnitCell& ucell_in,
             const std::vector<double>& orb_cutoff,
             Grid_Driver& gd_in,
@@ -33,7 +33,7 @@ namespace LR
             TGint* gint_in,
             std::weak_ptr<PotHxcLR> pot_in,
             const K_Vectors& kv_in,
-            Parallel_2D* pX_in,
+            std::vector<Parallel_2D>& pX_in,
             Parallel_2D* pc_in,
             Parallel_Orbitals* pmat_in,
             const std::string& spin_type,
@@ -46,7 +46,7 @@ namespace LR
             this->DM_trans.resize(1);
             this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(pmat_in, 1, kv_in.kvec_d, nk);
             // add the diag operator  (the first one)
-            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX_in, nk, nocc, nvirt);
+            this->ops = new OperatorLRDiag<T>(eig_ks.c, &pX[0], nk, nocc[0], nvirt[0]);
             //add Hxc operator
 #ifdef __EXX
             using TAC = std::pair<int, std::array<int, 3>>;
@@ -77,7 +77,7 @@ namespace LR
                     }
                     if (!std::set<std::string>({ "rpa", "hf" }).count(xc_kernel)) { throw std::runtime_error("ri_hartree_benchmark is only supported for xc_kernel rpa and hf"); }
                     RI_Benchmark::OperatorRIHartree<T>* ri_hartree_op
-                        = new RI_Benchmark::OperatorRIHartree<T>(ucell_in, naos, nocc, nvirt, *psi_ks_in,
+                        = new RI_Benchmark::OperatorRIHartree<T>(ucell_in, naos, nocc[0], nvirt[0], *psi_ks_in,
                             Cs_read, Vs_read, ri_hartree_benchmark == "aims", aims_nbasis);
                     this->ops->add(ri_hartree_op);
                 }
@@ -102,8 +102,8 @@ namespace LR
                     exx_lri_in.lock()->reset_Vs(Vs_read);
                 }
                 // std::cout << "exx_alpha=" << exx_alpha << std::endl; // the default value of exx_alpha is 0.25 when dft_functional is pbe or hse
-                hamilt::Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc, nvirt, ucell_in, psi_ks_in,
-                    this->DM_trans, exx_lri_in, kv_in, pX_in, pc_in, pmat_in,
+                hamilt::Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell_in, psi_ks_in,
+                    this->DM_trans, exx_lri_in, kv_in, &pX_in[0], pc_in, pmat_in,
                     xc_kernel == "hf" ? 1.0 : exx_alpha, //alpha
                     ri_hartree_benchmark != "none"/*whether to cal_dm_trans first here*/,
                     aims_nbasis);
@@ -122,10 +122,10 @@ namespace LR
         virtual std::vector<T> matrix() override;
 
     private:
-        int nocc;
-        int nvirt;
+        const std::vector<int>& nocc;
+        const std::vector<int>& nvirt;
         int nk;
-        Parallel_2D* pX = nullptr;
+        std::vector<Parallel_2D>& pX;
         T one();
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands

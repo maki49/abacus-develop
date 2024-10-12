@@ -17,8 +17,8 @@ namespace LR
         //when nspin=2, nks is 2 times of real number of k-points. else (nspin=1 or 4), nks is the real number of k-points
         OperatorLRHxc(const int& nspin,
             const int& naos,
-            const int& nocc,
-            const int& nvirt,
+            const std::vector<int>& nocc,
+            const std::vector<int>& nvirt,
             const psi::Psi<T, Device>* psi_ks_in,
             std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans_in,
             typename TGint<T>::type* gint_in,
@@ -27,13 +27,14 @@ namespace LR
             const std::vector<double>& orb_cutoff,
             Grid_Driver& gd_in,
             const K_Vectors& kv_in,
-            Parallel_2D* pX_in,
+            std::vector<Parallel_2D>& pX_in,
             Parallel_2D* pc_in,
-            Parallel_Orbitals* pmat_in)
+            Parallel_Orbitals* pmat_in,
+            const std::vector<int>& ispin_ks = { 0, 0 })
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), gint(gint_in), pot(pot_in),
             ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in), kv(kv_in),
-            pX(pX_in), pc(pc_in), pmat(pmat_in)
+            pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks)
         {
             ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
             this->cal_type = hamilt::calculation_type::lcao_gint;
@@ -99,8 +100,9 @@ namespace LR
         const int& nspin;
         const int nspin_solve = 1;    ///< in singlet-triplet calculation, the Casida equation is solved respectively so nspin_solve in a single problem is 1
         const int& naos;
-        const int& nocc;
-        const int& nvirt;
+        const std::vector<int>& nocc;
+        const std::vector<int>& nvirt;
+        const std::vector<int> ispin_ks = { 0,0 };  ///< the index of spin of psi_ks used in {AX, DM_trans}
         const K_Vectors& kv;
         /// ground state wavefunction
         const psi::Psi<T, Device>* psi_ks = nullptr;
@@ -113,7 +115,7 @@ namespace LR
 
         /// parallel info
         Parallel_2D* pc = nullptr;
-        Parallel_2D* pX = nullptr;
+        std::vector<Parallel_2D>& pX;
         Parallel_Orbitals* pmat = nullptr;
 
         std::weak_ptr<PotHxcLR> pot;
