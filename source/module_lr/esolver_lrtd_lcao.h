@@ -65,7 +65,7 @@ namespace LR
         /// @brief ground state bands, read from the file, or moved from ESolver_FP::pelec.ekb
         ModuleBase::matrix eig_ks;///< energy of ground state
 
-        /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
+        /// @brief Excited state wavefunction, size: [nspin][nstates * nk * (nocc(local) * nvirt (local))]
         std::vector<std::shared_ptr<psi::Psi<T>>> X;
 
         std::vector<int> nocc = { 1, 1 };   ///< number of occupied orbitals for each spin used in the calculation
