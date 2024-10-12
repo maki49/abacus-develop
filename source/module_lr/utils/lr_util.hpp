@@ -131,6 +131,13 @@ namespace LR_Util
 }
     }
 
+    /// get the Psi wrapper of the selected spin from the Psi object
+    template<typename T>
+    psi::Psi<T> get_psi_spin(const psi::Psi<T>& psi_in, const int& is, const int& nk)
+    {
+        return psi::Psi<T>(&psi_in(is * nk, 0, 0), psi_in, nk, psi_in.get_nbands());
+    }
+
     /// psi(nk=1, nbands=nb, nk * nbasis) -> psi(nb, nk, nbasis) without memory copy
     template<typename T, typename Device>
     psi::Psi<T, Device> k1_to_bfirst_wrapper(const psi::Psi<T, Device>& psi_kfirst, int nk_in, int nbasis_in)
