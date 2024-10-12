@@ -5,21 +5,24 @@ namespace LR
     std::vector<T> HamiltCasidaLR<T>::matrix()
     {
         ModuleBase::TITLE("HamiltCasidaLR", "matrix");
-        int npairs = this->nocc * this->nvirt;
+        const int no = this->nocc[0];
+        const int nv = this->nvirt[0];
+        const auto& px = this->pX[0];
+        int npairs = no * nv;
         std::vector<T> Amat_full(this->nk * npairs * this->nk * npairs, 0.0);
         for (int ik = 0;ik < this->nk;++ik)
-            for (int j = 0;j < nocc;++j)
-                for (int b = 0;b < nvirt;++b)
+            for (int j = 0;j < no;++j)
+                for (int b = 0;b < nv;++b)
                 {//calculate A^{ai} for each bj
-                    int bj = j * nvirt + b;
+                    int bj = j * nv + b;
                     int kbj = ik * npairs + bj;
-                    psi::Psi<T> X_bj(1, 1, this->nk * this->pX->get_local_size()); // k1-first, like in iterative solver
+                    psi::Psi<T> X_bj(1, 1, this->nk * px.get_local_size()); // k1-first, like in iterative solver
                     X_bj.zero_out();
-                    // X_bj(0, 0, lj * this->pX->get_row_size() + lb) = this->one();
-                    int lj = this->pX->global2local_col(j);
-                    int lb = this->pX->global2local_row(b);
-                    if (this->pX->in_this_processor(b, j)) X_bj(0, 0, ik * this->pX->get_local_size() + lj * this->pX->get_row_size() + lb) = this->one();
-                    psi::Psi<T> A_aibj(1, 1, this->nk * this->pX->get_local_size()); // k1-first
+                    // X_bj(0, 0, lj * px.get_row_size() + lb) = this->one();
+                    int lj = px.global2local_col(j);
+                    int lb = px.global2local_row(b);
+                    if (px.in_this_processor(b, j)) X_bj(0, 0, ik * px.get_local_size() + lj * px.get_row_size() + lb) = this->one();
+                    psi::Psi<T> A_aibj(1, 1, this->nk * px.get_local_size()); // k1-first
                     A_aibj.zero_out();
 
                     hamilt::Operator<T>* node(this->ops);
@@ -32,9 +35,9 @@ namespace LR
                     A_aibj.fix_kb(0, 0);
 #ifdef __MPI
                     for (int ik_ai = 0;ik_ai < this->nk;++ik_ai)
-                        LR_Util::gather_2d_to_full(*this->pX, &A_aibj.get_pointer()[ik_ai * this->pX->get_local_size()],
+                        LR_Util::gather_2d_to_full(px, &A_aibj.get_pointer()[ik_ai * px.get_local_size()],
                             Amat_full.data() + kbj * this->nk * npairs /*col, bj*/ + ik_ai * npairs/*row, ai*/,
-                            false, this->nvirt, this->nocc);
+                            false, nv, no);
 #endif
                 }
         // output Amat

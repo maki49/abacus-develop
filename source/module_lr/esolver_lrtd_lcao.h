@@ -68,17 +68,20 @@ namespace LR
         /// @brief Excited state info. size: nstates * nks * (nocc(local) * nvirt (local))
         std::vector<std::shared_ptr<psi::Psi<T>>> X;
 
-        int nocc = 1;
+        std::vector<int> nocc = { 1, 1 };   ///< number of occupied orbitals for each spin used in the calculation
+        int nocc_in = 1;    ///< nocc read from input (adjusted by nelec): max(spin-up, spindown)
         int nocc_max = 1;   ///< nelec/2
-        int nvirt = 1;
+        std::vector<int> nvirt = { 1, 1 };   ///< number of virtual orbitals for each spin used in the calculation
+        int nvirt_in = 1;   ///< nvirt read from input (adjusted by nelec): min(spin-up, spindown)
         int nbands = 2;
         int nbasis = 2;
         /// n_occ*nvirt, the basis size of electron-hole pair representation
-        int npairs = 1;
+        std::vector<int> npairs = { 1, 1 };
         /// how many 2-particle states to be solved
         int nstates = 1;
         int nspin = 1;
         int nk = 1;
+        int nupdown = 0;
         std::string xc_kernel;
 
         Grid_Technique gt_;
@@ -90,7 +93,7 @@ namespace LR
         /// @brief variables for parallel distribution of KS orbitals
         Parallel_2D paraC_;
         /// @brief variables for parallel distribution of excited states
-        Parallel_2D paraX_;
+        std::vector<Parallel_2D> paraX_;
         /// @brief variables for parallel distribution of matrix in AO representation
         Parallel_Orbitals paraMat_;
 
@@ -111,6 +114,8 @@ namespace LR
         void parameter_check() const;
         /// @brief set nocc, nvirt, nbasis, npairs and nstates
         void set_dimension();
+        /// reset nocc, nvirt, npairs after read ground-state wavefunction when nspin=2
+        void reset_dim_spin2();
 
 #ifdef __EXX
         /// Tdata of Exx_LRI is same as T, for the reason, see operator_lr_exx.h
