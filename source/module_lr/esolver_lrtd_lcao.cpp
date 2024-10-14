@@ -445,8 +445,7 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
                 this->gint_, this->pot[is], this->kv, this->paraX_, & this->paraC_, & this->paraMat_,
                 spin_type[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
             // solve the Casida equation
-            HSolverLR<T> hsol(nk, this->npairs[is], is, this->input.out_wfc_lr);
-            hsol.set_diagethr(hsol.diag_ethr, 0, 0, std::max(1e-13, this->input.lr_thr));
+            HSolverLR<T> hsol(nk, this->npairs[is], is, std::max(1e-13, this->input.lr_thr), this->input.out_wfc_lr);
             hsol.solve(phamilt, *this->X[is], this->pelec, this->input.lr_solver/*,
                 !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel)*/);  //whether the kernel is Hermitian
             delete phamilt;

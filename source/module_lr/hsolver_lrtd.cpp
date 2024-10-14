@@ -14,15 +14,14 @@ namespace LR
     inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0)
     {
         std::cout << label << std::endl;
-        for (auto& e : eigs) {std::cout << e * factor << " ";
-}
+        for (auto& e : eigs) { std::cout << e * factor << " "; }
         std::cout << std::endl;
     }
     template<typename T, typename Device>
     void HSolverLR<T, Device>::solve(hamilt::Hamilt<T, Device>* pHamilt,
         psi::Psi<T, Device>& psi,
         elecstate::ElecState* pes,
-        const std::string method_in,
+        const std::string method,
         const bool hermitian)
     {
         ModuleBase::TITLE("HSolverLR", "solve");
@@ -35,14 +34,13 @@ namespace LR
         std::vector<Real> precondition(psi.get_nk() * psi.get_nbasis());
         std::vector<Real> eigenvalue(psi.get_nbands());   //nstates
         // 2. select the method
-        this->method = method_in;
 #ifdef __MPI
         const hsolver::diag_comm_info comm_info = { POOL_WORLD, GlobalV::RANK_IN_POOL, GlobalV::NPROC_IN_POOL };
 #else
         const hsolver::diag_comm_info comm_info = { GlobalV::RANK_IN_POOL, GlobalV::NPROC_IN_POOL };
 #endif
 
-        if (this->method == "lapack")
+        if (method == "lapack")
         {
             std::vector<T> Amat_full = pHamilt->matrix();
             eigenvalue.resize(nk * npairs);
@@ -56,15 +54,12 @@ namespace LR
             }
             psi.fix_kb(0, 0);
             // copy eigenvectors
-            for (int i = 0;i < psi.size();++i) { psi.get_pointer()[i] = Amat_full[i];
-}
+            for (int i = 0;i < psi.size();++i) { psi.get_pointer()[i] = Amat_full[i]; }
         }
         else
         {
             // 3. set precondition and diagethr
-            for (int i = 0; i < psi.get_nk() * psi.get_nbasis(); ++i) {
-                precondition[i] = static_cast<Real>(1.0);
-}
+            for (int i = 0; i < psi.get_nk() * psi.get_nbasis(); ++i) { precondition[i] = static_cast<Real>(1.0); }
 
             // wrap band-first psi as k1-first psi_k1_dav
             psi::Psi<T> psi_k1_dav = LR_Util::bfirst_to_k1_wrapper(psi);
@@ -73,7 +68,7 @@ namespace LR
 
             const int david_maxiter = hsolver::DiagoIterAssist<T, Device>::PW_DIAG_NMAX;
 
-            if (this->method == "dav")
+            if (method == "dav")
             {
                 // Allow 5 tries at most. If ntry > ntry_max = 5, exit diag loop.
                 const int ntry_max = 5;
@@ -107,7 +102,7 @@ namespace LR
                 hsolver::DiagoIterAssist<T, Device>::avg_iter += static_cast<double>(david.diag(hpsi_func, spsi_func,
                     dim, psi_k1_dav.get_pointer(), eigenvalue.data(), this->diag_ethr, david_maxiter, ntry_max, 0));
             }
-            else if (this->method == "dav_subspace") //need refactor
+            else if (method == "dav_subspace") //need refactor
             {
                 hsolver::Diago_DavSubspace<T, Device> dav_subspace(precondition,
                     psi_k1_dav.get_nbands(),
