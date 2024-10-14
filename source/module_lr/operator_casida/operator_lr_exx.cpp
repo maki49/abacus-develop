@@ -91,6 +91,7 @@ namespace LR
         std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(*this->pmat);
         for (int ib = 0;ib < nbands;++ib)
         {
+            psi_in_bfirst.fix_b(ib);
             psi_out_bfirst.fix_b(ib);
             // suppose Cs，Vs, have already been calculated in the ion-step of ground state, 
             // DM_trans(k) and DM_trans(R) has already been calculated from psi_in in OperatorLRHxc::act
@@ -98,10 +99,10 @@ namespace LR
             if (cal_dm_trans)
             {
 #ifdef __MPI
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
+                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst.get_pointer(), *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
                 if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
 #else
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, *psi_ks, nocc, nvirt);
+                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst.get_pointer(), *psi_ks, nocc, nvirt);
                 if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
                 // tensor to vector, then set DMK
@@ -146,10 +147,10 @@ namespace LR
                                     lri->exx_lri.post_2D.cal_energy(this->Ds_onebase[is], lri->Hexxs[is]);
                                 if(this->pX->in_this_processor(iv, io)) { 
                                     psi_out_bfirst(ik, this->pX->global2local_col(io) * this->pX->get_row_size() + this->pX->global2local_row(iv)) += ene;
-}
-                            }
-}
-}
+                                }
+                        }
+                    }
+                }
 }
         }
     }
