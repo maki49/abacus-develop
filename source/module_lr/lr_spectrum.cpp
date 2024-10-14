@@ -44,10 +44,10 @@ void LR::LR_Spectrum<double>::oscillator_strength()
 
         //1. transition density 
 #ifdef __MPI
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X.get_pointer(), this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X, this->psi_ks, this->nocc, this->nvirt);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X.get_pointer(), this->psi_ks, this->nocc, this->nvirt);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
         for (int ik = 0;ik < this->nk;++ik) { DM_trans.set_DMK_pointer(ik, dm_trans_2d[ik].data<double>()); }
@@ -103,10 +103,10 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
 
         //1. transition density 
 #ifdef __MPI
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat, /*renorm_k=*/false, this->nspin_solve);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X.get_pointer(), this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat, /*renorm_k=*/false, this->nspin_solve);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X, this->psi_ks, this->nocc, this->nvirt,/*renorm_k=*/false, this->nspin_solve);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X.get_pointer(), this->psi_ks, this->nocc, this->nvirt,/*renorm_k=*/false, this->nspin_solve);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
         for (int ik = 0;ik < this->nk;++ik) { DM_trans.set_DMK_pointer(ik, dm_trans_2d[ik].data<std::complex<double>>()); }
