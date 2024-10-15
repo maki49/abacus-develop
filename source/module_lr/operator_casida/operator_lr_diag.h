@@ -17,10 +17,6 @@ namespace LR
         {   // calculate the difference of eigenvalues
             ModuleBase::TITLE("OperatorLRDiag", "OperatorLRDiag");
             const int nbands = nocc + nvirt;
-            // #ifdef __MPI
-            //             Parallel_Common::bcast_double(eig_ks, nk * (nocc + nvirt)); //really need?
-            // #endif
-            this->act_type = 2;
             this->cal_type = hamilt::calculation_type::no;
             this->eig_ks_diff.create(nk, pX->get_local_size(), false);
             for (int ik = 0;ik < nk;++ik)
@@ -41,23 +37,25 @@ namespace LR
 
         /// caution: put this operator at the head of the operator list,
         /// because vector_mul_vector_op directly assign to (rather than add on) psi_out.
-        virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override
+        virtual void  act(const int nbands,
+            const int nbasis,
+            const int npol,
+            const T* psi_in,
+            T* hpsi,
+            const int ngk_ik = 0)const override
         {
             ModuleBase::TITLE("OperatorLRDiag", "act");
-            assert(nbands <= psi_in.get_nbands());
-
-            psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, this->nk, this->pX->get_local_size());
-            psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, this->nk, this->pX->get_local_size());
+            const int nlocal_ph = nk * pX->get_local_size();   // local size of particle-hole basis
             for (int ib = 0;ib < nbands;++ib)
             {
-                psi_in_bfirst.fix_b(ib);
-                psi_out_bfirst.fix_b(ib);
+                const int ibstart = ib * nlocal_ph;
                 hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
-                    psi_in_bfirst.get_nk() * psi_in_bfirst.get_nbasis(),
-                    psi_out_bfirst.get_pointer(),
-                    psi_in_bfirst.get_pointer(),
+                    nk * pX->get_local_size(),
+                    hpsi + ibstart,
+                    psi_in + ibstart,
                     this->eig_ks_diff.c);
             }
+
         }
     private:
         const Parallel_2D* pX;

@@ -78,31 +78,27 @@ namespace LR
     }
 
     template<typename T>
-    void OperatorLREXX<T>::act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const
+    void OperatorLREXX<T>::act(const int nbands, const int nbasis, const int npol, const T* psi_in, T* hpsi, const int ngk_ik)const
     {
         ModuleBase::TITLE("OperatorLREXX", "act");
 
-        assert(nbands <= psi_in.get_nbands());
         const int& nk = this->kv.get_nks() / this->nspin;
-        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nk, this->pX->get_local_size());
-        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, nk, this->pX->get_local_size());
 
         // convert parallel info to LibRI interfaces
         std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(*this->pmat);
         for (int ib = 0;ib < nbands;++ib)
         {
-            psi_in_bfirst.fix_b(ib);
-            psi_out_bfirst.fix_b(ib);
+            const int xstart_b = ib * nk * pX->get_local_size();
             // suppose Cs，Vs, have already been calculated in the ion-step of ground state, 
             // DM_trans(k) and DM_trans(R) has already been calculated from psi_in in OperatorLRHxc::act
             // but int RI_benchmark, DM_trans(k) should be first calculated here
             if (cal_dm_trans)
             {
 #ifdef __MPI
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst.get_pointer(), *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
+                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
                 if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
 #else
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst.get_pointer(), *psi_ks, nocc, nvirt);
+                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart, *psi_ks, nocc, nvirt);
                 if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
                 // tensor to vector, then set DMK
@@ -139,6 +135,7 @@ namespace LR
             for (int io = 0;io < this->nocc;++io) {
                 for (int iv = 0;iv < this->nvirt;++iv) {
                     for (int ik = 0;ik < nk;++ik) {
+                        const int xstart_bk = xstart_b + ik * pX->get_local_size();
                         for (int is = 0;is < this->nspin_solve;++is)
                             {
                                 this->cal_DM_onebase(io, iv, ik, is);       //set Ds_onebase for all e-h pairs (not only on this processor)
@@ -146,12 +143,12 @@ namespace LR
                                 const T& ene= 2 * alpha * //minus for exchange(but here plus is right, why?), 2 for Hartree to Ry
                                     lri->exx_lri.post_2D.cal_energy(this->Ds_onebase[is], lri->Hexxs[is]);
                                 if(this->pX->in_this_processor(iv, io)) { 
-                                    psi_out_bfirst(ik, this->pX->global2local_col(io) * this->pX->get_row_size() + this->pX->global2local_row(iv)) += ene;
+                                    hpsi[xstart_bk + ik * pX->get_local_size() + this->pX->global2local_col(io) * this->pX->get_row_size() + this->pX->global2local_row(iv)] += ene;
                                 }
                         }
                     }
                 }
-}
+            }
         }
     }
     template class OperatorLREXX<double>;
