@@ -18,39 +18,28 @@ inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); 
 namespace LR
 {
     template<typename T, typename Device>
-    void OperatorLRHxc<T, Device>::act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const
+    void OperatorLRHxc<T, Device>::act(const int nbands, const int nbasis, const int npol, const T* psi_in, T* hpsi, const int ngk_ik)const
     {
         ModuleBase::TITLE("OperatorLRHxc", "act");
-        assert(nbands <= psi_in.get_nbands());
-        const int& nk = this->kv.get_nks() / this->nspin;
         const int& sl = ispin_ks[0];
-        const int& sr = ispin_ks[1];
-
-        //print 
-        // if (this->first_print) LR_Util::print_psi_kfirst(*psi_ks, "psi_ks");
+        const int& sr = ispin_ks.size() == 1 ? sl : ispin_ks[1];
 
         this->init_DM_trans(nbands, this->DM_trans);    // initialize transion density matrix
-
-        psi::Psi<T> psi_in_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_in, nk, pX[sr].get_local_size());
-        psi::Psi<T> psi_out_bfirst = LR_Util::k1_to_bfirst_wrapper(psi_out, nk, pX[sr].get_local_size());
 
         const int& lgd = gint->gridt->lgd;
         for (int ib = 0;ib < nbands;++ib)
         {
-            // if (this->first_print) LR_Util::print_psi_bandfirst(psi_in_bfirst, "psi_in_bfirst", ib);
-
             // if Hxc-only, the memory of single-band DM_trans is enough.
             // if followed by EXX, we need to allocate memory for all bands.
-            int ib_dm = (this->next_op == nullptr) ? 0 : ib;
-            psi_in_bfirst.fix_b(ib);
-            psi_out_bfirst.fix_b(ib);
+            const int ib_dm = (this->next_op == nullptr) ? 0 : ib;
+            const int xstart_b = ib * nbasis;
 
             // 1. transition density matrix
 #ifdef __MPI
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst.get_pointer(), pX[sr], LR_Util::get_psi_spin(*psi_ks, sr, nk), *pc, naos, nocc[sr], nvirt[sr], *pmat);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX[sr], LR_Util::get_psi_spin(*psi_ks, sr, nk), *pc, naos, nocc[sr], nvirt[sr], *pmat);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
 #else
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst.get_pointer(), LR_Util::get_psi_spin(*psi_ks, sr, nk), nocc[sr], nvirt[sr]);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart_b, LR_Util::get_psi_spin(*psi_ks, sr, nk), nocc[sr], nvirt[sr]);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
             // tensor to vector, then set DMK
@@ -58,7 +47,7 @@ namespace LR
 
             // if (this->first_print)
             //     for (int ik = 0;ik < nk;++ik)
-            //         LR_Util::print_tensor<std::complex<double>>(dm_trans_2d[ik], "1.DMK[ik=" + std::to_string(ik) + "]", this->pmat);
+            //         LR_Util::print_tensor<T>(dm_trans_2d[ik], "1.DMK[ik=" + std::to_string(ik) + "]", this->pmat);
 
             // use cal_DMR to get DMR form DMK by FT
             this->DM_trans[ib_dm]->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
@@ -69,7 +58,7 @@ namespace LR
             // ========================= end grid calculation =========================
 
             // V(R)->V(k)
-            std::vector<ct::Tensor> v_hxc_2d(this->kv.get_nks(),
+            std::vector<ct::Tensor> v_hxc_2d(nk,
                 ct::Tensor(ct::DataTypeToEnum<T>::value, ct::DeviceTypeToEnum<base_device::DEVICE_CPU>::value,
                     { pmat->get_col_size(), pmat->get_row_size() }));
             for (auto& v : v_hxc_2d) v.zero();
@@ -82,11 +71,10 @@ namespace LR
 
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            cal_AX_pblas(v_hxc_2d, *this->pmat, LR_Util::get_psi_spin(*psi_ks, sl, nk), *this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], psi_out_bfirst.get_pointer());
+            cal_AX_pblas(v_hxc_2d, *this->pmat, LR_Util::get_psi_spin(*psi_ks, sl, nk), *this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi + xstart_b);
 #else
-            cal_AX_blas(v_hxc_2d, LR_Util::get_psi_spin(*psi_ks, sl, nk), nocc[sl], nvirt[sl], psi_out_bfirst.get_pointer());
+            cal_AX_blas(v_hxc_2d, LR_Util::get_psi_spin(*psi_ks, sl, nk), nocc[sl], nvirt[sl], hpsi + xstart_b);
 #endif
-            // if (this->first_print) LR_Util::print_psi_bandfirst(psi_out_bfirst, "5.AX", ib);
         }
     }
 

@@ -30,15 +30,15 @@ namespace LR
             std::vector<Parallel_2D>& pX_in,
             Parallel_2D* pc_in,
             Parallel_Orbitals* pmat_in,
-            const std::vector<int>& ispin_ks = { 0, 0 })
-            : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
+            const std::vector<int>& ispin_ks = { 0 })
+            : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), gint(gint_in), pot(pot_in),
             ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in), kv(kv_in),
             pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks)
+            // nloc_per_band(nk* (ispin_ks.size() == 1 ? pX_in[ispin_ks[0]].get_local_size() : pX_in[0].get_local_size() + pX_in[1].get_local_size()))
         {
             ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
             this->cal_type = hamilt::calculation_type::lcao_gint;
-            this->act_type = 2;
             this->is_first_node = true;
             this->hR = std::unique_ptr<hamilt::HContainer<T>>(new hamilt::HContainer<T>(pmat_in));
             this->initialize_HR(*this->hR, ucell_in, gd_in, pmat_in);
@@ -48,8 +48,8 @@ namespace LR
 
         void init(const int ik_in) override {};
 
-        // virtual psi::Psi<T> act(const psi::Psi<T>& psi_in) const override;
-        virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
+        virtual void act(const int nbands, const int nbasis, const int npol, const T* psi_in, T* hpsi, const int ngk_ik = 0)const override;
+
     private:
         template<typename TR>   //T=double, TR=double; T=std::complex<double>, TR=std::complex<double>/double
         void initialize_HR(hamilt::HContainer<TR>& hR, const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals* pmat) const
@@ -100,9 +100,11 @@ namespace LR
         const int& nspin;
         const int nspin_solve = 1;    ///< in singlet-triplet calculation, the Casida equation is solved respectively so nspin_solve in a single problem is 1
         const int& naos;
+        const int nk = 1;
+        // const int nloc_per_band = 1;    ///< local size of each state of X  (passed by nbasis in act())
         const std::vector<int>& nocc;
         const std::vector<int>& nvirt;
-        const std::vector<int> ispin_ks = { 0,0 };  ///< the index of spin of psi_ks used in {AX, DM_trans}
+        const std::vector<int> ispin_ks = { 0 };  ///< the index of spin of psi_ks used in {AX, DM_trans}
         const K_Vectors& kv;
         /// ground state wavefunction
         const psi::Psi<T, Device>* psi_ks = nullptr;

@@ -38,7 +38,7 @@ namespace LR
         typename TGint<T>::type* gint = nullptr;
         const ModulePW::PW_Basis& rho_basis;
         const UnitCell& ucell;
-        const std::vector<std::string> spin_types = { "Spin Singlet", "Spin Triplet" };
+        const std::vector<std::string> spin_types = { "singlet", "triplet" };
 
         void cal_gint_rho(double** rho, const int& nspin, const int& nrxx);
 

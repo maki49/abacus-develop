@@ -2,9 +2,9 @@
 namespace LR
 {
     template<typename T>
-    std::vector<T> HamiltCasidaLR<T>::matrix()
+    std::vector<T> HamiltLR<T>::matrix()const
     {
-        ModuleBase::TITLE("HamiltCasidaLR", "matrix");
+        ModuleBase::TITLE("HamiltLR", "matrix");
         const int no = this->nocc[0];
         const int nv = this->nvirt[0];
         const auto& px = this->pX[0];
@@ -28,7 +28,7 @@ namespace LR
                     hamilt::Operator<T>* node(this->ops);
                     while (node != nullptr)
                     {   // act() on and return the k1-first type of psi
-                        node->act(X_bj, A_aibj, 1);
+                        node->act(1, nloc_per_band, /*npol=*/1, X_bj.get_pointer(), A_aibj.get_pointer());
                         node = (hamilt::Operator<T>*)(node->next_op);
                     }
                     // reduce ai for a fixed bj
@@ -53,9 +53,9 @@ namespace LR
         return Amat_full;
     }
 
-    template<> double HamiltCasidaLR<double>::one() { return 1.0; }
-    template<> std::complex<double> HamiltCasidaLR<std::complex<double>>::one() { return std::complex<double>(1.0, 0.0); }
+    template<> double HamiltLR<double>::one() const { return 1.0; }
+    template<> std::complex<double> HamiltLR<std::complex<double>>::one() const { return std::complex<double>(1.0, 0.0); }
 
-    template class HamiltCasidaLR<double>;
-    template class HamiltCasidaLR<std::complex<double>>;
+    template class HamiltLR<double>;
+    template class HamiltLR<std::complex<double>>;
 }

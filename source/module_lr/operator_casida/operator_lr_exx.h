@@ -40,7 +40,6 @@ namespace LR
         {
             ModuleBase::TITLE("OperatorLREXX", "OperatorLREXX");
             this->cal_type = hamilt::calculation_type::lcao_exx;
-            this->act_type = 2;
             this->is_first_node = false;
 
             // reduce psi_ks for later use
@@ -57,8 +56,8 @@ namespace LR
 
         void init(const int ik_in) override {};
 
-        // virtual psi::Psi<T> act(const psi::Psi<T>& psi_in) const override;
-        virtual void act(const psi::Psi<T>& psi_in, psi::Psi<T>& psi_out, const int nbands) const override;
+        virtual void act(const int nbands, const int nbasis, const int npol, const T* psi_in, T* hpsi, const int ngk_ik = 0)const override;
+
     private:
         //global sizes
         const int& nspin;

@@ -12,11 +12,11 @@
 namespace LR
 {
     template<typename T>
-    class HamiltCasidaLR : public hamilt::Hamilt<T, base_device::DEVICE_CPU>
+    class HamiltLR
     {
     public:
         template<typename TGint>
-        HamiltCasidaLR(std::string& xc_kernel,
+        HamiltLR(std::string& xc_kernel,
             const int& nspin,
             const int& naos,
             const std::vector<int>& nocc,
@@ -38,11 +38,12 @@ namespace LR
             Parallel_Orbitals* pmat_in,
             const std::string& spin_type,
             const std::string& ri_hartree_benchmark = "none",
-            const std::vector<int>& aims_nbasis = {}) : nocc(nocc), nvirt(nvirt), pX(pX_in), nk(kv_in.get_nks() / nspin)
+            const std::vector<int>& aims_nbasis = {}) : nspin(nspin), nocc(nocc), nvirt(nvirt), pX(pX_in),
+            nk(kv_in.get_nks() / nspin), openshell(spin_type == "up" || spin_type == "down"),
+            nloc_per_band(nk* (openshell ? pX_in[0].get_local_size() + pX_in[1].get_local_size() : pX_in[0].get_local_size()))
         {
-            ModuleBase::TITLE("HamiltCasidaLR", "HamiltCasidaLR");
+            ModuleBase::TITLE("HamiltLR", "HamiltLR");
             if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
-            this->classname = "HamiltCasidaLR";
             this->DM_trans.resize(1);
             this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(pmat_in, 1, kv_in.kvec_d, nk);
             // add the diag operator  (the first one)
@@ -63,7 +64,7 @@ namespace LR
             if (ri_hartree_benchmark != "none")
             {
 #ifdef __EXX
-                if (spin_type == "Spin Singlet")
+                if (spin_type == "singlet")
                 {
                     if (ri_hartree_benchmark == "aims") 
                     { 
@@ -81,7 +82,7 @@ namespace LR
                             Cs_read, Vs_read, ri_hartree_benchmark == "aims", aims_nbasis);
                     this->ops->add(ri_hartree_op);
                 }
-                else if (spin_type == "Spin Triplet") {std::cout<<"f_Hxc based on grid integral is not needed."<<std::endl;}
+                else if (spin_type == "triplet") { std::cout << "f_Hxc based on grid integral is not needed." << std::endl; }
 #else
                 ModuleBase::WARNING_QUIT("ESolver_LR", "RI benchmark is only supported when compile with LibRI.");
 #endif
@@ -96,7 +97,7 @@ namespace LR
 #ifdef __EXX
             if (xc_kernel == "hf" || xc_kernel == "hse")
             {   //add Exx operator
-                if (ri_hartree_benchmark != "none" && spin_type == "Spin Singlet")
+                if (ri_hartree_benchmark != "none" && spin_type == "singlet")
                 {
                     exx_lri_in.lock()->reset_Cs(Cs_read);
                     exx_lri_in.lock()->reset_Vs(Vs_read);
@@ -111,7 +112,7 @@ namespace LR
             }
 #endif
         }
-        ~HamiltCasidaLR()
+        ~HamiltLR()
         {
             if (this->ops != nullptr)
             {
@@ -119,17 +120,50 @@ namespace LR
             }
         };
 
-        virtual std::vector<T> matrix() override;
+        virtual std::vector<T> matrix()const;
+
+        virtual void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int& nband) const
+        {
+            assert(ld_psi == this->nloc_per_band);
+            hamilt::Operator<T>* node(this->ops);
+            if (openshell)
+            {
+                /// band-wise act (also works for close-shell, but not efficient)
+                for (int ib = 0;ib < nband;++ib)
+                {
+                    const int offset = ib * ld_psi;
+                    while (node != nullptr)
+                    {
+                        node->act(1, ld_psi, /*npol=*/1, psi_in + offset, hpsi + offset);
+                        node = (hamilt::Operator<T>*)(node->next_op);
+                    }
+                }
+            }
+            else
+            {
+                while (node != nullptr)
+                {
+                    node->act(nband, ld_psi, /*npol=*/1, psi_in, hpsi);
+                    node = (hamilt::Operator<T>*)(node->next_op);
+                }
+            }
+        }
 
     private:
         const std::vector<int>& nocc;
         const std::vector<int>& nvirt;
-        int nk;
+        const int nspin = 1;
+        const int nk = 1;
+        const bool openshell = false;
+        const int nloc_per_band = 1;
         std::vector<Parallel_2D>& pX;
-        T one();
+        T one()const;
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands
         /// Hxc+Exx: size=nbands, store the result of each bands for common use
         std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>> DM_trans;
+
+        /// first node operator, add operations from each operators
+        hamilt::Operator<T, base_device::DEVICE_CPU>* ops = nullptr;
     };
 }

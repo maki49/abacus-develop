@@ -434,11 +434,11 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
     if (this->input.lr_solver != "spectrum")
     {
         // allocate and initialize A matrix and density matrix
-        std::vector<std::string> spin_type = { "Spin Singlet", "Spin Triplet" };
+        std::vector<std::string> spin_type = { "singlet", "triplet" };
         for (int is = 0;is < nspin;++is)
         {
             if (nspin == 2) { std::cout << "Calculating " << spin_type[is] << " excitations" << std::endl; }
-            hamilt::Hamilt<T>* phamilt = new HamiltCasidaLR<T>(xc_kernel, nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, orb_cutoff_, GlobalC::GridD, this->psi_ks, this->eig_ks,
+            HamiltLR<T> hlr(xc_kernel, nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, orb_cutoff_, GlobalC::GridD, this->psi_ks, this->eig_ks,
 #ifdef __EXX
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
@@ -446,9 +446,8 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
                 spin_type[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
             // solve the Casida equation
             HSolverLR<T> hsol(nk, this->npairs[is], is, std::max(1e-13, this->input.lr_thr), this->input.out_wfc_lr);
-            hsol.solve(phamilt, *this->X[is], this->pelec, this->input.lr_solver/*,
+            hsol.solve(hlr, *this->X[is], this->pelec->ekb, this->input.lr_solver/*,
                 !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel)*/);  //whether the kernel is Hermitian
-            delete phamilt;
         }
     }
     else    // read the eigenvalues
@@ -506,7 +505,7 @@ void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
         this->paraX_.emplace_back(std::move(px));
     }
     this->X.resize(this->nspin);
-    const std::vector<std::string> spin_types = { "Spin Singlet", "Spin Triplet" };
+    const std::vector<std::string> spin_types = { "singlet", "triplet" };
     // if spectrum-only, read the LR-eigenstates from file and return
     if (this->input.lr_solver == "spectrum")
     {

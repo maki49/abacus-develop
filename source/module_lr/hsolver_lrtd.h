@@ -1,10 +1,10 @@
 #pragma once
-#include "module_hsolver/hsolver.h"
+#include "module_lr/hamilt_casida.h"
 #include "module_hsolver/diago_iter_assist.h"
 #include "module_psi/psi.h"
 namespace LR
 {
-    template<typename T, typename Device = base_device::DEVICE_CPU>
+    template<typename T>
     class HSolverLR
     {
         using Real = typename GetTypeReal<T>::type;
@@ -17,9 +17,9 @@ namespace LR
             :nk(nk_in), diag_ethr(ethr), npairs(npairs_in), out_wfc_lr(out_wfc_lr_in), ispin_solve(ispin_solve_in) {};
 
         /// eigensolver for common Hamilt
-        void solve(hamilt::Hamilt<T, Device>* pHamilt,
-            psi::Psi<T, Device>& psi,
-            elecstate::ElecState* pes,
+        void solve(const HamiltLR<T>& hm,
+            psi::Psi<T>& psi,
+            ModuleBase::matrix& ekb,
             const std::string method_in,
             const bool hermitian = true);
 
