@@ -30,24 +30,21 @@ void LR::LR_Spectrum<double>::oscillator_strength()
 {
     ModuleBase::TITLE("LR::LR_Spectrum", "oscillator_strength");
     std::vector<double>& osc = this->oscillator_strength_;  // unit: Ry
-    osc.resize(X.get_nbands(), 0.0);
+    osc.resize(nstate, 0.0);
     // const int nspin0 = (this->nspin == 2) ? 2 : 1;   use this in NSPIN=4 implementation
     double osc_tot = 0.0;
     elecstate::DensityMatrix<double, double> DM_trans(&this->pmat, 1, this->kv.kvec_d, this->nk);
     DM_trans.init_DMR(&GlobalC::GridD, &this->ucell);
-    this->transition_dipole_.resize(X.get_nbands(), ModuleBase::Vector3<double>(0.0, 0.0, 0.0));
-    for (int istate = 0;istate < X.get_nbands();++istate)
+    this->transition_dipole_.resize(nstate, ModuleBase::Vector3<double>(0.0, 0.0, 0.0));
+    for (int istate = 0;istate < nstate;++istate)
     {
-        X.fix_b(istate);
-
-        // LR_Util::print_psi_bandfirst(X, "final X", istate);
-
+        const int xstart_b = istate * nloc_per_band + offset;    //start index of band istate
         //1. transition density 
 #ifdef __MPI
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X.get_pointer(), this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X + xstart_b, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X.get_pointer(), this->psi_ks, this->nocc, this->nvirt);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X + xstart_b, this->psi_ks, this->nocc, this->nvirt);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
         for (int ik = 0;ik < this->nk;++ik) { DM_trans.set_DMK_pointer(ik, dm_trans_2d[ik].data<double>()); }
@@ -87,7 +84,7 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
 {
     ModuleBase::TITLE("LR::LR_Spectrum", "oscillator_strength");
     std::vector<double>& osc = this->oscillator_strength_;  // unit: Ry
-    osc.resize(X.get_nbands(), 0.0);
+    osc.resize(nstate, 0.0);
     // const int nspin0 = (this->nspin == 2) ? 2 : 1;   use this in NSPIN=4 implementation
     double osc_tot = 0.0;
     elecstate::DensityMatrix<std::complex<double>, std::complex<double>> DM_trans(&this->pmat, 1, this->kv.kvec_d, this->nk);
@@ -95,18 +92,16 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
     elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&this->pmat, 1, this->kv.kvec_d, this->nk);
     DM_trans_real_imag.init_DMR(&GlobalC::GridD, &this->ucell);
 
-    this->transition_dipole_.resize(X.get_nbands(), ModuleBase::Vector3<std::complex<double>>(0.0, 0.0, 0.0));
-    for (int istate = 0;istate < X.get_nbands();++istate)
+    this->transition_dipole_.resize(nstate, ModuleBase::Vector3<std::complex<double>>(0.0, 0.0, 0.0));
+    for (int istate = 0;istate < nstate;++istate)
     {
-        X.fix_b(istate);
-        // LR_Util::print_psi_bandfirst(X, "final X", istate);
-
+        const int xstart_b = istate * nloc_per_band + offset;    //start index of band istate
         //1. transition density 
 #ifdef __MPI
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X.get_pointer(), this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat, /*renorm_k=*/false, this->nspin_solve);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X + xstart_b, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat, /*renorm_k=*/false, this->nspin_solve);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X.get_pointer(), this->psi_ks, this->nocc, this->nvirt,/*renorm_k=*/false, this->nspin_solve);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X + xstart_b, this->psi_ks, this->nocc, this->nvirt,/*renorm_k=*/false, this->nspin_solve);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
         for (int ik = 0;ik < this->nk;++ik) { DM_trans.set_DMK_pointer(ik, dm_trans_2d[ik].data<std::complex<double>>()); }
@@ -164,11 +159,11 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
     check_sum_rule(osc_tot);
 }
 template<typename T>
-void LR::LR_Spectrum<T>::optical_absorption(const std::vector<double>& freq, const double eta, const int ispin)
+void LR::LR_Spectrum<T>::optical_absorption(const std::vector<double>& freq, const double eta, const std::string& spintype)
 {
     ModuleBase::TITLE("LR::LR_Spectrum", "optical_absorption");
     std::vector<double>& osc = this->oscillator_strength_;
-    std::ofstream ofs(PARAM.globalv.global_out_dir + "absorption_" + this->spin_types[ispin] + ".dat");
+    std::ofstream ofs(PARAM.globalv.global_out_dir + "absorption_" + spintype + ".dat");
     if (GlobalV::MY_RANK == 0) { ofs << "Frequency (eV) | wave length(nm) | Absorption (a.u.)" << std::endl; }
     double FourPI_div_c = ModuleBase::FOUR_PI / 137.036;
     for (int f = 0;f < freq.size();++f)
@@ -182,17 +177,17 @@ void LR::LR_Spectrum<T>::optical_absorption(const std::vector<double>& freq, con
 }
 
 template<typename T>
-void LR::LR_Spectrum<T>::transition_analysis(const int ispin)
+void LR::LR_Spectrum<T>::transition_analysis(const std::string& spintype)
 {
     ModuleBase::TITLE("LR::LR_Spectrum", "transition_analysis");
     std::ofstream& ofs = GlobalV::ofs_running;
     ofs << "==================================================================== " << std::endl;
-    ofs << std::setw(40) << this->spin_types[ispin] << std::endl;
+    ofs << std::setw(40) << spintype << std::endl;
     ofs << "==================================================================== " << std::endl;
     ofs << std::setw(8) << "State" << std::setw(30) << "Excitation Energy (Ry, eV)" <<
         std::setw(45) << "Transition dipole x, y, z (a.u.)" << std::setw(30) << "Oscillator strength(a.u.)" << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
-    for (int istate = 0;istate < X.get_nbands();++istate)
+    for (int istate = 0;istate < nstate;++istate)
         ofs << std::setw(8) << istate << std::setw(15) << std::setprecision(6) << eig[istate] << std::setw(15) << eig[istate] * ModuleBase::Ry_to_eV
         << std::setw(15) << transition_dipole_[istate].x << std::setw(15) << transition_dipole_[istate].y << std::setw(15) << transition_dipole_[istate].z
         << std::setw(30) << oscillator_strength_[istate] << std::endl;
@@ -202,23 +197,23 @@ void LR::LR_Spectrum<T>::transition_analysis(const int ispin)
         << std::setw(30) << "Excitation rate"
         << std::setw(10) << "k-point" << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
-    for (int istate = 0;istate < X.get_nbands();++istate)
+    for (int istate = 0;istate < nstate;++istate)
     {
         /// find the main contributions (> 0.5)
-        X.fix_b(istate);
-        psi::Psi<T> X_full(X.get_nk(), 1, nocc * nvirt, nullptr, false);// one-band
+        const int xstart_b = istate * nloc_per_band + offset;    //start index of band istate
+        psi::Psi<T> X_full(nk, 1, nocc * nvirt, nullptr, false);// one-band
         X_full.zero_out();
-        for (int ik = 0;ik < X.get_nk();++ik)
+        for (int ik = 0;ik < nk;++ik)
         {
-            X.fix_k(ik);
+            const int xstart_bk = xstart_b + ik * pX.get_local_size();
             X_full.fix_k(ik);
 #ifdef __MPI
-            LR_Util::gather_2d_to_full(this->pX, X.get_pointer(), X_full.get_pointer(), false, nvirt, nocc);
+            LR_Util::gather_2d_to_full(this->pX, X + xstart_bk, X_full.get_pointer(), false, nvirt, nocc);
 #endif
         }
         std::map<double, int, std::greater<double>> abs_order;
         X_full.fix_k(0);
-        for (int i = 0;i < X.get_nk() * nocc * nvirt;++i) { double abs = std::abs(X_full.get_pointer()[i]);if (abs > 0.3) { abs_order[abs] = i; } }
+        for (int i = 0;i < nk * nocc * nvirt;++i) { double abs = std::abs(X_full.get_pointer()[i]);if (abs > 0.3) { abs_order[abs] = i; } }
         if (abs_order.size() > 0) {
             for (auto it = abs_order.cbegin();it != abs_order.cend();++it)
             {
@@ -233,7 +228,6 @@ void LR::LR_Spectrum<T>::transition_analysis(const int ispin)
         }
     }
     ofs << "==================================================================== " << std::endl;
-    X.fix_kb(0, 0);
 }
 
 template class LR::LR_Spectrum<double>;

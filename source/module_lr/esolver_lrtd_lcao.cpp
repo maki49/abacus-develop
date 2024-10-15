@@ -136,6 +136,7 @@ void LR::ESolver_LR<T, TR>::reset_dim_spin2()
     if (nupdown == 0) { std::cout << "** Assuming the spin-up and spin-down states are degenerate. **" << std::endl; }
     else
     {
+        this->openshell = true;
         nupdown > 0 ? ((nocc[1] -= nupdown) && (nvirt[1] += nupdown)) : ((nocc[0] += nupdown) && (nvirt[0] -= nupdown));
         // npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
         std::cout << "** Solve the spin-up and spin-down states separately for open-shell system. **" << std::endl;
@@ -434,19 +435,19 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
     if (this->input.lr_solver != "spectrum")
     {
         // allocate and initialize A matrix and density matrix
-        std::vector<std::string> spin_type = { "singlet", "triplet" };
-        for (int is = 0;is < nspin;++is)
+        auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
+        for (int is = 0;is < X.size();++is)
         {
-            if (nspin == 2) { std::cout << "Calculating " << spin_type[is] << " excitations" << std::endl; }
+            if (nspin == 2) { std::cout << "Calculating " << spin_types[is] << " excitations" << std::endl; }
             HamiltLR<T> hlr(xc_kernel, nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, orb_cutoff_, GlobalC::GridD, this->psi_ks, this->eig_ks,
 #ifdef __EXX
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
                 this->gint_, this->pot[is], this->kv, this->paraX_, & this->paraC_, & this->paraMat_,
-                spin_type[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
+                spin_types[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
             // solve the Casida equation
             HSolverLR<T> hsol(nk, this->npairs[is], is, std::max(1e-13, this->input.lr_thr), this->input.out_wfc_lr);
-            hsol.solve(hlr, *this->X[is], this->pelec->ekb, this->input.lr_solver/*,
+            hsol.solve(hlr, this->X[is].template data<T>(), nloc_per_band, nstates, this->pelec->ekb, this->input.lr_solver/*,
                 !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel)*/);  //whether the kernel is Hermitian
         }
     }
@@ -478,14 +479,16 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
     double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
     double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
     for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
+    auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
     for (int is = 0;is < this->nspin;++is)
     {
-        LR_Spectrum<T> spectrum(&this->pelec->ekb.c[is * this->nstates], *this->X[is],
-            this->nspin, this->nbasis, this->nocc[is], this->nvirt[is], this->gint_, *this->pw_rho, *this->psi_ks,
-            this->ucell, this->kv, this->paraX_[is], this->paraC_, this->paraMat_);
-        spectrum.oscillator_strength();
-        spectrum.transition_analysis(is);
-        spectrum.optical_absorption(freq, input.abs_broadening, is);
+        const int is_in_x = openshell ? 0 : is;
+        LR_Spectrum<T> spectrum(this->nspin, this->nbasis, this->nocc[is], this->nvirt[is], this->gint_, *this->pw_rho, *this->psi_ks,
+            this->ucell, this->kv, this->paraX_[is], this->paraC_, this->paraMat_,
+            &this->pelec->ekb.c[is_in_x * nstates], this->X[is_in_x].template data<T>(),
+            nstates, nloc_per_band, /*offset=*/openshell ? nk * paraX_[0].get_local_size() : 0);
+        spectrum.transition_analysis(spin_types[is]);
+        spectrum.optical_absorption(freq, input.abs_broadening, spin_types[is]);
     }
 }
 
@@ -504,29 +507,24 @@ void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
         );//nvirt - row, nocc - col 
         this->paraX_.emplace_back(std::move(px));
     }
-    this->X.resize(this->nspin);
-    const std::vector<std::string> spin_types = { "singlet", "triplet" };
+    this->nloc_per_band = nk * (openshell ? paraX_[0].get_local_size() + paraX_[1].get_local_size() : paraX_[0].get_local_size());
+
+    this->X.resize(openshell ? 1 : nspin, LR_Util::newTensor<T>({ nstates, nloc_per_band }));
+    for (auto& x : X) { x.zero(); }
+
+    auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
     // if spectrum-only, read the LR-eigenstates from file and return
     if (this->input.lr_solver == "spectrum")
     {
         std::cout << "reading the excitation amplitudes from file: \n";
-        for (int is = 0; is < this->nspin; ++is)
+        for (int is = 0; is < this->X.size(); ++is)
         {
-            this->X[is] = std::make_shared<psi::Psi<T>>(LR_Util::read_psi_bandfirst<T>(
-                PARAM.globalv.global_readin_dir + "Excitation_Amplitude_" + spin_types[is], GlobalV::MY_RANK));
+            std::ifstream ifs(PARAM.globalv.global_readin_dir + "Excitation_Amplitude_" + spin_types[is] + "_" + std::to_string(GlobalV::MY_RANK) + ".dat");
+            assert(nstates * nloc_per_band == LR_Util::read_value(ifs, X[is].data<T>(), nstates, nloc_per_band));
         }
     }
     else
     {
-        for (int is = 0; is < this->nspin; ++is)
-        {
-            this->X[is] = std::make_shared<psi::Psi<T>>(this->nk,
-                this->nstates,
-                this->paraX_[is].get_local_size(),
-                nullptr,
-                false); // band(state)-first
-            this->X[is]->zero_out();
-        }
         set_X_initial_guess();
     }
 }
@@ -545,7 +543,7 @@ void LR::ESolver_LR<T, TR>::set_X_initial_guess()
         // if (E_{lumo}-E_{homo-1} < E_{lumo+1}-E{homo}), mode = 0, else 1(smaller first)
         bool ix_mode = false;   //default
         if (this->eig_ks.nc > no + 1 && no >= 2 && eig_ks(is, no) - eig_ks(is, no - 2) - 1e-5 > eig_ks(is, no + 1) - eig_ks(is, no - 1)) { ix_mode = true; }
-        GlobalV::ofs_running << "setting the initial guess of X: " << std::endl;
+        GlobalV::ofs_running << "setting the initial guess of X of spin" << is << std::endl;
         if (no >= 2 && eig_ks.nc > no) { GlobalV::ofs_running << "E_{lumo}-E_{homo-1}=" << eig_ks(is, no) - eig_ks(is, no - 2) << std::endl; }
         if (no >= 1 && eig_ks.nc > no + 1) { GlobalV::ofs_running << "E_{lumo+1}-E{homo}=" << eig_ks(is, no + 1) - eig_ks(is, no - 1) << std::endl; }
         GlobalV::ofs_running << "mode of X-index: " << ix_mode << std::endl;
@@ -559,19 +557,21 @@ void LR::ESolver_LR<T, TR>::set_X_initial_guess()
         ioiv2ix = std::move(std::get<0>(indexmap));
         ix2ioiv = std::move(std::get<1>(indexmap));
 
-        for (int s = 0; s < nstates; ++s)
+        for (int ib = 0; ib < nstates; ++ib)
         {
-            this->X[is]->fix_b(s);
-            int ipair = s % np;
-            int occ_global = std::get<0>(ix2ioiv[ipair]);   // occ
-            int virt_global = std::get<1>(ix2ioiv[ipair]);   // virt
-            int ik = s / np;
+            const int ipair = ib % np;
+            const int occ_global = std::get<0>(ix2ioiv[ipair]);   // occ
+            const int virt_global = std::get<1>(ix2ioiv[ipair]);   // virt
+            const int ik = ib / np;
+            const int xstart_b = ib * nloc_per_band;    //start index of band ib
+            const int xstart_bs = (openshell && is == 1) ? xstart_b + nk * paraX_[0].get_local_size() : xstart_b;  // start index of band ib, spin is
+            const int is_in_x = openshell ? 1 : is;     // if openshell, spin-up and spin-down are put together
             if (px.in_this_processor(virt_global, occ_global))
-                (*X[is])(ik, px.global2local_col(occ_global) * px.get_row_size()
-                    + px.global2local_row(virt_global))
-                = (static_cast<T>(1.0) / static_cast<T>(nk));
+            {
+                const int ipair_loc = px.global2local_col(occ_global) * px.get_row_size() + px.global2local_row(virt_global);
+                X[is_in_x].data<T>()[xstart_bs + ipair_loc] = (static_cast<T>(1.0) / static_cast<T>(nk));
+            }
         }
-        this->X[is]->fix_b(0);  //recover the pointer
     }
 }
 
@@ -586,8 +586,8 @@ void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S1);
         break;
     case 2:
-        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, nupdown ? PotHxcLR::SpinType::S2_up : PotHxcLR::SpinType::S2_singlet);
-        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, nupdown ? PotHxcLR::SpinType::S2_down : PotHxcLR::SpinType::S2_triplet);
+        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, openshell ? PotHxcLR::SpinType::S2_up : PotHxcLR::SpinType::S2_singlet);
+        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, openshell ? PotHxcLR::SpinType::S2_down : PotHxcLR::SpinType::S2_triplet);
         break;
     default:
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");

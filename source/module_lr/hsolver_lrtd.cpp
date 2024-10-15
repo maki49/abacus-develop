@@ -19,20 +19,21 @@ namespace LR
     }
     template<typename T>
     void HSolverLR<T>::solve(const HamiltLR<T>& hm,
-        psi::Psi<T>& psi,
+        T* psi,
+        const int& dim,
+        const int& nband,
         ModuleBase::matrix& ekb,
         const std::string method,
         const bool hermitian)
     {
         ModuleBase::TITLE("HSolverLR", "solve");
-        assert(psi.get_nk() == nk);
         const std::vector<std::string> spin_types = { "singlet", "triplet" };
         // note: if not TDA, the eigenvalues will be complex
         // then we will need a new constructor of DiagoDavid
 
         // 1. allocate precondition and eigenvalue
-        std::vector<Real> precondition(psi.get_nk() * psi.get_nbasis());
-        std::vector<Real> eigenvalue(psi.get_nbands());   //nstates
+        std::vector<Real> precondition(dim);
+        std::vector<Real> eigenvalue(nband);   //nstates
         // 2. select the method
 #ifdef __MPI
         const hsolver::diag_comm_info comm_info = { POOL_WORLD, GlobalV::RANK_IN_POOL, GlobalV::NPROC_IN_POOL };
@@ -52,25 +53,19 @@ namespace LR
                 print_eigs(eig_complex, "Right eigenvalues: of the non-Hermitian matrix: (Ry)");
                 for (int i = 0; i < nk * npairs; i++) { eigenvalue[i] = eig_complex[i].real(); }
             }
-            psi.fix_kb(0, 0);
             // copy eigenvectors
-            for (int i = 0;i < psi.size();++i) { psi.get_pointer()[i] = Amat_full[i]; }
+            std::memcpy(psi, Amat_full.data(), sizeof(T) * dim * nband);
         }
         else
         {
             // 3. set precondition and diagethr
-            for (int i = 0; i < psi.get_nk() * psi.get_nbasis(); ++i) { precondition[i] = static_cast<Real>(1.0); }
-
-            // wrap band-first psi as k1-first psi_k1_dav
-            psi::Psi<T> psi_k1_dav = LR_Util::bfirst_to_k1_wrapper(psi);
-            assert(psi_k1_dav.get_nbands() == psi.get_nbands());
-            assert(psi_k1_dav.get_nbasis() == psi.get_nbasis() * psi.get_nk());
+            for (int i = 0; i < dim; ++i) { precondition[i] = static_cast<Real>(1.0); }
 
             const int david_maxiter = hsolver::DiagoIterAssist<T>::PW_DIAG_NMAX;
 
             auto hpsi_func = [&hm](T* psi_in, T* hpsi, const int ld_psi, const int nvec) {hm.hPsi(psi_in, hpsi, ld_psi, nvec);};
-            auto spsi_func = [&hm](const T* psi_in, T* spsi, const int ld_psi, const int nbands)
-                { std::memcpy(spsi, psi_in, sizeof(T) * ld_psi * nbands); };
+            auto spsi_func = [&hm](const T* psi_in, T* spsi, const int ld_psi, const int nband)
+                { std::memcpy(spsi, psi_in, sizeof(T) * ld_psi * nband); };
 
             if (method == "dav")
             {
@@ -80,27 +75,25 @@ namespace LR
                 // converged.
                 const int notconv_max = ("nscf" == PARAM.inp.calculation) ? 0 : 5;
                 // do diag and add davidson iteration counts up to avg_iter
-                const int& dim = psi_k1_dav.get_nbasis();   //equals to leading dimension here
-                const int& nband = psi_k1_dav.get_nbands();
                 hsolver::DiagoDavid<T> david(precondition.data(), nband, dim, PARAM.inp.pw_diag_ndim, PARAM.inp.use_paw, comm_info);
                 hsolver::DiagoIterAssist<T>::avg_iter += static_cast<double>(david.diag(hpsi_func, spsi_func,
-                    dim, psi_k1_dav.get_pointer(), eigenvalue.data(), this->diag_ethr, david_maxiter, ntry_max, 0));
+                    dim, psi, eigenvalue.data(), this->diag_ethr, david_maxiter, ntry_max, 0));
             }
             else if (method == "dav_subspace") //need refactor
             {
                 hsolver::Diago_DavSubspace<T> dav_subspace(precondition,
-                    psi_k1_dav.get_nbands(),
-                    psi_k1_dav.get_nbasis(),
+                    nband,
+                    dim,
                     PARAM.inp.pw_diag_ndim,
                     this->diag_ethr,
                     david_maxiter,
                     false, //always do the subspace diag (check the implementation)
                     comm_info);
-                std::vector<double> ethr_band(psi_k1_dav.get_nbands(), this->diag_ethr);
+                std::vector<double> ethr_band(nband, this->diag_ethr);
                 hsolver::DiagoIterAssist<T>::avg_iter
                     += static_cast<double>(dav_subspace.diag(
-                        hpsi_func, psi_k1_dav.get_pointer(),
-                        psi_k1_dav.get_nbasis(),
+                        hpsi_func, psi,
+                        dim,
                         eigenvalue.data(),
                         ethr_band.data(),
                         false /*scf*/));
@@ -109,7 +102,7 @@ namespace LR
         }
 
         // 5. copy eigenvalue to pes
-        for (int ist = 0;ist < psi.get_nbands();++ist) { ekb(ispin_solve, ist) = eigenvalue[ist]; }
+        for (int ist = 0;ist < nband;++ist) { ekb(ispin_solve, ist) = eigenvalue[ist]; }
 
 
         // 6. output eigenvalues and eigenvectors
@@ -124,12 +117,12 @@ namespace LR
                 for (auto& e : eigenvalue) {ofs << e << " ";}
                 ofs.close();
             }
-            LR_Util::write_psi_bandfirst(psi, PARAM.globalv.global_out_dir + "Excitation_Amplitude_" + spin_types[ispin_solve], GlobalV::MY_RANK);
+            LR_Util::write_psi_bandfirst(psi, nband, nk, npairs, PARAM.globalv.global_out_dir + "Excitation_Amplitude_" + spin_types[ispin_solve], GlobalV::MY_RANK);
         }
 
         // normalization is already satisfied
         // std::cout << "check normalization of eigenvectors:" << std::endl;
-        // for (int ist = 0;ist < psi.get_nbands();++ist)
+        // for (int ist = 0;ist < nband;++ist)
         // {
         //     double norm2 = 0;
         //     for (int ik = 0;ik < psi.get_nk();++ik)

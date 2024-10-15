@@ -65,8 +65,12 @@ namespace LR
         /// @brief ground state bands, read from the file, or moved from ESolver_FP::pelec.ekb
         ModuleBase::matrix eig_ks;///< energy of ground state
 
-        /// @brief Excited state wavefunction, size: [nspin][nstates * nk * (nocc(local) * nvirt (local))]
-        std::vector<std::shared_ptr<psi::Psi<T>>> X;
+        /// @brief Excited state wavefunction (locc, lvirt are local size of nocc and nvirt in each process)
+        /// size of X: [neq][{nstate, nloc_per_band}], namely:
+        /// - [nspin][{nstates, nk* (locc* lvirt}] for close- shell,
+        /// -  [1][{nstates, nk * (locc[0] * lvirt[0]) + nk * (locc[1] * lvirt[1])}] for open-shell
+        std::vector<ct::Tensor> X;
+        int nloc_per_band = 1;
 
         std::vector<int> nocc = { 1, 1 };   ///< number of occupied orbitals for each spin used in the calculation
         int nocc_in = 1;    ///< nocc read from input (adjusted by nelec): max(spin-up, spindown)
@@ -82,6 +86,7 @@ namespace LR
         int nspin = 1;
         int nk = 1;
         int nupdown = 0;
+        bool openshell = false;
         std::string xc_kernel;
 
         Grid_Technique gt_;
