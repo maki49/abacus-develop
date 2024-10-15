@@ -1,7 +1,6 @@
 #pragma once
 #include "module_lr/hamilt_casida.h"
 #include "module_hsolver/diago_iter_assist.h"
-#include "module_psi/psi.h"
 namespace LR
 {
     template<typename T>
@@ -18,7 +17,9 @@ namespace LR
 
         /// eigensolver for common Hamilt
         void solve(const HamiltLR<T>& hm,
-            psi::Psi<T>& psi,
+            T* psi,
+            const int& dim, ///< local leading dimension (or nbasis)
+            const int& nband,   ///< nstates in LR-TDDFT, not (nocc+nvirt)
             ModuleBase::matrix& ekb,
             const std::string method_in,
             const bool hermitian = true);

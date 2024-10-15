@@ -9,36 +9,44 @@ namespace LR
     class LR_Spectrum
     {
     public:
-        LR_Spectrum(const double* eig, const psi::Psi<T>& X, const int& nspin, const int& naos, const int& nocc, const int& nvirt,
+        LR_Spectrum(const int& nspin, const int& naos, const int& nocc, const int& nvirt,
             typename TGint<T>::type* gint, const ModulePW::PW_Basis& rho_basis, psi::Psi<T>& psi_ks,
-            const UnitCell& ucell, const K_Vectors& kv_in, Parallel_2D& pX_in, Parallel_2D& pc_in, Parallel_Orbitals& pmat_in) :
-            eig(eig), X(X), nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
+            const UnitCell& ucell, const K_Vectors& kv_in, const Parallel_2D& pX_in, const Parallel_2D& pc_in, const Parallel_Orbitals& pmat_in,
+            const double* eig, const T* X, const int& nstate, const int& nloc_per_band, const int& offset) :
+            nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
             gint(gint), rho_basis(rho_basis), psi_ks(psi_ks),
-            ucell(ucell), kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in) {};
+            ucell(ucell), kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in),
+            eig(eig), X(X), nstate(nstate), nloc_per_band(nloc_per_band), offset(offset)
+        {
+            this->oscillator_strength();
+        };
+        /// @brief calculate the optical absorption spectrum
+        void optical_absorption(const std::vector<double>& freq, const double eta, const std::string& spintype);
+        /// @brief print out the transition dipole moment and the main contributions to the transition amplitude
+        void transition_analysis(const std::string& spintype);
+    private:
         /// $$2/3\Omega\sum_{ia\sigma} |\braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2\int \rho_{\alpha\beta}(\mathbf{r}) \mathbf{r} d\mathbf{r}$$
         void oscillator_strength();
-        /// @brief calculate the optical absorption spectrum
-        void optical_absorption(const std::vector<double>& freq, const double eta, const int ispin = 0);
-        /// @brief print out the transition dipole moment and the main contributions to the transition amplitude
-        void transition_analysis(const int ispin = 0);
-    private:
+
         const int& nspin;
         const int nspin_solve = 1;
         const int& naos;
         const int& nocc;
         const int& nvirt;
         const int nk = 1;
+        const int nstate = 1;
+        const int nloc_per_band = 1;///< leading dimension of X, or the data size of each state
+        const int offset = 0;///< starting index in each state
         const double* eig;
-        const psi::Psi<T>& X;
+        const T* X;
         const K_Vectors& kv;
         const psi::Psi<T>& psi_ks;
-        Parallel_2D& pX;
-        Parallel_2D& pc;
-        Parallel_Orbitals& pmat;
+        const Parallel_2D& pX;
+        const Parallel_2D& pc;
+        const Parallel_Orbitals& pmat;
         typename TGint<T>::type* gint = nullptr;
         const ModulePW::PW_Basis& rho_basis;
         const UnitCell& ucell;
-        const std::vector<std::string> spin_types = { "singlet", "triplet" };
 
         void cal_gint_rho(double** rho, const int& nspin, const int& nrxx);
 

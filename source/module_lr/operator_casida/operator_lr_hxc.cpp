@@ -57,10 +57,8 @@ namespace LR
             this->grid_calculation(nbands, ib_dm);   //DM(R) to H(R)
             // ========================= end grid calculation =========================
 
-            // V(R)->V(k)
-            std::vector<ct::Tensor> v_hxc_2d(nk,
-                ct::Tensor(ct::DataTypeToEnum<T>::value, ct::DeviceTypeToEnum<base_device::DEVICE_CPU>::value,
-                    { pmat->get_col_size(), pmat->get_row_size() }));
+            // V(R)->V(k) 
+            std::vector<ct::Tensor> v_hxc_2d(nk, LR_Util::newTensor<T>({ pmat->get_col_size(), pmat->get_row_size() }));
             for (auto& v : v_hxc_2d) v.zero();
             int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER(PARAM.inp.ks_solver) ? this->pmat->get_row_size() : this->pmat->get_col_size();
             for (int ik = 0;ik < nk;++ik) { folding_HR(*this->hR, v_hxc_2d[ik].data<T>(), this->kv.kvec_d[ik], nrow, 1); }  // V(R) -> V(k)
