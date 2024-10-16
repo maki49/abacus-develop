@@ -24,7 +24,7 @@ namespace LR
             const UnitCell& ucell_in,
             const std::vector<double>& orb_cutoff,
             Grid_Driver& gd_in,
-            const psi::Psi<T>* psi_ks_in,
+            const psi::Psi<T>& psi_ks_in,
             const ModuleBase::matrix& eig_ks,
 #ifdef __EXX
             std::weak_ptr<Exx_LRI<T>> exx_lri_in,
@@ -38,9 +38,7 @@ namespace LR
             const Parallel_Orbitals& pmat_in,
             const std::string& spin_type,
             const std::string& ri_hartree_benchmark = "none",
-            const std::vector<int>& aims_nbasis = {}) : nspin(nspin), nocc(nocc), nvirt(nvirt), pX(pX_in),
-            nk(kv_in.get_nks() / nspin), openshell(spin_type == "up" || spin_type == "down"),
-            nloc_per_band(nk* (openshell ? pX_in[0].get_local_size() + pX_in[1].get_local_size() : pX_in[0].get_local_size()))
+            const std::vector<int>& aims_nbasis = {}) : nspin(nspin), nocc(nocc), nvirt(nvirt), pX(pX_in), nk(kv_in.get_nks() / nspin)
         {
             ModuleBase::TITLE("HamiltLR", "HamiltLR");
             if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
@@ -78,7 +76,7 @@ namespace LR
                     }
                     if (!std::set<std::string>({ "rpa", "hf" }).count(xc_kernel)) { throw std::runtime_error("ri_hartree_benchmark is only supported for xc_kernel rpa and hf"); }
                     RI_Benchmark::OperatorRIHartree<T>* ri_hartree_op
-                        = new RI_Benchmark::OperatorRIHartree<T>(ucell_in, naos, nocc[0], nvirt[0], *psi_ks_in,
+                        = new RI_Benchmark::OperatorRIHartree<T>(ucell_in, naos, nocc[0], nvirt[0], psi_ks_in,
                             Cs_read, Vs_read, ri_hartree_benchmark == "aims", aims_nbasis);
                     this->ops->add(ri_hartree_op);
                 }
@@ -124,28 +122,12 @@ namespace LR
 
         virtual void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int& nband) const
         {
-            assert(ld_psi == this->nloc_per_band);
+            assert(ld_psi == nk * pX[0].get_local_size());
             hamilt::Operator<T>* node(this->ops);
-            if (openshell)
+            while (node != nullptr)
             {
-                /// band-wise act (also works for close-shell, but not efficient)
-                for (int ib = 0;ib < nband;++ib)
-                {
-                    const int offset = ib * ld_psi;
-                    while (node != nullptr)
-                    {
-                        node->act(1, ld_psi, /*npol=*/1, psi_in + offset, hpsi + offset);
-                        node = (hamilt::Operator<T>*)(node->next_op);
-                    }
-                }
-            }
-            else
-            {
-                while (node != nullptr)
-                {
-                    node->act(nband, ld_psi, /*npol=*/1, psi_in, hpsi);
-                    node = (hamilt::Operator<T>*)(node->next_op);
-                }
+                node->act(nband, ld_psi, /*npol=*/1, psi_in, hpsi);
+                node = (hamilt::Operator<T>*)(node->next_op);
             }
         }
 
@@ -154,8 +136,6 @@ namespace LR
         const std::vector<int>& nvirt;
         const int nspin = 1;
         const int nk = 1;
-        const bool openshell = false;
-        const int nloc_per_band = 1;
         const std::vector<Parallel_2D>& pX;
         T one()const;
         /// transition density matrix in AO representation

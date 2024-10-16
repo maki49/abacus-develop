@@ -19,7 +19,7 @@ namespace LR
             const int& naos,
             const std::vector<int>& nocc,
             const std::vector<int>& nvirt,
-            const psi::Psi<T, Device>* psi_ks_in,
+            const psi::Psi<T, Device>& psi_ks_in,
             std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans_in,
             typename TGint<T>::type* gint_in,
             std::weak_ptr<PotHxcLR> pot_in,
@@ -35,7 +35,6 @@ namespace LR
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), gint(gint_in), pot(pot_in),
             ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in), kv(kv_in),
             pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks)
-            // nloc_per_band(nk* (ispin_ks.size() == 1 ? pX_in[ispin_ks[0]].get_local_size() : pX_in[0].get_local_size() + pX_in[1].get_local_size()))
         {
             ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
             this->cal_type = hamilt::calculation_type::lcao_gint;
@@ -107,7 +106,7 @@ namespace LR
         const std::vector<int> ispin_ks = { 0 };  ///< the index of spin of psi_ks used in {AX, DM_trans}
         const K_Vectors& kv;
         /// ground state wavefunction
-        const psi::Psi<T, Device>* psi_ks = nullptr;
+        const psi::Psi<T, Device>& psi_ks = nullptr;
 
         /// transition density matrix
         std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans;

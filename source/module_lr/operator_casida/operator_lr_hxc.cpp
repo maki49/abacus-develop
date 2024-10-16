@@ -23,6 +23,8 @@ namespace LR
         ModuleBase::TITLE("OperatorLRHxc", "act");
         const int& sl = ispin_ks[0];
         const int& sr = ispin_ks.size() == 1 ? sl : ispin_ks[1];
+        const auto psir_ks = LR_Util::get_psi_spin(psi_ks, sr, nk);
+        const auto psil_ks = LR_Util::get_psi_spin(psi_ks, sl, nk);
 
         this->init_DM_trans(nbands, this->DM_trans);    // initialize transion density matrix
 
@@ -36,10 +38,10 @@ namespace LR
 
             // 1. transition density matrix
 #ifdef __MPI
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX[sr], LR_Util::get_psi_spin(*psi_ks, sr, nk), pc, naos, nocc[sr], nvirt[sr], pmat);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX[sr], psir_ks, pc, naos, nocc[sr], nvirt[sr], pmat);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart_b, LR_Util::get_psi_spin(*psi_ks, sr, nk), nocc[sr], nvirt[sr]);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart_b, psir_ks, nocc[sr], nvirt[sr]);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
             // tensor to vector, then set DMK
@@ -69,9 +71,9 @@ namespace LR
 
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            cal_AX_pblas(v_hxc_2d, this->pmat, LR_Util::get_psi_spin(*psi_ks, sl, nk), this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi + xstart_b);
+            cal_AX_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi + xstart_b);
 #else
-            cal_AX_blas(v_hxc_2d, LR_Util::get_psi_spin(*psi_ks, sl, nk), nocc[sl], nvirt[sl], hpsi + xstart_b);
+            cal_AX_blas(v_hxc_2d, psil_ks, nocc[sl], nvirt[sl], hpsi + xstart_b);
 #endif
         }
     }

@@ -2,8 +2,9 @@
 #include "utils/gint_move.hpp"
 #include "utils/lr_util.h"
 #include "hamilt_casida.h"
+#include "hamilt_ulr.hpp"
 #include "module_lr/potentials/pot_hxc_lrtd.h"
-#include "module_lr/hsolver_lrtd.h"
+#include "module_lr/hsolver_lrtd.hpp"
 #include "module_lr/lr_spectrum.h"
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
@@ -141,7 +142,7 @@ void LR::ESolver_LR<T, TR>::reset_dim_spin2()
         // npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
         std::cout << "** Solve the spin-up and spin-down states separately for open-shell system. **" << std::endl;
     }
-    if (nstates > std::min(npairs[0], npairs[1]) * nk) { throw std::invalid_argument("ESolver_LR: nstates > nocc*nvirt*nk"); }
+    if (nstates > (npairs[0] + npairs[1]) * nk) { throw std::invalid_argument("ESolver_LR: nstates > nocc*nvirt*nk"); }
 }
 
 template <typename T, typename TR>
@@ -432,33 +433,63 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
     this->setup_eigenvectors_X();
     this->pelec->ekb.create(nspin, this->nstates);
 
+    auto efile = [&](const std::string& label)->std::string {return PARAM.globalv.global_out_dir + "Excitation_Energy_" + label + ".dat";};
+    auto vfile = [&](const std::string& label)->std::string {return PARAM.globalv.global_out_dir + "Excitation_Amplitude_" + label + "_" + std::to_string(GlobalV::MY_RANK) + ".dat";};
     if (this->input.lr_solver != "spectrum")
     {
+        auto write_states = [&](const std::string& label, const Real<T>* e, const T* v, const int& dim, const int& nst, const int& prec = 8)->void
+            {
+                if (GlobalV::MY_RANK == 0) { assert(nst == LR_Util::write_value(efile(label), prec, e, nst)); }
+                assert(nst * dim == LR_Util::write_value(vfile(label), prec, v, nst, dim));
+            };
         // allocate and initialize A matrix and density matrix
-        auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
-        for (int is = 0;is < X.size();++is)
+        if (openshell)
         {
-            if (nspin == 2) { std::cout << "Calculating " << spin_types[is] << " excitations" << std::endl; }
-            HamiltLR<T> hlr(xc_kernel, nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, orb_cutoff_, GlobalC::GridD, this->psi_ks, this->eig_ks,
+            std::cout << "Solving spin-conserving excitation for open-shell system." << std::endl;
+            HamiltULR<T> hulr(xc_kernel, nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, orb_cutoff_, GlobalC::GridD, *this->psi_ks, this->eig_ks,
 #ifdef __EXX
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
-                this->gint_, this->pot[is], this->kv, this->paraX_, this->paraC_, this->paraMat_,
-                spin_types[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
-            // solve the Casida equation
-            HSolverLR<T> hsol(nk, this->npairs[is], is, std::max(1e-13, this->input.lr_thr), this->input.out_wfc_lr);
-            hsol.solve(hlr, this->X[is].template data<T>(), nloc_per_band, nstates, this->pelec->ekb, this->input.lr_solver/*,
-                !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel)*/);  //whether the kernel is Hermitian
+                this->gint_, this->pot, this->kv, this->paraX_, this->paraC_, this->paraMat_);
+            LR::HSolver::solve(hulr, this->X[0].template data<T>(), nloc_per_band, nstates, this->pelec->ekb.c, this->input.lr_solver, this->input.lr_thr);
+            if (input.out_wfc_lr) { write_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_band, nstates); }
+        }
+        else
+        {
+            auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
+            for (int is = 0;is < nspin;++is)
+            {
+                std::cout << "Calculating " << spin_types[is] << " excitations" << std::endl;
+                HamiltLR<T> hlr(xc_kernel, nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, orb_cutoff_, GlobalC::GridD, *this->psi_ks, this->eig_ks,
+#ifdef __EXX
+                    this->exx_lri, this->exx_info.info_global.hybrid_alpha,
+#endif
+                    this->gint_, this->pot[is], this->kv, this->paraX_, this->paraC_, this->paraMat_,
+                    spin_types[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
+                // solve the Casida equation
+                LR::HSolver::solve(hlr, this->X[is].template data<T>(), nloc_per_band, nstates,
+                    this->pelec->ekb.c + is * nstates, this->input.lr_solver, this->input.lr_thr/*,
+                        !std::set<std::string>({ "hf", "hse" }).count(this->xc_kernel)*/);  //whether the kernel is Hermitian
+                if (input.out_wfc_lr) { write_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_band, nstates); }
+            }
         }
     }
     else    // read the eigenvalues
     {
-        std::ifstream ifs(PARAM.globalv.global_readin_dir + "Excitation_Energy.dat");
-        std::cout << "reading the excitation energies from file: \n";
-        for (int is = 0;is < nspin;++is)
+        auto read_states = [&](const std::string& label, Real<T>* e, T* v, const int& dim, const int& nst)->void
+            {
+                if (GlobalV::MY_RANK == 0) { assert(nst == LR_Util::read_value(efile(label), e, nst)); }
+                assert(nst * dim == LR_Util::read_value(vfile(label), v, nst, dim));
+            };
+        std::cout << "reading the excitation amplitudes from file: \n";
+        if (openshell)
         {
-            for (int i = 0;i < this->nstates;++i) { ifs >> this->pelec->ekb(is, i); }
-            for (int i = 0;i < this->nstates;++i) { std::cout << this->pelec->ekb(is, i) << " "; }
+            read_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_band, nstates);
+        }
+        else
+        {
+            auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
+            for (int is = 0;is < nspin;++is) { read_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_band, nstates); }
         }
     }
     return;
@@ -514,19 +545,7 @@ void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
 
     auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
     // if spectrum-only, read the LR-eigenstates from file and return
-    if (this->input.lr_solver == "spectrum")
-    {
-        std::cout << "reading the excitation amplitudes from file: \n";
-        for (int is = 0; is < this->X.size(); ++is)
-        {
-            std::ifstream ifs(PARAM.globalv.global_readin_dir + "Excitation_Amplitude_" + spin_types[is] + "_" + std::to_string(GlobalV::MY_RANK) + ".dat");
-            assert(nstates * nloc_per_band == LR_Util::read_value(ifs, X[is].data<T>(), nstates, nloc_per_band));
-        }
-    }
-    else
-    {
-        set_X_initial_guess();
-    }
+    if (this->input.lr_solver != "spectrum") { set_X_initial_guess(); }
 }
 
 template<typename T, typename TR>
@@ -565,7 +584,7 @@ void LR::ESolver_LR<T, TR>::set_X_initial_guess()
             const int ik = ib / np;
             const int xstart_b = ib * nloc_per_band;    //start index of band ib
             const int xstart_bs = (openshell && is == 1) ? xstart_b + nk * paraX_[0].get_local_size() : xstart_b;  // start index of band ib, spin is
-            const int is_in_x = openshell ? 1 : is;     // if openshell, spin-up and spin-down are put together
+            const int is_in_x = openshell ? 0 : is;     // if openshell, spin-up and spin-down are put together
             if (px.in_this_processor(virt_global, occ_global))
             {
                 const int ipair_loc = px.global2local_col(occ_global) * px.get_row_size() + px.global2local_row(virt_global);

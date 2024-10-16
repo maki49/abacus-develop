@@ -1,3 +1,4 @@
+#pragma once
 #include "module_hamilt_general/operator.h"
 #include "module_lr/ri_benchmark/ri_benchmark.h"
 #include "module_lr/utils/lr_util_print.h"

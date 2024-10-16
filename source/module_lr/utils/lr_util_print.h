@@ -21,6 +21,15 @@ namespace LR_Util
         for (int i = 0;i < size;++i) { size_now += read_value(ifs, ptr + size_now, args...); }
         return size_now;
     }
+    template<typename T, typename... Args>
+    int read_value(const std::string& file, T* ptr, const int& size, Args&&... args)
+    {
+        std::ifstream ifs(file);
+        const int res = read_value(ifs, ptr, size, args...);
+        ifs.close();
+        return res;
+    }
+
     template<typename T>
     int write_value(std::ofstream& ofs, const T* ptr, const int& size)
     {
@@ -34,6 +43,30 @@ namespace LR_Util
         int size_now = 0;
         for (int i = 0;i < size;++i) { size_now += write_value(ofs, ptr + size_now, args...); }
         ofs << std::endl;
+        return size_now;
+    }
+    template<typename T, typename... Args>
+    int write_value(const std::string& file, const int& prec, const T* ptr, const int& size, Args&&... args)
+    {
+        std::ofstream ofs(file);
+        ofs << std::setprecision(prec) << std::scientific;
+        const int res = write_value(ofs, ptr, size, args...);
+        ofs.close();
+        return res;
+    }
+    template<typename T>
+    int print_value(const T* ptr, const int& size)
+    {
+        for (int i = 0;i < size;++i) { std::cout << filter(ptr[i]) << " "; }
+        std::cout << std::endl;
+        return size;
+    }
+    template<typename T, typename... Args>
+    int print_value(const T* ptr, const int& size, Args&&... args)
+    {
+        int size_now = 0;
+        for (int i = 0;i < size;++i) { size_now += print_value(ptr + size_now, args...); }
+        std::cout << std::endl;
         return size_now;
     }
 

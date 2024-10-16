@@ -8,20 +8,21 @@ namespace LR
         const int no = this->nocc[0];
         const int nv = this->nvirt[0];
         const auto& px = this->pX[0];
+        const int nloc_per_band = nk * px.get_local_size();
         int npairs = no * nv;
         std::vector<T> Amat_full(this->nk * npairs * this->nk * npairs, 0.0);
         for (int ik = 0;ik < this->nk;++ik)
             for (int j = 0;j < no;++j)
                 for (int b = 0;b < nv;++b)
                 {//calculate A^{ai} for each bj
-                    int bj = j * nv + b;
-                    int kbj = ik * npairs + bj;
+                    int bj = j * nv + b;    //global
+                    int kbj = ik * npairs + bj; //global
                     psi::Psi<T> X_bj(1, 1, this->nk * px.get_local_size()); // k1-first, like in iterative solver
                     X_bj.zero_out();
                     // X_bj(0, 0, lj * px.get_row_size() + lb) = this->one();
                     int lj = px.global2local_col(j);
                     int lb = px.global2local_row(b);
-                    if (px.in_this_processor(b, j)) X_bj(0, 0, ik * px.get_local_size() + lj * px.get_row_size() + lb) = this->one();
+                    if (px.in_this_processor(b, j)) { X_bj(0, 0, ik * px.get_local_size() + lj * px.get_row_size() + lb) = this->one(); }
                     psi::Psi<T> A_aibj(1, 1, this->nk * px.get_local_size()); // k1-first
                     A_aibj.zero_out();
 
@@ -41,15 +42,8 @@ namespace LR
 #endif
                 }
         // output Amat
-        std::cout << "Amat_full:" << std::endl;
-        for (int i = 0;i < this->nk * npairs;++i)
-        {
-            for (int j = 0;j < this->nk * npairs;++j)
-            {
-                std::cout << Amat_full[i * this->nk * npairs + j] << " ";
-            }
-            std::cout << std::endl;
-        }
+        std::cout << "Full A matrix:" << std::endl;
+        LR_Util::print_value(Amat_full.data(), nk * npairs, nk * npairs);
         return Amat_full;
     }
 
