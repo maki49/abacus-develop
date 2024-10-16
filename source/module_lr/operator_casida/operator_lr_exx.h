@@ -22,7 +22,7 @@ namespace LR
             const int& nocc,
             const int& nvirt,
             const UnitCell& ucell_in,
-            const psi::Psi<T>* psi_ks_in,
+            const psi::Psi<T>& psi_ks_in,
             std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans_in,
             // HContainer<double>* hR_in,
             std::weak_ptr<Exx_LRI<T>> exx_lri_in,
@@ -44,7 +44,7 @@ namespace LR
 
             // reduce psi_ks for later use
             this->psi_ks_full.resize(this->kv.get_nks(), nocc + nvirt, this->naos);
-            LR_Util::gather_2d_to_full(this->pc, this->psi_ks->get_pointer(), this->psi_ks_full.get_pointer(), false, this->naos, nocc + nvirt);
+            LR_Util::gather_2d_to_full(this->pc, this->psi_ks.get_pointer(), this->psi_ks_full.get_pointer(), false, this->naos, nocc + nvirt);
 
             // get cells in BvK supercell
             const TC period = RI_Util::get_Born_vonKarmen_period(kv_in);
@@ -70,7 +70,7 @@ namespace LR
         const bool tdm_sym = false; ///< whether transition density matrix is symmetric
         const K_Vectors& kv;
         /// ground state wavefunction
-        const psi::Psi<T>* psi_ks = nullptr;
+        const psi::Psi<T>& psi_ks = nullptr;
         psi::Psi<T> psi_ks_full;
         const std::vector<int> aims_nbasis={};    ///< number of basis functions for each type of atom in FHI-aims
 
