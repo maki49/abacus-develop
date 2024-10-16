@@ -45,7 +45,7 @@ namespace LR
                             const int nw2 = aims_nbasis.empty() ? ucell.atoms[it2].nw : aims_nbasis[it2];
                             for (int iw1 = 0;iw1 < nw1;++iw1)
                                 for (int iw2 = 0;iw2 < nw2;++iw2)
-                                    if(this->pmat->in_this_processor(ucell.itiaiw2iwt(it1, ia1, iw1), ucell.itiaiw2iwt(it2, ia2, iw2)))
+                                    if (this->pmat.in_this_processor(ucell.itiaiw2iwt(it1, ia1, iw1), ucell.itiaiw2iwt(it2, ia2, iw2)))
                                         D2d(iw1, iw2) = this->psi_ks_full(ik, io, ucell.itiaiw2iwt(it1, ia1, iw1)) * this->psi_ks_full(ik, nocc + iv, ucell.itiaiw2iwt(it2, ia2, iw2));
                         }
         }
@@ -71,7 +71,7 @@ namespace LR
                             const int nw2 = aims_nbasis.empty() ? ucell.atoms[it2].nw : aims_nbasis[it2];
                             for (int iw1 = 0;iw1 < nw1;++iw1)
                                 for (int iw2 = 0;iw2 < nw2;++iw2)
-                                    if(this->pmat->in_this_processor(ucell.itiaiw2iwt(it1, ia1, iw1), ucell.itiaiw2iwt(it2, ia2, iw2)))
+                                    if (this->pmat.in_this_processor(ucell.itiaiw2iwt(it1, ia1, iw1), ucell.itiaiw2iwt(it2, ia2, iw2)))
                                         D2d(iw1, iw2) = frac * std::conj(this->psi_ks_full(ik, io, ucell.itiaiw2iwt(it1, ia1, iw1))) * this->psi_ks_full(ik, nocc + iv, ucell.itiaiw2iwt(it2, ia2, iw2));
                         }
         }
@@ -85,18 +85,18 @@ namespace LR
         const int& nk = this->kv.get_nks() / this->nspin;
 
         // convert parallel info to LibRI interfaces
-        std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(*this->pmat);
+        std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(this->pmat);
         for (int ib = 0;ib < nbands;++ib)
         {
-            const int xstart_b = ib * nk * pX->get_local_size();
+            const int xstart_b = ib * nk * pX.get_local_size();
             // suppose Cs，Vs, have already been calculated in the ion-step of ground state, 
             // DM_trans(k) and DM_trans(R) has already been calculated from psi_in in OperatorLRHxc::act
             // but int RI_benchmark, DM_trans(k) should be first calculated here
             if (cal_dm_trans)
             {
 #ifdef __MPI
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, *pX, *psi_ks, *pc, naos, nocc, nvirt, *pmat);
-                if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
+                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX, *psi_ks, pc, naos, nocc, nvirt, pmat);
+                if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
                 std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart, *psi_ks, nocc, nvirt);
                 if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
@@ -114,7 +114,7 @@ namespace LR
             // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
             std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
                 aims_nbasis.empty() ? 
-                RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, *this->pmat, this->nspin_solve)
+                RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, this->pmat, this->nspin_solve)
                 : RI_Benchmark::split_Ds(DMk_trans_vector, aims_nbasis, ucell); //0.5 will be multiplied
             // LR_Util::print_CV(Ds_trans[0], "Ds_trans in OperatorLREXX", 1e-10);
             // 2. cal_Hs
@@ -135,15 +135,15 @@ namespace LR
             for (int io = 0;io < this->nocc;++io) {
                 for (int iv = 0;iv < this->nvirt;++iv) {
                     for (int ik = 0;ik < nk;++ik) {
-                        const int xstart_bk = xstart_b + ik * pX->get_local_size();
+                        const int xstart_bk = xstart_b + ik * pX.get_local_size();
                         for (int is = 0;is < this->nspin_solve;++is)
                             {
                                 this->cal_DM_onebase(io, iv, ik, is);       //set Ds_onebase for all e-h pairs (not only on this processor)
                                 // LR_Util::print_CV(Ds_onebase[is], "Ds_onebase of occ " + std::to_string(io) + ", virtual " + std::to_string(iv) + " in OperatorLREXX", 1e-10);
                                 const T& ene= 2 * alpha * //minus for exchange(but here plus is right, why?), 2 for Hartree to Ry
                                     lri->exx_lri.post_2D.cal_energy(this->Ds_onebase[is], lri->Hexxs[is]);
-                                if(this->pX->in_this_processor(iv, io)) { 
-                                    hpsi[xstart_bk + ik * pX->get_local_size() + this->pX->global2local_col(io) * this->pX->get_row_size() + this->pX->global2local_row(iv)] += ene;
+                                if(this->pX.in_this_processor(iv, io)) { 
+                                    hpsi[xstart_bk + ik * pX.get_local_size() + this->pX.global2local_col(io) * this->pX.get_row_size() + this->pX.global2local_row(iv)] += ene;
                                 }
                         }
                     }

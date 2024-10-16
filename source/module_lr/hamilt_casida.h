@@ -33,9 +33,9 @@ namespace LR
             TGint* gint_in,
             std::weak_ptr<PotHxcLR> pot_in,
             const K_Vectors& kv_in,
-            std::vector<Parallel_2D>& pX_in,
-            Parallel_2D* pc_in,
-            Parallel_Orbitals* pmat_in,
+            const std::vector<Parallel_2D>& pX_in,
+            const Parallel_2D& pc_in,
+            const Parallel_Orbitals& pmat_in,
             const std::string& spin_type,
             const std::string& ri_hartree_benchmark = "none",
             const std::vector<int>& aims_nbasis = {}) : nspin(nspin), nocc(nocc), nvirt(nvirt), pX(pX_in),
@@ -45,9 +45,13 @@ namespace LR
             ModuleBase::TITLE("HamiltLR", "HamiltLR");
             if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
             this->DM_trans.resize(1);
+<<<<<<< HEAD
             this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(pmat_in, nspin, kv_in.kvec_d, nk);
+=======
+            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&kv_in, &pmat_in, nspin);
+>>>>>>> afb1e4ab4 (use const ref instead of pointer for Parallel_2D)
             // add the diag operator  (the first one)
-            this->ops = new OperatorLRDiag<T>(eig_ks.c, &pX[0], nk, nocc[0], nvirt[0]);
+            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], nk, nocc[0], nvirt[0]);
             //add Hxc operator
 #ifdef __EXX
             using TAC = std::pair<int, std::array<int, 3>>;
@@ -104,7 +108,7 @@ namespace LR
                 }
                 // std::cout << "exx_alpha=" << exx_alpha << std::endl; // the default value of exx_alpha is 0.25 when dft_functional is pbe or hse
                 hamilt::Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell_in, psi_ks_in,
-                    this->DM_trans, exx_lri_in, kv_in, &pX_in[0], pc_in, pmat_in,
+                    this->DM_trans, exx_lri_in, kv_in, pX_in[0], pc_in, pmat_in,
                     xc_kernel == "hf" ? 1.0 : exx_alpha, //alpha
                     ri_hartree_benchmark != "none"/*whether to cal_dm_trans first here*/,
                     aims_nbasis);
@@ -156,7 +160,7 @@ namespace LR
         const int nk = 1;
         const bool openshell = false;
         const int nloc_per_band = 1;
-        std::vector<Parallel_2D>& pX;
+        const std::vector<Parallel_2D>& pX;
         T one()const;
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands
