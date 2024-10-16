@@ -27,9 +27,9 @@ namespace LR
             const std::vector<double>& orb_cutoff,
             Grid_Driver& gd_in,
             const K_Vectors& kv_in,
-            std::vector<Parallel_2D>& pX_in,
-            Parallel_2D* pc_in,
-            Parallel_Orbitals* pmat_in,
+            const std::vector<Parallel_2D>& pX_in,
+            const Parallel_2D& pc_in,
+            const Parallel_Orbitals& pmat_in,
             const std::vector<int>& ispin_ks = { 0 })
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), gint(gint_in), pot(pot_in),
@@ -40,8 +40,8 @@ namespace LR
             ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
             this->cal_type = hamilt::calculation_type::lcao_gint;
             this->is_first_node = true;
-            this->hR = std::unique_ptr<hamilt::HContainer<T>>(new hamilt::HContainer<T>(pmat_in));
-            this->initialize_HR(*this->hR, ucell_in, gd_in, pmat_in);
+            this->hR = std::unique_ptr<hamilt::HContainer<T>>(new hamilt::HContainer<T>(&pmat_in));
+            this->initialize_HR(*this->hR, ucell_in, gd_in);
             this->DM_trans[0]->init_DMR(*this->hR);
         };
         ~OperatorLRHxc() { };
@@ -52,7 +52,7 @@ namespace LR
 
     private:
         template<typename TR>   //T=double, TR=double; T=std::complex<double>, TR=std::complex<double>/double
-        void initialize_HR(hamilt::HContainer<TR>& hR, const UnitCell& ucell, Grid_Driver& gd, const Parallel_Orbitals* pmat) const
+        void initialize_HR(hamilt::HContainer<TR>& hR, const UnitCell& ucell, Grid_Driver& gd) const
         {
             for (int iat1 = 0; iat1 < ucell.nat; iat1++)
             {
@@ -66,15 +66,15 @@ namespace LR
                     const int T2 = adjs.ntype[ad];
                     const int I2 = adjs.natom[ad];
                     int iat2 = this->ucell.itia2iat(T2, I2);
-                    if (pmat->get_row_size(iat1) <= 0 || pmat->get_col_size(iat2) <= 0) { continue; }
+                    if (pmat.get_row_size(iat1) <= 0 || pmat.get_col_size(iat2) <= 0) { continue; }
                     const ModuleBase::Vector3<int>& R_index = adjs.box[ad];
                     if (ucell.cal_dtau(iat1, iat2, R_index).norm() * this->ucell.lat0 >= orb_cutoff_[T1] + orb_cutoff_[T2]) { continue; }
-                    hamilt::AtomPair<TR> tmp(iat1, iat2, R_index.x, R_index.y, R_index.z, pmat);
+                    hamilt::AtomPair<TR> tmp(iat1, iat2, R_index.x, R_index.y, R_index.z, &pmat);
                     hR.insert_pair(tmp);
                 }
             }
             hR.allocate(nullptr, true);
-            hR.set_paraV(pmat);
+            hR.set_paraV(&pmat);
             if (std::is_same<T, double>::value) { hR.fix_gamma(); }
         }
         template<typename TR>
@@ -89,7 +89,7 @@ namespace LR
                 for (int ib = prev_size;ib < nbands;++ib)
                 {
                     // the first dimenstion of DensityMatrix is nk=nks/nspin 
-                    DM_trans[ib] = LR_Util::make_unique<elecstate::DensityMatrix<T, TR>>(this->pmat, 1, this->kv.kvec_d, this->kv.get_nks() / nspin);
+                    DM_trans[ib] = LR_Util::make_unique<elecstate::DensityMatrix<T, TR>>(&this->pmat, 1, this->kv.kvec_d, this->kv.get_nks() / nspin);
                     DM_trans[ib]->init_DMR(*this->hR);
                 }
             }
@@ -116,9 +116,9 @@ namespace LR
         std::unique_ptr<hamilt::HContainer<T>> hR = nullptr;
 
         /// parallel info
-        Parallel_2D* pc = nullptr;
-        std::vector<Parallel_2D>& pX;
-        Parallel_Orbitals* pmat = nullptr;
+        const Parallel_2D& pc;
+        const std::vector<Parallel_2D>& pX;
+        const Parallel_Orbitals& pmat;
 
         std::weak_ptr<PotHxcLR> pot;
 

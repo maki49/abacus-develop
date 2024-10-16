@@ -36,8 +36,8 @@ namespace LR
 
             // 1. transition density matrix
 #ifdef __MPI
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX[sr], LR_Util::get_psi_spin(*psi_ks, sr, nk), *pc, naos, nocc[sr], nvirt[sr], *pmat);
-            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, *pmat);
+            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX[sr], LR_Util::get_psi_spin(*psi_ks, sr, nk), pc, naos, nocc[sr], nvirt[sr], pmat);
+            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
             std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart_b, LR_Util::get_psi_spin(*psi_ks, sr, nk), nocc[sr], nvirt[sr]);
             if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
@@ -58,9 +58,9 @@ namespace LR
             // ========================= end grid calculation =========================
 
             // V(R)->V(k) 
-            std::vector<ct::Tensor> v_hxc_2d(nk, LR_Util::newTensor<T>({ pmat->get_col_size(), pmat->get_row_size() }));
+            std::vector<ct::Tensor> v_hxc_2d(nk, LR_Util::newTensor<T>({ pmat.get_col_size(), pmat.get_row_size() }));
             for (auto& v : v_hxc_2d) v.zero();
-            int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER(PARAM.inp.ks_solver) ? this->pmat->get_row_size() : this->pmat->get_col_size();
+            int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER(PARAM.inp.ks_solver) ? this->pmat.get_row_size() : this->pmat.get_col_size();
             for (int ik = 0;ik < nk;++ik) { folding_HR(*this->hR, v_hxc_2d[ik].data<T>(), this->kv.kvec_d[ik], nrow, 1); }  // V(R) -> V(k)
             // LR_Util::print_HR(*this->hR, this->ucell.nat, "4.VR");
             // if (this->first_print)
@@ -69,7 +69,7 @@ namespace LR
 
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            cal_AX_pblas(v_hxc_2d, *this->pmat, LR_Util::get_psi_spin(*psi_ks, sl, nk), *this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi + xstart_b);
+            cal_AX_pblas(v_hxc_2d, this->pmat, LR_Util::get_psi_spin(*psi_ks, sl, nk), this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi + xstart_b);
 #else
             cal_AX_blas(v_hxc_2d, LR_Util::get_psi_spin(*psi_ks, sl, nk), nocc[sl], nvirt[sl], hpsi + xstart_b);
 #endif
@@ -119,10 +119,10 @@ namespace LR
         ModuleBase::TITLE("OperatorLRHxc", "grid_calculation(complex)");
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
 
-        elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(pmat, 1, kv.kvec_d, kv.get_nks() / nspin);
+        elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&pmat, 1, kv.kvec_d, kv.get_nks() / nspin);
         DM_trans_real_imag.init_DMR(*this->hR);
-        hamilt::HContainer<double> HR_real_imag(GlobalC::ucell, this->pmat);
-        this->initialize_HR(HR_real_imag, ucell, gd, this->pmat);
+        hamilt::HContainer<double> HR_real_imag(GlobalC::ucell, &this->pmat);
+        this->initialize_HR(HR_real_imag, ucell, gd);
 
         auto dmR_to_hR = [&, this](const int& iband_dm, const char& type) -> void
             {

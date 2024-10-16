@@ -12,23 +12,23 @@ namespace LR
     class OperatorLRDiag : public hamilt::Operator<T, Device>
     {
     public:
-        OperatorLRDiag(const double* eig_ks, const Parallel_2D* pX_in, const int& nk_in, const int& nocc_in, const int& nvirt_in)
+        OperatorLRDiag(const double* eig_ks, const Parallel_2D& pX_in, const int& nk_in, const int& nocc_in, const int& nvirt_in)
             : pX(pX_in), nk(nk_in), nocc(nocc_in), nvirt(nvirt_in)
         {   // calculate the difference of eigenvalues
             ModuleBase::TITLE("OperatorLRDiag", "OperatorLRDiag");
             const int nbands = nocc + nvirt;
             this->cal_type = hamilt::calculation_type::no;
-            this->eig_ks_diff.create(nk, pX->get_local_size(), false);
+            this->eig_ks_diff.create(nk, pX.get_local_size(), false);
             for (int ik = 0;ik < nk;++ik)
             {
                 const int& istart = ik * nbands;
-                for (int io = 0;io < pX->get_col_size();++io)    //nocc_local
+                for (int io = 0;io < pX.get_col_size();++io)    //nocc_local
                 {
-                    for (int iv = 0;iv < pX->get_row_size();++iv)    //nvirt_local
+                    for (int iv = 0;iv < pX.get_row_size();++iv)    //nvirt_local
                     {
-                        int io_g = pX->local2global_col(io);
-                        int iv_g = pX->local2global_row(iv);
-                        this->eig_ks_diff(ik, io * pX->get_row_size() + iv) = eig_ks[istart + nocc + iv_g] - eig_ks[istart + io_g];
+                        int io_g = pX.local2global_col(io);
+                        int iv_g = pX.local2global_row(iv);
+                        this->eig_ks_diff(ik, io * pX.get_row_size() + iv) = eig_ks[istart + nocc + iv_g] - eig_ks[istart + io_g];
                     }
                 }
             }
@@ -45,12 +45,12 @@ namespace LR
             const int ngk_ik = 0)const override
         {
             ModuleBase::TITLE("OperatorLRDiag", "act");
-            const int nlocal_ph = nk * pX->get_local_size();   // local size of particle-hole basis
+            const int nlocal_ph = nk * pX.get_local_size();   // local size of particle-hole basis
             for (int ib = 0;ib < nbands;++ib)
             {
                 const int ibstart = ib * nlocal_ph;
                 hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
-                    nk * pX->get_local_size(),
+                    nk * pX.get_local_size(),
                     hpsi + ibstart,
                     psi_in + ibstart,
                     this->eig_ks_diff.c);
@@ -58,7 +58,7 @@ namespace LR
 
         }
     private:
-        const Parallel_2D* pX;
+        const Parallel_2D& pX;
         ModuleBase::matrix eig_ks_diff;
         const int& nk;
         const int& nocc;

@@ -443,7 +443,7 @@ void LR::ESolver_LR<T, TR>::runner(int istep, UnitCell& cell)
 #ifdef __EXX
                 this->exx_lri, this->exx_info.info_global.hybrid_alpha,
 #endif
-                this->gint_, this->pot[is], this->kv, this->paraX_, & this->paraC_, & this->paraMat_,
+                this->gint_, this->pot[is], this->kv, this->paraX_, this->paraC_, this->paraMat_,
                 spin_types[is], input.ri_hartree_benchmark, (input.ri_hartree_benchmark == "aims" ? input.aims_nbasis : std::vector<int>({})));
             // solve the Casida equation
             HSolverLR<T> hsol(nk, this->npairs[is], is, std::max(1e-13, this->input.lr_thr), this->input.out_wfc_lr);
