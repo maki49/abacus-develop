@@ -95,12 +95,13 @@ namespace LR
                         david_maxiter,
                         false, //always do the subspace diag (check the implementation)
                         comm_info);
+                    std::vector<double> ethr_band(nband, diag_ethr);
                     hsolver::DiagoIterAssist<T>::avg_iter
                         += static_cast<double>(dav_subspace.diag(
                             hpsi_func, psi,
                             dim,
                             eigenvalue.data(),
-                            std::vector<bool>(nband, true),
+                            ethr_band.data(),
                             false /*scf*/));
                 }
                 else { throw std::runtime_error("HSolverLR::solve: method not implemented"); }

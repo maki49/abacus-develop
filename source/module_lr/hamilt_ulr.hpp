@@ -39,7 +39,7 @@ namespace LR
         {
             ModuleBase::TITLE("HamiltULR", "HamiltULR");
             this->DM_trans.resize(1);
-            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&kv_in, &pmat_in, nspin);
+            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, nspin, kv_in.kvec_d, nk);
 
             // how to change the index of eig_ks and psi_ks_In?
             // modify the interface of opetators to support different left- and right- spin-pairs
