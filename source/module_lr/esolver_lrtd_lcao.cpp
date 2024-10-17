@@ -523,7 +523,6 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
     }
 }
 
-
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
 {
@@ -601,12 +600,13 @@ void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
     if (this->input.ri_hartree_benchmark != "none") { return; } //no need to initialize potential for Hxc kernel in the RI-benchmark routine
     switch (nspin)
     {
+        using ST = PotHxcLR::SpinType;
     case 1:
-        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, PotHxcLR::SpinType::S1);
+        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, ST::S1);
         break;
     case 2:
-        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, openshell ? PotHxcLR::SpinType::S2_up : PotHxcLR::SpinType::S2_singlet);
-        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, openshell ? PotHxcLR::SpinType::S2_down : PotHxcLR::SpinType::S2_triplet);
+        this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, openshell ? ST::S2_updown : ST::S2_singlet);
+        this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, this->pw_rho, &ucell, &chg_gs, openshell ? ST::S2_updown : ST::S2_triplet);
         break;
     default:
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");

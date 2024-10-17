@@ -98,7 +98,7 @@ namespace LR
 
         // 3. v_hxc = f_hxc * rho_trans
         ModuleBase::matrix vr_hxc(nspin_solve, nrxx);   //grid
-        this->pot.lock()->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
+        this->pot.lock()->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc, ispin_ks);
         LR_Util::delete_p2(rho_trans, nspin_solve);
 
         // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\mu(r)
@@ -146,7 +146,7 @@ namespace LR
 
                 // 3. v_hxc = f_hxc * rho_trans
                 ModuleBase::matrix vr_hxc(nspin_solve, nrxx);   //grid
-                this->pot.lock()->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc);
+                this->pot.lock()->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc, ispin_ks);
                 // print_grid_nonzero(vr_hxc.c, this->poticab->nrxx, 10, "vr_hxc");
 
                 LR_Util::delete_p2(rho_trans, nspin_solve);
