@@ -43,11 +43,7 @@ namespace LR
             ModuleBase::TITLE("HamiltLR", "HamiltLR");
             if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
             this->DM_trans.resize(1);
-<<<<<<< HEAD
-            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(pmat_in, nspin, kv_in.kvec_d, nk);
-=======
-            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&kv_in, &pmat_in, nspin);
->>>>>>> afb1e4ab4 (use const ref instead of pointer for Parallel_2D)
+            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, nspin, kv_in.kvec_d, nk);
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], nk, nocc[0], nvirt[0]);
             //add Hxc operator
