@@ -89,25 +89,12 @@ namespace LR
         for (int ib = 0;ib < nbands;++ib)
         {
             const int xstart_b = ib * nk * pX.get_local_size();
-            // suppose Cs，Vs, have already been calculated in the ion-step of ground state, 
-            // DM_trans(k) and DM_trans(R) has already been calculated from psi_in in OperatorLRHxc::act
-            // but int RI_benchmark, DM_trans(k) should be first calculated here
-            if (cal_dm_trans)
-            {
-#ifdef __MPI
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX, psi_ks, pc, naos, nocc, nvirt, pmat);
-                if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
-#else
-                std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart, psi_ks, nocc, nvirt);
-                if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
-#endif
-                // tensor to vector, then set DMK
-                for (int ik = 0;ik < nk;++ik) { this->DM_trans[ib]->set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
-            }
+            // suppose Cs，Vs, have already been calculated in the ion-step of ground state
+            // and DM_trans has been calculated in hPsi() outside.
 
             // 1. set_Ds (once)
             // convert to vector<T*> for the interface of RI_2D_Comm::split_m2D_ktoR (interface will be unified to ct::Tensor)
-            std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans[ib]->get_DMK_vector();
+            std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans->get_DMK_vector();
             // assert(DMk_trans_vector.size() == nk);
             std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
             for (int ik = 0;ik < nk;++ik) {DMk_trans_pointer[ik] = &DMk_trans_vector[ik];}
