@@ -406,7 +406,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
         this->pw_rho->startz_current,
         &ucell,
         &orb);
-    this->gint_->initialize_pvpR(ucell, &GlobalC::GridD);
+    this->gint_->initialize_pvpR(ucell, &GlobalC::GridD, 1);    // always use nspin=1 for transition density
 
     // if EXX from scratch, init 2-center integral and calculate Cs, Vs 
 #ifdef __EXX

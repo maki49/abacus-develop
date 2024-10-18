@@ -133,15 +133,15 @@ void Gint::prep_grid(const Grid_Technique& gt,
     return;
 }
 
-void Gint::initialize_pvpR(const UnitCell& ucell_in, Grid_Driver* gd) {
+void Gint::initialize_pvpR(const UnitCell& ucell_in, Grid_Driver* gd, const int& nspin) {
     ModuleBase::TITLE("Gint", "initialize_pvpR");
 
     int npol = 1;
     // there is the only resize code of DMRGint
     if (this->DMRGint.size() == 0) {
-        this->DMRGint.resize(PARAM.inp.nspin);
+        this->DMRGint.resize(nspin);
     }
-    if (PARAM.inp.nspin != 4) {
+    if (nspin != 4) {
         if (this->hRGint != nullptr) {
             delete this->hRGint;
         }
@@ -153,7 +153,7 @@ void Gint::initialize_pvpR(const UnitCell& ucell_in, Grid_Driver* gd) {
         }
         this->hRGintCd
             = new hamilt::HContainer<std::complex<double>>(ucell_in.nat);
-        for (int is = 0; is < PARAM.inp.nspin; is++) {
+        for (int is = 0; is < nspin; is++) {
             if (this->DMRGint[is] != nullptr) {
                 delete this->DMRGint[is];
             }
@@ -186,7 +186,7 @@ void Gint::initialize_pvpR(const UnitCell& ucell_in, Grid_Driver* gd) {
         }
     }
 
-    if (PARAM.globalv.gamma_only_local && PARAM.inp.nspin != 4) {
+    if (PARAM.globalv.gamma_only_local && nspin != 4) {
         this->hRGint->fix_gamma();
     }
     for (int T1 = 0; T1 < ucell_in.ntype; ++T1) {

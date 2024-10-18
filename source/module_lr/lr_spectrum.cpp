@@ -12,7 +12,7 @@ void LR::LR_Spectrum<T>::cal_gint_rho(double** rho, const int& nspin_solve, cons
     for (int is = 0;is < nspin_solve;++is) {
         ModuleBase::GlobalFunc::ZEROS(rho[is], nrxx);
 }
-    Gint_inout inout_rho(rho, Gint_Tools::job_type::rho, false);
+    Gint_inout inout_rho(rho, Gint_Tools::job_type::rho, 1, false);
     this->gint->cal_gint(&inout_rho);
 }
 
