@@ -143,6 +143,7 @@ void LR::ESolver_LR<T, TR>::reset_dim_spin2()
         std::cout << "** Solve the spin-up and spin-down states separately for open-shell system. **" << std::endl;
     }
     if (nstates > (npairs[0] + npairs[1]) * nk) { throw std::invalid_argument("ESolver_LR: nstates > nocc*nvirt*nk"); }
+    this->openshell = true; //debug
 }
 
 template <typename T, typename TR>

@@ -40,16 +40,15 @@ namespace LR
         ModuleBase::timer::tick("PotHxcLR", "cal_v_eff");
         auto& fxc = this->xc_kernel_components_;
 
-        const int& nspin_solve = v_eff.nr;
-        assert(nspin_solve == 1);
         // Hartree
         switch (this->spin_type_)
         {
         case SpinType::S1: case SpinType::S2_updown:
-            v_eff += elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), nspin_solve, rho);
+            v_eff += elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), 1, rho);
             break;
         case SpinType::S2_singlet:
-            v_eff += 2 * elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), nspin_solve, rho);
+            v_eff += 2 * elecstate::H_Hartree_pw::v_hartree(*ucell, const_cast<ModulePW::PW_Basis*>(this->rho_basis_), 1, rho);
+            break;
         default:
             break;
         }

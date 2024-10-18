@@ -80,7 +80,6 @@ namespace LR
 
         //global sizes
         const int& nspin;
-        const int nspin_solve = 1;    ///< in singlet-triplet calculation, the Casida equation is solved respectively so nspin_solve in a single problem is 1
         const int& naos;
         const int nk = 1;
         // const int nloc_per_band = 1;    ///< local size of each state of X  (passed by nbasis in act())

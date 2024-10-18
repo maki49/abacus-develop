@@ -50,7 +50,7 @@ namespace LR
             this->BvK_cells = RI_Util::get_Born_von_Karmen_cells(period);
 
             this->allocate_Ds_onebase();
-            this->exx_lri.lock()->Hexxs.resize(this->nspin_solve);
+            this->exx_lri.lock()->Hexxs.resize(1);
         };
 
         void init(const int ik_in) override {};
@@ -60,7 +60,6 @@ namespace LR
     private:
         //global sizes
         const int& nspin;
-        const int nspin_solve = 1;
         const int& naos;
         const int& nocc;
         const int& nvirt;
@@ -80,7 +79,7 @@ namespace LR
         /// D^{iak}_{\mu\nu}(k): 1/N_k * c^*_{ak,\mu} c_{ik,\nu}
         /// D^{iak}_{\mu\nu}(R): D^{iak}_{\mu\nu}(k)e^{-ikR}
         // elecstate::DensityMatrix<T, double>* DM_onebase;
-        mutable std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_onebase;
+        mutable std::map<TA, std::map<TAC, RI::Tensor<T>>> Ds_onebase;
 
         // cells in the Born von Karmen supercell (direct)
         std::vector<std::array<int, Ndim>> BvK_cells;
@@ -105,7 +104,7 @@ namespace LR
         // allocate Ds_onebase
         void allocate_Ds_onebase();
 
-        void cal_DM_onebase(const int io, const int iv, const int ik, const int is) const;
+        void cal_DM_onebase(const int io, const int iv, const int ik) const;
 
     };
 }

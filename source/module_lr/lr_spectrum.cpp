@@ -7,11 +7,9 @@
 #include "module_lr/utils/lr_util_hcontainer.h"
 #include "module_lr/utils/lr_util_print.h"
 template<typename T>
-void LR::LR_Spectrum<T>::cal_gint_rho(double** rho, const int& nspin_solve, const int& nrxx)
+void LR::LR_Spectrum<T>::cal_gint_rho(double** rho, const int& nrxx)
 {
-    for (int is = 0;is < nspin_solve;++is) {
-        ModuleBase::GlobalFunc::ZEROS(rho[is], nrxx);
-}
+    ModuleBase::GlobalFunc::ZEROS(rho[0], nrxx);
     Gint_inout inout_rho(rho, Gint_Tools::job_type::rho, 1, false);
     this->gint->cal_gint(&inout_rho);
 }
@@ -53,9 +51,8 @@ void LR::LR_Spectrum<double>::oscillator_strength()
 
         // 2. transition density
         double** rho_trans;
-        // LR_Util::new_p2(rho_trans, nspin_solve, this->rho_basis.nrxx);
         LR_Util::new_p2(rho_trans, nspin, this->rho_basis.nrxx); // currently gint_kernel_rho uses PARAM.inp.nspin, it needs refactor
-        this->cal_gint_rho(rho_trans, nspin_solve, this->rho_basis.nrxx);
+        this->cal_gint_rho(rho_trans, this->rho_basis.nrxx);
 
         // 3. transition dipole moment
         for (int ir = 0; ir < rho_basis.nrxx; ++ir)
@@ -66,10 +63,10 @@ void LR::LR_Spectrum<double>::oscillator_strength()
             ModuleBase::Vector3<double> rd(static_cast<double>(i) / rho_basis.nx, static_cast<double>(j) / rho_basis.ny, static_cast<double>(k) / rho_basis.nz);  //+1/2 better?
             rd -= ModuleBase::Vector3<double>(0.5, 0.5, 0.5);   //shift to the center of the grid (need ?)
             ModuleBase::Vector3<double> rc = rd * ucell.latvec * ucell.lat0; // real coordinate
-            for (int is = 0;is < nspin_solve;++is) transition_dipole_[istate] += rc * rho_trans[is][ir];
+            transition_dipole_[istate] += rc * rho_trans[0][ir];
         }
         transition_dipole_[istate] *= (ucell.omega / static_cast<double>(gint->get_ncxyz()));   // dv
-        LR_Util::delete_p2(rho_trans, nspin_solve);
+        LR_Util::delete_p2(rho_trans, 1);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].x);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].y);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].z);
@@ -98,10 +95,10 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
         const int xstart_b = istate * nloc_per_band + offset;    //start index of band istate
         //1. transition density 
 #ifdef __MPI
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X + xstart_b, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat, /*renorm_k=*/false, this->nspin_solve);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X + xstart_b, this->pX, this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat, /*renorm_k=*/false, 1);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X + xstart_b, this->psi_ks, this->nocc, this->nvirt,/*renorm_k=*/false, this->nspin_solve);
+        std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(X + xstart_b, this->psi_ks, this->nocc, this->nvirt,/*renorm_k=*/false, 1);
         // if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
         for (int ik = 0;ik < this->nk;++ik) { DM_trans.set_DMK_pointer(ik, dm_trans_2d[ik].data<std::complex<double>>()); }
@@ -113,18 +110,18 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
         // 2. transition density
         double** rho_trans_real;
         double** rho_trans_imag;
-        LR_Util::new_p2(rho_trans_real, nspin_solve, this->rho_basis.nrxx);
-        LR_Util::new_p2(rho_trans_imag, nspin_solve, this->rho_basis.nrxx);
+        LR_Util::new_p2(rho_trans_real, 1, this->rho_basis.nrxx);
+        LR_Util::new_p2(rho_trans_imag, 1, this->rho_basis.nrxx);
         // real part
         LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, ucell.nat, 'R');
         this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
-        this->cal_gint_rho(rho_trans_real, nspin_solve, this->rho_basis.nrxx);
+        this->cal_gint_rho(rho_trans_real, this->rho_basis.nrxx);
         // LR_Util::print_grid_nonzero(rho_trans_real[0], this->rho_basis.nrxx, 10, "rho_trans");
 
         // imag part
         LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, ucell.nat, 'I');
         this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
-        this->cal_gint_rho(rho_trans_imag, nspin_solve, this->rho_basis.nrxx);
+        this->cal_gint_rho(rho_trans_imag, this->rho_basis.nrxx);
         // LR_Util::print_grid_nonzero(rho_trans_imag[0], this->rho_basis.nrxx, 10, "rho_trans");
 
 
@@ -138,13 +135,11 @@ void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
             rd -= ModuleBase::Vector3<double>(0.5, 0.5, 0.5);   //shift to the center of the grid (need ?)
             ModuleBase::Vector3<double> rc = rd * ucell.latvec * ucell.lat0; // real coordinate
             ModuleBase::Vector3<std::complex<double>> rc_complex(rc.x, rc.y, rc.z);
-            for (int is = 0;is < nspin_solve;++is)
-                transition_dipole_[istate] += rc_complex *
-                std::complex<double>(rho_trans_real[is][ir], rho_trans_imag[is][ir]);
+            transition_dipole_[istate] += rc_complex * std::complex<double>(rho_trans_real[0][ir], rho_trans_imag[0][ir]);
         }
         transition_dipole_[istate] *= (ucell.omega / static_cast<double>(gint->get_ncxyz()));   // dv
-        LR_Util::delete_p2(rho_trans_real, nspin_solve);
-        LR_Util::delete_p2(rho_trans_imag, nspin_solve);
+        LR_Util::delete_p2(rho_trans_real, 1);
+        LR_Util::delete_p2(rho_trans_imag, 1);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].x);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].y);
         Parallel_Reduce::reduce_all(transition_dipole_[istate].z);

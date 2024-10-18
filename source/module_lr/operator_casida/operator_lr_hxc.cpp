@@ -29,6 +29,8 @@ namespace LR
             const int xstart_b = ib * nbasis;
 
             this->DM_trans->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
+            // LR_Util::print_DMR(*DM_trans, ucell.nat, "DMR");
+
             // ========================= begin grid calculation=========================
             this->grid_calculation(nbands);   //DM(R) to H(R)
             // ========================= end grid calculation =========================
@@ -40,8 +42,8 @@ namespace LR
             for (int ik = 0;ik < nk;++ik) { folding_HR(*this->hR, v_hxc_2d[ik].data<T>(), this->kv.kvec_d[ik], nrow, 1); }  // V(R) -> V(k)
             // LR_Util::print_HR(*this->hR, this->ucell.nat, "4.VR");
             // if (this->first_print)
-            //     for (int ik = 0;ik < nk;++ik)
-            //         LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", this->pmat);
+            // for (int ik = 0;ik < nk;++ik)
+            //     LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", &this->pmat);
 
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
@@ -64,26 +66,20 @@ namespace LR
         // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
         double** rho_trans;
         const int& nrxx = this->pot.lock()->nrxx;
-        // LR_Util::new_p2(rho_trans, nspin_solve, nrxx);
         LR_Util::new_p2(rho_trans, 1, nrxx); // currently gint_kernel_rho uses PARAM.inp.nspin, it needs refactor
-        for (int is = 0;is < nspin_solve;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], nrxx);
+        ModuleBase::GlobalFunc::ZEROS(rho_trans[0], nrxx);
         Gint_inout inout_rho(rho_trans, Gint_Tools::job_type::rho, 1, false);
         this->gint->cal_gint(&inout_rho);
 
         // 3. v_hxc = f_hxc * rho_trans
-        ModuleBase::matrix vr_hxc(nspin_solve, nrxx);   //grid
+        ModuleBase::matrix vr_hxc(1, nrxx);   //grid
         this->pot.lock()->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc, ispin_ks);
-        LR_Util::delete_p2(rho_trans, nspin_solve);
+        LR_Util::delete_p2(rho_trans, 1);
 
         // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\mu(r)
-        // V(R) for each spin
-        for (int is = 0;is < nspin_solve;++is)
-        {
-            double* vr_hxc_is = &vr_hxc.c[is * nrxx];   //v(r) at current spin
-            Gint_inout inout_vlocal(vr_hxc_is, is, Gint_Tools::job_type::vlocal);
-            this->gint->get_hRGint()->set_zero();
-            this->gint->cal_gint(&inout_vlocal);
-        }
+        Gint_inout inout_vlocal(vr_hxc.c, 0, Gint_Tools::job_type::vlocal);
+        this->gint->get_hRGint()->set_zero();
+        this->gint->cal_gint(&inout_vlocal);
         this->hR->set_zero();   // clear hR for each bands
         this->gint->transfer_pvpR(&*this->hR, &GlobalC::ucell);    //grid to 2d block
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
@@ -111,28 +107,25 @@ namespace LR
                 // 2. transition electron density
                 double** rho_trans;
                 const int& nrxx = this->pot.lock()->nrxx;
-                // LR_Util::new_p2(rho_trans, nspin_solve, nrxx);
-                LR_Util::new_p2(rho_trans, nspin, nrxx); // currently gint_kernel_rho uses PARAM.inp.nspin, it needs refactor
-                for (int is = 0;is < nspin_solve;++is)ModuleBase::GlobalFunc::ZEROS(rho_trans[is], nrxx);
+
+                LR_Util::new_p2(rho_trans, 1, nrxx); // nspin=1 for transition density
+                ModuleBase::GlobalFunc::ZEROS(rho_trans[0], nrxx);
                 Gint_inout inout_rho(rho_trans, Gint_Tools::job_type::rho, 1, false);
                 this->gint->cal_gint(&inout_rho);
                 // print_grid_nonzero(rho_trans[0], nrxx, 10, "rho_trans");
 
                 // 3. v_hxc = f_hxc * rho_trans
-                ModuleBase::matrix vr_hxc(nspin_solve, nrxx);   //grid
+                ModuleBase::matrix vr_hxc(1, nrxx);   //grid
                 this->pot.lock()->cal_v_eff(rho_trans, &GlobalC::ucell, vr_hxc, ispin_ks);
                 // print_grid_nonzero(vr_hxc.c, this->poticab->nrxx, 10, "vr_hxc");
 
-                LR_Util::delete_p2(rho_trans, nspin_solve);
+                LR_Util::delete_p2(rho_trans, 1);
 
                 // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\mu(r)
-                for (int is = 0;is < nspin_solve;++is)
-                {
-                    double* vr_hxc_is = &vr_hxc.c[is * nrxx];   //v(r) at current spin
-                    Gint_inout inout_vlocal(vr_hxc_is, is, Gint_Tools::job_type::vlocal);
-                    this->gint->get_hRGint()->set_zero();
-                    this->gint->cal_gint(&inout_vlocal);
-                }
+                Gint_inout inout_vlocal(vr_hxc.c, 0, Gint_Tools::job_type::vlocal);
+                this->gint->get_hRGint()->set_zero();
+                this->gint->cal_gint(&inout_vlocal);
+
                 // LR_Util::print_HR(*this->gint->get_hRGint(), this->ucell.nat, "VR(grid)");
                 HR_real_imag.set_zero();
                 this->gint->transfer_pvpR(&HR_real_imag, &GlobalC::ucell, &GlobalC::GridD);

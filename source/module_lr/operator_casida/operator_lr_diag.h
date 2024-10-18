@@ -55,7 +55,6 @@ namespace LR
                     psi_in + ibstart,
                     this->eig_ks_diff.c);
             }
-
         }
     private:
         const Parallel_2D& pX;
