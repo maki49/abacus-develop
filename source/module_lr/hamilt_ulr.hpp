@@ -72,6 +72,7 @@ namespace LR
             this->cal_dm_trans = [&, this](const int& is, const T* X)->void
                 {
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks_in, is, nk);
+                    // LR_Util::print_value(X, pX_in[is].get_local_size());
 #ifdef __MPI
                     std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X, pX[is], psi_ks_is, pc_in, naos, nocc[is], nvirt[is], pmat_in);
                     if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat_in);
@@ -79,6 +80,7 @@ namespace LR
                     std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_blas(X, psi_ks_is, nocc[is], nvirt[is]);
                     if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
+                    // LR_Util::print_tensor<T>(dm_trans_2d[0], "DMtrans(k=0)", &pmat_in);
                     // tensor to vector, then set DMK
                     for (int ik = 0;ik < nk;++ik) { this->DM_trans->set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
                 };
@@ -95,17 +97,18 @@ namespace LR
             /// band-wise act (also works for close-shell, but not efficient)
             for (int ib = 0;ib < nband;++ib)
             {
-                const int offset_b = ib * ld_psi;
+                const int offset_band = ib * ld_psi;
                 for (int is_bj : {0, 1})
                 {
-                    const int offset = offset_b + is_bj * xdim_is[0];
-                    cal_dm_trans(is_bj, psi_in + offset);   // calculate transition density matrix here
+                    const int offset_bj = offset_band + is_bj * xdim_is[0];
+                    cal_dm_trans(is_bj, psi_in + offset_bj);   // calculate transition density matrix here
                     for (int is_ai : {0, 1})
                     {
+                        const int offset_ai = offset_band + is_ai * xdim_is[0];
                         hamilt::Operator<T>* node(this->ops[(is_ai << 1) + is_bj]);
                         while (node != nullptr)
                         {
-                            node->act(/*nband=*/1, xdim_is[is_bj], /*npol=*/1, psi_in + offset, hpsi + offset);
+                            node->act(/*nband=*/1, xdim_is[is_bj], /*npol=*/1, psi_in + offset_bj, hpsi + offset_ai);
                             node = (hamilt::Operator<T>*)(node->next_op);
                         }
                     }
@@ -143,18 +146,19 @@ namespace LR
                             std::vector<T> Aloc_col(this->nloc_per_band, T(0)); // a col of A matrix (local)
                             for (int is_ai : {0, 1})
                             {
+                                const int goffset_ai = is_ai * gdim_is[0];
+                                const int loffset_ai = is_ai * ldim_is[0];
+                                const auto& pax = this->pX[is_ai];
                                 hamilt::Operator<T>* node(this->ops[(is_ai << 1) + is_bj]);
                                 while (node != nullptr)
                                 {
-                                    node->act(1, ldim_is[is_bj], /*npol=*/1, X_bj.data() + loffset_bj, Aloc_col.data() + loffset_bj);
+                                    node->act(1, ldim_is[is_bj], /*npol=*/1, X_bj.data() + loffset_bj, Aloc_col.data() + loffset_ai);
                                     node = (hamilt::Operator<T>*)(node->next_op);
                                 }
-                                const int goffset_ai = is_ai * gdim_is[0];
 #ifdef __MPI
-                                const int loffset_ai = is_ai * ldim_is[0];
                                 for (int ik_ai = 0;ik_ai < this->nk;++ik_ai)
                                 {
-                                    LR_Util::gather_2d_to_full(px, Aloc_col.data() + loffset_ai + ik_ai * px.get_local_size(),
+                                    LR_Util::gather_2d_to_full(pax, Aloc_col.data() + loffset_ai + ik_ai * pax.get_local_size(),
                                         Amat_full.data() + gcol * global_size /*col, bj*/ + goffset_ai + ik_ai * npairs[is_ai]/*row, ai*/,
                                         false, nv, no);
                                 }
@@ -180,30 +184,6 @@ namespace LR
 
         const int nk = 1;
         const int nloc_per_band = 1;
-        // const std::vector<int> npairs;
-
-        /// size per state
-        // const int bsize_X[2] = { nk * pX[0].get_local_size(), nk * pX[1].get_local_size() };
-        // const int bsize_psi = bsize_X[0] + bsize_X[1];
-
-        // void allocate_X_AX(const size_t& nband)
-        // {
-        //     for (int is : {0, 1})
-        //     {
-        //         X.emplace_back(1, nband, nk * pX[is].get_local_size());
-        //         AX.emplace_back(1, nband, nk * pX[is].get_local_size());
-        //     }
-        // }
-        // void copy_psi_to_spin2X(const T* psi_in, const size_t& nband)
-        // {
-        //     for (int is : {0, 1}) { for (ib = 0;ib < nband;++ib) { std::memcpy(&X[is](0, 0, 0) + ib * bsize_X[is], psi_in + ib * bsize_psi + is * bsize_X[0], bsize_X[is] * sizeof(T)); } }
-        // }
-
-        // void copy_spin2X_to_hpsi(T* hpsi, const size_t& nband)
-        // {
-        //     for (int is : {0, 1}) { for (int ib = 0;ib < nband;++ib) { std::memcpy(hpsi + ib * bsize_psi + is * bsize_X[0], &X[is](0, 0, 0) + ib * bsize_X[is], bsize_X[is] * sizeof(T)); } }
-        // }
-
 
         /// 4 operator lists: uu, ud, du, dd
         std::vector<hamilt::Operator<T>*> ops;
