@@ -38,8 +38,8 @@ namespace LR
             nloc_per_band(nk* pX[0].get_local_size() + nk * pX[1].get_local_size())
         {
             ModuleBase::TITLE("HamiltULR", "HamiltULR");
-            this->DM_trans.resize(1);
-            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, nspin, kv_in.kvec_d, nk);
+            this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
+            this->DM_trans->init_DMR(&gd_in, &ucell_in);
 
             // how to change the index of eig_ks and psi_ks_In?
             // modify the interface of opetators to support different left- and right- spin-pairs
@@ -68,6 +68,20 @@ namespace LR
                 }
             }
 #endif
+
+            this->cal_dm_trans = [&, this](const int& is, const T* X)->void
+                {
+                    const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks_in, is, nk);
+#ifdef __MPI
+                    std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X, pX[is], psi_ks_is, pc_in, naos, nocc[is], nvirt[is], pmat_in);
+                    if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat_in);
+#else
+                    std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_blas(X, psi_ks_is, nocc[is], nvirt[is]);
+                    if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
+#endif
+                    // tensor to vector, then set DMK
+                    for (int ik = 0;ik < nk;++ik) { this->DM_trans->set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
+                };
         }
         ~HamiltULR()
         {
@@ -85,6 +99,7 @@ namespace LR
                 for (int is_bj : {0, 1})
                 {
                     const int offset = offset_b + is_bj * xdim_is[0];
+                    cal_dm_trans(is_bj, psi_in + offset);   // calculate transition density matrix here
                     for (int is_ai : {0, 1})
                     {
                         hamilt::Operator<T>* node(this->ops[(is_ai << 1) + is_bj]);
@@ -124,6 +139,7 @@ namespace LR
                             const int lb = px.global2local_row(b);
                             const int lcol = loffset_bj + ik_bj * px.get_local_size() + lj * px.get_row_size() + lb;//local
                             if (px.in_this_processor(b, j)) { X_bj[lcol] = T(1); }
+                            this->cal_dm_trans(is_bj, X_bj.data() + loffset_bj);
                             std::vector<T> Aloc_col(this->nloc_per_band, T(0)); // a col of A matrix (local)
                             for (int is_ai : {0, 1})
                             {
@@ -195,6 +211,9 @@ namespace LR
         /// transition density matrix in AO representation
         /// Hxc only: size=1, calculate on the same address for each bands
         /// Hxc+Exx: size=nbands, store the result of each bands for common use
-        std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>> DM_trans;
+        std::unique_ptr<elecstate::DensityMatrix<T, T>> DM_trans;
+
+        std::function<void(const int&, const T*)> cal_dm_trans;
+        const bool tdm_sym = false;     ///< whether to symmetrize the transition density matrix
     };
 }

@@ -23,7 +23,7 @@ namespace LR
             const int& nvirt,
             const UnitCell& ucell_in,
             const psi::Psi<T>& psi_ks_in,
-            std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans_in,
+            std::unique_ptr<elecstate::DensityMatrix<T, T>>& DM_trans_in,
             // HContainer<double>* hR_in,
             std::weak_ptr<Exx_LRI<T>> exx_lri_in,
             const K_Vectors& kv_in,
@@ -31,11 +31,10 @@ namespace LR
             const Parallel_2D& pc_in,
             const Parallel_Orbitals& pmat_in,
             const double& alpha = 1.0,
-            const bool& cal_dm_trans = false,
             const std::vector<int>& aims_nbasis = {})
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), exx_lri(exx_lri_in), kv(kv_in),
-            pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in), alpha(alpha), cal_dm_trans(cal_dm_trans),
+            pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in), alpha(alpha),
             aims_nbasis(aims_nbasis)
         {
             ModuleBase::TITLE("OperatorLREXX", "OperatorLREXX");
@@ -75,7 +74,7 @@ namespace LR
         const std::vector<int> aims_nbasis={};    ///< number of basis functions for each type of atom in FHI-aims
 
         /// transition density matrix 
-        std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans;
+        std::unique_ptr<elecstate::DensityMatrix<T, T>>& DM_trans;
 
         /// density matrix of a certain (i, a, k), with full naos*naos size for each key
         /// D^{iak}_{\mu\nu}(k): 1/N_k * c^*_{ak,\mu} c_{ik,\nu}

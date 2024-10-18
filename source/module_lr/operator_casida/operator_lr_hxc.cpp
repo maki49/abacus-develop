@@ -8,7 +8,6 @@
 #include "module_lr/utils/lr_util_print.h"
 // #include "module_hamilt_lcao/hamilt_lcaodft/DM_gamma_2d_to_grid.h"
 #include "module_hamilt_lcao/module_hcontainer/hcontainer_funcs.h"
-#include "module_lr/dm_trans/dm_trans.h"
 #include "module_lr/AX/AX.h"
 #include "module_hamilt_pw/hamilt_pwdft/global.h"
 
@@ -22,41 +21,16 @@ namespace LR
     {
         ModuleBase::TITLE("OperatorLRHxc", "act");
         const int& sl = ispin_ks[0];
-        const int& sr = ispin_ks.size() == 1 ? sl : ispin_ks[1];
-        const auto psir_ks = LR_Util::get_psi_spin(psi_ks, sr, nk);
         const auto psil_ks = LR_Util::get_psi_spin(psi_ks, sl, nk);
-
-        this->init_DM_trans(nbands, this->DM_trans);    // initialize transion density matrix
 
         const int& lgd = gint->gridt->lgd;
         for (int ib = 0;ib < nbands;++ib)
         {
-            // if Hxc-only, the memory of single-band DM_trans is enough.
-            // if followed by EXX, we need to allocate memory for all bands.
-            const int ib_dm = (this->next_op == nullptr) ? 0 : ib;
             const int xstart_b = ib * nbasis;
 
-            // 1. transition density matrix
-#ifdef __MPI
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_pblas(psi_in + xstart_b, pX[sr], psir_ks, pc, naos, nocc[sr], nvirt[sr], pmat);
-            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
-#else
-            std::vector<container::Tensor>  dm_trans_2d = cal_dm_trans_blas(psi_in + xstart_b, psir_ks, nocc[sr], nvirt[sr]);
-            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
-#endif
-            // tensor to vector, then set DMK
-            for (int ik = 0;ik < nk;++ik) { this->DM_trans[ib_dm]->set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
-
-            // if (this->first_print)
-            //     for (int ik = 0;ik < nk;++ik)
-            //         LR_Util::print_tensor<T>(dm_trans_2d[ik], "1.DMK[ik=" + std::to_string(ik) + "]", this->pmat);
-
-            // use cal_DMR to get DMR form DMK by FT
-            this->DM_trans[ib_dm]->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
-            // LR_Util::print_DMR(*this->DM_trans[0], ucell.nat, "DM(R) (complex)");
-
+            this->DM_trans->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
             // ========================= begin grid calculation=========================
-            this->grid_calculation(nbands, ib_dm);   //DM(R) to H(R)
+            this->grid_calculation(nbands);   //DM(R) to H(R)
             // ========================= end grid calculation =========================
 
             // V(R)->V(k) 
@@ -80,11 +54,11 @@ namespace LR
 
 
     template<>
-    void OperatorLRHxc<double, base_device::DEVICE_CPU>::grid_calculation(const int& nbands, const int& iband_dm) const
+    void OperatorLRHxc<double, base_device::DEVICE_CPU>::grid_calculation(const int& nbands) const
     {
         ModuleBase::TITLE("OperatorLRHxc", "grid_calculation(real)");
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
-        this->gint->transfer_DM2DtoGrid(this->DM_trans[iband_dm]->get_DMR_vector());     // 2d block to grid
+        this->gint->transfer_DM2DtoGrid(this->DM_trans->get_DMR_vector());     // 2d block to grid
 
         // 2. transition electron density
         // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
@@ -116,7 +90,7 @@ namespace LR
     }
 
     template<>
-    void OperatorLRHxc<std::complex<double>, base_device::DEVICE_CPU>::grid_calculation(const int& nbands, const int& iband_dm) const
+    void OperatorLRHxc<std::complex<double>, base_device::DEVICE_CPU>::grid_calculation(const int& nbands) const
     {
         ModuleBase::TITLE("OperatorLRHxc", "grid_calculation(complex)");
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
@@ -126,9 +100,9 @@ namespace LR
         hamilt::HContainer<double> HR_real_imag(GlobalC::ucell, &this->pmat);
         this->initialize_HR(HR_real_imag, ucell, gd);
 
-        auto dmR_to_hR = [&, this](const int& iband_dm, const char& type) -> void
+        auto dmR_to_hR = [&, this](const char& type) -> void
             {
-                LR_Util::get_DMR_real_imag_part(*this->DM_trans[iband_dm], DM_trans_real_imag, ucell.nat, type);
+                LR_Util::get_DMR_real_imag_part(*this->DM_trans, DM_trans_real_imag, ucell.nat, type);
                 // if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
 
                 this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
@@ -166,8 +140,8 @@ namespace LR
                 LR_Util::set_HR_real_imag_part(HR_real_imag, *this->hR, GlobalC::ucell.nat, type);
             };
         this->hR->set_zero();
-        dmR_to_hR(iband_dm, 'R');   //real
-        if (kv.get_nks() / this->nspin > 1) { dmR_to_hR(iband_dm, 'I'); }   //imag for multi-k
+        dmR_to_hR('R');   //real
+        if (kv.get_nks() / this->nspin > 1) { dmR_to_hR('I'); }   //imag for multi-k
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
     }
 

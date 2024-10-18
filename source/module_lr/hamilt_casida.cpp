@@ -26,6 +26,7 @@ namespace LR
                     psi::Psi<T> A_aibj(1, 1, this->nk * px.get_local_size()); // k1-first
                     A_aibj.zero_out();
 
+                    this->cal_dm_trans(0, X_bj.get_pointer());
                     hamilt::Operator<T>* node(this->ops);
                     while (node != nullptr)
                     {   // act() on and return the k1-first type of psi

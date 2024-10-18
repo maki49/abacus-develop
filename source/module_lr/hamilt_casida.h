@@ -1,9 +1,11 @@
 #pragma once
+#include <typeinfo>
 #include "module_hamilt_general/hamilt.h"
 #include "module_elecstate/module_dm/density_matrix.h"
 #include "module_lr/operator_casida/operator_lr_diag.h"
 #include "module_lr/operator_casida/operator_lr_hxc.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
+#include "module_lr/dm_trans/dm_trans.h"
 #ifdef __EXX
 #include "module_lr/operator_casida/operator_lr_exx.h"
 #include "module_lr/ri_benchmark/operator_ri_hartree.h"
@@ -42,8 +44,10 @@ namespace LR
         {
             ModuleBase::TITLE("HamiltLR", "HamiltLR");
             if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
-            this->DM_trans.resize(1);
-            this->DM_trans[0] = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
+            // always use nspin=1 for transition density matrix
+            this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
+            this->DM_trans->init_DMR(&gd_in, &ucell_in);
+
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], nk, nocc[0], nvirt[0]);
             //add Hxc operator
@@ -104,11 +108,25 @@ namespace LR
                 hamilt::Operator<T>* lr_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell_in, psi_ks_in,
                     this->DM_trans, exx_lri_in, kv_in, pX_in[0], pc_in, pmat_in,
                     xc_kernel == "hf" ? 1.0 : exx_alpha, //alpha
-                    ri_hartree_benchmark != "none"/*whether to cal_dm_trans first here*/,
                     aims_nbasis);
                 this->ops->add(lr_exx);
             }
 #endif
+
+            this->cal_dm_trans = [&, this](const int& is, const T* X)->void
+                {
+                    const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks_in, is, nk);
+#ifdef __MPI
+                    std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X, pX[is], psi_ks_is, pc_in, naos, nocc[is], nvirt[is], pmat_in);
+                    if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat_in);
+#else
+                    std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_blas(X, psi_ks_is, nocc[is], nvirt[is]);
+                    if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
+#endif
+                    // LR_Util::print_tensor<T>(dm_trans_2d[0], "dm_trans_2d[0]", &pmat_in);
+                    // tensor to vector, then set DMK
+                    for (int ik = 0;ik < nk;++ik) { this->DM_trans->set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
+                };
         }
         ~HamiltLR()
         {
@@ -123,11 +141,16 @@ namespace LR
         virtual void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int& nband) const
         {
             assert(ld_psi == nk * pX[0].get_local_size());
-            hamilt::Operator<T>* node(this->ops);
-            while (node != nullptr)
+            for (int ib = 0;ib < nband;++ib)
             {
-                node->act(nband, ld_psi, /*npol=*/1, psi_in, hpsi);
-                node = (hamilt::Operator<T>*)(node->next_op);
+                const int offset = ib * ld_psi;
+                this->cal_dm_trans(0, psi_in + offset);  // calculate transition density matrix here
+                hamilt::Operator<T>* node(this->ops);
+                while (node != nullptr)
+                {
+                    node->act(/*nband=*/1, ld_psi, /*npol=*/1, psi_in + offset, hpsi + offset);
+                    node = (hamilt::Operator<T>*)(node->next_op);
+                }
             }
         }
 
@@ -136,14 +159,16 @@ namespace LR
         const std::vector<int>& nvirt;
         const int nspin = 1;
         const int nk = 1;
+        const bool tdm_sym = false;     ///< whether to symmetrize the transition density matrix
         const std::vector<Parallel_2D>& pX;
         T one()const;
         /// transition density matrix in AO representation
-        /// Hxc only: size=1, calculate on the same address for each bands
-        /// Hxc+Exx: size=nbands, store the result of each bands for common use
-        std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>> DM_trans;
+        /// calculate on the same address for each bands, and commonly used by all the operators
+        std::unique_ptr<elecstate::DensityMatrix<T, T>> DM_trans;
 
         /// first node operator, add operations from each operators
         hamilt::Operator<T, base_device::DEVICE_CPU>* ops = nullptr;
+
+        std::function<void(const int&, const T*)> cal_dm_trans;
     };
 }

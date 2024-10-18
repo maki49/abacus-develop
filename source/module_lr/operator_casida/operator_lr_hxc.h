@@ -20,7 +20,7 @@ namespace LR
             const std::vector<int>& nocc,
             const std::vector<int>& nvirt,
             const psi::Psi<T, Device>& psi_ks_in,
-            std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans_in,
+            std::unique_ptr<elecstate::DensityMatrix<T, T>>& DM_trans_in,
             typename TGint<T>::type* gint_in,
             std::weak_ptr<PotHxcLR> pot_in,
             const UnitCell& ucell_in,
@@ -41,7 +41,6 @@ namespace LR
             this->is_first_node = true;
             this->hR = std::unique_ptr<hamilt::HContainer<T>>(new hamilt::HContainer<T>(&pmat_in));
             this->initialize_HR(*this->hR, ucell_in, gd_in);
-            this->DM_trans[0]->init_DMR(*this->hR);
         };
         ~OperatorLRHxc() { };
 
@@ -76,24 +75,8 @@ namespace LR
             hR.set_paraV(&pmat);
             if (std::is_same<T, double>::value) { hR.fix_gamma(); }
         }
-        template<typename TR>
-        void init_DM_trans(const int& nbands, std::vector<std::unique_ptr<elecstate::DensityMatrix<T, TR>>>& DM_trans)const
-        {
-            // LR_Util::print_DMR(*this->DM_trans[0], ucell.nat, "DMR[ib=" + std::to_string(0) + "]");
-            if (this->next_op != nullptr)
-            {
-                int prev_size = DM_trans.size();
-                if (prev_size > nbands) { for (int ib = nbands;ib < prev_size;++ib) { DM_trans[ib].reset(); } }
-                DM_trans.resize(nbands);
-                for (int ib = prev_size;ib < nbands;++ib)
-                {
-                    // the first dimenstion of DensityMatrix is nk=nks/nspin 
-                    DM_trans[ib] = LR_Util::make_unique<elecstate::DensityMatrix<T, TR>>(&this->pmat, 1, this->kv.kvec_d, this->kv.get_nks() / nspin);
-                    DM_trans[ib]->init_DMR(*this->hR);
-                }
-            }
-        }
-        void grid_calculation(const int& nbands, const int& iband_dm)const;
+
+        void grid_calculation(const int& nbands)const;
 
         //global sizes
         const int& nspin;
@@ -109,7 +92,7 @@ namespace LR
         const psi::Psi<T, Device>& psi_ks = nullptr;
 
         /// transition density matrix
-        std::vector<std::unique_ptr<elecstate::DensityMatrix<T, T>>>& DM_trans;
+        std::unique_ptr<elecstate::DensityMatrix<T, T>>& DM_trans;
 
         /// transition hamiltonian in AO representation
         std::unique_ptr<hamilt::HContainer<T>> hR = nullptr;
@@ -126,8 +109,6 @@ namespace LR
         const UnitCell& ucell;
         std::vector<double> orb_cutoff_;
         Grid_Driver& gd;
-
-        bool tdm_sym = false; ///< whether transition density matrix is symmetric
 
         /// test
         mutable bool first_print = true;
