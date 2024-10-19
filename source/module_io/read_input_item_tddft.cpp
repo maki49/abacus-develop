@@ -343,10 +343,6 @@ void ReadInput::item_lr_tddft()
                 para.input.abs_wavelen_range.push_back(std::stod(item.str_values[i]));
             }
             };
-        item.check_value = [](const Input_Item& item, const Parameter& para) {
-            auto& awr = para.input.abs_wavelen_range;
-            if (awr.size() < 2) { ModuleBase::WARNING_QUIT("ReadInput", "abs_wavelen_range must have two values"); }
-            };
         sync_doublevec(input.abs_wavelen_range, 2, 0.0);
         this->add_item(item);
     }

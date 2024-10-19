@@ -77,7 +77,7 @@ inline int cal_nupdown_form_occ(const ModuleBase::matrix& wg)
     {
         const int nu = static_cast<int>(std::lround(occ_sum_k(0, ib)));
         const int nd = static_cast<int>(std::lround(occ_sum_k(1, ib)));
-        if (!(nu + nd)) { break; }
+        if ((nu + nd) == 0) { break; }
         nupdown += nu - nd;
     }
     return nupdown;
@@ -139,9 +139,10 @@ void LR::ESolver_LR<T, TR>::reset_dim_spin2()
     {
         this->openshell = true;
         nupdown > 0 ? ((nocc[1] -= nupdown) && (nvirt[1] += nupdown)) : ((nocc[0] += nupdown) && (nvirt[0] -= nupdown));
-        // npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
+        npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
         std::cout << "** Solve the spin-up and spin-down states separately for open-shell system. **" << std::endl;
     }
+    for (int is : {0, 1}) { if (npairs[is] <= 0) { throw std::invalid_argument(std::string("ESolver_LR: npairs (nocc*nvirt) <= 0 for spin") + std::string(is == 0 ? "up" : "down")); } }
     if (nstates > (npairs[0] + npairs[1]) * nk) { throw std::invalid_argument("ESolver_LR: nstates > nocc*nvirt*nk"); }
     if (input.lr_unrestricted) { this->openshell = true; }
 }
