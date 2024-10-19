@@ -114,9 +114,9 @@ void LR::ESolver_LR<T, TR>::set_dimension()
     else if (input.nvirt > 0) { this->nvirt_in = input.nvirt; }
     this->nbands = this->nocc_in + this->nvirt_in;
     this->nk = this->kv.get_nks() / this->nspin;
-    this->nocc = { nocc_in, nocc_in };
-    this->nvirt = { nvirt_in, nvirt_in };
-    this->npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
+    this->nocc.resize(nspin, nocc_in);
+    this->nvirt.resize(nspin, nvirt_in);
+    for (int is = 0;is < nspin;++is) { this->npairs.push_back(nocc[is] * nvirt[is]); }
     GlobalV::ofs_running << "Setting LR-TDDFT parameters: " << std::endl;
     GlobalV::ofs_running << "number of occupied bands: " << nocc_in << std::endl;
     GlobalV::ofs_running << "number of virtual bands: " << nvirt_in << std::endl;
@@ -512,13 +512,11 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
     double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
     for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
     auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
-    for (int is = 0;is < this->nspin;++is)
+    for (int is = 0;is < this->X.size();++is)
     {
-        const int is_in_x = openshell ? 0 : is;
-        LR_Spectrum<T> spectrum(this->nspin, this->nbasis, this->nocc[is], this->nvirt[is], this->gint_, *this->pw_rho, *this->psi_ks,
-            this->ucell, this->kv, this->paraX_[is], this->paraC_, this->paraMat_,
-            &this->pelec->ekb.c[is_in_x * nstates], this->X[is_in_x].template data<T>(),
-            nstates, nloc_per_band, /*offset=*/openshell ? nk * paraX_[0].get_local_size() : 0);
+        LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, this->gint_, *this->pw_rho, *this->psi_ks,
+            this->ucell, this->kv, this->paraX_, this->paraC_, this->paraMat_,
+            &this->pelec->ekb.c[is * nstates], this->X[is].template data<T>(), nstates, openshell);
         spectrum.transition_analysis(spin_types[is]);
         spectrum.optical_absorption(freq, input.abs_broadening, spin_types[is]);
     }

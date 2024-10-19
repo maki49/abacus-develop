@@ -72,15 +72,15 @@ namespace LR
         std::vector<ct::Tensor> X;
         int nloc_per_band = 1;
 
-        std::vector<int> nocc = { 1, 1 };   ///< number of occupied orbitals for each spin used in the calculation
+        std::vector<int> nocc;   ///< number of occupied orbitals for each spin used in the calculation
         int nocc_in = 1;    ///< nocc read from input (adjusted by nelec): max(spin-up, spindown)
         int nocc_max = 1;   ///< nelec/2
-        std::vector<int> nvirt = { 1, 1 };   ///< number of virtual orbitals for each spin used in the calculation
+        std::vector<int> nvirt;   ///< number of virtual orbitals for each spin used in the calculation
         int nvirt_in = 1;   ///< nvirt read from input (adjusted by nelec): min(spin-up, spindown)
         int nbands = 2;
         int nbasis = 2;
         /// n_occ*nvirt, the basis size of electron-hole pair representation
-        std::vector<int> npairs = { 1, 1 };
+        std::vector<int> npairs;
         /// how many 2-particle states to be solved
         int nstates = 1;
         int nspin = 1;
