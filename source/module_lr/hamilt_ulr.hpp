@@ -35,7 +35,8 @@ namespace LR
             const std::vector<Parallel_2D>& pX_in,   ///< {up, down}
             const Parallel_2D& pc_in,
             const Parallel_Orbitals& pmat_in) :nocc(nocc), nvirt(nvirt), pX(pX_in), nk(kv_in.get_nks() / nspin),
-            nloc_per_band(nk* pX[0].get_local_size() + nk * pX[1].get_local_size())
+            ldim(nk* pX[0].get_local_size() + nk * pX[1].get_local_size()),
+            gdim(nk* std::inner_product(nocc.begin(), nocc.end(), nvirt.begin(), 0))
         {
             ModuleBase::TITLE("HamiltULR", "HamiltULR");
             this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
@@ -92,7 +93,7 @@ namespace LR
         void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int& nband) const
         {
             ModuleBase::TITLE("HamiltULR", "hPsi");
-            assert(ld_psi == this->nloc_per_band);
+            assert(ld_psi == this->ldim);
             const std::vector<int64_t> xdim_is = { nk * pX[0].get_local_size(), nk * pX[1].get_local_size() };
             /// band-wise act (also works for close-shell, but not efficient)
             for (int ib = 0;ib < nband;++ib)
@@ -121,8 +122,7 @@ namespace LR
             const std::vector<int> npairs = { this->nocc[0] * this->nvirt[0], this->nocc[1] * this->nvirt[1] };
             const std::vector<int64_t> ldim_is = { nk * pX[0].get_local_size(), nk * pX[1].get_local_size() };
             const std::vector<int> gdim_is = { nk * npairs[0], nk * npairs[1] };
-            const int global_size = this->nk * (npairs[0] + npairs[1]);
-            std::vector<T> Amat_full(global_size * global_size);
+            std::vector<T> Amat_full(gdim * gdim);
             for (int is_bj : {0, 1})
             {
                 const int no = this->nocc[is_bj];
@@ -137,13 +137,13 @@ namespace LR
                         for (int b = 0;b < nv;++b)
                         {
                             const int gcol = goffset_bj + ik_bj * npairs[is_bj] + j * nv + b;//global
-                            std::vector<T> X_bj(this->nloc_per_band, T(0));
+                            std::vector<T> X_bj(this->ldim, T(0));
                             const int lj = px.global2local_col(j);
                             const int lb = px.global2local_row(b);
                             const int lcol = loffset_bj + ik_bj * px.get_local_size() + lj * px.get_row_size() + lb;//local
                             if (px.in_this_processor(b, j)) { X_bj[lcol] = T(1); }
                             this->cal_dm_trans(is_bj, X_bj.data() + loffset_bj);
-                            std::vector<T> Aloc_col(this->nloc_per_band, T(0)); // a col of A matrix (local)
+                            std::vector<T> Aloc_col(this->ldim, T(0)); // a col of A matrix (local)
                             for (int is_ai : {0, 1})
                             {
                                 const int goffset_ai = is_ai * gdim_is[0];
@@ -159,11 +159,11 @@ namespace LR
                                 for (int ik_ai = 0;ik_ai < this->nk;++ik_ai)
                                 {
                                     LR_Util::gather_2d_to_full(pax, Aloc_col.data() + loffset_ai + ik_ai * pax.get_local_size(),
-                                        Amat_full.data() + gcol * global_size /*col, bj*/ + goffset_ai + ik_ai * npairs[is_ai]/*row, ai*/,
+                                        Amat_full.data() + gcol * gdim /*col, bj*/ + goffset_ai + ik_ai * npairs[is_ai]/*row, ai*/,
                                         false, nv, no);
                                 }
 #else
-                                std::memcpy(Amat_full.data() + gcol * global_size + goffset_ai, Aloc_col.data() + goffset_ai, gdim_is[is_ai] * sizeof(T));
+                                std::memcpy(Amat_full.data() + gcol * gdim + goffset_ai, Aloc_col.data() + goffset_ai, gdim_is[is_ai] * sizeof(T));
 #endif
                             }
                         }
@@ -171,8 +171,40 @@ namespace LR
                 }
             }
             std::cout << "Full A matrix:" << std::endl;
-            LR_Util::print_value(Amat_full.data(), global_size, global_size);
+            LR_Util::print_value(Amat_full.data(), gdim, gdim);
             return Amat_full;
+        }
+
+        /// copy global data (eigenvectors) to local memory
+        void global2local(T* lvec, const T* gvec, const int& nband) const
+        {
+            const std::vector<int> npairs = { this->nocc[0] * this->nvirt[0], this->nocc[1] * this->nvirt[1] };
+            const std::vector<int64_t> ldim_is = { nk * pX[0].get_local_size(), nk * pX[1].get_local_size() };
+            const std::vector<int> gdim_is = { nk * npairs[0], nk * npairs[1] };
+            for (int ib = 0;ib < nband;++ib)
+            {
+                const int loffset_b = ib * this->ldim;
+                const int goffset_b = ib * this->gdim;
+                for (int is : {0, 1})
+                {
+                    const int loffset_bs = loffset_b + is * ldim_is[0];
+                    const int goffset_bs = goffset_b + is * gdim_is[0];
+                    for (int ik = 0;ik < nk;++ik)
+                    {
+                        const int loffset = loffset_bs + ik * pX[is].get_local_size();
+                        const int goffset = goffset_bs + ik * npairs[is];
+                        for (int lo = 0;lo < pX[is].get_col_size();++lo)
+                        {
+                            const int go = pX[is].local2global_col(lo);
+                            for (int lv = 0;lv < pX[is].get_row_size();++lv)
+                            {
+                                const int gv = pX[is].local2global_row(lv);
+                                lvec[loffset + lo * pX[is].get_row_size() + lv] = gvec[goffset + go * nvirt[is] + gv];
+                            }
+                        }
+                    }
+                }
+            }
         }
 
     private:
@@ -183,7 +215,8 @@ namespace LR
 
 
         const int nk = 1;
-        const int nloc_per_band = 1;
+        const int ldim = 1;
+        const int gdim = 1;
 
         /// 4 operator lists: uu, ud, du, dd
         std::vector<hamilt::Operator<T>*> ops;

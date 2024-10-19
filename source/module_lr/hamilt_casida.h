@@ -128,17 +128,11 @@ namespace LR
                     for (int ik = 0;ik < nk;++ik) { this->DM_trans->set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
                 };
         }
-        ~HamiltLR()
-        {
-            if (this->ops != nullptr)
-            {
-                delete this->ops;
-            }
-        };
+        ~HamiltLR() { delete this->ops; }
 
-        virtual std::vector<T> matrix()const;
+        std::vector<T> matrix()const;
 
-        virtual void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int& nband) const
+        void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int& nband) const
         {
             assert(ld_psi == nk * pX[0].get_local_size());
             for (int ib = 0;ib < nband;++ib)
@@ -150,6 +144,30 @@ namespace LR
                 {
                     node->act(/*nband=*/1, ld_psi, /*npol=*/1, psi_in + offset, hpsi + offset);
                     node = (hamilt::Operator<T>*)(node->next_op);
+                }
+            }
+        }
+
+        void global2local(T* lvec, const T* gvec, const int& nband) const
+        {
+            const int npairs = nocc[0] * nvirt[0];
+            for (int ib = 0;ib < nband;++ib)
+            {
+                const int loffset_b = ib * nk * pX[0].get_local_size();
+                const int goffset_b = ib * nk * npairs;
+                for (int ik = 0;ik < nk;++ik)
+                {
+                    const int loffset = loffset_b + ik * pX[0].get_local_size();
+                    const int goffset = goffset_b + ik * npairs;
+                    for (int lo = 0;lo < pX[0].get_col_size();++lo)
+                    {
+                        const int go = pX[0].local2global_col(lo);
+                        for (int lv = 0;lv < pX[0].get_row_size();++lv)
+                        {
+                            const int gv = pX[0].local2global_row(lv);
+                            lvec[loffset + lo * pX[0].get_row_size() + lv] = gvec[goffset + go * nvirt[0] + gv];
+                        }
+                    }
                 }
             }
         }

@@ -50,17 +50,18 @@ namespace LR
             if (method == "lapack")
             {
                 std::vector<T> Amat_full = hm.matrix();
-                eigenvalue.resize(dim);
-                if (hermitian) { LR_Util::diag_lapack(dim, Amat_full.data(), eigenvalue.data()); }
+                const int gdim = std::sqrt(Amat_full.size());
+                eigenvalue.resize(gdim);
+                if (hermitian) { LR_Util::diag_lapack(gdim, Amat_full.data(), eigenvalue.data()); }
                 else
                 {
-                    std::vector<std::complex<double>> eig_complex(dim);
-                    LR_Util::diag_lapack_nh(dim, Amat_full.data(), eig_complex.data());
+                    std::vector<std::complex<double>> eig_complex(gdim);
+                    LR_Util::diag_lapack_nh(gdim, Amat_full.data(), eig_complex.data());
                     print_eigs(eig_complex, "Right eigenvalues: of the non-Hermitian matrix: (Ry)");
-                    for (int i = 0; i < dim; i++) { eigenvalue[i] = eig_complex[i].real(); }
+                    for (int i = 0; i < gdim; i++) { eigenvalue[i] = eig_complex[i].real(); }
                 }
                 // copy eigenvectors
-                std::memcpy(psi, Amat_full.data(), sizeof(T) * dim * nband);
+                hm.global2local(psi, Amat_full.data(), nband);
             }
             else
             {

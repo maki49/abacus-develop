@@ -8,7 +8,7 @@ namespace LR
         const int no = this->nocc[0];
         const int nv = this->nvirt[0];
         const auto& px = this->pX[0];
-        const int nloc_per_band = nk * px.get_local_size();
+        const int ldim = nk * px.get_local_size();
         int npairs = no * nv;
         std::vector<T> Amat_full(this->nk * npairs * this->nk * npairs, 0.0);
         for (int ik = 0;ik < this->nk;++ik)
@@ -30,7 +30,7 @@ namespace LR
                     hamilt::Operator<T>* node(this->ops);
                     while (node != nullptr)
                     {   // act() on and return the k1-first type of psi
-                        node->act(1, nloc_per_band, /*npol=*/1, X_bj.get_pointer(), A_aibj.get_pointer());
+                        node->act(1, ldim, /*npol=*/1, X_bj.get_pointer(), A_aibj.get_pointer());
                         node = (hamilt::Operator<T>*)(node->next_op);
                     }
                     // reduce ai for a fixed bj
