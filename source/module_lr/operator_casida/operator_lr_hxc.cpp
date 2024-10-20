@@ -22,36 +22,31 @@ namespace LR
         ModuleBase::TITLE("OperatorLRHxc", "act");
         const int& sl = ispin_ks[0];
         const auto psil_ks = LR_Util::get_psi_spin(psi_ks, sl, nk);
-
         const int& lgd = gint->gridt->lgd;
-        for (int ib = 0;ib < nbands;++ib)
-        {
-            const int xstart_b = ib * nbasis;
 
-            this->DM_trans->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
-            // LR_Util::print_DMR(*DM_trans, ucell.nat, "DMR");
+        this->DM_trans->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
+        // LR_Util::print_DMR(*DM_trans, ucell.nat, "DMR");
 
-            // ========================= begin grid calculation=========================
-            this->grid_calculation(nbands);   //DM(R) to H(R)
-            // ========================= end grid calculation =========================
+        // ========================= begin grid calculation=========================
+        this->grid_calculation(nbands);   //DM(R) to H(R)
+        // ========================= end grid calculation =========================
 
-            // V(R)->V(k) 
-            std::vector<ct::Tensor> v_hxc_2d(nk, LR_Util::newTensor<T>({ pmat.get_col_size(), pmat.get_row_size() }));
-            for (auto& v : v_hxc_2d) v.zero();
-            int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER(PARAM.inp.ks_solver) ? this->pmat.get_row_size() : this->pmat.get_col_size();
-            for (int ik = 0;ik < nk;++ik) { folding_HR(*this->hR, v_hxc_2d[ik].data<T>(), this->kv.kvec_d[ik], nrow, 1); }  // V(R) -> V(k)
-            // LR_Util::print_HR(*this->hR, this->ucell.nat, "4.VR");
-            // if (this->first_print)
-            // for (int ik = 0;ik < nk;++ik)
-            //     LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", &this->pmat);
+        // V(R)->V(k) 
+        std::vector<ct::Tensor> v_hxc_2d(nk, LR_Util::newTensor<T>({ pmat.get_col_size(), pmat.get_row_size() }));
+        for (auto& v : v_hxc_2d) v.zero();
+        int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER(PARAM.inp.ks_solver) ? this->pmat.get_row_size() : this->pmat.get_col_size();
+        for (int ik = 0;ik < nk;++ik) { folding_HR(*this->hR, v_hxc_2d[ik].data<T>(), this->kv.kvec_d[ik], nrow, 1); }  // V(R) -> V(k)
+        // LR_Util::print_HR(*this->hR, this->ucell.nat, "4.VR");
+        // if (this->first_print)
+        // for (int ik = 0;ik < nk;++ik)
+        //     LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", &this->pmat);
 
-            // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
+        // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            cal_AX_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi + xstart_b);
+        cal_AX_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi);
 #else
-            cal_AX_blas(v_hxc_2d, psil_ks, nocc[sl], nvirt[sl], hpsi + xstart_b);
+        cal_AX_blas(v_hxc_2d, psil_ks, nocc[sl], nvirt[sl], hpsi);
 #endif
-        }
     }
 
 

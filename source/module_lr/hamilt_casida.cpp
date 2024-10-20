@@ -43,7 +43,7 @@ namespace LR
 #endif
                 }
         // output Amat
-        std::cout << "Full A matrix:" << std::endl;
+        std::cout << "Full A matrix: (elements < 1e-10 is set to 0)" << std::endl;
         LR_Util::print_value(Amat_full.data(), nk * npairs, nk * npairs);
         return Amat_full;
     }

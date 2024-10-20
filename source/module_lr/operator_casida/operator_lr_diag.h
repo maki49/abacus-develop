@@ -46,15 +46,11 @@ namespace LR
         {
             ModuleBase::TITLE("OperatorLRDiag", "act");
             const int nlocal_ph = nk * pX.get_local_size();   // local size of particle-hole basis
-            for (int ib = 0;ib < nbands;++ib)
-            {
-                const int ibstart = ib * nlocal_ph;
-                hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
-                    nk * pX.get_local_size(),
-                    hpsi + ibstart,
-                    psi_in + ibstart,
-                    this->eig_ks_diff.c);
-            }
+            hsolver::vector_mul_vector_op<T, Device>()(this->ctx,
+                nk * pX.get_local_size(),
+                hpsi,
+                psi_in,
+                this->eig_ks_diff.c);
         }
     private:
         const Parallel_2D& pX;

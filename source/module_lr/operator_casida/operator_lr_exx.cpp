@@ -83,56 +83,54 @@ namespace LR
 
         // convert parallel info to LibRI interfaces
         std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(this->pmat);
-        for (int ib = 0;ib < nbands;++ib)
+
+        // suppose Cs，Vs, have already been calculated in the ion-step of ground state
+        // and DM_trans has been calculated in hPsi() outside.
+
+        // 1. set_Ds (once)
+        // convert to vector<T*> for the interface of RI_2D_Comm::split_m2D_ktoR (interface will be unified to ct::Tensor)
+        std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans->get_DMK_vector();
+        // assert(DMk_trans_vector.size() == nk);
+        std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
+        for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &DMk_trans_vector[ik]; }
+        // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
+        std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
+            aims_nbasis.empty() ?
+            RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, this->pmat, 1)
+            : RI_Benchmark::split_Ds(DMk_trans_vector, aims_nbasis, ucell); //0.5 will be multiplied
+        // LR_Util::print_CV(Ds_trans[0], "Ds_trans in OperatorLREXX", 1e-10);
+        // 2. cal_Hs
+        auto lri = this->exx_lri.lock();
+
+        // LR_Util::print_CV(Ds_trans[is], "Ds_trans in OperatorLREXX", 1e-10);
+        lri->exx_lri.set_Ds(std::move(Ds_trans[0]), lri->info.dm_threshold);
+        lri->exx_lri.cal_Hs();
+        lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
+            lri->mpi_comm, std::move(lri->exx_lri.Hs), std::get<0>(judge[0]), std::get<1>(judge[0]));
+        lri->post_process_Hexx(lri->Hexxs[0]);
+
+        // 3. set [AX]_iak = DM_onbase * Hexxs for each occ-virt pair and each k-point
+        // caution: parrallel
+
+        for (int io = 0;io < this->nocc;++io)
         {
-            const int xstart_b = ib * nk * pX.get_local_size();
-            // suppose Cs，Vs, have already been calculated in the ion-step of ground state
-            // and DM_trans has been calculated in hPsi() outside.
-
-            // 1. set_Ds (once)
-            // convert to vector<T*> for the interface of RI_2D_Comm::split_m2D_ktoR (interface will be unified to ct::Tensor)
-            std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans->get_DMK_vector();
-            // assert(DMk_trans_vector.size() == nk);
-            std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
-            for (int ik = 0;ik < nk;++ik) {DMk_trans_pointer[ik] = &DMk_trans_vector[ik];}
-            // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
-            std::vector<std::map<TA, std::map<TAC, RI::Tensor<T>>>> Ds_trans =
-                aims_nbasis.empty() ? 
-                RI_2D_Comm::split_m2D_ktoR<T>(this->kv, DMk_trans_pointer, this->pmat, 1)
-                : RI_Benchmark::split_Ds(DMk_trans_vector, aims_nbasis, ucell); //0.5 will be multiplied
-            // LR_Util::print_CV(Ds_trans[0], "Ds_trans in OperatorLREXX", 1e-10);
-            // 2. cal_Hs
-            auto lri = this->exx_lri.lock();
-
-            // LR_Util::print_CV(Ds_trans[is], "Ds_trans in OperatorLREXX", 1e-10);
-            lri->exx_lri.set_Ds(std::move(Ds_trans[0]), lri->info.dm_threshold);
-            lri->exx_lri.cal_Hs();
-            lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
-                lri->mpi_comm, std::move(lri->exx_lri.Hs), std::get<0>(judge[0]), std::get<1>(judge[0]));
-            lri->post_process_Hexx(lri->Hexxs[0]);
-
-            // 3. set [AX]_iak = DM_onbase * Hexxs for each occ-virt pair and each k-point
-            // caution: parrallel
-
-            for (int io = 0;io < this->nocc;++io)
+            for (int iv = 0;iv < this->nvirt;++iv)
             {
-                for (int iv = 0;iv < this->nvirt;++iv)
+                for (int ik = 0;ik < nk;++ik)
                 {
-                    for (int ik = 0;ik < nk;++ik)
+                    const int xstart_bk = ik * pX.get_local_size();
+                    this->cal_DM_onebase(io, iv, ik);       //set Ds_onebase for all e-h pairs (not only on this processor)
+                    // LR_Util::print_CV(Ds_onebase[is], "Ds_onebase of occ " + std::to_string(io) + ", virtual " + std::to_string(iv) + " in OperatorLREXX", 1e-10);
+                    const T& ene = 2 * alpha * //minus for exchange(but here plus is right, why?), 2 for Hartree to Ry
+                        lri->exx_lri.post_2D.cal_energy(this->Ds_onebase, lri->Hexxs[0]);
+                    if (this->pX.in_this_processor(iv, io))
                     {
-                        const int xstart_bk = xstart_b + ik * pX.get_local_size();
-                        this->cal_DM_onebase(io, iv, ik);       //set Ds_onebase for all e-h pairs (not only on this processor)
-                        // LR_Util::print_CV(Ds_onebase[is], "Ds_onebase of occ " + std::to_string(io) + ", virtual " + std::to_string(iv) + " in OperatorLREXX", 1e-10);
-                        const T& ene = 2 * alpha * //minus for exchange(but here plus is right, why?), 2 for Hartree to Ry
-                            lri->exx_lri.post_2D.cal_energy(this->Ds_onebase, lri->Hexxs[0]);
-                        if (this->pX.in_this_processor(iv, io))
-                        {
-                            hpsi[xstart_bk + ik * pX.get_local_size() + this->pX.global2local_col(io) * this->pX.get_row_size() + this->pX.global2local_row(iv)] += ene;
-                        }
+                        hpsi[xstart_bk + ik * pX.get_local_size() + this->pX.global2local_col(io) * this->pX.get_row_size() + this->pX.global2local_row(iv)] += ene;
                     }
                 }
             }
         }
+
     }
     template class OperatorLREXX<double>;
     template class OperatorLREXX<std::complex<double>>;
