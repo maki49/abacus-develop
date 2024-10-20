@@ -3,6 +3,7 @@
 #include "module_elecstate/module_dm/density_matrix.h"
 #include "module_lr/operator_casida/operator_lr_diag.h"
 #include "module_lr/operator_casida/operator_lr_hxc.h"
+#include "module_lr/utils/lr_util_print.h"
 #ifdef __EXX
 #include "module_lr/operator_casida/operator_lr_exx.h"
 #endif

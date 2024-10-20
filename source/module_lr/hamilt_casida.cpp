@@ -1,4 +1,5 @@
 #include "hamilt_casida.h"
+#include "module_lr/utils/lr_util_print.h"
 namespace LR
 {
     template<typename T>
