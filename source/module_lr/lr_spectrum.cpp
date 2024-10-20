@@ -24,14 +24,14 @@ inline void check_sum_rule(const double& osc_tot)
 }
 
 template<>
-void LR::LR_Spectrum<double>::oscillator_strength()
+void LR::LR_Spectrum<double>::oscillator_strength(Grid_Driver& gd, const std::vector<double>& orb_cutoff)
 {
     ModuleBase::TITLE("LR::LR_Spectrum", "oscillator_strength");
     std::vector<double>& osc = this->oscillator_strength_;  // unit: Ry
     osc.resize(nstate, 0.0);
     double osc_tot = 0.0;
     elecstate::DensityMatrix<double, double> DM_trans(&this->pmat, 1, this->kv.kvec_d, this->nk);
-    DM_trans.init_DMR(&GlobalC::GridD, &this->ucell);
+    LR_Util::initialize_DMR(DM_trans, this->pmat, this->ucell, gd, orb_cutoff);
     this->transition_dipole_.resize(nstate, ModuleBase::Vector3<double>(0.0, 0.0, 0.0));
     for (int istate = 0;istate < nstate;++istate)
     {
@@ -80,16 +80,16 @@ void LR::LR_Spectrum<double>::oscillator_strength()
 }
 
 template<>
-void LR::LR_Spectrum<std::complex<double>>::oscillator_strength()
+void LR::LR_Spectrum<std::complex<double>>::oscillator_strength(Grid_Driver& gd, const std::vector<double>& orb_cutoff)
 {
     ModuleBase::TITLE("LR::LR_Spectrum", "oscillator_strength");
     std::vector<double>& osc = this->oscillator_strength_;  // unit: Ry
     osc.resize(nstate, 0.0);
     double osc_tot = 0.0;
     elecstate::DensityMatrix<std::complex<double>, std::complex<double>> DM_trans(&this->pmat, 1, this->kv.kvec_d, this->nk);
-    DM_trans.init_DMR(&GlobalC::GridD, &this->ucell);
+    LR_Util::initialize_DMR(DM_trans, this->pmat, this->ucell, gd, orb_cutoff);
     elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&this->pmat, 1, this->kv.kvec_d, this->nk);
-    DM_trans_real_imag.init_DMR(&GlobalC::GridD, &this->ucell);
+    LR_Util::initialize_DMR(DM_trans_real_imag, this->pmat, this->ucell, gd, orb_cutoff);
 
     this->transition_dipole_.resize(nstate, ModuleBase::Vector3<std::complex<double>>(0.0, 0.0, 0.0));
     for (int istate = 0;istate < nstate;++istate)

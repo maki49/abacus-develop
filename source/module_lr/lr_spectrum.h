@@ -12,7 +12,8 @@ namespace LR
     public:
         LR_Spectrum(const int& nspin_global, const int& naos, const std::vector<int>& nocc, const std::vector<int>& nvirt,
             typename TGint<T>::type* gint, const ModulePW::PW_Basis& rho_basis, psi::Psi<T>& psi_ks_in,
-            const UnitCell& ucell, const K_Vectors& kv_in, const std::vector<Parallel_2D>& pX_in, const Parallel_2D& pc_in, const Parallel_Orbitals& pmat_in,
+            const UnitCell& ucell, const K_Vectors& kv_in, Grid_Driver& gd, const std::vector<double>& orb_cutoff,
+            const std::vector<Parallel_2D>& pX_in, const Parallel_2D& pc_in, const Parallel_Orbitals& pmat_in,
             const double* eig, const T* X, const int& nstate, const bool& openshell) :
             nspin_x(openshell ? 2 : 1), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin_global),
             gint(gint), rho_basis(rho_basis), ucell(ucell), kv(kv_in),
@@ -22,7 +23,7 @@ namespace LR
             gdim(nk* std::inner_product(nocc.begin(), nocc.end(), nvirt.begin(), 0))
         {
             for (int is = 0;is < nspin_global;++is) { psi_ks.emplace_back(LR_Util::get_psi_spin(psi_ks_in, is, nk)); }
-            this->oscillator_strength();
+            this->oscillator_strength(gd, orb_cutoff);
         };
         /// @brief calculate the optical absorption spectrum
         void optical_absorption(const std::vector<double>& freq, const double eta, const std::string& spintype);
@@ -30,7 +31,7 @@ namespace LR
         void transition_analysis(const std::string& spintype);
     private:
         /// $$2/3\Omega\sum_{ia\sigma} |\braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2\int \rho_{\alpha\beta}(\mathbf{r}) \mathbf{r} d\mathbf{r}$$
-        void oscillator_strength();
+        void oscillator_strength(Grid_Driver& gd, const std::vector<double>& orb_cutoff);
         const int nspin_x = 1;   ///< 1 for singlet/triplet, 2 for updown(openshell)
         const int naos = 1;
         const std::vector<int>& nocc;

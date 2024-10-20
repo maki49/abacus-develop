@@ -94,7 +94,7 @@ namespace LR
         elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&pmat, 1, kv.kvec_d, kv.get_nks() / nspin);
         DM_trans_real_imag.init_DMR(*this->hR);
         hamilt::HContainer<double> HR_real_imag(GlobalC::ucell, &this->pmat);
-        this->initialize_HR(HR_real_imag, ucell, gd);
+        LR_Util::initialize_HR<std::complex<double>, double>(HR_real_imag, ucell, gd, orb_cutoff_);
 
         auto dmR_to_hR = [&, this](const char& type) -> void
             {

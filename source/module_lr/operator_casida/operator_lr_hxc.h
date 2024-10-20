@@ -40,7 +40,8 @@ namespace LR
             this->cal_type = hamilt::calculation_type::lcao_gint;
             this->is_first_node = true;
             this->hR = std::unique_ptr<hamilt::HContainer<T>>(new hamilt::HContainer<T>(&pmat_in));
-            this->initialize_HR(*this->hR, ucell_in, gd_in);
+            LR_Util::initialize_HR<T, T>(*this->hR, ucell_in, gd_in, orb_cutoff);
+            assert(&pmat_in == this->hR->get_paraV());
         };
         ~OperatorLRHxc() { };
 
@@ -49,33 +50,6 @@ namespace LR
         virtual void act(const int nbands, const int nbasis, const int npol, const T* psi_in, T* hpsi, const int ngk_ik = 0)const override;
 
     private:
-        template<typename TR>   //T=double, TR=double; T=std::complex<double>, TR=std::complex<double>/double
-        void initialize_HR(hamilt::HContainer<TR>& hR, const UnitCell& ucell, Grid_Driver& gd) const
-        {
-            for (int iat1 = 0; iat1 < ucell.nat; iat1++)
-            {
-                auto tau1 = ucell.get_tau(iat1);
-                int T1, I1;
-                ucell.iat2iait(iat1, &I1, &T1);
-                AdjacentAtomInfo adjs;
-                gd.Find_atom(ucell, tau1, T1, I1, &adjs);
-                for (int ad = 0; ad < adjs.adj_num + 1; ++ad)
-                {
-                    const int T2 = adjs.ntype[ad];
-                    const int I2 = adjs.natom[ad];
-                    int iat2 = this->ucell.itia2iat(T2, I2);
-                    if (pmat.get_row_size(iat1) <= 0 || pmat.get_col_size(iat2) <= 0) { continue; }
-                    const ModuleBase::Vector3<int>& R_index = adjs.box[ad];
-                    if (ucell.cal_dtau(iat1, iat2, R_index).norm() * this->ucell.lat0 >= orb_cutoff_[T1] + orb_cutoff_[T2]) { continue; }
-                    hamilt::AtomPair<TR> tmp(iat1, iat2, R_index.x, R_index.y, R_index.z, &pmat);
-                    hR.insert_pair(tmp);
-                }
-            }
-            hR.allocate(nullptr, true);
-            hR.set_paraV(&pmat);
-            if (std::is_same<T, double>::value) { hR.fix_gamma(); }
-        }
-
         void grid_calculation(const int& nbands)const;
 
         //global sizes

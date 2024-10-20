@@ -46,7 +46,8 @@ namespace LR
             if (ri_hartree_benchmark != "aims") { assert(aims_nbasis.empty()); }
             // always use nspin=1 for transition density matrix
             this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
-            this->DM_trans->init_DMR(&gd_in, &ucell_in);
+            LR_Util::initialize_DMR(*this->DM_trans, pmat_in, ucell_in, gd_in, orb_cutoff);
+            // this->DM_trans->init_DMR(&gd_in, &ucell_in); // too large due to not restricted by orb_cutoff
 
             // add the diag operator  (the first one)
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], nk, nocc[0], nvirt[0]);

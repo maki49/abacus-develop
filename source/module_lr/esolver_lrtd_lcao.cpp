@@ -219,6 +219,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
     if (std::is_same<T, double>::value) { this->gint_g_ = std::move(ks_sol.GG); }
     else { this->gint_k_ = std::move(ks_sol.GK); }
     this->set_gint();
+    this->gint_->reset_DMRGint(1);
 
     // move pw basis
     delete this->pw_rho;    // newed in ESolver_FP::ESolver_FP
@@ -349,7 +350,6 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
         PARAM.inp.test_atom_input);
     this->set_gint();
     this->gint_->gridt = &this->gt_;
-    this->gint_->reset_DMRGint(1);
 
     // (3) Periodic condition search for each grid.
     double dr_uniform = 0.001;
@@ -505,7 +505,7 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
     //cal spectrum
     std::vector<double> freq(100);
     std::vector<double> abs_wavelen_range({ 20, 200 });//default range
-    if (input.abs_wavelen_range.size() == 2 && std::abs(input.abs_wavelen_range[1] - input.abs_wavelen_range[0]) > 0.02)
+    if (input.abs_wavelen_range.size() >= 2 && std::abs(input.abs_wavelen_range[1] - input.abs_wavelen_range[0]) > 0.02)
     {
         abs_wavelen_range = input.abs_wavelen_range;
     }
@@ -516,7 +516,8 @@ void LR::ESolver_LR<T, TR>::after_all_runners()
     for (int is = 0;is < this->X.size();++is)
     {
         LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, this->gint_, *this->pw_rho, *this->psi_ks,
-            this->ucell, this->kv, this->paraX_, this->paraC_, this->paraMat_,
+            this->ucell, this->kv, GlobalC::GridD, this->orb_cutoff_,
+            this->paraX_, this->paraC_, this->paraMat_,
             &this->pelec->ekb.c[is * nstates], this->X[is].template data<T>(), nstates, openshell);
         spectrum.transition_analysis(spin_types[is]);
         spectrum.optical_absorption(freq, input.abs_broadening, spin_types[is]);
