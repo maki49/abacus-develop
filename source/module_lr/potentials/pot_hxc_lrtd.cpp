@@ -12,7 +12,7 @@ namespace LR
 {
     // constructor for exchange-correlation kernel
     PotHxcLR::PotHxcLR(const std::string& xc_kernel_in, const ModulePW::PW_Basis* rho_basis_in, const UnitCell* ucell_in,
-        const Charge* chg_gs/*ground state*/, const SpinType st_in)
+        const Charge* chg_gs/*ground state*/, const SpinType& st_in)
         :xc_kernel(xc_kernel_in), tpiba_(ucell_in->tpiba), spin_type_(st_in)
     {
         this->rho_basis_ = rho_basis_in;

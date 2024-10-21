@@ -3961,7 +3961,7 @@ Currently supported: `RPA`, `LDA`, `PBE`, `HSE`, `HF`.
 - **Type**: Boolean
 - **Description**: Whether to use unrestricted construction for LR-TDDFT (the matrix size will be doubled).
   - True:  Always use unrestricted LR-TDDFT. 
-  - False: Use unrestricted  LR-TDDFT only when the system is open-shell.
+  - False: Use unrestricted LR-TDDFT only when the system is open-shell.
 - **Default**: False
 
 ### abs_wavelen_range
