@@ -38,7 +38,7 @@ namespace ModuleSymmetry
         std::vector<ModuleBase::Matrix3> gmatc(nsym_);
         for (int i = 0;i < nsym_;++i) { gmatc[i] = this->irs_.direct_to_cartesian(ucell.symm.gmatrix[i], ucell.latvec);
 }
-        this->cal_rotmat_Slm(gmatc.data(), reduce_Cs_ ? std::max(this->abfs_Lmax_, ucell.lmax) : ucell.lmax);
+        this->cal_rotmat_Slm(gmatc.data(), reduce_Cs_ ? std::max(this->abfs_Lmax_, ucell.lmax) : ucell.lmax, ucell);
 
         // 2. calculate the rotation matrix in AO-representation for each ibz_kpoint and symmetry operation: M(k, isym)
         auto restrict_kpt = [](const TCdouble& kvec, const double& symm_prec) -> TCdouble
@@ -68,12 +68,12 @@ namespace ModuleSymmetry
         }
 
         // output Ms of isym=1
-        // std::ofstream ofs("Ms_kibz7_sym7.dat");
+        // std::ofstream ofs("Ms_kibz3_sym7.dat");
         // for (int i = 0;i < pv.get_row_size();++i)
         // {
         //     for (int j = 0;j < pv.get_col_size();++j)
         //     {
-        //         ofs << std::setprecision(10) << this->Ms_[7][7][j * pv.get_col_size() + i] << " ";
+        //         ofs << std::setprecision(10) << this->Ms_[3][7][j * pv.get_col_size() + i] << " ";
         //     }
         //     ofs << std::endl;
         // }
@@ -84,7 +84,7 @@ namespace ModuleSymmetry
     }
 
     std::vector<std::vector<std::complex<double>>> Symmetry_rotation::restore_dm(const K_Vectors& kv,
-        const std::vector<std::vector<std::complex<double>>>& dm_k_ibz, const Parallel_2D& pv)const
+        const std::vector<std::vector<std::complex<double>>>& dm_k_ibz, const Parallel_2D& pv, const UnitCell& ucell)const
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_dm");
         ModuleBase::timer::tick("Symmetry_rotation", "restore_dm");
@@ -125,13 +125,18 @@ namespace ModuleSymmetry
 
 
         // test for output
-/*
-        std::ofstream ofs("DM.dat");
+
+        std::ofstream ofs("DM_restore.dat");
         int ik = 0;
         for (int ikibz = 0;ikibz < kv.get_nkstot() / nspin0;++ikibz)
             for (auto& isym_kvd : kv.kstars[ikibz])
             {
-                ofs << "isym=" << isym_kvd.first << std::endl;
+                const int& isym = isym_kvd.first;
+                ofs << "isym= with gmatrix" << isym << std::endl;
+                const auto& gm = ucell.symm.gmatrix[isym];
+                ofs << gm.e11 << " " << gm.e12 << " " << gm.e13 << std::endl;
+                ofs << gm.e21 << " " << gm.e22 << " " << gm.e23 << std::endl;
+                ofs << gm.e31 << " " << gm.e32 << " " << gm.e33 << std::endl;
                 ofs << " k = " << isym_kvd.second.x << " " << isym_kvd.second.y << " " << isym_kvd.second.z << std::endl;
                 ofs << "DM(k):" << std::endl;
                 for (int i = 0;i < pv.get_row_size();++i)
@@ -146,12 +151,14 @@ namespace ModuleSymmetry
                 ofs << std::endl;
             }
         ofs.close();
-*/
+
+        // exit(0);
+
         ModuleBase::timer::tick("Symmetry_rotation", "restore_dm");
         return dm_k_full;
     }
     std::vector<std::vector<double>> Symmetry_rotation::restore_dm(const K_Vectors& kv,
-        const std::vector<std::vector<double>>& dm_k_ibz, const Parallel_2D& pv)const
+        const std::vector<std::vector<double>>& dm_k_ibz, const Parallel_2D& pv, const UnitCell& ucell)const
     {
         return dm_k_ibz;// do nothing for gamma_only
     }
@@ -257,7 +264,7 @@ namespace ModuleSymmetry
     }
 
     /// T_mm' = [c^\dagger D c]_mm'
-    void Symmetry_rotation::cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int lmax)
+    void Symmetry_rotation::cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int lmax, const UnitCell& ucell)
     {
         auto set_integer = [](RI::Tensor<std::complex<double>>& mat) -> void
             {
@@ -305,7 +312,7 @@ namespace ModuleSymmetry
                 // set_integer(this->rotmat_Slm_[isym][l]);
             }
         }
-        /*
+
                 std::vector<TCdouble> euler_angles_test(nsym_);
                 for (int isym = 0;isym < nsym_;++isym) euler_angles_test[isym] =
                     get_euler_angle(gmatc[isym].Det() > 0 ? gmatc[isym] : gmatc[isym] * ModuleBase::Matrix3(-1, 0, 0, 0, -1, 0, 0, 0, -1));
@@ -340,7 +347,7 @@ namespace ModuleSymmetry
                         ofs.close();
                     };
                 test_Tmm();
-            */
+
     }
 
     void Symmetry_rotation::set_block_to_mat2d(const int starti, const int startj, const RI::Tensor<std::complex<double>>& block,

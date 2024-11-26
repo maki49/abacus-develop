@@ -94,7 +94,7 @@ void RPA_LRI<T, Tdata>::cal_postSCF_exx(const elecstate::DensityMatrix<T, Tdata>
         symrot.find_irreducible_sector(ucell.symm, ucell.atoms, ucell.st,
             RI_Util::get_Born_von_Karmen_cells(period), period, ucell.lat);
         symrot.cal_Ms(kv, ucell, *dm.get_paraV_pointer());
-        mix_DMk_2D.mix(symrot.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), true);
+        mix_DMk_2D.mix(symrot.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer(), ucell), true);
     }
     else { mix_DMk_2D.mix(dm.get_DMK_vector(), true); }
     

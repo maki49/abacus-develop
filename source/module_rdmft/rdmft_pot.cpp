@@ -247,7 +247,7 @@ void RDMFT<TK, TR>::cal_V_XC(const UnitCell& ucell)
         // get DM_XC of all k points
         if( exx_spacegroup_symmetry )
         {
-            DM_XC = symrot_exx.restore_dm(*this->kv, DM_XC, *ParaV); // class vector could be auto resize()
+            DM_XC = symrot_exx.restore_dm(*this->kv, DM_XC, *ParaV, ucell); // class vector could be auto resize()
         }
         std::vector< const std::vector<TK>* > DM_XC_pointer(DM_XC.size());
         for(int ik=0; ik<DM_XC.size(); ++ik) { DM_XC_pointer[ik] = &DM_XC[ik];

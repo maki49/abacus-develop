@@ -328,6 +328,16 @@ void Symmetry::analy_sys(const Lattice& lat, const Statistics& st, Atom* atoms, 
     // convert the symmetry operations from the basis of optimal symmetric configuration 
     // to the basis of input configuration
     this->gmatrix_convert_int(gmatrix, gmatrix, nrotk, optlat, latvec1);
+    // output the optlat and latvec1
+    std::cout << "optlat:" << std::endl;
+    std::cout << optlat.e11 << " " << optlat.e12 << " " << optlat.e13 << std::endl;
+    std::cout << optlat.e21 << " " << optlat.e22 << " " << optlat.e23 << std::endl;
+    std::cout << optlat.e31 << " " << optlat.e32 << " " << optlat.e33 << std::endl;
+    std::cout << "latvec1:" << std::endl;
+    std::cout << latvec1.e11 << " " << latvec1.e12 << " " << latvec1.e13 << std::endl;
+    std::cout << latvec1.e21 << " " << latvec1.e22 << " " << latvec1.e23 << std::endl;
+    std::cout << latvec1.e31 << " " << latvec1.e32 << " " << latvec1.e33 << std::endl;
+    std::cout << "ignore the following output" << std::endl;
     this->gtrans_convert(gtrans, gtrans, nrotk, optlat, latvec1);
 
     this->set_atom_map(atoms); // find the atom mapping according to the symmetry operations
@@ -729,9 +739,12 @@ void Symmetry::lattice_type(
     ModuleBase::Vector3<double> w1, w2, w3;
     ModuleBase::Vector3<double> q1, q2, q3;
     this->get_optlat(v1, v2, v3, w1, w2, w3, real_brav, cel_const, temp_const);
-//        std::cout << "a1 = " << v1.x << " " << v1.y << " " << v1.z <<std::endl;
-//        std::cout << "a1 = " << v2.x << " " << v2.y << " " << v2.z <<std::endl;
-//        std::cout << "a1 = " << v3.x << " " << v3.y << " " << v3.z <<std::endl;
+    std::cout << "after get_optlat" << std::endl;
+    std::cout << "w1 = " << w1.x << " " << w1.y << " " << w1.z << std::endl;
+    std::cout << "w2 = " << w2.x << " " << w2.y << " " << w2.z << std::endl;
+    std::cout << "w3 = " << w3.x << " " << w3.y << " " << w3.z << std::endl;
+    bool w_right = Symm_Other::right_hand_sense(w1, w2, w3);
+    std::cout << "right hand after get_optlat = " << w_right << std::endl;
 
     //now, the highest symmetry of the combination of the shortest vectors has been found
     //then we compare it with the original symmetry
@@ -856,6 +869,11 @@ void Symmetry::lattice_type(
             }       
         }
     }
+
+    std::cout << "at the end of lattice_type:" << std::endl;
+    std::cout << "v1 = " << v1.x << " " << v1.y << " " << v1.z << std::endl;
+    std::cout << "v2 = " << v2.x << " " << v2.y << " " << v2.z << std::endl;
+    std::cout << "v3 = " << v3.x << " " << v3.y << " " << v3.z << std::endl;
 
     /*
     bool flag3;

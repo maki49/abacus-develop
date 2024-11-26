@@ -49,10 +49,10 @@ namespace ModuleSymmetry
         /// the link "ik_ibz-isym-ik" can be found in kstars: k_bz = gmat[isym](k)
         std::vector<std::vector<std::complex<double>>>restore_dm(const K_Vectors& kv,
             const std::vector<std::vector<std::complex<double>>>& dm_k_ibz,
-            const Parallel_2D& pv)const;
+            const Parallel_2D& pv, const UnitCell& ucell)const;
         std::vector<std::vector<double>>restore_dm(const K_Vectors& kv,
             const std::vector<std::vector<double>>& dm_k_ibz,
-            const Parallel_2D& pv)const;
+            const Parallel_2D& pv, const UnitCell& ucell)const;
         std::vector<std::complex<double>> rot_matrix_ao(const std::vector<std::complex<double>>& DMkibz,
             const int ik_ibz, const int kstar_size, const int isym, const Parallel_2D& pv, const bool TRS_conj = false) const;
 
@@ -67,7 +67,7 @@ namespace ModuleSymmetry
         TCdouble get_euler_angle(const ModuleBase::Matrix3& gmatc) const;
 
         /// T_mm' = [c^\dagger D c]_mm', the rotation matrix in the representation of real sphere harmonics
-        void cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int lmax);
+        void cal_rotmat_Slm(const ModuleBase::Matrix3* gmatc, const int lmax, const UnitCell& ucell);
 
         /// set a block matrix onto a 2d-parallelized matrix(col-maj), at the position (starti, startj) 
         /// if trans=true, the block matrix is transposed before setting

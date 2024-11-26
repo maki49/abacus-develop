@@ -127,7 +127,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const int istep,
             const bool flag_restart = (iter == 1) ? true : false;
             auto cal = [this, &ucell,&kv, &flag_restart](const elecstate::DensityMatrix<T, double>& dm_in)
             {
-                if (this->exx_spacegroup_symmetry) { this->mix_DMk_2D.mix(symrot_.restore_dm(kv,dm_in.get_DMK_vector(), *dm_in.get_paraV_pointer()), flag_restart); }
+                    if (this->exx_spacegroup_symmetry) { this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm_in.get_DMK_vector(), *dm_in.get_paraV_pointer(), ucell), flag_restart); }
                 else { this->mix_DMk_2D.mix(dm_in.get_DMK_vector(), flag_restart); }
 			        const std::vector<std::map<int,std::map<std::pair<int, std::array<int, 3>>,RI::Tensor<Tdata>>>>
 				            Ds = PARAM.globalv.gamma_only_local
@@ -316,9 +316,34 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
                 const bool flag_restart = (this->two_level_step == 0) ? true : false;
 
                 if (this->exx_spacegroup_symmetry)
-                    {this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer()), flag_restart);}
+                {
+                    this->mix_DMk_2D.mix(symrot_.restore_dm(kv, dm.get_DMK_vector(), *dm.get_paraV_pointer(), ucell), flag_restart);
+                }
                 else
-                    {this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);}
+                {
+                    /// output DM(k)
+                    std::ofstream ofs("DM_nonsym.ref");
+                    int ik = 0;
+                    auto& kv = *this->exx_ptr->p_kv;
+                    auto& pv = *dm.get_paraV_pointer();
+                    for (int ik = 0;ik < kv.get_nks() / PARAM.inp.nspin;++ik)
+                    {
+                        ofs << " k = " << kv.kvec_d[ik].x << " " << kv.kvec_d[ik].y << " " << kv.kvec_d[ik].z << std::endl;
+                        ofs << "DM(k):" << std::endl;
+                        for (int i = 0;i < pv.get_row_size();++i)
+                        {
+                            for (int j = 0;j < pv.get_col_size();++j)
+                            {
+                                ofs << dm.get_DMK_vector()[ik][j * pv.get_row_size() + i] << " ";
+                            }
+                            ofs << std::endl;
+                        }
+                        ofs << std::endl;
+                    }
+                    ofs.close();
+                    // exit(0);
+                    this->mix_DMk_2D.mix(dm.get_DMK_vector(), flag_restart);
+                }
 
                 // GlobalC::exx_lcao.cal_exx_elec(p_esolver->LOC, p_esolver->LOWF.wfc_k_grid);
                 const std::vector<std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<Tdata>>>>

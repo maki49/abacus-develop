@@ -25,6 +25,8 @@
 #include <fstream>
 #include <string>
 
+#include "module_lr/utils/lr_util_print.h"
+
 template<typename Tdata>
 void Exx_LRI<Tdata>::init(const MPI_Comm &mpi_comm_in, 
 						  const UnitCell &ucell,
@@ -234,8 +236,11 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		}
 		this->Eexx += std::real(this->exx_lri.energy);
 		post_process_Hexx(this->Hexxs[is]);
-	}
-	this->Eexx = post_process_Eexx(this->Eexx);
+    }
+    // test: output Hexxs[is]
+    // LR_Util::print_CV(this->Hexxs[0], "Hexxs of spin 0");
+    // exit(0);
+    this->Eexx = post_process_Eexx(this->Eexx);
 	this->exx_lri.set_symmetry(false, {});
 	ModuleBase::timer::tick("Exx_LRI", "cal_exx_elec");	
 }

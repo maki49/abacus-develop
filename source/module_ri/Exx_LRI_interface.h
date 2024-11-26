@@ -18,12 +18,12 @@ namespace elecstate
     std::vector<std::vector<std::complex<double>>> restore_dm(const K_Vectors& kv,
         const std::vector<std::vector<std::complex<double>>>& dm_k_ibz,
         const ModuleSymmetry::Symmetry_rotation& symrot,
-        const Parallel_2D& pv);
+        const Parallel_2D& pv, const UnitCell& ucell);
     /// do nothing if gamma_only
     std::vector<std::vector<double>> restore_dm(const K_Vectors& kv,
         const std::vector<std::vector<double>>& dm_k_ibz,
         const ModuleSymmetry::Symmetry_rotation& symrot,
-        const Parallel_2D& pv);
+        const Parallel_2D& pv, const UnitCell& ucell);
 
 }
 
