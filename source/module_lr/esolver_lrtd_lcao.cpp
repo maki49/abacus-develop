@@ -571,6 +571,12 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
             // spectrum.optical_absorption_method2(freq, input.abs_broadening);
             // spectrum.test_transition_dipoles_velocity_ks(eig_ks.c);
             // spectrum.write_transition_dipole(PARAM.globalv.global_out_dir + "dipole_velocity_ks.dat");
+            // ------------------------------------------------------------------------------------------------------------------
+            // test the transition dipole moment of kstars
+            std::vector<std::vector<int>> kstars;
+            if (kv.nmp[0] == 2) kstars = { {0}, {1,2,4,7}, {3,5,6} };
+            else if (kv.nmp[0] == 3) kstars = { {0}, {1,2,3,6,9,13,18,26}, {4,8,10,12,20,24}, {5,7,11,14,15,16,17,19,21,22,23,25} };
+            spectrum.cal_transition_dipoles_velocity_kstars(kstars);
             // =============================================== for test ====================================================
         }
     }

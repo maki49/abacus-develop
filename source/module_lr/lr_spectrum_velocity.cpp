@@ -93,6 +93,31 @@ namespace LR
         }   // end for direction
         return convert_vector_to_vector3<T>(trans_dipole);
     }
+    template<typename T>
+    ModuleBase::Vector3<T> LR::LR_Spectrum<T>::cal_transition_dipole_istate_velocity_k(const int istate, const TD_current& vR, const std::vector<int>& ik_list)
+    {
+        // transition density matrix D(R)
+        const elecstate::DensityMatrix<T, T>& DM_trans = this->cal_transition_density_matrix(istate, this->X, false);
+
+        std::vector<std::complex<double>> trans_dipole(3, 0.0);    // $=\sum_{uvR} v(R) D(R) = \sum_{iak}X_{iak}<ck|v|vk>$
+        const std::complex<double> fac = ModuleBase::IMAG_UNIT / (eig[istate] / ModuleBase::e2);    // eV to Hartree
+        for (int i = 0; i < 3; i++)
+        {
+            for (int is = 0;is < this->nspin_x;++is)
+            {
+                for (int ik : ik_list)
+                {
+                    std::vector<std::complex<double>> vk(pmat.get_local_size(), 0.0);
+                    hamilt::folding_HR(*vR.get_current_term_pointer(i), vk.data(), kv.kvec_d[ik], pmat.get_row_size(), 1);
+                    trans_dipole[i] += std::inner_product(vk.begin(), vk.end(), DM_trans.get_DMK_pointer(is * nk + ik), std::complex<double>(0., 0.)) * fac;
+                }
+            }   // end for spin_x, only matter in open-shell system
+            trans_dipole[i] *= static_cast<double>(this->nk);  // nk is divided inside DM_trans, now recover it
+            if (this->nspin_x == 1) { trans_dipole[i] *= sqrt(2.0); } // *2 for 2 spins, /sqrt(2) for the halfed dimension of X in the normalizaiton
+            Parallel_Reduce::reduce_all(trans_dipole[i]);
+        }   // end for direction
+        return convert_vector_to_vector3<T>(trans_dipole);
+    }
 
     template<typename T>
     void LR::LR_Spectrum<T>::cal_transition_dipoles_velocity()
@@ -105,6 +130,25 @@ namespace LR
             transition_dipole_[istate] = cal_transition_dipole_istate_velocity_k(istate, vR);
             mean_squared_transition_dipole_[istate] = cal_mean_squared_dipole(transition_dipole_[istate]);
         }
+    }
+
+    template<typename T>
+    void LR::LR_Spectrum<T>::cal_transition_dipoles_velocity_kstars(const std::vector<std::vector<int>>& kstars)
+    {
+        const TD_current& vR = get_velocity_matrix_R(ucell, gd_, pmat, two_center_bundle_);     // velocity matrix v(R)
+        std::ofstream ofs("dipole_kstars.dat");
+        ofs << std::setw(8) << "istate" << std::setw(20) << " kpt star" << std::setw(30) << "dipole_x" << std::setw(30) << "dipole_y" << std::setw(30) << "dipole_z" << std::endl;
+        for (int istate = 0;istate < nstate;++istate)
+        {
+            for (auto& kstar : kstars)
+            {
+                std::stringstream ss;
+                for (auto& k : kstar) { ss << k << " "; }
+                ModuleBase::Vector3<T> dipole_istate_kstar = cal_transition_dipole_istate_velocity_k(istate, vR, kstar);
+                ofs << std::setw(8) << istate << std::setw(20) << ss.str() << std::setw(30) << dipole_istate_kstar.x << std::setw(30) << dipole_istate_kstar.y << std::setw(30) << dipole_istate_kstar.z << std::endl;
+            }
+        }
+        ofs.close();
     }
 
     template<typename T>

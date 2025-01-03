@@ -43,6 +43,8 @@ namespace LR
         void write_transition_dipole(const std::string& filename);
         /// @brief calculate transition dipole in velocity gauge using ks eigenvalues instead of excitation energies
         void test_transition_dipoles_velocity_ks(const double* const ks_eig);
+        /// @brief test: calculate the transition dipole of all states in velocity gauge with a subset of k-points
+        void cal_transition_dipoles_velocity_kstars(const std::vector<std::vector<int>>& ik_list);
         //======================================================================================================
     private:
         /// $$2/3\Omega\sum_{ia\sigma} |\braket{\psi_{i}|\mathbf{r}|\psi_{a}} |^2\int \rho_{\alpha\beta}(\mathbf{r}) \mathbf{r} d\mathbf{r}$$
@@ -54,6 +56,7 @@ namespace LR
         /// calculate the transition dipole of state S in velocity gauge: $i(\sum_{iak}X^S_{iak}<ik|v|ak>)/\Omega_S$
         ModuleBase::Vector3<T> cal_transition_dipole_istate_velocity_R(const int istate, const TD_current& vR);
         ModuleBase::Vector3<T> cal_transition_dipole_istate_velocity_k(const int istate, const TD_current& vR);
+        ModuleBase::Vector3<T> cal_transition_dipole_istate_velocity_k(const int istate, const TD_current& vR, const std::vector<int>& ik_list);
         /// calculate the transition dipole of all states in velocity gauge
         void cal_transition_dipoles_velocity();
         double cal_mean_squared_dipole(ModuleBase::Vector3<T> dipole);
