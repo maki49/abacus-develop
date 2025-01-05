@@ -327,6 +327,7 @@ void LR::KernelXC::get_rho_drho_sigma(const int& nspin,
     std::vector<std::vector<ModuleBase::Vector3<double>>>& gradrho,
     std::vector<double>& sigma)
 {
+    const int nrxx = rho_basis_.nrxx;
 #ifdef _OPENMP
 #pragma omp parallel for collapse(2) schedule(static, 1024)
 #endif

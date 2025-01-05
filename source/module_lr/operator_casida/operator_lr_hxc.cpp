@@ -10,6 +10,7 @@
 #include "module_hamilt_lcao/module_hcontainer/hcontainer_funcs.h"
 #include "module_lr/ao_to_mo_transformer/ao_to_mo.h"
 #include "module_hamilt_pw/hamilt_pwdft/global.h"
+#include "module_lr/Grad/CVCX/CVCX.h"
 
 inline double conj(double a) { return a; }
 inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); }
@@ -41,6 +42,30 @@ namespace LR
         // for (int ik = 0;ik < nk;++ik)
         //     LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", &this->pmat);
 
+        switch (this->dm_pq_)
+        {
+        case AX_TYPE::CC:    // C_onebase_ai
+#ifdef __MPI
+            cal_AX_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, this->naos, this->nocc[sl], this->nvirt[sl], this->pX[sl], hpsi);
+#else
+            cal_AX_blas(v_hxc_2d, psil_ks, this->naos, this->nocc[sl], this->nvirt[sl], hpsi);
+#endif
+            break;
+        case AX_TYPE::CXC:
+#ifdef __MPI
+            CVCX_virt_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, psi_in, this->pX[sl],
+                this->naos, this->nocc[sl], this->nvirt[sl], hpsi, /*add_on=*/true, this->factor_);
+            CVCX_occ_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, psi_in, this->pX[sl],
+                this->naos, this->nocc[sl], this->nvirt[sl], hpsi, /*add_on=*/true, -this->factor_);
+#else
+            CVCX_virt_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, hpsi, /*add_on=*/true, this->factor_);
+            CVCX_occ_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, hpsi, /*add_on=*/true, -this->factor_);
+#endif
+            break;
+        default:
+            throw std::runtime_error("Unknown DM_TYPE");
+            break;
+        }
         // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
         ao_to_mo_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi);

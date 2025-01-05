@@ -11,7 +11,7 @@ namespace LR
 /// \f[ T=(C_v*X) * (C_v * X)^\dagger + (C_o*X^T) * (C_o*X^T)^\dagger \f]
     template<typename T>
     std::vector<container::Tensor> cal_dm_diff_pblas(
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const Parallel_2D& px,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
@@ -26,7 +26,7 @@ namespace LR
     /// @brief calculate the 2d-block transition density matrix in AO basis using ?gemm
     template<typename T>
     std::vector<container::Tensor> cal_dm_diff_blas(
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const int& naos,
         const int& nocc,
@@ -38,7 +38,7 @@ namespace LR
     /// @brief calculate the 2d-block transition density matrix in AO basis using for loop (for test)
     template<typename T>
     std::vector<container::Tensor> cal_dm_diff_forloop(
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const int& naos,
         const int& nocc,

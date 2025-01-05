@@ -12,12 +12,12 @@ namespace LR
         const Parallel_2D& pmat,
         const psi::Psi<double, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
-        const psi::Psi<double, base_device::DEVICE_CPU>& X_istate,
+        const double* const X_istate,
         const Parallel_2D& px,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<double, base_device::DEVICE_CPU>& AX_istate,
+        double* const AX_istate,
         const bool add_on,
         const double factor)
     {
@@ -26,9 +26,9 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0 && AX_istate.get_nbasis() == px.get_local_size());
+        assert(px.get_local_size() > 0);
 
-        int nks = c.get_nk();
+        const int nks = c.get_nk();
         assert(V_istate.size() == nks);
 
         Parallel_2D pcv;
@@ -37,9 +37,8 @@ namespace LR
         LR_Util::setup_2d_division(pcx, pmat.get_block_size(), naos, nvirt, pmat.blacs_ctxt);
         for (int isk = 0;isk < nks;++isk)
         {
-            AX_istate.fix_k(isk);
-            X_istate.fix_k(isk);
             c.fix_k(isk);
+            const int start = isk * px.get_local_size();
 
             const int i1 = 1;
             const int ivirt = nocc + 1;
@@ -59,14 +58,14 @@ namespace LR
             container::Tensor cx(DAT::DT_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
             pdgemm_(&notrans, &trans, &naos, &nvirt, &nocc,
                 &one, c.get_pointer(), &i1, &i1, pc.desc,
-                X_istate.get_pointer(), &i1, &i1, px.desc,
+                X_istate + start, &i1, &i1, px.desc,
                 &zero, cx.data<double>(), &i1, &i1, pcx.desc);
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
             pdgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cx.data<double>(), &i1, &i1, pcx.desc,
                 cv.data<double>(), &i1, &i1, pcv.desc,
-                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate + start, &i1, &i1, px.desc);
         }
     }
 
@@ -76,12 +75,12 @@ namespace LR
         const Parallel_2D& pmat,
         const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
-        const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& X_istate,
+        const std::complex<double>* const X_istate,
         const Parallel_2D& px,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& AX_istate,
+        std::complex<double>* const AX_istate,
         const bool add_on,
         const std::complex<double> factor)
     {
@@ -90,7 +89,7 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0 && AX_istate.get_nbasis() == px.get_local_size());
+        assert(px.get_local_size() > 0);
 
         int nks = c.get_nk();
         assert(V_istate.size() == nks);
@@ -101,9 +100,8 @@ namespace LR
         LR_Util::setup_2d_division(pcx, pmat.get_block_size(), naos, nvirt, pmat.blacs_ctxt);
         for (int isk = 0;isk < nks;++isk)
         {
-            AX_istate.fix_k(isk);
-            X_istate.fix_k(isk);
             c.fix_k(isk);
+            const int start = isk * px.get_local_size();
 
             const int i1 = 1;
             const int ivirt = nocc + 1;
@@ -124,14 +122,14 @@ namespace LR
             container::Tensor cx(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
             pzgemm_(&notrans, &dagger, &naos, &nvirt, &nocc,
                 &one, c.get_pointer(), &i1, &i1, pc.desc,
-                X_istate.get_pointer(), &i1, &i1, px.desc,
+                X_istate + start, &i1, &i1, px.desc,
                 &zero, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc);
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
             pzgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc,
                 cv.data<std::complex<double>>(), &i1, &i1, pcv.desc,
-                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate + start, &i1, &i1, px.desc);
         }
     }
 
@@ -141,12 +139,12 @@ namespace LR
         const Parallel_2D& pmat,
         const psi::Psi<double, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
-        const psi::Psi<double, base_device::DEVICE_CPU>& X_istate,
+        const double* const X_istate,
         const Parallel_2D& px,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<double, base_device::DEVICE_CPU>& AX_istate,
+        double* const AX_istate,
         const bool add_on,
         const double factor)
     {
@@ -155,9 +153,9 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0 && AX_istate.get_nbasis() == px.get_local_size());
+        assert(px.get_local_size() > 0);
 
-        int nks = c.get_nk();
+        const int nks = c.get_nk();
         assert(V_istate.size() == nks);
 
         Parallel_2D pcv;
@@ -166,9 +164,8 @@ namespace LR
         LR_Util::setup_2d_division(pcx, pmat.get_block_size(), nocc, naos, pmat.blacs_ctxt);
         for (int isk = 0;isk < nks;++isk)
         {
-            AX_istate.fix_k(isk);
-            X_istate.fix_k(isk);
             c.fix_k(isk);
+            const int start = isk * px.get_local_size();
 
             const int i1 = 1;
             const int ivirt = nocc + 1;
@@ -188,7 +185,7 @@ namespace LR
             // X^TC^T[nocc*naos]
             container::Tensor cx(DAT::DT_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
             pdgemm_(&dagger, &dagger, &nocc, &naos, &nvirt,
-                &one, X_istate.get_pointer(), &i1, &i1, px.desc,
+                &one, X_istate + start, &i1, &i1, px.desc,
                 c.get_pointer(), &i1, &ivirt, pc.desc,
                 &zero, cx.data<double>(), &i1, &i1, pcx.desc);
 
@@ -196,7 +193,7 @@ namespace LR
             pdgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cv.data<double>(), &i1, &i1, pcv.desc,
                 cx.data<double>(), &i1, &i1, pcx.desc,
-                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate + start, &i1, &i1, px.desc);
         }
     }
 
@@ -206,12 +203,12 @@ namespace LR
         const Parallel_2D& pmat,
         const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
-        const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& X_istate,
+        const std::complex<double>* const X_istate,
         const Parallel_2D& px,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<std::complex<double>, base_device::DEVICE_CPU>& AX_istate,
+        std::complex<double>* const AX_istate,
         const bool add_on,
         const std::complex<double> factor)
     {
@@ -220,9 +217,9 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0 && AX_istate.get_nbasis() == px.get_local_size());
+        assert(px.get_local_size() > 0);
 
-        int nks = c.get_nk();
+        const int nks = c.get_nk();
         assert(V_istate.size() == nks);
 
         Parallel_2D pcv;
@@ -231,9 +228,8 @@ namespace LR
         LR_Util::setup_2d_division(pcx, pmat.get_block_size(), nocc, naos, pmat.blacs_ctxt);
         for (int isk = 0;isk < nks;++isk)
         {
-            AX_istate.fix_k(isk);
-            X_istate.fix_k(isk);
             c.fix_k(isk);
+            const int start = isk * px.get_local_size();
 
             const int i1 = 1;
             const int ivirt = nocc + 1;
@@ -253,7 +249,7 @@ namespace LR
             // X^TC^T[nocc*naos]
             container::Tensor cx(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
             pzgemm_(&dagger, &dagger, &nocc, &naos, &nvirt,
-                &one, X_istate.get_pointer(), &i1, &i1, px.desc,
+                &one, X_istate + start, &i1, &i1, px.desc,
                 c.get_pointer(), &i1, &ivirt, pc.desc,
                 &zero, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc);
 
@@ -261,7 +257,7 @@ namespace LR
             pzgemm_(&trans, &trans, &nvirt, &nocc, &naos,
                 &one, cv.data<std::complex<double>>(), &i1, &i1, pcv.desc,
                 cx.data<std::complex<double>>(), &i1, &i1, pcx.desc,
-                add_on ? &factor : &zero, AX_istate.get_pointer(), &i1, &i1, px.desc);
+                add_on ? &factor : &zero, AX_istate + start, &i1, &i1, px.desc);
         }
     }
 }

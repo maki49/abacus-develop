@@ -14,8 +14,8 @@ namespace LR
     PotHxcLR::PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell,
         const Charge& chg_gs/*ground state*/, const Parallel_Grid& pgrid,
         const SpinType& st, const std::vector<std::string>& lr_init_xc_kernel)
-        :xc_kernel_(xc_kernel), tpiba_(ucell.tpiba), spin_type_(st), rho_basis_(rho_basis), nrxx_(chg_gs.nrxx),
-        nspin_(PARAM.inp.nspin == 1 || (PARAM.inp.nspin == 4 && !PARAM.globalv.domag && !PARAM.globalv.domag_z) ? 1 : 2),
+        :PotLRBase(rho_basis, (PARAM.inp.nspin == 1 || (PARAM.inp.nspin == 4 && !PARAM.globalv.domag && !PARAM.globalv.domag_z) ? 1 : 2), chg_gs.nrxx, ucell.tpiba),
+        xc_kernel_(xc_kernel), spin_type_(st),
         pot_hartree_(LR_Util::make_unique<elecstate::PotHartree>(&rho_basis)),
         xc_kernel_components_(rho_basis, ucell, chg_gs, pgrid, nspin_, xc_kernel, lr_init_xc_kernel, (st == SpinType::S2_updown)), //call XC_Functional::set_func_type and libxc
         xc_type_(XCType(XC_Functional::get_func_type()))

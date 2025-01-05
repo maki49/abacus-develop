@@ -3,7 +3,7 @@
 #include "module_psi/psi.h"
 #include <vector>
 #ifdef __MPI
-#include "module_basis/module_ao/parallel_2d.h"
+#include "module_base/parallel_2d.h"
 #endif
 namespace LR
 {
@@ -13,20 +13,20 @@ namespace LR
     void CVCX_occ_forloop_serial(
         const std::vector<container::Tensor>& V_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<T, base_device::DEVICE_CPU>& AX_istate);
+        T* const AX_istate);
     template <typename T>
     void CVCX_occ_blas(
         const std::vector<container::Tensor>& V_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
+        T* const AX_istate,
         const bool add_on = true,
         const T factor = (T)1.0);
 #ifdef __MPI
@@ -36,12 +36,12 @@ namespace LR
         const Parallel_2D& pmat,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const Parallel_2D& px,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
+        T* const AX_istate,
         const bool add_on = true,
         const T factor = (T)1.0);
 #endif
@@ -51,20 +51,20 @@ namespace LR
     void CVCX_virt_forloop_serial(
         const std::vector<container::Tensor>& V_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<T, base_device::DEVICE_CPU>& AX_istate);
+        T* const AX_istate);
     template <typename T>
     void CVCX_virt_blas(
         const std::vector<container::Tensor>& V_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
+        T* const AX_istate,
         const bool add_on = true,
         const T factor = (T)1.0);
 #ifdef __MPI
@@ -74,12 +74,12 @@ namespace LR
         const Parallel_2D& pmat,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const Parallel_2D& px,
         const int& naos,
         const int& nocc,
         const int& nvirt,
-        psi::Psi<T, base_device::DEVICE_CPU>& AX_istate,
+        T* const AX_istate,
         const bool add_on = true,
         const T factor = (T)1.0);
 #endif

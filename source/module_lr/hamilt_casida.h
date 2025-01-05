@@ -18,7 +18,7 @@ namespace LR
     {
     public:
       template <typename TGint>
-      HamiltLR(std::string& xc_kernel,
+      HamiltLR(const std::string& xc_kernel,
                const int& nspin,
                const int& naos,
                const std::vector<int>& nocc,
@@ -33,7 +33,7 @@ namespace LR
                const double& exx_alpha,
 #endif
                TGint* gint_in,
-               std::weak_ptr<PotHxcLR> pot_in,
+          std::weak_ptr<PotLRBase> pot_in,
                const K_Vectors& kv_in,
                const std::vector<Parallel_2D>& pX_in,
                const Parallel_2D& pc_in,
@@ -134,7 +134,7 @@ namespace LR
 
         std::vector<T> matrix()const;
 
-        void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int& nband) const
+        virtual void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband) const
         {
             assert(ld_psi == nk * pX[0].get_local_size());
             for (int ib = 0;ib < nband;++ib)
@@ -174,7 +174,7 @@ namespace LR
             }
         }
 
-    private:
+    protected:
         const std::vector<int>& nocc;
         const std::vector<int>& nvirt;
         const int nspin = 1;

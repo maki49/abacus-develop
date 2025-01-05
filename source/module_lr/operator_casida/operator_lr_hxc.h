@@ -4,7 +4,7 @@
 #include "module_lr/utils/gint_template.h"
 #include "module_hamilt_lcao/module_gint/grid_technique.h"
 #include "module_elecstate/module_dm/density_matrix.h"
-#include "module_lr/potentials/pot_hxc_lrtd.h"
+#include "module_lr/potentials/pot_lr_base.h"
 #include "module_lr/utils/lr_util.h"
 #include "module_lr/utils/lr_util_hcontainer.h"
 namespace LR
@@ -14,27 +14,35 @@ namespace LR
     class OperatorLRHxc : public hamilt::Operator<T, Device>
     {
     public:
+        /// @brief AX type:
+        /// CC: C_v^* C_o^T;
+        /// CXC: C_v^* X^* C_v^T- C_o^* X^* C_o^T
+        enum class AX_TYPE { CC, CXC };
+
         //when nspin=2, nks is 2 times of real number of k-points. else (nspin=1 or 4), nks is the real number of k-points
-      OperatorLRHxc(const int& nspin,
-                    const int& naos,
-                    const std::vector<int>& nocc,
-                    const std::vector<int>& nvirt,
-                    const psi::Psi<T, Device>& psi_ks_in,
-                    std::unique_ptr<elecstate::DensityMatrix<T, T>>& DM_trans_in,
-                    typename TGint<T>::type* gint_in,
-                    std::weak_ptr<PotHxcLR> pot_in,
-                    const UnitCell& ucell_in,
-                    const std::vector<double>& orb_cutoff,
-                    const Grid_Driver& gd_in,
-                    const K_Vectors& kv_in,
-                    const std::vector<Parallel_2D>& pX_in,
-                    const Parallel_2D& pc_in,
-                    const Parallel_Orbitals& pmat_in,
-                    const std::vector<int>& ispin_ks = {0})
+        OperatorLRHxc(const int& nspin,
+            const int& naos,
+            const std::vector<int>& nocc,
+            const std::vector<int>& nvirt,
+            const psi::Psi<T, Device>& psi_ks_in,
+            std::unique_ptr<elecstate::DensityMatrix<T, T>>& DM_trans_in,
+            typename TGint<T>::type* gint_in,
+            std::weak_ptr<PotLRBase> pot_in,
+            const UnitCell& ucell_in,
+            const std::vector<double>& orb_cutoff,
+            const Grid_Driver& gd_in,
+            const K_Vectors& kv_in,
+            const std::vector<Parallel_2D>& pX_in,
+            const Parallel_2D& pc_in,
+            const Parallel_Orbitals& pmat_in,
+            const std::vector<int>& ispin_ks = { 0 },
+            const T factor_in = (T)1.0,
+            const AX_TYPE dm_pq_in = AX_TYPE::CC)
           : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin), psi_ks(psi_ks_in),
             DM_trans(DM_trans_in), gint(gint_in), pot(pot_in), ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in),
-            kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks)
-      {
+            kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks),
+            factor_(factor_in), dm_pq_(dm_pq_in)
+        {
           ModuleBase::TITLE("OperatorLRHxc", "OperatorLRHxc");
           this->cal_type = hamilt::calculation_type::lcao_gint;
           this->is_first_node = true;
@@ -80,13 +88,16 @@ namespace LR
         const std::vector<Parallel_2D>& pX;
         const Parallel_Orbitals& pmat;
 
-        std::weak_ptr<PotHxcLR> pot;
+        std::weak_ptr<PotLRBase> pot;
 
         typename TGint<T>::type* gint = nullptr;
 
         const UnitCell& ucell;
         std::vector<double> orb_cutoff_;
         const Grid_Driver& gd;
+
+        AX_TYPE dm_pq_ = AX_TYPE::CC;
+        const T factor_ = (T)1.0;
 
         /// test
         mutable bool first_print = true;

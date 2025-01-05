@@ -55,7 +55,7 @@ namespace LR
             case DM_TYPE::Diff:
 #ifdef __MPI
                 dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst,
-                    *this->pX, *this->psi_ks, *this->pc, this->naos, this->nocc, this->nvirt, *this->pmat);
+                    this->pX, *this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
 #else
                 dm_trans_2d = cal_dm_diff_blas(psi_in_bfirst, *this->psi_ks, this->naos, this->nocc, this->nvirt);
 #endif
@@ -63,7 +63,7 @@ namespace LR
             case DM_TYPE::X:
 #ifdef __MPI
                 dm_trans_2d = cal_dm_trans_pblas(psi_in_bfirst,
-                    *this->pX, *this->psi_ks, *this->pc, this->naos, this->nocc, this->nvirt, *this->pmat);
+                    this->pX, *this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pmat);
 #else
                 dm_trans_2d = cal_dm_trans_blas(psi_in_bfirst, *this->psi_ks, this->nocc, this->nvirt);
 #endif
@@ -107,9 +107,9 @@ namespace LR
             {
             case AX_TYPE::CXC:
 #ifdef __MPI
-                CVCX_virt_pblas(v_hxc_2d, *this->pmat, *this->psi_ks, *this->pc, psi_in_bfirst, *this->pX,
+                CVCX_virt_pblas(v_hxc_2d, this->pmat, *this->psi_ks, this->pc, psi_in_bfirst, this->pX,
                     this->naos, this->nocc, this->nvirt, psi_out_bfirst, /*add_on=*/true, factor);
-                CVCX_occ_pblas(v_hxc_2d, *this->pmat, *this->psi_ks, *this->pc, psi_in_bfirst, *this->pX,
+                CVCX_occ_pblas(v_hxc_2d, this->pmat, *this->psi_ks, this->pc, psi_in_bfirst, this->pX,
                     this->naos, this->nocc, this->nvirt, psi_out_bfirst, /*add_on=*/true, -factor);
 #else
                 CVCX_virt_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, psi_out_bfirst, /*add_on=*/true, factor);
@@ -118,7 +118,7 @@ namespace LR
                 break;
             case AX_TYPE::CC:    // C_onebase_ai
 #ifdef __MPI
-                cal_AX_pblas(v_hxc_2d, *this->pmat, *this->psi_ks, *this->pc, this->naos, this->nocc, this->nvirt, *this->pX, psi_out_bfirst);
+                cal_AX_pblas(v_hxc_2d, this->pmat, *this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pX, psi_out_bfirst);
 #else
                 cal_AX_blas(v_hxc_2d, *this->psi_ks, this->naos, this->nocc, this->nvirt, psi_out_bfirst);
 #endif

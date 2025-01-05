@@ -143,7 +143,7 @@ namespace LR
     // X: nvirt*nocc in para2d, nocc*nvirt in psi (row-para and constructed: nvirt)
     template<typename T>
     std::vector<ct::Tensor> cal_dm_diff_pblas(
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const Parallel_2D& px,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const Parallel_2D& pc,
@@ -158,7 +158,6 @@ namespace LR
         assert(px.comm() == pc.comm() && px.comm() == pmat.comm());
         assert(px.blacs_ctxt == pc.blacs_ctxt && px.blacs_ctxt == pmat.blacs_ctxt);
         const int nks = c.get_nk();
-        assert(nks == X_istate.get_nk());
         const int nk = nks / nspin;
 
         Parallel_2D pcx;
@@ -171,11 +170,11 @@ namespace LR
         for (int iks = 0;iks < nks;++iks)
         {
             c.fix_k(iks);
-            X_istate.fix_k(iks);
+            const int start = iks * px.get_local_size();
             // 1. C_virt * X
-            CvX(c.get_pointer(), pc, X_istate.get_pointer(), px, naos, nocc, nvirt, cvx.data<T>(), pcx);
+            CvX(c.get_pointer(), pc, X_istate + start, px, naos, nocc, nvirt, cvx.data<T>(), pcx);
             // 2. C_occ * X^T
-            CoXT(c.get_pointer(), pc, X_istate.get_pointer(), px, naos, nocc, nvirt, coxt.data<T>(), pcxt);
+            CoXT(c.get_pointer(), pc, X_istate + start, px, naos, nocc, nvirt, coxt.data<T>(), pcxt);
             // print_colfirst(c.get_pointer(), "c_pblas", naos, nocc + nvirt);
             // print_colfirst(X_istate.get_pointer(), "X_pblas", nvirt, nocc);
             // print_colfirst(cvx.data<T>(), "cvx_pblas", naos, nocc);

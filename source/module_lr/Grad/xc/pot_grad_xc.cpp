@@ -1,17 +1,18 @@
 #include "pot_grad_xc.h"
 #include "module_parameter/parameter.h"
+#include "module_lr/potentials/xc_kernel.h"
 #include "module_base/timer.h"
 #include "module_hamilt_general/module_xc/xc_functional.h"
 #include <set>
 namespace LR
 {
     // constructor for exchange-correlation kernel
-    PotGradXCLR::PotGradXCLR(const KernelXC& xc_kernel, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const Charge& chg_gs/*ground state*/)
-        :xc_kernel_components_(xc_kernel), nrxx_(chg_gs.nrxx),
-        nspin_(PARAM.inp.nspin == 1 || (PARAM.inp.nspin == 4 && !PARAM.globalv.domag && !PARAM.globalv.domag_z) ? 1 : 2)
+    PotGradXCLR::PotGradXCLR(const KernelXC& xc_kernel, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const int& nrxx)
+        :xc_kernel_components_(xc_kernel),
+        PotLRBase(rho_basis, (PARAM.inp.nspin == 1 || (PARAM.inp.nspin == 4 && !PARAM.globalv.domag && !PARAM.globalv.domag_z) ? 1 : 2), nrxx, ucell.tpiba)
     {}
 
-    void PotGradXCLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff)
+    void PotGradXCLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op)
     {
         ModuleBase::TITLE("PotGradXCLR", "cal_v_eff");
         ModuleBase::timer::tick("PotGradXCLR", "cal_v_eff");

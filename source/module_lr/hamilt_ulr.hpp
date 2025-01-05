@@ -16,7 +16,7 @@ namespace LR
     {
     public:
         template<typename TGint>
-        HamiltULR(std::string& xc_kernel,
+        HamiltULR(const std::string& xc_kernel,
             const int& nspin,
             const int& naos,
             const std::vector<int>& nocc,   ///< {up, down}

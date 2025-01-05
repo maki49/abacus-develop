@@ -584,13 +584,14 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
         }
         if (PARAM.inp.cal_force)
         {
-            const psi::Psi<T>& Z = Z_vector(*this->X[is], this->nstates,
-                this->nspin, this->nbasis, this->nocc, this->nvirt,
-                this->ucell, orb_cutoff_, this->gd, this->psi_ks, this->eig_ks,
+            container::Tensor Z = LR_Util::newTensor<T>({ this->nstates, this->nloc_per_band });
+            Z_vector_equation(this->X[is].template data<T>(), Z.template data<T>(),
+                this->xc_kernel, this->nstates, this->nspin, this->nbasis, this->nocc, this->nvirt,
+                this->ucell, orb_cutoff_, this->gd, *this->psi_ks, this->eig_ks,
 #ifdef __EXX    
-                this->exx_lri.get(),
+                std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha,
 #endif
-                this->gint_, this->pot[is], this->kv, this->paraX_, this->paraC_, this->paraMat_);
+                this->gint_, std::weak_ptr<PotHxcLR>(this->pot[is]), this->kv, this->paraX_, this->paraC_, this->paraMat_, spin_types[is]);
         }
     }
 }

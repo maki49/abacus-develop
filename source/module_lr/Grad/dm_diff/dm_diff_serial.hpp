@@ -128,7 +128,7 @@ namespace LR
     // X: nvirt*nocc in para2d, nocc*nvirt in psi (row-para and constructed: nvirt)
     template<typename T>
     std::vector<ct::Tensor> cal_dm_diff_blas(
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const int& naos,
         const int& nocc,
@@ -138,7 +138,6 @@ namespace LR
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_diff_blas");
         const int nks = c.get_nk();
-        assert(nks == X_istate.get_nk());
         const int nk = nks / nspin;
 
         ct::Tensor cvx(ct::DataTypeToEnum<T>::value, DEV::CpuDevice, { nocc, naos });
@@ -147,11 +146,11 @@ namespace LR
         for (int iks = 0;iks < nks;++iks)
         {
             c.fix_k(iks);
-            X_istate.fix_k(iks);
+            const int start = iks * nocc * nvirt;
             // 1. C_virt * X
-            CvX(c.get_pointer(), X_istate.get_pointer(), naos, nocc, nvirt, cvx.data<T>());
+            CvX(c.get_pointer(), X_istate + start, naos, nocc, nvirt, cvx.data<T>());
             // 2. C_occ * X^T
-            CoXT(c.get_pointer(), X_istate.get_pointer(), naos, nocc, nvirt, coxt.data<T>());
+            CoXT(c.get_pointer(), X_istate + start, naos, nocc, nvirt, coxt.data<T>());
             // 3. cvx*cvx^T + coxt*coxt^T
             AAT(cvx.data<T>(), naos, nocc, dm_diff[iks].data<T>(), false, renorm_k ? (T)(1.0 / (double)nk) : (T)1.0);
             AAT(coxt.data<T>(), naos, nvirt, dm_diff[iks].data<T>(), true, renorm_k ? (T)(1.0 / (double)nk) : (T)1.0);
@@ -164,7 +163,7 @@ namespace LR
 
     template<typename T>
     std::vector<ct::Tensor> cal_dm_diff_forloop(
-        const psi::Psi<T, base_device::DEVICE_CPU>& X_istate,
+        const T* const X_istate,
         const psi::Psi<T, base_device::DEVICE_CPU>& c,
         const int& naos,
         const int& nocc,
@@ -174,7 +173,6 @@ namespace LR
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_diff_forloop");
         const int nks = c.get_nk();
-        assert(nks == X_istate.get_nk());
         const int nk = nks / nspin;
 
         std::vector<ct::Tensor> dm_diff(nks, ct::Tensor(ct::DataTypeToEnum<T>::value, DEV::CpuDevice, { naos, naos }));
@@ -182,7 +180,7 @@ namespace LR
         {
             dm_diff[iks].zero();
             c.fix_k(iks);
-            X_istate.fix_k(iks);
+            const int start = iks * nocc * nvirt;
             for (int nu = 0;nu < naos;++nu)//col
                 for (int mu = 0;mu < naos;++mu)//row
                 {
@@ -191,12 +189,12 @@ namespace LR
                         {
                             for (int b = 0;b < nvirt;++b)
                                 dm_diff[iks].data<T>()[nu * naos + mu]
-                                += get_conj(c.get_pointer()[(nocc + a) * naos + mu] * X_istate.get_pointer()[i * nvirt + a])
-                                * c.get_pointer()[(nocc + b) * naos + nu] * X_istate.get_pointer()[i * nvirt + b];
+                                += get_conj(c.get_pointer()[(nocc + a) * naos + mu] * X_istate[start + i * nvirt + a])
+                                * c.get_pointer()[(nocc + b) * naos + nu] * X_istate[start + i * nvirt + b];
                             for (int j = 0;j < nocc;++j)
                                 dm_diff[iks].data<T>()[nu * naos + mu]
-                                += get_conj(c.get_pointer()[i * naos + mu] * X_istate.get_pointer()[i * nvirt + a])
-                                * c.get_pointer()[j * naos + nu] * X_istate.get_pointer()[j * nvirt + a];
+                                += get_conj(c.get_pointer()[i * naos + mu] * X_istate[start + i * nvirt + a])
+                                * c.get_pointer()[j * naos + nu] * X_istate[start + j * nvirt + a];
                         }
                     if (renorm_k)
                         dm_diff[iks].data<T>()[nu * naos + mu] /= (double)nk;
