@@ -19,7 +19,7 @@
 #include "module_lr/operator_casida/operator_lr_diag.h" // for precondition
 
 // gradient
-#include "module_lr/Grad/Z_vector_equation/zeq_solver.h"
+#include "module_lr/Grad/multipliers/zeq_solver.h"
 
 #ifdef __EXX
 template<>
