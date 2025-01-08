@@ -484,7 +484,7 @@ void LR::ESolver_LR<T, TR>::runner(UnitCell& ucell, const int istep)
             OperatorLRDiag<double> pre_op(this->eig_ks.c, this->paraX_[0], this->nk, this->nocc[0], this->nvirt[0]);
             if (input.lr_solver != "lapack") { pre_op.act(1, nloc_per_band, 1, precondition.data(), precondition.data()); }
             auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
-            for (int is = 0;is < nspin;++is)
+            for (int is = 0;is < 1;++is)
             {
                 std::cout << "Calculating " << spin_types[is] << " excitations" << std::endl;
                 HamiltLR<T> hlr(xc_kernel,
@@ -556,7 +556,8 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
     double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
     for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
     auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
-    for (int is = 0;is < this->X.size();++is)
+    // for (int is = 0;is < this->X.size();++is)
+    for (int is = 0;is < 1;++is)
     {
         LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, this->gint_, *this->pw_rho, *this->psi_ks,
             this->ucell, this->kv, this->gd, this->orb_cutoff_, this->two_center_bundle_,
@@ -573,10 +574,10 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
             // spectrum.write_transition_dipole(PARAM.globalv.global_out_dir + "dipole_velocity_ks.dat");
             // ------------------------------------------------------------------------------------------------------------------
             // test the transition dipole moment of kstars
-            std::vector<std::vector<int>> kstars;
-            if (kv.nmp[0] == 2) kstars = { {0}, {1,2,4,7}, {3,5,6} };
-            else if (kv.nmp[0] == 3) kstars = { {0}, {1,2,3,6,9,13,18,26}, {4,8,10,12,20,24}, {5,7,11,14,15,16,17,19,21,22,23,25} };
-            spectrum.cal_transition_dipoles_velocity_kstars(kstars);
+            // std::vector<std::vector<int>> kstars;
+            // if (kv.nmp[0] == 2) kstars = { {0}, {1,2,4,7}, {3,5,6} };
+            // else if (kv.nmp[0] == 3) kstars = { {0}, {1,2,3,6,9,13,18,26}, {4,8,10,12,20,24}, {5,7,11,14,15,16,17,19,21,22,23,25} };
+            // spectrum.cal_transition_dipoles_velocity_kstars(kstars);
             // =============================================== for test ====================================================
         }
     }
