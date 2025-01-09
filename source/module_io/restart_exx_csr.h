@@ -24,7 +24,8 @@ namespace ModuleIO
     /// write Hexxs in CSR format
     template<typename Tdata>
     void write_Hexxs_csr(const std::string& file_name, const UnitCell& ucell,
-        const std::map<int, std::map<TAC, RI::Tensor<Tdata>>>& Hexxs);
+        const std::map<int, std::map<TAC, RI::Tensor<Tdata>>>& Hexxs,
+        const int(&nmp)[3]);
 
     /// calculate CSR sparse matrix from the global matrix stored with RI::Tensor
     /// the return type is same as SR_sparse,  HR_sparse, etc.
@@ -32,7 +33,8 @@ namespace ModuleIO
     std::map<Abfs::Vector3_Order<int>, std::map<size_t, std::map<size_t, Tdata>>>
         calculate_RI_Tensor_sparse(const double& sparse_threshold,
             const std::vector<std::map<int, std::map<TAC, RI::Tensor<Tdata>>>>& Hexxs,
-            const UnitCell& ucell);
+            const UnitCell& ucell,
+            const int(&nmp)[3]);
 }
 
 #include "module_io/restart_exx_csr.hpp"
