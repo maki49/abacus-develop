@@ -10,7 +10,7 @@ namespace LR
     template<typename T>
     class Z_vector_R : public HamiltLR<T>
     {
-        using ATYPE = typename OperatorLRHxc<T>::AX_TYPE;
+        using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
     public:
         template<typename TGint>
         Z_vector_R(const std::string& xc_kernel,
@@ -50,13 +50,13 @@ namespace LR
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
             OperatorLRHxc<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
                 this->DM_diff, gint_in, pot_in, ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in,
-                { 0 }, T(-2.0), ATYPE::CC);
+                { 0 }, T(-2.0), ATYPE::CC_vo);
             this->ops->add(op_ht);
             // 3. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
             this->pot_grad = std::make_shared<PotGradXCLR>(pot_in.lock()->xc_kernel_components, pot_in.lock()->rho_basis, ucell_in, pot_in.lock()->nrxx);
             OperatorLRHxc<T>* op_gxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
                 this->DM_trans, gint_in, this->pot_grad, ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in,
-                { 0 }, T(-2.0), ATYPE::CC);
+                { 0 }, T(-2.0), ATYPE::CC_vo);
             this->ops->add(op_gxc);
 #ifdef __EXX
             // add EXX operators here

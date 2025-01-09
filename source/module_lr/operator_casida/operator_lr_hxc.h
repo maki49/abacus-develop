@@ -14,10 +14,12 @@ namespace LR
     class OperatorLRHxc : public hamilt::Operator<T, Device>
     {
     public:
-        /// @brief AX type:
-        /// CC: C_v^* C_o^T;
-        /// CXC: C_v^* X^* C_v^T- C_o^* X^* C_o^T
-        enum class AX_TYPE { CC, CXC };
+        /// @brief type of molecular orbital to atomic orbital transformation:
+        /// CC_vo: MO = C_v^* AO  C_o;
+        /// CC_oo: MO = C_o^* AO  C_o;
+        /// CXC: MO = C_v^* AO X C_v- C_o^* X^* AO C_o
+        /// CXC_o: MO = C_o^* X^* AO C_o
+        enum class MO_TO_AO_TYPE { CC_vo, CC_oo, CXC, CXC_o };
 
         //when nspin=2, nks is 2 times of real number of k-points. else (nspin=1 or 4), nks is the real number of k-points
         OperatorLRHxc(const int& nspin,
@@ -37,7 +39,7 @@ namespace LR
             const Parallel_Orbitals& pmat_in,
             const std::vector<int>& ispin_ks = { 0 },
             const T factor_in = (T)1.0,
-            const AX_TYPE dm_pq_in = AX_TYPE::CC)
+            const MO_TO_AO_TYPE dm_pq_in = MO_TO_AO_TYPE::CC_vo)
           : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin), psi_ks(psi_ks_in),
             DM_trans(DM_trans_in), gint(gint_in), pot(pot_in), ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in),
             kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks),
@@ -96,7 +98,7 @@ namespace LR
         std::vector<double> orb_cutoff_;
         const Grid_Driver& gd;
 
-        AX_TYPE dm_pq_ = AX_TYPE::CC;
+        MO_TO_AO_TYPE dm_pq_ = MO_TO_AO_TYPE::CC_vo;
         const T factor_ = (T)1.0;
 
         /// test

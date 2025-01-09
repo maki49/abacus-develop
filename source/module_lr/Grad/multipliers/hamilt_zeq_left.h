@@ -10,7 +10,7 @@ namespace LR
     template<typename T>
     class Z_vector_L : public HamiltLR<T>
     {
-        using ATYPE = typename OperatorLRHxc<T>::AX_TYPE;
+        using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
     public:
         template<typename TGint>
         Z_vector_L(const std::string& xc_kernel,
@@ -47,7 +47,7 @@ namespace LR
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
             OperatorLRHxc<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
                 this->DM_trans, gint_in, pot_in, ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in,
-                { 0 }, 2.0, ATYPE::CC);
+                { 0 }, 2.0, ATYPE::CC_vo);
             this->ops->add(op_hz);
 #ifdef __EXX
             // add EXX operators here

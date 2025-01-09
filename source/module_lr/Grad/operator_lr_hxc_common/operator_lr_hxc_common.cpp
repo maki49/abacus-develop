@@ -105,7 +105,7 @@ namespace LR
             // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
             switch (this->dm_pq)
             {
-            case AX_TYPE::CXC:
+            case MO_TO_AO_TYPE::CXC:
 #ifdef __MPI
                 CVCX_virt_pblas(v_hxc_2d, this->pmat, *this->psi_ks, this->pc, psi_in_bfirst, this->pX,
                     this->naos, this->nocc, this->nvirt, psi_out_bfirst, /*add_on=*/true, factor);
@@ -116,7 +116,7 @@ namespace LR
                 CVCX_occ_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, psi_out_bfirst, /*add_on=*/true, -factor);
 #endif
                 break;
-            case AX_TYPE::CC:    // C_onebase_ai
+            case MO_TO_AO_TYPE::CC_vo:    // C_onebase_ai
 #ifdef __MPI
                 cal_AX_pblas(v_hxc_2d, this->pmat, *this->psi_ks, this->pc, this->naos, this->nocc, this->nvirt, this->pX, psi_out_bfirst);
 #else

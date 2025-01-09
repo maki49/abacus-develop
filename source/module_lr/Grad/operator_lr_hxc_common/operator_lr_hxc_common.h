@@ -17,7 +17,7 @@ namespace LR
         /// @brief AX type:
         /// CC: C_v^* C_o^T;
         /// CXC: C_v^* X^* C_v^T- C_o^* X^* C_o^T
-        enum class AX_TYPE { CC, CXC };
+        enum class MO_TO_AO_TYPE { CC, CXC };
 
         //when nspin=2, nks is 2 times of real number of k-points. else (nspin=1 or 4), nks is the real number of k-points
         OperatorLRHxcCommon(const int& nspin,
@@ -36,7 +36,7 @@ namespace LR
             Parallel_2D* pc_in,
             Parallel_Orbitals* pmat_in,
             DM_TYPE dm_rs_in,   ///< rs: the labels to be contracted with DM
-            AX_TYPE dm_pq_in,   ///< pq: the labels of the final result
+            MO_TO_AO_TYPE dm_pq_in,   ///< pq: the labels of the final result
             const double factor_in)
             : dm_pq(dm_pq_in), dm_rs(dm_rs_in), factor(factor_in),
             OperatorLRHxc<T, Device>(nspin, naos, nocc, nvirt, psi_ks_in, DM_trans_in,
@@ -55,7 +55,7 @@ namespace LR
         void act_to_bfirst(const psi::Psi<T>& psi_in_bfirst, psi::Psi<T>& psi_out_bfirst, const int nbands) const;
 
         DM_TYPE dm_rs = DM_TYPE::X;
-        AX_TYPE dm_pq = AX_TYPE::CC;
+        MO_TO_AO_TYPE dm_pq = MO_TO_AO_TYPE::CC_vo;
         const T factor = (T)1.0;
     };
 }

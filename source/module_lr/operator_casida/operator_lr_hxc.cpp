@@ -42,16 +42,24 @@ namespace LR
         // for (int ik = 0;ik < nk;++ik)
         //     LR_Util::print_tensor<T>(v_hxc_2d[ik], "4.V(k)[ik=" + std::to_string(ik) + "]", &this->pmat);
 
+        // 5. AO to MO transformation
         switch (this->dm_pq_)
         {
-        case AX_TYPE::CC:    // C_onebase_ai
+        case MO_TO_AO_TYPE::CC_vo:  //[AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            cal_AX_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, this->naos, this->nocc[sl], this->nvirt[sl], this->pX[sl], hpsi);
+            ao_to_mo_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, this->naos, this->nocc[sl], this->nvirt[sl], this->pX[sl], hpsi);
 #else
-            cal_AX_blas(v_hxc_2d, psil_ks, this->naos, this->nocc[sl], this->nvirt[sl], hpsi);
+            ao_to_mo_blas(v_hxc_2d, psil_ks, this->nocc[sl], this->nvirt[sl], hpsi);
 #endif
             break;
-        case AX_TYPE::CXC:
+        case MO_TO_AO_TYPE::CC_oo:  //[AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
+#ifdef __MPI
+            ao_to_mo_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, this->naos, this->nocc[sl], this->nvirt[sl], this->pX[sl], hpsi, MO_TYPE::OO);
+#else
+            ao_to_mo_blas(v_hxc_2d, psil_ks, this->nocc[sl], this->nvirt[sl], hpsi, MO_TYPE::OO);
+#endif
+            break;
+        case MO_TO_AO_TYPE::CXC:
 #ifdef __MPI
             CVCX_virt_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, psi_in, this->pX[sl],
                 this->naos, this->nocc[sl], this->nvirt[sl], hpsi, /*add_on=*/true, this->factor_);
@@ -62,16 +70,17 @@ namespace LR
             CVCX_occ_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, hpsi, /*add_on=*/true, -this->factor_);
 #endif
             break;
+        case MO_TO_AO_TYPE::CXC_o:
+#ifdef __MPI
+            CVCX_occ_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, psi_in, this->pX[sl],
+                this->naos, this->nocc[sl], this->nvirt[sl], hpsi, /*add_on=*/true, this->factor_);
+#else
+            CVCX_occ_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, hpsi, /*add_on=*/true, this->factor_);
+#endif
         default:
             throw std::runtime_error("Unknown DM_TYPE");
             break;
         }
-        // 5. [AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
-#ifdef __MPI
-        ao_to_mo_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, naos, nocc[sl], nvirt[sl], this->pX[sl], hpsi);
-#else
-        ao_to_mo_blas(v_hxc_2d, psil_ks, nocc[sl], nvirt[sl], hpsi);
-#endif
     }
 
 
