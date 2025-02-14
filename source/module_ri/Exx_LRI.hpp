@@ -221,9 +221,9 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		else
 		{
 			// reduce but not repeat
-			auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs);
+			// auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs);
 			// rotate locally without repeat
-			Hs_a2D = p_symrot->restore_HR(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_a2D);
+			auto Hs_a2D = p_symrot->restore_HR(ucell.symm, ucell.atoms, ucell.st, 'H', this->exx_lri.Hs);
 			// cal energy using full Hs without repeat
 			this->exx_lri.energy = this->exx_lri.post_2D.cal_energy(
 				this->exx_lri.post_2D.saves["Ds_" + suffix],
