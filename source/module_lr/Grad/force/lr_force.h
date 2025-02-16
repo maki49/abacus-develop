@@ -1,34 +1,66 @@
-#include "module_hamilt_lcao/hamilt_lcaodft/FORCE_STRESS.h"
+#include "force_funcs_lcao.h"
+#include "module_lr/potentials/pot_hxc_lrtd.h"
+#include "module_lr/utils/gint_template.h"
+// free functions, usefull for both ground and excited state
 
-template<typename T>
-class LR_Force : public Force_Stress_LCAO<T>
+namespace LR
 {
-public:
-    LR_Force(ModulePW::PW_Basis* rhopw,
-        const Structure_Factor& sf
-    ) : rhopw(rhopw), sf(sf) {}
 
-    /// 1. $Tr[H_{GS}^x * (T+D^Z)]
-    void lr_force_gs_dm_diff_relaxed(const elecstate::DensityMatrix<T>& dm_diff_relaxed,
-        ModuleBase::matrix& fcc);
+    template<typename TK>
+    class LR_Force
+    {
+    public:
+        LR_Force(const UnitCell& ucell,
+            const std::vector<ModuleBase::Vector3<double>>& kvec_d,
+            const Parallel_Orbitals& pv,
+            const ModulePW::PW_Basis& rhopw,
+            const pseudopot_cell_vl& locpp,
+            const Structure_Factor& sf,
+            const Grid_Driver& gd,
+            typename TGint<TK>::type* gint, ///<  for grid integrals
+            const TwoCenterBundle& two_center_bundle)///<  for 2-center integrals
+            : ucell_(ucell), kvec_d_(kvec_d), pv_(pv),
+            rhopw_(rhopw), sf_(sf), locpp_(locpp), gd_(gd),
+            gint_(gint), two_center_bundle_(two_center_bundle) {
+        }
 
-    /// 2. $Tr[S^x * (EDM)]
-    void lr_force_nonortho_edm(const elecstate::DensityMatrix<T>& mixed_edm,
-        ModuleBase::matrix& fcc);
+        /// 1. $Tr[H_{GS}^x * (T+D^Z)]$, where GS=groud state and $(T+D^Z)$ is the relaxed difference density matrix
+        ModuleBase::matrix cal_force_hamilt_gs_dm_relaxed_diff(const elecstate::DensityMatrix<TK, double>& relaxed_diff_dm, const elecstate::Potential& pot_gs);
 
-    /// 3. $\sum_{mnkl}(mn|f_{Hxc}|kl)^x *D^X *D^X$
-    void lr_force_hxc_dm_trans(const elecstate::DensityMatrix<T>& dm_trans,
-        ModuleBase::matrix& fcc);
+        /// 2. $Tr[S^x * (EDM)]
+        ModuleBase::matrix cal_force_overlap_edm(const elecstate::DensityMatrix<TK, double>& edm);
+
+        /// 3. $\sum_{mnkl}(mn|f_{Hxc}|kl)^x *D^X *D^X$
+        ModuleBase::matrix cal_force_hxc_dmtrans(const elecstate::DensityMatrix<TK, double>& dm_trans, const PotHxcLR& pot_hxc);
 
 #ifdef __EXX
-    /// 4. $\sum_{mnkl}(mk|nl)^x *D^X *D^X$
-    void lr_force_exx_dm_diff(const elecstate::DensityMatrix<T>& dm_diff,
-        ModuleBase::matrix& fcc);
+        /// 4. $\alpha \sum_{mnkl}(mk|nl)^x *D^X *D^X$
+        // ModuleBase::matrix cal_force_exx_dm_diff(const elecstate::DensityMatrix<TK, double>& dm_trans);
 #endif
 
-protected:
-    ModulePW::PW_Basis* rhopw;
-    const Structure_Factor& sf;
-    TGint<T>::type* gint;
-    
-};
+        /// test functions
+        /// reproduce the force of the ground state
+        ModuleBase::matrix reproduce_force_gs(const elecstate::DensityMatrix<TK, double>& dm_gs,
+            const elecstate::DensityMatrix<TK, double>& edm_gs,
+            const elecstate::Potential& pot_gs);
+        /// repreduce the ground state local term
+        ModuleBase::matrix reproduce_force_gs_loc(const elecstate::DensityMatrix<TK, double>& dm_gs,
+            const elecstate::Potential& pot_gs);
+
+    protected:
+        const UnitCell& ucell_;
+        const std::vector<ModuleBase::Vector3<double>>& kvec_d_;
+        const Parallel_Orbitals& pv_;
+        const ModulePW::PW_Basis& rhopw_;
+        const pseudopot_cell_vl& locpp_;
+        const Structure_Factor& sf_;
+        const Grid_Driver& gd_;
+        typename TGint<TK>::type* gint_;
+        const TwoCenterBundle& two_center_bundle_;
+
+        Charge dm_to_charge(const elecstate::DensityMatrix<TK, double>& dm);
+
+        // probably move frome the ground state?
+        // void build_dHS()
+    };
+}

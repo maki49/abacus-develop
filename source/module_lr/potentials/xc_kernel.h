@@ -5,6 +5,8 @@
 #include "module_elecstate/module_charge/charge.h"
 #define CREF(x) const std::vector<double>& x = x##_;
 #define CREF3(x) const std::vector<ModuleBase::Vector3<double>>& x = x##_;
+
+bool has_local_xc(const std::string& name);
 namespace LR
 {
     /// @brief Calculate the exchange-correlation (XC) kernel ($f_{xc}=\delta^2E_xc/\delta\rho^2$) and store its components.

@@ -2,8 +2,12 @@
 #include "module_elecstate/module_dm/density_matrix.h"
 #include <numeric>
 #include  "module_base/parallel_reduce.h"
+#include "module_base/macros.h"
+#include <ATen/core/tensor.h>
 namespace LR_Util
 {
+    template <typename T>
+    using Real = typename GetTypeReal<T>::type;
     template<typename TR>
     void print_HR(const hamilt::HContainer<TR>& HR, const int& nat, const std::string& label, const double& threshold = 1e-10)
     {
@@ -38,14 +42,62 @@ namespace LR_Util
         for (auto& dr : DMR.get_DMR_vector())
             print_HR(*dr, nat, "DMR[" + std::to_string(is++) + "]", threshold);
     }
-    void get_DMR_real_imag_part(const elecstate::DensityMatrix<std::complex<double>, std::complex<double>>& DMR,
-        elecstate::DensityMatrix<std::complex<double>, double>& DMR_real,
+
+    template<typename T>
+    void get_DMR_real_imag_part(const elecstate::DensityMatrix<T, T>& DMR,
+        elecstate::DensityMatrix<T, Real<T>>& DMR_real,
         const int& nat,
-        const char& type = 'R');
-    void set_HR_real_imag_part(const hamilt::HContainer<double>& HR_real,
-        hamilt::HContainer<std::complex<double>>& HR,
+        const char& type = 'R')
+    {
+        assert(DMR.get_DMR_vector().size() == DMR_real.get_DMR_vector().size());
+        bool get_imag = (type == 'I' || type == 'i');
+        for (int is = 0;is < DMR.get_DMR_vector().size();++is)
+        {
+            auto dr = DMR.get_DMR_vector()[is]; //get_DMR_pointer() has bug when is=0
+            auto dr_real = DMR_real.get_DMR_vector()[is];
+            assert(dr != nullptr);
+            assert(dr_real != nullptr);
+            for (int ia = 0;ia < nat;ia++) {
+                for (int ja = 0;ja < nat;ja++)
+                {
+                    auto ap = dr->find_pair(ia, ja);
+                    auto ap_real = dr_real->find_pair(ia, ja);
+                    for (int iR = 0;iR < ap->get_R_size();++iR)
+                    {
+                        // R index may be different between the two HContainers, find by R value instead of R-index
+                        auto dR = ap->get_R_index(iR);
+                        auto ptr = ap->get_HR_values(iR).get_pointer();
+                        auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
+                        for (int i = 0;i < ap->get_size();++i) { ptr_real[i] = (get_imag ? std::imag(ptr[i]) : std::real(ptr[i])); }
+                    }
+                }
+            }
+        }
+    }
+
+    template<typename T>
+    void set_HR_real_imag_part(const hamilt::HContainer<Real<T>>& HR_real,
+        hamilt::HContainer<T>& HR,
         const int& nat,
-        const char& type = 'R');
+        const char& type = 'R')
+    {
+        bool get_imag = (type == 'I' || type == 'i');
+        for (int ia = 0;ia < nat;ia++) {
+            for (int ja = 0;ja < nat;ja++)
+            {
+                auto ap = HR.find_pair(ia, ja);
+                auto ap_real = HR_real.find_pair(ia, ja);
+                for (int iR = 0;iR < ap->get_R_size();++iR)
+                {
+                    // R index may be different between the two HContainers, find by R value instead of R-index
+                    auto dR = ap->get_R_index(iR);
+                    auto ptr = ap->get_HR_values(iR).get_pointer();
+                    auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
+                    for (int i = 0;i < ap->get_size();++i) { get_imag ? std::imag(ptr[i]) : std::real(ptr[i]); }
+                }
+            }
+        }
+    }
 
     template <typename T, typename TR>
     void initialize_HR(hamilt::HContainer<TR>& hR,
@@ -117,4 +169,24 @@ namespace LR_Util
         return sum;
     }
 
+
+    template<typename TK, typename TR>
+    elecstate::DensityMatrix<TK, TR> build_dm_from_dmk(const std::vector<ct::Tensor>& dmk,
+        const Parallel_Orbitals& pmat,
+        const int& nk,
+        const std::vector<ModuleBase::Vector3<double>>& kvec_d,
+        const UnitCell& ucell,
+        const Grid_Driver& gd,
+        const std::vector<double>& orb_cutoff,
+        const bool cal_dmr = true)
+    {
+        elecstate::DensityMatrix<TK, TR> dm(&pmat, 1, kvec_d, nk);
+        initialize_DMR(dm, pmat, ucell, gd, orb_cutoff);
+        for (int ik = 0; ik < nk; ++ik)
+        {
+            dm.set_DMK_pointer(ik, dmk[ik].data<TK>());
+        }
+        if (cal_dmr) { dm.cal_DMR(); }
+        return dm;
+    }
 }

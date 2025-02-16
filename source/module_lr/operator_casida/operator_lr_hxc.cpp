@@ -25,7 +25,7 @@ namespace LR
         const auto psil_ks = LR_Util::get_psi_spin(psi_ks, sl, nk);
         const int& lgd = gint->gridt->lgd;
 
-        this->DM_trans->cal_DMR();  //DM_trans->get_DMR_vector() is 2d-block parallized
+        this->DM_trans.cal_DMR();  //DM_trans.get_DMR_vector() is 2d-block parallized
         // LR_Util::print_DMR(*DM_trans, ucell.nat, "DMR");
 
         // ========================= begin grid calculation=========================
@@ -54,9 +54,9 @@ namespace LR
             break;
         case MO_TO_AO_TYPE::CC_oo:  //[AX]^{Hxc}_{ai}=\sum_{\mu,\nu}c^*_{a,\mu,}V^{Hxc}_{\mu,\nu}c_{\nu,i}
 #ifdef __MPI
-            ao_to_mo_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, this->naos, this->nocc[sl], this->nvirt[sl], this->pX[sl], hpsi, MO_TYPE::OO);
+            ao_to_mo_pblas(v_hxc_2d, this->pmat, psil_ks, this->pc, this->naos, this->nocc[sl], this->nvirt[sl], this->pX[sl], hpsi, /*add_on=*/true, MO_TYPE::OO);
 #else
-            ao_to_mo_blas(v_hxc_2d, psil_ks, this->nocc[sl], this->nvirt[sl], hpsi, MO_TYPE::OO);
+            ao_to_mo_blas(v_hxc_2d, psil_ks, this->nocc[sl], this->nvirt[sl], hpsi, /*add_on=*/true, MO_TYPE::OO);
 #endif
             break;
         case MO_TO_AO_TYPE::CXC:
@@ -77,6 +77,7 @@ namespace LR
 #else
             CVCX_occ_blas(v_hxc_2d, *this->psi_ks, psi_in_bfirst, this->naos, this->nocc, this->nvirt, hpsi, /*add_on=*/true, this->factor_);
 #endif
+            break;
         default:
             throw std::runtime_error("Unknown DM_TYPE");
             break;
@@ -89,7 +90,7 @@ namespace LR
     {
         ModuleBase::TITLE("OperatorLRHxc", "grid_calculation(real)");
         ModuleBase::timer::tick("OperatorLRHxc", "grid_calculation");
-        this->gint->transfer_DM2DtoGrid(this->DM_trans->get_DMR_vector());     // 2d block to grid
+        this->gint->transfer_DM2DtoGrid(this->DM_trans.get_DMR_vector());     // 2d block to grid
 
         // 2. transition electron density
         // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
@@ -127,7 +128,7 @@ namespace LR
 
         auto dmR_to_hR = [&, this](const char& type) -> void
             {
-                LR_Util::get_DMR_real_imag_part(*this->DM_trans, DM_trans_real_imag, ucell.nat, type);
+                LR_Util::get_DMR_real_imag_part(this->DM_trans, DM_trans_real_imag, ucell.nat, type);
                 // if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
 
                 this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());

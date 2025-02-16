@@ -23,7 +23,7 @@ namespace LR
         if (std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
     }
 
-    void PotHxcLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op)
+    void PotHxcLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op) const
     {
         ModuleBase::TITLE("PotHxcLR", "cal_v_eff");
         ModuleBase::timer::tick("PotHxcLR", "cal_v_eff");
@@ -44,7 +44,7 @@ namespace LR
         // XC
         if (this->xc_kernel_ == "rpa" || this->xc_kernel_ == "hf") { return; }    // no xc
 #ifdef USE_LIBXC
-        this->kernel_to_potential_[spin_type_](rho[0], v_eff, ispin_op);
+        this->kernel_to_potential_.at(spin_type_)(rho[0], v_eff, ispin_op);
 #else
         throw std::domain_error("GlobalV::XC_Functional::get_func_type() =" + std::to_string(XC_Functional::get_func_type())
             + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));

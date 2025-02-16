@@ -7,6 +7,7 @@
 #include "module_base/parallel_2d.h"
 #include "module_psi/psi.h"
 #include <ATen/core/tensor.h>
+#include <ATen/ops/linalg_op.h>
 #include "module_basis/module_pw/pw_basis.h"
 
 using DAT = container::DataType;
@@ -107,5 +108,16 @@ namespace LR_Util
     ///=================string option====================
     std::string tolower(const std::string& str);
     std::string toupper(const std::string& str);
+}
+///=================operators======================= (should ot in namespace LR_Util)
+template<typename T>
+std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
+{
+    const int maxsize = std::max(a.size(), b.size());
+    const int minsize = std::min(a.size(), b.size());
+    std::vector<T> c(maxsize);
+    for (int i = 0;i < minsize;++i) { c[i] = a[i] + b[i]; }
+    for (int i = minsize;i < maxsize;++i) { c[i] = (a.size() > b.size() ? a[i] : b[i]); }
+    return c;
 }
 #include "lr_util.hpp"

@@ -22,7 +22,7 @@ namespace LR
             const UnitCell& ucell, const Charge& chg_gs/*ground state*/, const Parallel_Grid& pgrid,
             const SpinType& st = SpinType::S1, const std::vector<std::string>& lr_init_xc_kernel = { "default" });
         ~PotHxcLR() {}
-        virtual void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 }) override;
+        virtual void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 })  const override;
 
         // const references
         const KernelXC& xc_kernel_components = xc_kernel_components_;

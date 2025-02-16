@@ -17,6 +17,7 @@
 #include "module_elecstate/module_dm/density_matrix.h"
 #include "module_lr/potentials/pot_hxc_lrtd.h"
 #include "module_lr/hamilt_casida.h"
+#include "module_elecstate/module_pot/potential_new.h"
 #ifdef __EXX
 // #include <RI/physics/Exx.h>
 #include "module_ri/Exx_LRI.h"
@@ -65,6 +66,13 @@ namespace LR
         /// @brief ground state bands, read from the file, or moved from ESolver_FP::pelec.ekb
         ModuleBase::matrix eig_ks;///< energy of ground state
 
+        // @brief only needed for force calculation 
+        std::unique_ptr<elecstate::Potential> pot_gs;
+        std::unique_ptr<elecstate::Potential> pot_gs_hartree;   /// ground-state Hartree potential, only used for test_force
+        double etxc_gs = 0.;
+        double vtxc_gs = 0.;
+        ModuleBase::matrix wg_ks;   /// occupation number of ground state
+
         /// @brief Excited state wavefunction (locc, lvirt are local size of nocc and nvirt in each process)
         /// size of X: [neq][{nstate, nloc_per_band}], namely:
         /// - [nspin][{nstates, nk* (locc* lvirt}] for close- shell,
@@ -88,6 +96,8 @@ namespace LR
         int nupdown = 0;
         bool openshell = false;
         std::string xc_kernel;
+
+        std::vector<std::string> spin_types;
 
         Grid_Technique gt_;
         Gint_Gamma gint_g_;
@@ -121,6 +131,12 @@ namespace LR
         void set_dimension();
         /// reset nocc, nvirt, npairs after read ground-state wavefunction when nspin=2
         void reset_dim_spin2();
+
+        ///========================== for gradient calculation =========================
+        void init_pot_groundstate(const Charge& chg_gs);
+        ct::Tensor solve_zvector_eqation(const int ispin);
+        std::vector<ModuleBase::matrix> cal_force(const int ispin);
+        void test_force(const int ispin);   // test: reproduce the force of ground state
 
 #ifdef __EXX
         /// Tdata of Exx_LRI is same as T, for the reason, see operator_lr_exx.h

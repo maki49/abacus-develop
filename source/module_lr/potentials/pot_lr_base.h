@@ -8,9 +8,9 @@ namespace LR
     {
     public:
         PotLRBase(const ModulePW::PW_Basis& rho_basis, const int& nspin, const int& nrxx, const double& tpiba) : rho_basis_(rho_basis), nspin_(nspin), nrxx_(nrxx), tpiba_(tpiba) {}
-        virtual void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 }) = 0;
+        virtual void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 }) const = 0;
         // const references
-        const ModulePW::PW_Basis& rho_basis = rho_basis_;
+        const ModulePW::PW_Basis& get_rho_basis() const { return rho_basis_; }
         const int& nrxx = nrxx_;
         const int& nspin = nspin_;
     protected:

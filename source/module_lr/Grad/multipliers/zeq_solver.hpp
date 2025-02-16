@@ -26,6 +26,7 @@ namespace LR
         cg.allocate(size);
         cg.init_b(R);
         int final_iter = 0;
+        std::cout << "Start solving Z-vector equaiton with CG method ..." << std::endl;
         for (int iter = 0; iter < maxiter; ++iter)
         {
             if (residual < tol)
@@ -34,7 +35,14 @@ namespace LR
                 break;
             }
             cg.next_direct(LP.data<double>(), 0, P.data<double>());
+            std::cout << "iter=" << iter << " residual=" << cg.get_residual() << std::endl;
+            // std::cout << "Z=" << std::endl;
+            // LR_Util::print_value(P.data<double>(), nstates, ld);
+            // std::cout << "LZ before=" << std::endl;
+            // LR_Util::print_value(LP.data<double>(), nstates, ld);
             f_LZ(P.data<double>(), LP.data<double>());  // L: act each operators on P
+            // std::cout << "LZ=" << std::endl;
+            // LR_Util::print_value(LP.data<double>(), nstates, ld);
             int ifPD = 0;   //???
             double step = cg.step_length(LP.data<double>(), P.data<double>(), ifPD);
             // for (int i = 0; i < size; ++i) Z[i] += step * P[i];
@@ -104,6 +112,8 @@ namespace LR
             gint, pot, kv, px, pc, pmat, spin_type);
 
         // 3. solve Z-vector equation
+        std::cout << "The right side of the Z-vector equation:" << std::endl;
+        LR_Util::print_value(R.data<T>(), nstates, nloc_per_band);
         solve_Z_CG(Z, R.data<T>(), nloc_per_band, nstates, std::bind(&HamiltLR<T>::hPsi, &ops_L, std::placeholders::_1, std::placeholders::_2, nloc_per_band, nstates));
     }
 }

@@ -67,17 +67,16 @@ inline int cal_nupdown_form_occ(const ModuleBase::matrix& wg)
 
 inline void setup_2center_table(TwoCenterBundle& two_center_bundle, LCAO_Orbitals& orb, UnitCell& ucell)
 {
-    // set up 2-center table
-#ifdef USE_NEW_TWO_CENTER
-    two_center_bundle.tabulate();
-#else
-    two_center_bundle.tabulate(inp.lcao_ecut, inp.lcao_dk, inp.lcao_dr, inp.lcao_rmax);
-#endif
     if (PARAM.inp.vnl_in_h)
     {
         ucell.infoNL.setupNonlocal(ucell.ntype, ucell.atoms, GlobalV::ofs_running, orb);
         two_center_bundle.build_beta(ucell.ntype, ucell.infoNL.Beta);
     }
+#ifdef USE_NEW_TWO_CENTER
+    two_center_bundle.tabulate();
+#else
+    two_center_bundle.tabulate(inp.lcao_ecut, inp.lcao_dk, inp.lcao_dr, inp.lcao_rmax);
+#endif
 }
 
 template<typename T, typename TR>
@@ -85,15 +84,22 @@ void LR::ESolver_LR<T, TR>::parameter_check()const
 {
     const std::set<std::string> lr_solvers = { "dav", "lapack" , "spectrum", "dav_subspace", "cg" };
     const std::set<std::string> xc_kernels = { "rpa", "lda", "pwlda", "pbe", "hf" , "hse" };
-    if (lr_solvers.find(this->input.lr_solver) == lr_solvers.end()) {
+    if (lr_solvers.find(this->input.lr_solver) == lr_solvers.end())
+    {
         throw std::invalid_argument("ESolver_LR: unknown type of lr_solver");
-}
-    if (xc_kernels.find(this->xc_kernel) == xc_kernels.end()) {
+    }
+    if (xc_kernels.find(this->xc_kernel) == xc_kernels.end())
+    {
         throw std::invalid_argument("ESolver_LR: unknown type of xc_kernel");
-}
-    if (this->nspin != 1 && this->nspin != 2) {
+    }
+    if (this->nspin != 1 && this->nspin != 2)
+    {
         throw std::invalid_argument("LR-TDDFT only supports nspin = 1 or 2 now");
-}
+    }
+    if (input.cal_force && has_local_xc(this->xc_kernel))
+    {
+        std::cout << "To calculate LR-TDDFT gradients, Libxc should be compiled with kxc, i.e. `-DDISABLE_KXC=OFF` with cmake." << std::endl;
+    }
 }
 
 template<typename T, typename TR>
@@ -465,6 +471,7 @@ void LR::ESolver_LR<T, TR>::runner(UnitCell& ucell, const int istep)
                 if (input.lr_solver != "lapack") { pre_op.act(1, offset_is, 1, precondition.data() + offset_is, precondition.data() + offset_is); }
             }
             std::cout << "Solving spin-conserving excitation for open-shell system." << std::endl;
+            this->spin_types = { "updown" };
             HamiltULR<T> hulr(xc_kernel,
                               nspin,
                               this->nbasis,
@@ -492,7 +499,8 @@ void LR::ESolver_LR<T, TR>::runner(UnitCell& ucell, const int istep)
         {
             OperatorLRDiag<double> pre_op(this->eig_ks.c, this->paraX_[0], this->nk, this->nocc[0], this->nvirt[0]);
             if (input.lr_solver != "lapack") { pre_op.act(1, nloc_per_band, 1, precondition.data(), precondition.data()); }
-            auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
+            // auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
+            this->spin_types = { "singlet", "triplet" };
             for (int is = 0;is < nspin;++is)
             {
                 std::cout << "Calculating " << spin_types[is] << " excitations" << std::endl;
@@ -541,7 +549,8 @@ void LR::ESolver_LR<T, TR>::runner(UnitCell& ucell, const int istep)
         }
         else
         {
-            auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
+            // this->spin_types = std::vector<std::string>({ "singlet", "triplet" });
+            this->spin_types = { "singlet", "triplet" };
             for (int is = 0;is < nspin;++is) { read_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_band, nstates); }
         }
     }
@@ -564,7 +573,7 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
     double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
     double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
     for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
-    auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
+    // auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
     for (int is = 0;is < this->X.size();++is)
     {
         LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, this->gint_, *this->pw_rho, *this->psi_ks,
@@ -572,8 +581,8 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
             this->paraX_, this->paraC_, this->paraMat_,
             &this->pelec->ekb.c[is * nstates], this->X[is].template data<T>(), nstates, openshell,
             LR_Util::tolower(input.abs_gauge));
-        spectrum.transition_analysis(spin_types[is]);
-        if (spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
+        spectrum.transition_analysis(this->spin_types[is]);
+        if (this->spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
         {
             spectrum.optical_absorption_method1(freq, input.abs_broadening);
             // =============================================== for test ====================================================
@@ -582,17 +591,7 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
             // spectrum.write_transition_dipole(PARAM.globalv.global_out_dir + "dipole_velocity_ks.dat");
             // =============================================== for test ====================================================
         }
-        if (PARAM.inp.cal_force)
-        {
-            container::Tensor Z = LR_Util::newTensor<T>({ this->nstates, this->nloc_per_band });
-            Z_vector_equation(this->X[is].template data<T>(), Z.template data<T>(),
-                this->xc_kernel, this->nstates, this->nspin, this->nbasis, this->nocc, this->nvirt,
-                this->ucell, orb_cutoff_, this->gd, *this->psi_ks, this->eig_ks,
-#ifdef __EXX    
-                std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha,
-#endif
-                this->gint_, std::weak_ptr<PotHxcLR>(this->pot[is]), this->kv, this->paraX_, this->paraC_, this->paraMat_, spin_types[is]);
-        }
+        if (PARAM.inp.cal_force) { this->cal_force(is); }
     }
 }
 
@@ -685,6 +684,8 @@ void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
     default:
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");
     }
+    // ground-state potentials are needed for calculating the excited state force
+    if (PARAM.inp.cal_force) { this->init_pot_groundstate(chg_gs); }
 }
 
 template<typename T, typename TR>
@@ -713,6 +714,7 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
         ModuleBase::WARNING_QUIT("ESolver_LR", "read ground-state wavefunction failed.");
     }
     this->eig_ks = std::move(this->pelec->ekb);
+    this->wg_ks = std::move(this->pelec->wg);
 }
 
 template<typename T, typename TR>

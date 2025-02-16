@@ -255,15 +255,16 @@ void Force_LCAO<std::complex<double>>::ftable(const bool isforce,
 
     // doing on the real space grid.
     // vl_dphi
-    PulayForceStress::cal_pulay_fs(fvl_dphi,
-                                   svl_dphi,
-                                   *dm,
-                                   ucell,
-                                   pelec->pot,
-                                   gint,
-                                   isforce,
-                                   isstress,
-                                   false /*reset dm to gint*/);
+    PulayForceStress::cal_pulay_fs(PARAM.inp.nspin,
+        fvl_dphi,
+        svl_dphi,
+        *dm,
+        ucell,
+        pelec->pot,
+        gint,
+        isforce,
+        isstress,
+        false /*reset dm to gint*/);
 
 #ifdef __DEEPKS
     if (PARAM.inp.deepks_scf)

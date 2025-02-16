@@ -7,7 +7,7 @@
 namespace PulayForceStress
 {
     template<typename TK, typename TR>
-    void cal_pulay_fs(
+    void cal_pulay_fs(const int nspin,
         ModuleBase::matrix& f,  ///< [out] force
         ModuleBase::matrix& s,  ///< [out] stress
         const elecstate::DensityMatrix<TK, TR>& dm,  ///< [in] density matrix
@@ -18,7 +18,6 @@ namespace PulayForceStress
         const bool& isstress,
         const bool& set_dmr_gint)
     {
-        const int nspin = PARAM.inp.nspin;
 
 #ifndef __NEW_GINT
         if (set_dmr_gint) { gint.transfer_DM2DtoGrid(dm.get_DMR_vector()); }    // 2d block to grid

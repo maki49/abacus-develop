@@ -12,7 +12,7 @@ namespace LR
         PotLRBase(rho_basis, (PARAM.inp.nspin == 1 || (PARAM.inp.nspin == 4 && !PARAM.globalv.domag && !PARAM.globalv.domag_z) ? 1 : 2), nrxx, ucell.tpiba)
     {}
 
-    void PotGradXCLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op)
+    void PotGradXCLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op) const
     {
         ModuleBase::TITLE("PotGradXCLR", "cal_v_eff");
         ModuleBase::timer::tick("PotGradXCLR", "cal_v_eff");

@@ -15,6 +15,8 @@
 #include <omp.h>
 #endif
 
+bool has_local_xc(const std::string& name) { return std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(name); }
+
 LR::KernelXC::KernelXC(const ModulePW::PW_Basis& rho_basis,
     const UnitCell& ucell,
     const Charge& chg_gs,
@@ -139,7 +141,7 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
     this->v2rho2_.resize(((1 == nspin) ? 1 : 3) * nrxx, 0.);//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
     if (PARAM.inp.cal_force)
     {
-        this->v3rho3_.resize(((1 == nspin) ? 1 : 3) * nrxx, 0.);//(nrxx* ((1 == nspin) ? 1 : 3)): 00, 01, 11
+        this->v3rho3_.resize(((1 == nspin) ? 1 : 4) * nrxx, 0.);//(nrxx* ((1 == nspin) ? 1 : 4)): 000, 001, 011, 111
     }
     if (is_gga)
     {
@@ -148,9 +150,9 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         this->v2sigma2_.resize(((1 == nspin) ? 1 : 6) * nrxx, 0.);   //(nrxx* ((1 == nspin) ? 1 : 6)): 00, 01, 02, 11, 12, 22
         if (PARAM.inp.cal_force)
         {
-            this->v3rho2sigma_.resize(((1 == nspin) ? 1 : 9) * nrxx, 0.); //(nrxx*): 2 for rho * 3 for sigma: 00, 01, 02, 10, 11, 12
-            this->v3rhosigma2_.resize(((1 == nspin) ? 1 : 12) * nrxx, 0.);   //(nrxx* ((1 == nspin) ? 1 : 6)): 00, 01, 02, 11, 12, 22
-            this->v3sigma3_.resize(((1 == nspin) ? 1 : 10) * nrxx, 0.);
+            this->v3rho2sigma_.resize(((1 == nspin) ? 1 : 9) * nrxx, 0.); //000, 001, 002, 010, 011, 012, 110, 111, 112
+            this->v3rhosigma2_.resize(((1 == nspin) ? 1 : 12) * nrxx, 0.);   //000, 001, 002, 011, 012, 022, 100, 101, 102, 111, 112, 122
+            this->v3sigma3_.resize(((1 == nspin) ? 1 : 10) * nrxx, 0.);//000, 001, 002, 011, 012, 022, 111, 112, 122, 222
         }
     }
     //MetaGGA ...
