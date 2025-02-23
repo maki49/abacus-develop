@@ -7,6 +7,7 @@
 #include "module_cell/unitcell.h" 
 #include "module_cell/module_symmetry/symmetry.h"
 #include "module_cell/klist.h"
+#include "module_parameter/parameter.h"
 
 namespace ModuleSymmetry
 {
@@ -95,6 +96,34 @@ namespace ModuleSymmetry
         void output_full_map_to_irreducible_sector(const int nat);
         void output_sector_star();
         void write_irreducible_sector();
+        template <typename Tfunc>
+        void write_sectors_in_rcut(const std::string& file,
+            const std::map<Tap, std::set<TC, Tfunc>>& sector,
+            const Atom* atoms, const Lattice& lat, const Statistics& st)
+        {
+            if (GlobalV::MY_RANK == 0)
+            {
+                std::ofstream ofs;
+                ofs.open(PARAM.globalv.global_out_dir + file);
+                for (auto& irap_irR : sector)
+                {
+                    const Tap& irap = irap_irR.first;
+                    const int& iat1 = irap.first;
+                    const int& iat2 = irap.second;
+                    const double double_rcut = atoms[st.iat2it[iat1]].Rcut + atoms[st.iat2it[iat2]].Rcut;
+                    for (auto& irR : irap_irR.second)
+                    {
+                        const TCdouble aRb_cart = this->get_aRb_direct(atoms, st, iat1, iat2, irR) * lat.latvec;
+                        const double distance = (aRb_cart * lat.lat0).norm();
+                        if (distance <= double_rcut)
+                            ofs << "atompair (" << irap_irR.first.first << ", " << irap_irR.first.second <<
+                            "), R = (" << irR[0] << ", " << irR[1] << ", " << irR[2] <<
+                            ") , distance=" << distance << ", Rcut=" << double_rcut << "\n";
+                    }
+                }
+                ofs.close();
+            }
+        }
 
         //--------------------------------------------------------------------------------
         /// The sub functions judge special symmetry
