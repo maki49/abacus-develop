@@ -99,18 +99,26 @@ namespace ModuleSymmetry
         template <typename Tfunc>
         void write_sectors_in_rcut(const std::string& file,
             const std::map<Tap, std::set<TC, Tfunc>>& sector,
-            const Atom* atoms, const Lattice& lat, const Statistics& st)
+            const Atom* atoms, const Lattice& lat, const Statistics& st,
+            const double rmesh_times = 1.0)const
         {
             if (GlobalV::MY_RANK == 0)
             {
                 std::ofstream ofs;
                 ofs.open(PARAM.globalv.global_out_dir + file);
+                double max_rcut = [&atoms, &st]() -> double
+                    {
+                        double max_rcut = 0.0;
+                        for (int it = 0;it < st.ntype;++it)
+                            max_rcut = std::max(max_rcut, atoms[it].Rcut);
+                        return max_rcut;
+                    }();
                 for (auto& irap_irR : sector)
                 {
                     const Tap& irap = irap_irR.first;
                     const int& iat1 = irap.first;
                     const int& iat2 = irap.second;
-                    const double double_rcut = atoms[st.iat2it[iat1]].Rcut + atoms[st.iat2it[iat2]].Rcut;
+                    const double double_rcut = atoms[st.iat2it[iat1]].Rcut + atoms[st.iat2it[iat2]].Rcut + 2 * (1 + rmesh_times) * max_rcut;
                     for (auto& irR : irap_irR.second)
                     {
                         const TCdouble aRb_cart = this->get_aRb_direct(atoms, st, iat1, iat2, irR) * lat.latvec;
@@ -118,7 +126,7 @@ namespace ModuleSymmetry
                         if (distance <= double_rcut)
                             ofs << "atompair (" << irap_irR.first.first << ", " << irap_irR.first.second <<
                             "), R = (" << irR[0] << ", " << irR[1] << ", " << irR[2] <<
-                            ") , distance=" << distance << ", Rcut=" << double_rcut << "\n";
+                            ") , distance=" << distance << ", range=" << double_rcut << "\n";
                     }
                 }
                 ofs.close();

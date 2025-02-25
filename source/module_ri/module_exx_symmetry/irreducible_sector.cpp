@@ -1,5 +1,7 @@
 #include "module_ri/module_exx_symmetry/irreducible_sector.h"
 #include "module_parameter/parameter.h"
+#include "module_hamilt_pw/hamilt_pwdft/global.h"
+#include "module_hamilt_pw/hamilt_pwdft/global.h"// tmp, for test
 namespace ModuleSymmetry
 {
     TC Irreducible_Sector::rotate_R(const Symmetry& symm,
@@ -174,7 +176,7 @@ namespace ModuleSymmetry
                 for (auto& R : Rs)
                     apR_all[{iat1, iat2}].insert(R);
 
-        this->write_sectors_in_rcut("full_sector_in_rcut.dat", apR_all, atoms, lat, st);
+        this->write_sectors_in_rcut("full_sector_in_rcut.dat", apR_all, atoms, lat, st, GlobalC::exx_info.info_ri.ccp_rmesh_times);
 
         // get invmap
         if (this->invmap_.empty())
@@ -236,6 +238,6 @@ namespace ModuleSymmetry
         // this->output_full_map_to_irreducible_sector(st.nat);
         // this->output_sector_star();
         this->write_irreducible_sector();
-        this->write_sectors_in_rcut("irreducible_sector_in_rcut.dat", this->irreducible_sector_, atoms, lat, st);
+        this->write_sectors_in_rcut("irreducible_sector_in_rcut.dat", this->irreducible_sector_, atoms, lat, st, GlobalC::exx_info.info_ri.ccp_rmesh_times);
     }
 }

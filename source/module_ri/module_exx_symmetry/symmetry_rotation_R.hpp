@@ -46,6 +46,8 @@ namespace ModuleSymmetry
         ModuleBase::timer::tick("Symmetry_rotation", "restore_HR");
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_full;
         // irreducile-to-full map ver.
+        int irreducible_sector_size = 0;
+        int full_sector_size = 0;
         for (auto& tmp1 : HR_irreducible)
         {
             const int& irap1 = tmp1.first;
@@ -55,6 +57,7 @@ namespace ModuleSymmetry
                 const Tap& irap = { irap1, irap2 };
                 const TC& irR = tmp2.first.second;
                 const TapR& irapR = { irap, irR };
+                irreducible_sector_size++;
                 if (this->irs_.sector_stars_.find(irapR) != this->irs_.sector_stars_.end())
                 {
                     for (auto& isym_apR : this->irs_.sector_stars_.at(irapR))
@@ -65,11 +68,14 @@ namespace ModuleSymmetry
                         const int& ap2 = apR.first.second;
                         const TC& R = apR.second;
                         HR_full[ap1][{ap2, R}] = rotate_atompair_serial(tmp2.second, isym, atoms[st.iat2it[irap1]], atoms[st.iat2it[irap2]], mode);
+                        full_sector_size++;
                     }
                 }
                 else { std::cout << "Warning: not found: irreducible atom pair =(" << irap1 << "," << irap2 << "), irR=(" << irR[0] << "," << irR[1] << "," << irR[2] << ")\n";}
             }
         }
+        std::cout << "irreducible_sector_size: " << irreducible_sector_size << std::endl;
+        std::cout << "full_sector_size: " << full_sector_size << std::endl;
         // full-to-irreducible map ver. (problematic in parallel)
         // openmp slows down this for loop, why?
         // for (auto& apR_isym_irapR : this->irs_.full_map_to_irreducible_sector_)
