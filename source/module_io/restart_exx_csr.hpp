@@ -6,7 +6,9 @@
 #include "module_ri/serialization_cereal.h"
 #include <RI/global/Tensor.h>
 #include <map>
+#include <set>
 #include <RI/ri/Cell_Nearest.h>
+#include "module_ri/RI_Util.h"
 namespace ModuleIO
 {
     template<typename Tdata>
@@ -67,22 +69,9 @@ namespace ModuleIO
         calculate_RI_Tensor_sparse(const double& sparse_threshold,
             const std::map<int, std::map<TAC, RI::Tensor<Tdata>>>& Hexxs,
             const UnitCell& ucell,
-            const int(&nmp)[3])
+            const RI::Cell_Nearest<int, int, 3, double, 3>& cell_nearest)
     {
         ModuleBase::TITLE("Exx_LRI_Interface", "calculate_HContainer_sparse_d");
-        // set cell_nearest
-        RI::Cell_Nearest<int, int, 3, double, 3> cell_nearest;
-        std::map<int, std::array<double, 3>> atoms_pos;
-        for (int iat = 0; iat < ucell.nat; ++iat)
-        {
-            atoms_pos[iat] = RI_Util::Vector3_to_array3(ucell.atoms[ucell.iat2it[iat]].tau[ucell.iat2ia[iat]]);
-        }
-        const std::array<std::array<double, 3>, 3> latvec
-            = { RI_Util::Vector3_to_array3(ucell.a1),
-               RI_Util::Vector3_to_array3(ucell.a2),
-               RI_Util::Vector3_to_array3(ucell.a3) };
-        cell_nearest.init(atoms_pos, latvec, { nmp[0],nmp[1], nmp[2] });
-
         std::map<Abfs::Vector3_Order<int>, std::map<size_t, std::map<size_t, Tdata>>> target;
         for (auto& a1_a2R_data : Hexxs)
         {
@@ -108,27 +97,54 @@ namespace ModuleIO
         return target;
     }
     template<typename Tdata>
+    inline std::set<Abfs::Vector3_Order<int>> get_R_range(
+        const std::map<int, std::map<TAC, RI::Tensor<Tdata>>>& Hs,
+        const RI::Cell_Nearest<int, int, 3, double, 3>& cell_nearest)
+    {
+        std::set<Abfs::Vector3_Order<int>> all_R_coor;
+        for (const auto& H1 : Hs)
+        {
+            const int iat1 = H1.first;
+            for (const auto& H2 : H1.second)
+            {
+                const int iat2 = H2.first.first;
+                all_R_coor.insert(
+                    RI_Util::array3_to_Vector3(
+                        cell_nearest.get_cell_nearest_discrete(iat1, iat2, H2.first.second)));
+            }
+        }
+        return all_R_coor;
+    }
+
+    inline RI::Cell_Nearest<int, int, 3, double, 3> init_cell_nearest(const UnitCell& ucell, const int(&nmp)[3])
+    {
+        RI::Cell_Nearest<int, int, 3, double, 3> cell_nearest;
+        std::map<int, std::array<double, 3>> atoms_pos;
+        for (int iat = 0; iat < ucell.nat; ++iat)
+        {
+            atoms_pos[iat] = RI_Util::Vector3_to_array3(ucell.atoms[ucell.iat2it[iat]].tau[ucell.iat2ia[iat]]);
+        }
+        const std::array<std::array<double, 3>, 3> latvec
+            = { RI_Util::Vector3_to_array3(ucell.a1),
+               RI_Util::Vector3_to_array3(ucell.a2),
+               RI_Util::Vector3_to_array3(ucell.a3) };
+        cell_nearest.init(atoms_pos, latvec, { nmp[0],nmp[1], nmp[2] });
+        return cell_nearest;
+    }
+
+    template<typename Tdata>
     void write_Hexxs_csr(const std::string& file_name, const UnitCell& ucell,
         const std::vector<std::map<int, std::map<TAC, RI::Tensor<Tdata>>>>& Hexxs,
         const int(&nmp)[3])
     {
         ModuleBase::TITLE("Exx_LRI", "write_Hexxs_csr");
-        std::set<Abfs::Vector3_Order<int>> all_R_coor;
         double sparse_threshold = 1e-10;
+        const auto& cell_nearest = init_cell_nearest(ucell, nmp);
         for (int is = 0;is < Hexxs.size();++is)
         {
-            for (const auto& HexxA : Hexxs[is])
-            {
-                const int iat0 = HexxA.first;
-                for (const auto& HexxB : HexxA.second)
-                {
-                    const int iat1 = HexxB.first.first;
-                    const Abfs::Vector3_Order<int> R = RI_Util::array3_to_Vector3(HexxB.first.second);
-                    all_R_coor.insert(R);
-                }
-            }
+            std::set<Abfs::Vector3_Order<int>> all_R_coor = get_R_range(Hexxs[is], cell_nearest);
             ModuleIO::save_sparse(
-                calculate_RI_Tensor_sparse(sparse_threshold, Hexxs[is], ucell, nmp),
+                calculate_RI_Tensor_sparse(sparse_threshold, Hexxs[is], ucell, cell_nearest),
                 all_R_coor,
                 sparse_threshold,
                 false, //binary
