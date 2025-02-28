@@ -236,7 +236,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_iter_finish(const K_Vectors& kv,
         conv_esolver = this->exx_after_converge(
             ucell,
             hamilt,
-            *dynamic_cast<const elecstate::ElecStateLCAO<T>*>(&elec)->get_DM(),
+            elec,
             kv,
             PARAM.inp.nspin,
             iter,
@@ -251,7 +251,7 @@ template<typename T, typename Tdata>
 bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
     const UnitCell& ucell,
     hamilt::Hamilt<T>& hamilt,
-    const elecstate::DensityMatrix<T, double>& dm,
+    const elecstate::ElecState& elec,
     const K_Vectors& kv,
     const int& nspin,
     int& iter,
@@ -264,6 +264,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
             GlobalC::restart.info_load.restart_exx = true;
             this->exx_ptr->Eexx = 0;
         };
+    const auto& dm = *dynamic_cast<const elecstate::ElecStateLCAO<T>*>(&elec)->get_DM();
         
         // no separate_loop case
         if (!GlobalC::exx_info.info_global.separate_loop)
@@ -283,6 +284,8 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
             {
                 // update exx and redo scf
                 XC_Functional::set_xc_type(ucell.atoms[0].ncpp.xc_func);
+                // update vxc for the next step
+                elec.pot->update_from_charge(elec.charge, &ucell);
                 iter = 0;
                 std::cout << " Entering 2nd SCF, where EXX is updated" << std::endl;
                 this->two_level_step++;
@@ -308,6 +311,8 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
                 if (this->two_level_step == 0)
                 {
                     XC_Functional::set_xc_type(ucell.atoms[0].ncpp.xc_func);
+                    // update vxc for the next step
+                    elec.pot->update_from_charge(elec.charge, &ucell);
                 }
 
                 std::cout << " Updating EXX " << std::flush;

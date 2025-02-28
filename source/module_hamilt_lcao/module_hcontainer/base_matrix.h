@@ -2,6 +2,9 @@
 #define BASE_MATRIX_H
 
 #include <iostream>
+#ifdef __DEBUG
+#include <assert.h>
+#endif
 
 namespace hamilt
 {

@@ -78,14 +78,14 @@ public:
                          bool& conv_esolver);
     /// @brief: in do_after_converge: add exx operators; do DM mixing if seperate loop
     bool exx_after_converge(const UnitCell& ucell,
-                            hamilt::Hamilt<T>& hamilt,
-                            const elecstate::DensityMatrix<T, double>& dm/**< double should be Tdata if complex-PBE-DM is supported*/,
-                            const K_Vectors& kv,
-                            const int& nspin,
-                            int& iter,
-                            const int& istep,
-                            const double& etot,
-                            const double& scf_ene_thr);
+        hamilt::Hamilt<T>& hamilt,
+        const elecstate::ElecState& elec,
+        const K_Vectors& kv,
+        const int& nspin,
+        int& iter,
+        const int& istep,
+        const double& etot,
+        const double& scf_ene_thr);
     int two_level_step = 0;
     double etot_last_outer_loop = 0.0;
     elecstate::DensityMatrix<T, double>* dm_last_step;
