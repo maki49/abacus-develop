@@ -200,9 +200,16 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 	const std::vector<std::tuple<std::set<TA>, std::set<TA>>> judge = RI_2D_Comm::get_2D_judge(ucell,pv);
 
 	if(p_symrot)
-		{ this->exx_lri.set_symmetry(true, p_symrot->get_irreducible_sector()); }
+    {
+        this->exx_lri.set_symmetry(true,
+            p_symrot->get_irreducible_sector(),
+            p_symrot->get_irreducible_quads(),
+            p_symrot->get_irreducible_quads_weight());
+    }
 	else
-		{ this->exx_lri.set_symmetry(false, {}); }
+    {
+        this->exx_lri.set_symmetry(false, {}, {}, {});
+    }
 
 	this->Hexxs.resize(PARAM.inp.nspin);
 	this->Eexx = 0;
@@ -222,8 +229,9 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		{
 			// reduce but not repeat
 			auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs);
-			// rotate locally without repeat
-			Hs_a2D = p_symrot->restore_HR(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_a2D);
+            // rotate locally without repeat
+            Hs_a2D = p_symrot->symmetrize_HR(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_a2D);
+            Hs_a2D = p_symrot->restore_HR(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_a2D);
 			// cal energy using full Hs without repeat
 			this->exx_lri.energy = this->exx_lri.post_2D.cal_energy(
 				this->exx_lri.post_2D.saves["Ds_" + suffix],
@@ -236,7 +244,7 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		post_process_Hexx(this->Hexxs[is]);
 	}
 	this->Eexx = post_process_Eexx(this->Eexx);
-	this->exx_lri.set_symmetry(false, {});
+    this->exx_lri.set_symmetry(false, {}, {}, {});
 	ModuleBase::timer::tick("Exx_LRI", "cal_exx_elec");	
 }
 

@@ -68,12 +68,7 @@ namespace ModuleSymmetry
             const ModuleBase::Matrix3& gmatd, const TCdouble gtransd,
             const TCdouble& posd_a1, const TCdouble& posd_a2)const;
 
-    protected:
-        void cal_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st);
-
-        //--------------------------------------------------------------------------------
-        /// The sub functions to find irreducible sector: {abR}
-
+        /// Some tool functions to rotate the vectors using the "return lattice" calculated before
         /// gauge='L' means H(R)=<R|H|0>; gauge='R' means H(R)=<0|H|R>
         /// gauge='L': R'=R+O_1-O_2; gauge='R': R'=R+O_2-O_1
         TC rotate_R(const Symmetry& symm, const int isym, const int iat1, const int iat2, const TC& R, const char gauge = 'R')const;
@@ -83,6 +78,12 @@ namespace ModuleSymmetry
         TCdouble get_aRb_direct(const Atom* atoms, const Statistics& st, const int iat1, const int iat2, const TCdouble& R, const char gauge = 'R')const;
 
         ModuleBase::Matrix3 direct_to_cartesian(const ModuleBase::Matrix3& d, const ModuleBase::Matrix3& latvec)const;
+
+    protected:
+        void cal_return_lattice_all(const Symmetry& symm, const Atom* atoms, const Statistics& st);
+
+        //--------------------------------------------------------------------------------
+        /// The sub functions to find irreducible sector: {abR}
 
         // /// find the irreducible atom pairs
         // /// algorithm 1: the way finding irreducible k-points

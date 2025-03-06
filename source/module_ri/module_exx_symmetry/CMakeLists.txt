@@ -3,6 +3,7 @@ if (ENABLE_LIBRI)
     list(APPEND objects
         irreducible_sector.cpp
         irreducible_sector_bvk.cpp
+        irreducible_quads.cpp
         symmetry_rotation.cpp
     )
     add_library(

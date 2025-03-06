@@ -113,6 +113,44 @@ namespace ModuleSymmetry
         return HR_full;
     }
 
+    /// given H(R) in the irreducible sector summed over irreducible quads, symmetrize them to get the correct irreducible-sector H(R) to be restored
+    template<typename Tdata>
+    std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> Symmetry_rotation::symmetrize_HR(
+        const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HRs)const
+    {
+        ModuleBase::TITLE("Symmetry_rotation", "symmetrize_HR");
+        ModuleBase::timer::tick("Symmetry_rotation", "symmetrize_HR");
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_sym;
+        for (auto& tmp1 : HRs)
+        {
+            const int& iat1 = tmp1.first;
+            for (auto& tmp2 : tmp1.second)
+            {
+                const int& iat2 = tmp2.first.first;
+                const TC& R = tmp2.first.second;
+                HR_sym[iat1][{iat2, R}] = symmetrize_HR({ {iat1, iat2}, R }, tmp2.second, atoms, st, mode);
+            }
+        }
+        ModuleBase::timer::tick("Symmetry_rotation", "symmetrize_HR");
+        return HR_sym;
+    }
+    /// symmetrize a single H(R)
+    template<typename Tdata>
+    RI::Tensor<Tdata> Symmetry_rotation::symmetrize_HR(const TapR& irs, const RI::Tensor<Tdata>& HR,
+        const Atom* atoms, const Statistics& st, const char mode)const
+    {
+        const int nsym = this->irq_.get_invariant_ops(irs).size();
+        const int iat1 = irs.first.first, iat2 = irs.first.second;
+        const TC& R = irs.second;
+        RI::Tensor<Tdata> result(HR.shape);
+        for (int isym : this->irq_.get_invariant_ops(irs))
+        {
+            result += this->rotate_atompair_serial(HR, isym, atoms[st.iat2it[iat1]], atoms[st.iat2it[iat2]], mode);
+        }
+        return result * (1.0 / static_cast<Tdata>(nsym));
+    }
+
     template<typename Tdata>
     inline void set_block(const int starti, const int startj, const RI::Tensor<std::complex<double>>& block,
         RI::Tensor<Tdata>& obj_tensor)

@@ -1,5 +1,6 @@
 #pragma once
 #include "irreducible_sector.h"
+#include "irreducible_quads.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
 #include <RI/global/Tensor.h>
 #include "module_hamilt_lcao/module_hcontainer/hcontainer.h"
@@ -11,7 +12,7 @@ namespace ModuleSymmetry
     using TC = std::array<int, 3>;
     using TapR = std::pair<Tap, TC>;
     using TCdouble = Abfs::Vector3_Order<double>;
-
+    using Tquad_IJR = std::pair<TapR, TC>;
     class Symmetry_rotation
     {
     public:
@@ -21,6 +22,9 @@ namespace ModuleSymmetry
         //--------------------------------------------------------------------------------
         // getters
         const std::map<Tap, std::set<TC>>& get_irreducible_sector()const { return this->irs_.get_irreducible_sector(); }
+        const std::map<TapR, std::set<Tquad_IJR>>& get_irreducible_quads()const { return this->irq_.get_irreducible_quads(); }
+        const std::map<TapR, std::map<Tquad_IJR, int>>& get_irreducible_quads_weight()const { return this->irq_.get_irreducible_quads_weight(); }
+        const
         TCdouble get_return_lattice(const Symmetry& symm,
             const ModuleBase::Matrix3& gmatd, const TCdouble gtransd,
             const TCdouble& posd_a1, const TCdouble& posd_a2)const
@@ -33,6 +37,7 @@ namespace ModuleSymmetry
             const std::vector<TC>& Rs, const TC& period, const Lattice& lat)
         {
             this->irs_.find_irreducible_sector(symm, atoms, st, Rs, period, lat);
+            this->irq_.find_irreducible_quads(this->irs_, symm, atoms, st, Rs, period, lat);
         }
         void set_Cs_rotation(const std::vector<std::vector<int>>& abfs_l_nchi);
         //--------------------------------------------------------------------------------
@@ -94,7 +99,14 @@ namespace ModuleSymmetry
         void restore_HR(
             const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
             const hamilt::HContainer<TR>& HR_irreduceble, hamilt::HContainer<TR>& HR_rotated)const;
-
+        /// given H(R) in the irreducible sector summed over irreducible quads, symmetrize them to get the correct irreducible-sector H(R) to be restored
+        template<typename Tdata>    // RI::Tensor type
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> symmetrize_HR(
+            const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+            const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HRs)const;
+        template<typename Tdata>    // symmetrize a single H(R)
+        RI::Tensor<Tdata> symmetrize_HR(const TapR& irs, const RI::Tensor<Tdata>& HR,
+            const Atom* atoms, const Statistics& st, const char mode = 'H')const;
         //--------------------------------------------------------------------------------
         /// test functions
         /// test H(R) rotation: giver a full H(R), pick out H(R) in the irreducible sector, rotate it, and compare with the original full H(R)
@@ -165,6 +177,7 @@ namespace ModuleSymmetry
 
         /// irreducible sector
         Irreducible_Sector irs_;
+        Irreducible_Quads irq_;
 
     };
 }
