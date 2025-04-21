@@ -128,6 +128,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         // seems because those two are classes having constructors 
         // but `cal_edm_from_XZ_istate` here is a functions
         std::weak_ptr<PotHxcLR> pot_weak = this->pot[ispin];
+        std::weak_ptr<PotHxcLR> pot_hxc_gs_weak = this->pot_hxc_gs;
 #ifdef __EXX
         std::weak_ptr<Exx_LRI<T>> exx_lri_weak = this->exx_lri;
 #endif
@@ -141,7 +142,8 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
 #ifdef __EXX
                 exx_lri_weak, this->exx_info.info_global.hybrid_alpha,
 #endif
-                this->gint_, pot_weak, this->kv, this->gd, this->paraX_, this->paraC_, this->paraMat_,
+                this->gint_, pot_weak, pot_hxc_gs_weak,
+                this->kv, this->gd, this->paraX_, this->paraC_, this->paraMat_,
                 has_local_xc(this->xc_kernel));
         elecstate::DensityMatrix<T, double> edm_real = LR_Util::build_dm_from_dmk<T, double>(edm_k,
             this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);

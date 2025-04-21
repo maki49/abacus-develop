@@ -72,6 +72,7 @@ namespace LR
         double etxc_gs = 0.;
         double vtxc_gs = 0.;
         ModuleBase::matrix wg_ks;   /// occupation number of ground state
+        std::shared_ptr<PotHxcLR> pot_hxc_gs; /// used in lr-grad, in the ground-state Hxc gradient term coming from dF/dC
 
         /// @brief Excited state wavefunction (locc, lvirt are local size of nocc and nvirt in each process)
         /// size of X: [neq][{nstate, nloc_per_band}], namely:

@@ -36,6 +36,7 @@ namespace LR
             {
                 const int ga = px.local2global_row(la);
                 const double weight = eig_ext_istate - eig_ks[eigks_start_k + nocc + ga];
+                std::cout << "la=" << la << ", ks-eig=" << eig_ks[eigks_start_k + nocc + ga] << ", weight=" << weight << ", X2=" << X[x_start_k + la] << std::endl;
                 for (int li = 0;li < px.get_col_size();++li)
                 {
                     const int idx = li * px.get_row_size() + la;

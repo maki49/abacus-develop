@@ -669,11 +669,11 @@ void LR::ESolver_LR<T, TR>::set_X_initial_guess()
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
 {
+    using ST = PotHxcLR::SpinType;
     this->pot.resize(nspin, nullptr);
     if (this->input.ri_hartree_benchmark != "none") { return; } //no need to initialize potential for Hxc kernel in the RI-benchmark routine
     switch (nspin)
     {
-        using ST = PotHxcLR::SpinType;
     case 1:
         this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, *this->pw_rho, ucell, chg_gs, Pgrid, ST::S1, input.lr_init_xc_kernel);
         break;
@@ -685,7 +685,12 @@ void LR::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");
     }
     // ground-state potentials are needed for calculating the excited state force
-    if (PARAM.inp.cal_force) { this->init_pot_groundstate(chg_gs); }
+    if (PARAM.inp.cal_force)
+    {
+        this->init_pot_groundstate(chg_gs);
+        const std::string xc_kernel_gs = LR_Util::tolower(input.dft_functional);
+        this->pot_hxc_gs = std::make_shared<PotHxcLR>(xc_kernel_gs, *this->pw_rho, ucell, chg_gs, Pgrid, ST::S1, input.lr_init_xc_kernel);
+    }
 }
 
 template<typename T, typename TR>

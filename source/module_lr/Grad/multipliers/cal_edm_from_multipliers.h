@@ -102,11 +102,12 @@ namespace LR
         // 2. edm of Z : $\sum_i \sum_a c_a epsilon_i Z_{ai} c_i
         std::vector<T> epsi_Z(px.get_local_size());
         multiply_eig_onto_vec(Z, eig_ks, px, epsi_Z.data());
-        const std::vector<ct::Tensor> cZc = cal_dm_trans_pblas(Z, px, c, pc, naos, nocc, nvirt, pmat);
+        std::vector<ct::Tensor> cZc = cal_dm_trans_pblas(Z, px, c, pc, naos, nocc, nvirt, pmat);
+        std::for_each(cZc.begin(), cZc.end(), [&](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
 
         //3. c * K_cvcx * c
-        const std::vector<ct::Tensor> cKc = cal_dm_trans_pblas(K_cvcx, px, c, pc, naos, nocc, nvirt, pmat, (T)2.0);
-        LR_Util::matsym(cKc[0].data<T>(), naos, pmat);
+        std::vector<ct::Tensor> cKc = cal_dm_trans_pblas(K_cvcx, px, c, pc, naos, nocc, nvirt, pmat, (T)2.0);
+        std::for_each(cKc.begin(), cKc.end(), [&](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
 
         // 4. $\sum_i (\Omega + \epsilon_i) \sum_{ab} C_{\mu a} X_{ia} C_{\nu b} X_{ib}$
         const std::vector<ct::Tensor> edm = cal_edm_term4(X, eig_ext_istate, eig_ks, c, px, pc, pmat);
@@ -145,6 +146,7 @@ namespace LR
 #endif 
         typename TGint<T>::type* gint,
         std::weak_ptr<PotHxcLR> pot,
+        std::weak_ptr<PotHxcLR> pot_hxc_gs,
         const K_Vectors& kv,
         const Grid_Driver& gd,
         const std::vector<Parallel_2D>& px,
@@ -162,7 +164,7 @@ namespace LR
 #ifdef __EXX
             exx_lri, exx_alpha,
 #endif
-            gint, pot, kv, px, pc, p_occ_occ, pmat, has_local_xc);
+            gint, pot_hxc_gs, kv, px, pc, p_occ_occ, pmat, has_local_xc);
         std::cout << "W: " << std::endl;
         LR_Util::print_value(W.data(), nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());
 
