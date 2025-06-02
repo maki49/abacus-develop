@@ -153,7 +153,7 @@ namespace LR
             CoXT(c.get_pointer(), X_istate + start, naos, nocc, nvirt, coxt.data<T>());
             // 3. cvx*cvx^T + coxt*coxt^T
             AAT(cvx.data<T>(), naos, nocc, dm_diff[iks].data<T>(), false, renorm_k ? (T)(1.0 / (double)nk) : (T)1.0);
-            AAT(coxt.data<T>(), naos, nvirt, dm_diff[iks].data<T>(), true, renorm_k ? (T)(1.0 / (double)nk) : (T)1.0);
+            AAT(coxt.data<T>(), naos, nvirt, dm_diff[iks].data<T>(), true, renorm_k ? (T)(-1.0 / (double)nk) : (T)(-1.0));
         }
         return dm_diff;
     }
@@ -193,7 +193,7 @@ namespace LR
                                 * c.get_pointer()[(nocc + b) * naos + nu] * X_istate[start + i * nvirt + b];
                             for (int j = 0;j < nocc;++j)
                                 dm_diff[iks].data<T>()[nu * naos + mu]
-                                += get_conj(c.get_pointer()[i * naos + mu] * X_istate[start + i * nvirt + a])
+                                -= get_conj(c.get_pointer()[i * naos + mu] * X_istate[start + i * nvirt + a])
                                 * c.get_pointer()[j * naos + nu] * X_istate[start + j * nvirt + a];
                         }
                     if (renorm_k)

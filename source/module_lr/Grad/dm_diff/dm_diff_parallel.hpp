@@ -179,10 +179,10 @@ namespace LR
             // print_colfirst(X_istate.get_pointer(), "X_pblas", nvirt, nocc);
             // print_colfirst(cvx.data<T>(), "cvx_pblas", naos, nocc);
             // print_colfirst(coxt.data<T>(), "coxt_pblas", naos, nvirt);
-            // 3. cvx*cvx^T + coxt*coxt^T
+            // 3. cvx*cvx^T - coxt*coxt^T
             AAT(cvx.data<T>(), pcx, naos, nocc, dm_diff[iks].data<T>(), pmat, false, renorm_k ? (T)(1.0 / (double)nk) : (T)1.0);
             // print_colfirst(dm_diff[iks].data<T>(), "dm_diff_1_pblas", naos, naos);
-            AAT(coxt.data<T>(), pcxt, naos, nvirt, dm_diff[iks].data<T>(), pmat, true, renorm_k ? (T)(1.0 / (double)nk) : (T)1.0);
+            AAT(coxt.data<T>(), pcxt, naos, nvirt, dm_diff[iks].data<T>(), pmat, true, renorm_k ? (T)(-1.0 / (double)nk) : (T)(-1.0));
             // print_colfirst(dm_diff[iks].data<T>(), "dm_diff_2_pblas", naos, naos);
         }
         return dm_diff;
