@@ -4,6 +4,8 @@
 #include  "module_base/parallel_reduce.h"
 #include "module_base/macros.h"
 #include <ATen/core/tensor.h>
+#include "module_parameter/parameter.h"
+#include "module_io/single_R_io.h"
 namespace LR_Util
 {
     template <typename T>
@@ -188,5 +190,110 @@ namespace LR_Util
         }
         if (cal_dmr) { dm.cal_DMR(); }
         return dm;
+    }
+
+    namespace sparse_format
+    {
+        // ref: sparse_format::cal_HContainer_d/cd and sparse_format::cal_HSR
+        // but more general(not depend on LCAO_HS_Arrays)
+        template<typename TR>
+        std::map<Abfs::Vector3_Order<int>, std::map<size_t, std::map<size_t, TR>>>
+            get_sparse_format(
+                const hamilt::HContainer<TR>& hR,
+                const Parallel_Orbitals& pv,
+                const double& sparse_thr = 1e-10)
+        {
+            std::map<Abfs::Vector3_Order<int>, std::map<size_t, std::map<size_t, TR>>> target;
+            auto row_indexes = pv.get_indexes_row();
+            auto col_indexes = pv.get_indexes_col();
+            for (int iap = 0; iap < hR.size_atom_pairs(); ++iap) {
+                int atom_i = hR.get_atom_pair(iap).get_atom_i();
+                int atom_j = hR.get_atom_pair(iap).get_atom_j();
+                int start_i = pv.atom_begin_row[atom_i];
+                int start_j = pv.atom_begin_col[atom_j];
+                int row_size = pv.get_row_size(atom_i);
+                int col_size = pv.get_col_size(atom_j);
+                for (int iR = 0; iR < hR.get_atom_pair(iap).get_R_size(); ++iR) {
+                    auto& matrix = hR.get_atom_pair(iap).get_HR_values(iR);
+                    const ModuleBase::Vector3<int> r_index
+                        = hR.get_atom_pair(iap).get_R_index(iR);
+                    Abfs::Vector3_Order<int> dR(r_index.x, r_index.y, r_index.z);
+                    for (int i = 0; i < row_size; ++i) {
+                        int mu = row_indexes[start_i + i];
+                        for (int j = 0; j < col_size; ++j) {
+                            int nu = col_indexes[start_j + j];
+                            const auto& value_tmp = matrix.get_value(i, j);
+                            if (std::abs(value_tmp) > sparse_thr) {
+                                target[dR][mu][nu] = value_tmp;
+                            }
+                        }
+                    }
+                }
+            }
+            return target;
+        }
+
+        //a more general version of save_HSR_sparse (not depend on LCAO_HS_Arrays)
+        template<typename TR>
+        void save_sparse(
+            const std::map<Abfs::Vector3_Order<int>, std::map<size_t, std::map<size_t, TR>>>& smat,
+            // const std::set<Abfs::Vector3_Order<int>>& all_R_coor,
+            // const bool& binary,
+            const std::string& filename,
+            const Parallel_Orbitals& pv,
+            const double& sparse_thr = 1e-10)
+        {
+            // calculate the total number of non-zero elements of the (nbasis, nbasis) matrix for each R
+            std::vector<int> non_zero_counts(smat.size(), 0);   // number of Rs
+            int i = 0;
+            for (const auto& Rij : smat)
+                non_zero_counts[i++] = std::accumulate(Rij.second.begin(), Rij.second.end(), 0,
+                    [](int sum, const auto& line) { return sum + line.second.size(); });
+            Parallel_Reduce::reduce_all(non_zero_counts.data(), non_zero_counts.size());
+
+
+            std::string out_dir = PARAM.globalv.global_out_dir + filename;
+            std::ofstream ofs;
+            if (GlobalV::DRANK == 0)
+            {
+                ofs.open(out_dir);
+                // if (binary) ofs.open(out_dir, std::ios::binary);
+                ofs << "STEP: 0" << std::endl;
+                ofs << "Matrix Dimension: " << PARAM.globalv.nlocal << std::endl;
+                ofs << "Matrix number: " << non_zero_counts.size() << std::endl;
+            }
+            i = 0;
+            for (const auto& Rij : smat)
+            {
+                const auto& R = Rij.first;
+                ofs << R.x << " " << R.y << " " << R.z << " " << non_zero_counts[i++] << std::endl;
+                ModuleIO::output_single_R(ofs, Rij.second, sparse_thr, false, pv);
+            }
+            if (GlobalV::DRANK == 0) { ofs.close(); }
+        }
+    }
+
+    template<typename TR>
+    void save_HR(
+        const hamilt::HContainer<TR>& hR,
+        // const std::set<Abfs::Vector3_Order<int>>& all_R_coor,
+        // const bool& binary,
+        const std::string& filename,
+        const Parallel_Orbitals& pv,
+        const double& sparse_thr = 1e-10)
+    {
+        sparse_format::save_sparse(sparse_format::get_sparse_format(hR, pv, sparse_thr),
+            filename, pv, sparse_thr);
+    }
+
+    template <typename TK, typename TR>
+    void save_DMR(const elecstate::DensityMatrix<TK, TR>& DMR,
+        const std::string& filename,
+        const Parallel_Orbitals& pv,
+        const double& sparse_thr = 1e-10)
+    {
+        int is = 0;
+        for (auto& dr : DMR.get_DMR_vector())
+            save_HR(*dr, filename + "_s" + std::to_string(is), pv, sparse_thr);
     }
 }

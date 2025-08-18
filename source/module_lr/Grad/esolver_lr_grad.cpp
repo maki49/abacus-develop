@@ -24,6 +24,41 @@ inline void print_force(const std::vector<ModuleBase::matrix>& force, Tstream& o
         }
     }
 }
+
+// check C_uaC_va-C_uiC_vi of lumo-homo, nocc=1,  nk=1
+template<typename T>
+inline void test_dm_diff_H2(const T* dm, const psi::Psi<T>& c, const int nbasis)
+{
+    std::cout << "difference dm cal: " << std::endl;
+    LR_Util::print_value(dm, nbasis, nbasis);
+    std::cout << "difference dm ref: " << std::endl;
+    for (int i = 0;i < nbasis;++i)
+    {
+        for (int j = 0;j < nbasis;++j)
+        {
+            std::cout << c(0, 1, i) * c(0, 1, j) - c(0, 0, i) * c(0, 0, j) << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+// check e_aC_uaC_va-e_iC_uiC_vi of lumo-homo, nocc=1,  nk=1
+template<typename T>
+inline void test_edm_H2(const T* const edm, const double* const eig_ks, const psi::Psi<T>& c, const int nbasis)
+{
+    std::cout << "edm cal: " << std::endl;
+    LR_Util::print_value(edm, nbasis, nbasis);
+    std::cout << "edm ref: " << std::endl;
+    for (int i = 0;i < nbasis;++i)
+    {
+        for (int j = 0;j < nbasis;++j)
+        {
+            std::cout << eig_ks[1] * c(0, 1, i) * c(0, 1, j) - eig_ks[0] * c(0, 0, i) * c(0, 0, j) << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::init_pot_groundstate(const Charge& chg_gs)
 {
@@ -145,8 +180,21 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
                 this->gint_, pot_weak, pot_hxc_gs_weak,
                 this->kv, this->gd, this->paraX_, this->paraC_, this->paraMat_,
                 has_local_xc(this->xc_kernel));
+        if (PARAM.inp.test_force && nocc[0] == 1)
+        {
+            const std::vector<ct::Tensor>& dm_diff = cal_dm_diff_pblas(this->X[0].template data<T>() + offset, this->paraX_[0], c, this->paraC_, this->nbasis, this->nocc[0], this->nvirt[0], this->paraMat_);
+            // test_dm_diff_H2<T>(relaxed_diff_dm.get_DMK_pointer(0), c, this->nbasis);
+            test_dm_diff_H2<T>(dm_diff[0].data<T>(), c, this->nbasis);
+            test_edm_H2<T>(edm_k[0].data<T>(), this->eig_ks.c, c, this->nbasis);
+        }
         elecstate::DensityMatrix<T, double> edm_real = LR_Util::build_dm_from_dmk<T, double>(edm_k,
             this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+        // print edm_real (R)
+        if (PARAM.inp.test_force)
+        {
+            LR_Util::save_DMR(edm_real, "data-EDMR-sparse", this->paraMat_);
+            // LR_Util::print_DMR(edm_real, this->ucell.nat, "edm_real (R) of istate " + std::to_string(istate));
+        }
 
         ModuleBase::matrix force_hxc_dmtrans = lr_force.cal_force_hxc_dmtrans(dm_trans_real, *this->pot[ispin]);
         std::cout << "Force (Hxc-DMTrans term) of state " << istate << ": " << std::endl;
