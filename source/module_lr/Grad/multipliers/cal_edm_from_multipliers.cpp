@@ -47,8 +47,8 @@ namespace LR
         const int i1 = 1;
         const char transa = 'N', transb = 'T';
         pdgemm_(&transa, &transb, &naos, &naos, &nocc,
-            &alpha, vec1, &i1, &nocc, pvec.desc,
-            vec2, &i1, &nocc, pvec.desc,
+            &alpha, vec1, &i1, &i1, pvec.desc,
+            vec2, &i1, &i1, pvec.desc,
             &beta, dm, &i1, &i1, pmat.desc);
     }
 
@@ -62,8 +62,8 @@ namespace LR
         const int i1 = 1;
         const char transa = 'N', transb = 'C';
         pzgemm_(&transa, &transb, &naos, &naos, &nocc,
-            &alpha, vec1, &i1, &nocc, pvec.desc,
-            vec2, &i1, &nocc, pvec.desc,
+            &alpha, vec1, &i1, &i1, pvec.desc,
+            vec2, &i1, &i1, pvec.desc,
             &beta, dm, &i1, &i1, pmat.desc);
     }
 } // namespace LR
