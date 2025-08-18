@@ -81,6 +81,7 @@ namespace LR
 #endif 
         TGint* gint,
         std::weak_ptr<PotHxcLR> pot,
+        std::weak_ptr<PotHxcLR> pot_hxc_gs,
         const K_Vectors& kv,
         const std::vector<Parallel_2D>& px,
         const Parallel_2D& pc,
@@ -97,7 +98,7 @@ namespace LR
 #ifdef __EXX
             exx_lri, exx_alpha,
 #endif 
-            gint, pot, kv, px, pc, pmat, spin_type);
+            gint, pot, pot_hxc_gs, kv, px, pc, pmat, spin_type);
         ModuleBase::timer::tick("Z_vector", "Z_vector_R");
         ops_R.hPsi(X, R.data<T>(), nk * px[0].get_local_size(), nstates);  // act each operators on X
         ModuleBase::timer::tick("Z_vector", "Z_vector_R");
@@ -109,11 +110,13 @@ namespace LR
 #ifdef __EXX
             exx_lri, exx_alpha,
 #endif 
-            gint, pot, kv, px, pc, pmat, spin_type);
+            gint, pot_hxc_gs, kv, px, pc, pmat, spin_type);
 
         // 3. solve Z-vector equation
         std::cout << "The right side of the Z-vector equation:" << std::endl;
         LR_Util::print_value(R.data<T>(), nstates, nloc_per_band);
         solve_Z_CG(Z, R.data<T>(), nloc_per_band, nstates, std::bind(&HamiltLR<T>::hPsi, &ops_L, std::placeholders::_1, std::placeholders::_2, nloc_per_band, nstates));
+        // test: set Z to 0
+        // for (int i = 0; i < nstates * nloc_per_band; ++i) { Z[i] = T(0.0); }
     }
 }

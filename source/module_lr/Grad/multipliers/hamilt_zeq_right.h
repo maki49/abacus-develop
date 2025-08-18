@@ -29,6 +29,7 @@ namespace LR
 #endif 
             TGint* gint,
             std::weak_ptr<PotHxcLR> pot,
+            std::weak_ptr<PotHxcLR> pot_hxc_gs,
             const K_Vectors& kv,
             const std::vector<Parallel_2D>& pX,
             const Parallel_2D& pc,
@@ -51,7 +52,7 @@ namespace LR
                 { 0 }, -2.0, ATYPE::CXC);
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
             OperatorLRHxc<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
-                *this->DM_diff, gint, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
+                *this->DM_diff, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, T(-2.0), ATYPE::CC_vo);
             this->ops->add(op_ht);
             // 3. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
@@ -60,6 +61,11 @@ namespace LR
                 *this->DM_trans, gint, this->pot_grad, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, T(-2.0), ATYPE::CC_vo);
             this->ops->add(op_gxc);
+            // // test: op_ht only 
+            // delete this->ops;
+            // this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
+            //     *this->DM_diff, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
+            //     { 0 }, T(-2.0), ATYPE::CC_vo);
 #ifdef __EXX
             // add EXX operators here
 #endif
@@ -85,6 +91,10 @@ namespace LR
                     std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_blas(X, psi_ks_is, naos, nocc[is], nvirt[is]);
 #endif
                     for (int ik = 0;ik < this->nk;++ik) { this->DM_diff->set_DMK_pointer(ik, dm_diff_2d[ik].data<T>()); }
+                    // std::cout << "difference density matrix" << std::endl;
+                    // for (int ik = 0;ik < this->nk;++ik) { LR_Util::print_value(dm_diff_2d[ik].data<T>(), naos, naos); }
+                    // std::cout << "test: set dm_diff to zero" << std::endl;
+                    // for (int ik = 0;ik < this->nk;++ik) { dm_diff_2d[ik].zero(); }
                 };
         }
         virtual void hPsi(const T* const psi, T* const hpsi, const int ld_psi, const int nband) const override

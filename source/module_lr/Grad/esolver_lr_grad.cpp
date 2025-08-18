@@ -76,8 +76,8 @@ ct::Tensor LR::ESolver_LR<T, TR>::solve_zvector_eqation(const int ispin)
 #ifdef __EXX    
         std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha,
 #endif
-        this->gint_, std::weak_ptr<PotHxcLR>(this->pot[ispin]), this->kv,
-        this->paraX_, this->paraC_, this->paraMat_, this->spin_types[ispin]);
+        this->gint_, std::weak_ptr<PotHxcLR>(this->pot[ispin]), std::weak_ptr<PotHxcLR>(this->pot_hxc_gs),
+        this->kv, this->paraX_, this->paraC_, this->paraMat_, this->spin_types[ispin]);
     ModuleBase::timer::tick("ESolver_LR", "solve_zvector_eqation");
     return Z;
 }

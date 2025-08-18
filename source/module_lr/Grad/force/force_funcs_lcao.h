@@ -16,6 +16,7 @@ public:
         const ModulePW::PW_Basis& rhopw,
         const pseudopot_cell_vl& locpp,
         const Structure_Factor& sf,
+        const bool with_ewald = true,
         const elecstate::ElecState* pelec = nullptr)
     {
         if (PARAM.inp.nspin == 4) { throw std::runtime_error("ForcePWTerms: nspin=4 is not supported."); }
@@ -30,8 +31,10 @@ public:
         //--------------------------------------------------------
         // ewald force: use plane wave only.
         //--------------------------------------------------------
-        f_pw.cal_force_ew(ucell, fewalds, &rhopw, &sf);
-
+        if (with_ewald)
+        {
+            f_pw.cal_force_ew(ucell, fewalds, &rhopw, &sf);
+        }
         //--------------------------------------------------------
         // force due to core correlation.
         //--------------------------------------------------------

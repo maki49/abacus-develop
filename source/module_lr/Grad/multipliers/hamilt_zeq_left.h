@@ -28,7 +28,7 @@ namespace LR
             const double& exx_alpha,
 #endif 
             TGint* gint,
-            std::weak_ptr<PotLRBase> pot,
+            std::weak_ptr<PotLRBase> pot_hxc_gs,
             const K_Vectors& kv,
             const std::vector<Parallel_2D>& pX,
             const Parallel_2D& pc,
@@ -38,16 +38,16 @@ namespace LR
 #ifdef __EXX
                 exx_lri, exx_alpha,
 #endif
-                gint, pot, kv, pX, pc, pmat, spin_type)
+                gint, pot_hxc_gs, kv, pX, pc, pmat, spin_type)
         {
             ModuleBase::TITLE("Z_vector_L", "Z_vector_L");
             this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             // 1. $2\sum_bX_{ib}K_{ab}[D^X]-2\sum_jX_{ja}K_{ij}[D^X]$
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0]);
-            // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
+            // 2. $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized
             OperatorLRHxc<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
-                *this->DM_trans, gint, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
+                *this->DM_trans, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, 2.0, ATYPE::CC_vo);
             this->ops->add(op_hz);
 #ifdef __EXX

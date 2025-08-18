@@ -72,7 +72,7 @@ namespace LR
         const double& exx_alpha,
 #endif 
         TGint* gint,
-        std::weak_ptr<PotHxcLR> pot,
+        std::weak_ptr<PotHxcLR> pot_hxc_gs,
         const K_Vectors& kv,
         const std::vector<Parallel_2D>& px,
         const Parallel_2D& pc,
@@ -90,9 +90,9 @@ namespace LR
         elecstate::DensityMatrix<T, T> DM_diff_relaxed(&pmat, 1, kv.kvec_d, nk);    //T+DZ
         LR_Util::initialize_DMR(DM_diff_relaxed, pmat, ucell, gd, orb_cutoff);
         /// operators
-        // 1. 0.5$H_{ia}[T]$, equals to $K_{ab}[T]$ when $T$ is symmetrized
+        // 1. 0.5$H_{ia}[T+Z]$, equals to $K_{ab}[T+Z]$ when $(T+Z)$ is symmetrized
         OperatorLRHxc<T> op_ht(nspin, naos, nocc, nvirt, psi_ks,
-            DM_diff_relaxed, gint, pot, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
+            DM_diff_relaxed, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             { 0 }, T(1.0), ATYPE::CC_oo);
         // 2. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
         // use pointer here for polymorphism
@@ -101,7 +101,7 @@ namespace LR
         // `weak_ptr=shared_ptr` is automatically called in the constructor of OperatorLRHxc, so we don't need to do it manually
         // if `pot_grad` is passed into a function rather than a class, we need to write `weak_ptr=shared_ptr` explicitly
         std::shared_ptr<PotGradXCLR> pot_grad =
-            std::make_shared<PotGradXCLR>(pot.lock()->xc_kernel_components, pot.lock()->get_rho_basis(), ucell, pot.lock()->nrxx);
+            std::make_shared<PotGradXCLR>(pot_hxc_gs.lock()->xc_kernel_components, pot_hxc_gs.lock()->get_rho_basis(), ucell, pot_hxc_gs.lock()->nrxx);
         OperatorLRHxc<T> op_gxc(nspin, naos, nocc, nvirt, psi_ks,
             DM_trans, gint, pot_grad, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             { 0 }, T(-2.0), ATYPE::CC_oo);
@@ -150,7 +150,7 @@ namespace LR
         cal_dm_trans(0, X);  // transition density matrix DX
         cal_dm_diff_relaxed(0, X, Z);  // relaxed difference density matrix T+DZ
         // the 3 terms
-        op_ht.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);
+        op_ht.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);    //comment out this line to test H[T+Z]=0
         if (has_local_xc) { op_gxc.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W); }
         std::cout << "W (H[T+Z]) + W(gxc) terms: " << std::endl;
         LR_Util::print_value(W, nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());

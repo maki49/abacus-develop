@@ -3,6 +3,7 @@
 #include "pulay_force_hcontainer.h"
 #include "module_hamilt_lcao/hamilt_lcaodft/pulay_force_stress.h"   // only for gint terms
 #include "module_lr/utils/lr_util.h"
+// #include "module_lr/utils/lr_util_hcontainer.h"
 namespace LR
 {
     template<typename TK>
@@ -20,11 +21,7 @@ namespace LR
         this->gint_->transfer_DM2DtoGrid(dm.get_DMR_vector());     // 2d block to grid
         Gint_inout inout_rho(chr.rho, Gint_Tools::job_type::rho, nspin_dm, false);
         this->gint_->cal_gint(&inout_rho);
-        // point spin2 charge to spin1
-        if (nspin_dm == 1 && nspin_global == 2)
-        {
-            chr.rho[1] = chr.rho[0];
-        }
+        // if (nspin_dm == 1 && nspin_global == 2), chr.rho[1][irxx]=0 has been set in Charge::allocate()
         return chr;
     }
 
@@ -34,7 +31,7 @@ namespace LR
         const Charge chr_diff_relaxed = dm_to_charge(relax_diff_dm);
 
         // 1. local pp (Hellmann-Feynman)(fvl_dvl) + ewald + core correction (+ self-consistent charge)
-        ModuleBase::matrix f_pw = ForcePWTerms<double>()(this->ucell_, chr_diff_relaxed, this->rhopw_, this->locpp_, this->sf_);
+        ModuleBase::matrix f_pw = ForcePWTerms<double>()(this->ucell_, chr_diff_relaxed, this->rhopw_, this->locpp_, this->sf_, /*with_ewald=*/false);
 
         // 2. nonlocal pp (Hellmann-Feynman + Pulay)
         ModuleBase::matrix fvnl = cal_force_nonlocal(this->ucell_, this->kvec_d_, this->gd_, this->two_center_bundle_, relax_diff_dm);
@@ -71,7 +68,9 @@ namespace LR
     {
         // const double* dS[3] = { dSloc_x,  dSloc_y,  dSloc_z };
         std::vector<hamilt::HContainer<double>>  dS = cal_hs_grad('S', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);
-        // cal_pulay_fs should support HContainer
+        // test: output dS
+        // std::cout << "dS in 3 directions:\n";
+        // for (int i = 0;i < 3;++i) { LR_Util::print_HR(dS.at(i), this->ucell_.nat, "dS" + std::to_string(i)); }
         ModuleBase::matrix foverlap = PulayForceStress::cal_pulay_fs(edm, this->ucell_, dS, -1.);
         if (PARAM.inp.test_force)
         {
