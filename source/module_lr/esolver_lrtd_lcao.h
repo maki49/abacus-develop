@@ -35,6 +35,7 @@ namespace LR
         ESolver_LR(const Input_para& inp, UnitCell& ucell);
         ~ESolver_LR() {
             delete this->psi_ks;
+            delete this->psi_ks_all;
         }
 
         ///input: input, call, basis(LCAO), psi(ground state), elecstate
@@ -61,17 +62,22 @@ namespace LR
         // ground state info 
 
         /// @brief ground state wave function
-        psi::Psi<T>* psi_ks = nullptr;
+        psi::Psi<T>* psi_ks = nullptr;  ///< KS orbitals used in the [nocc+nvirt] window
+        psi::Psi<T>* psi_ks_all = nullptr;  ///< all KS orbitals, read from the file, or moved from ESolver_FP::pelec.psi
 
         /// @brief ground state bands, read from the file, or moved from ESolver_FP::pelec.ekb
-        ModuleBase::matrix eig_ks;///< energy of ground state
+        ModuleBase::matrix eig_ks;///< ground state eigenvalues in the [nocc+nvirt] window
+        ModuleBase::matrix eig_ks_all; ///< all eigenvalues of ground state, read from the file, or moved from ESolver_FP::pelec.ekb
+        ModuleBase::matrix wg_ks;   /// occupation numbers of ground state in the [nocc+nvirt] window
+        ModuleBase::matrix wg_ks_all;   /// occupation number of all bands of ground state
+
 
         // @brief only needed for force calculation 
         std::unique_ptr<elecstate::Potential> pot_gs;
         std::unique_ptr<elecstate::Potential> pot_gs_hartree;   /// ground-state Hartree potential, only used for test_force
         double etxc_gs = 0.;
         double vtxc_gs = 0.;
-        ModuleBase::matrix wg_ks;   /// occupation number of ground state
+
         std::shared_ptr<PotHxcLR> pot_hxc_gs; /// used in lr-grad, in the ground-state Hxc gradient term coming from dF/dC
 
         /// @brief Excited state wavefunction (locc, lvirt are local size of nocc and nvirt in each process)
@@ -112,6 +118,7 @@ namespace LR
         std::vector<Parallel_2D> paraX_;
         /// @brief variables for parallel distribution of matrix in AO representation
         Parallel_Orbitals paraMat_;
+        Parallel_Orbitals paraMat_all_; // for the parallelized size of the KS orbitals
 
         TwoCenterBundle two_center_bundle_;
 
@@ -133,11 +140,14 @@ namespace LR
         /// reset nocc, nvirt, npairs after read ground-state wavefunction when nspin=2
         void reset_dim_spin2();
 
+        /// setup Parallel_Orbitals info. beyond Parallel_2D
+        void set_parallel_orbitals_band(Parallel_Orbitals& p, const int nbands_in);
+
         ///========================== for gradient calculation =========================
         void init_pot_groundstate(const Charge& chg_gs);
         ct::Tensor solve_zvector_eqation(const int ispin);
         std::vector<ModuleBase::matrix> cal_force(const int ispin);
-        void test_force(const int ispin);   // test: reproduce the force of ground state
+        void test_force();   // test: reproduce the force of ground state
 
 #ifdef __EXX
         /// Tdata of Exx_LRI is same as T, for the reason, see operator_lr_exx.h

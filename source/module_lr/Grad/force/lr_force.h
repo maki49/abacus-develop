@@ -25,7 +25,8 @@ namespace LR
         }
 
         /// 1. $Tr[H_{GS}^x * (T+D^Z)]$, where GS=groud state and $(T+D^Z)$ is the relaxed difference density matrix
-        ModuleBase::matrix cal_force_hamilt_gs_dm_relaxed_diff(const elecstate::DensityMatrix<TK, double>& relaxed_diff_dm, const elecstate::Potential& pot_gs);
+        ModuleBase::matrix cal_force_hamilt_gs_dm_relaxed_diff(const elecstate::DensityMatrix<TK, double>& relaxed_diff_dm,
+            const elecstate::Potential& pot_gs, const bool with_ewald = true);
 
         /// 2. $Tr[S^x * (EDM)]
         ModuleBase::matrix cal_force_overlap_edm(const elecstate::DensityMatrix<TK, double>& edm);

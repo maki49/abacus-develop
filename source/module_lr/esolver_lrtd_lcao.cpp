@@ -181,12 +181,14 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
 
     this->set_dimension();
 
-    // setup_wd_division is not need to be covered in #ifdef __MPI, see its implementation
+    // setup_2d_division is not need to be covered in #ifdef __MPI, see its implementation
     LR_Util::setup_2d_division(this->paraMat_, 1, this->nbasis, this->nbasis);
-
-    this->paraMat_.atom_begin_row = std::move(ks_sol.pv.atom_begin_row);
-    this->paraMat_.atom_begin_col = std::move(ks_sol.pv.atom_begin_col);
-    this->paraMat_.iat2iwt_ = ucell.get_iat2iwt();
+    this->set_parallel_orbitals_band(this->paraMat_, this->nbands);
+    if (PARAM.inp.cal_force)
+    {
+        LR_Util::setup_2d_division(this->paraMat_all_, 1, this->nbasis, this->nbasis);
+        this->set_parallel_orbitals_band(this->paraMat_all_, PARAM.inp.nbands);
+    }
 
     LR_Util::setup_2d_division(this->paraC_, 1, this->nbasis, this->nbands
 #ifdef __MPI
@@ -195,32 +197,42 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
     );
     auto move_gs = [&, this]() -> void  // move the ground state info
         {
-            this->psi_ks = ks_sol.psi;
+            this->psi_ks_all = ks_sol.psi;
             ks_sol.psi = nullptr;
             //only need the eigenvalues. the 'elecstates' of excited states is different from ground state.
-            this->eig_ks = std::move(ks_sol.pelec->ekb);
+            this->eig_ks_all = std::move(ks_sol.pelec->ekb);
         };
-#ifdef __MPI
-    if (this->nbands == PARAM.inp.nbands) { move_gs(); }
-    else    // copy the part of ground state info according to paraC_
-    {
-        this->psi_ks = new psi::Psi<T>(this->kv.get_nks(), 
-                                       this->paraC_.get_col_size(), 
-                                       this->paraC_.get_row_size(),
-                                       this->kv.ngk,
-                                       true);
-        this->eig_ks.create(this->kv.get_nks(), this->nbands);
-        const int start_band = this->nocc_max - *std::max_element(nocc.begin(), nocc.end());
-        for (int ik = 0;ik < this->kv.get_nks();++ik)
-        {
-            Cpxgemr2d(this->nbasis, this->nbands, &(*ks_sol.psi)(ik, 0, 0), 1, start_band + 1, ks_sol.pv.desc_wfc,
-                &(*this->psi_ks)(ik, 0, 0), 1, 1, this->paraC_.desc, this->paraC_.blacs_ctxt);
-            for (int ib = 0;ib < this->nbands;++ib) { this->eig_ks(ik, ib) = ks_sol.pelec->ekb(ik, start_band + ib); }
-        }
-    }
-#else
     move_gs();
+    // allocate psi_ks and eig_ks in the [nocc, nvirt] window
+#ifdef __MPI
+    this->psi_ks = new psi::Psi<T>(this->kv.get_nks(),
+        this->paraC_.get_col_size(),
+        this->paraC_.get_row_size(),
+        this->kv.ngk,
+        true);
+#else
+    this->psi_ks = new psi::Psi<T>(this->kv.get_nks(), this->nbands, this->nbasis, this->kv.ngk, true);
 #endif
+    this->eig_ks.create(this->kv.get_nks(), this->nbands);
+    const int start_band = this->nocc_max - *std::max_element(nocc.begin(), nocc.end());
+
+    for (int ik = 0;ik < this->kv.get_nks();++ik)
+    {
+        // copy the KS orbitals in the [nocc, nvirt] window
+#ifdef __MPI
+        Cpxgemr2d(this->nbasis, this->nbands, &(*this->psi_ks_all)(ik, 0, 0), 1, start_band + 1, ks_sol.pv.desc_wfc,
+            &(*this->psi_ks)(ik, 0, 0), 1, 1, this->paraC_.desc, this->paraC_.blacs_ctxt);
+#else 
+        for (int ib = 0;ib < this->nbands;++ib)
+        {
+            auto* start = &(*this->psi_ks_all)(ik, start_band + ib, 0);
+            auto* to = &(*this->psi_ks)(ik, ib, 0);
+        }
+#endif
+        // copy the KS bands in the [nocc, nvirt] window
+        for (int ib = 0;ib < this->nbands;++ib) { this->eig_ks(ik, ib) = this->eig_ks_all(ik, start_band + ib); }
+    }
+
     if (nspin == 2)
     {
         this->nupdown = cal_nupdown_form_occ(ks_sol.pelec->wg);
@@ -309,14 +321,12 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
     this->set_dimension();
     //  setup 2d-block distribution for AO-matrix and KS wfc
     LR_Util::setup_2d_division(this->paraMat_, 1, this->nbasis, this->nbasis);
-#ifdef __MPI
-    this->paraMat_.set_desc_wfc_Eij(this->nbasis, this->nbands, paraMat_.get_row_size());
-    int err = this->paraMat_.set_nloc_wfc_Eij(this->nbands, GlobalV::ofs_running, GlobalV::ofs_warning);
-    if (input.ri_hartree_benchmark != "aims") { this->paraMat_.set_atomic_trace(ucell.get_iat2iwt(), ucell.nat, this->nbasis); }
-#else
-    this->paraMat_.nrow_bands = this->nbasis;
-    this->paraMat_.ncol_bands = this->nbands;
-#endif
+    this->set_parallel_orbitals_band(this->paraMat_, this->nbands);
+    if (PARAM.inp.cal_force)
+    {
+        LR_Util::setup_2d_division(this->paraMat_all_, 1, this->nbasis, this->nbasis);
+        this->set_parallel_orbitals_band(this->paraMat_all_, PARAM.inp.nbands);
+    }
 
     // read the ground state info
     // now ModuleIO::read_wfc_nao needs `Parallel_Orbitals` and can only read all the bands
@@ -594,6 +604,18 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
         if (PARAM.inp.cal_force) { this->cal_force(is); }
     }
 }
+template<typename T, typename TR>
+void LR::ESolver_LR<T, TR>::set_parallel_orbitals_band(Parallel_Orbitals& pmat, const int nbands_in)
+{
+#ifdef __MPI
+    pmat.set_desc_wfc_Eij(this->nbasis, nbands_in, pmat.get_row_size());
+    int err = pmat.set_nloc_wfc_Eij(nbands_in, GlobalV::ofs_running, GlobalV::ofs_warning);
+    if (input.ri_hartree_benchmark != "aims") { pmat.set_atomic_trace(ucell.get_iat2iwt(), ucell.nat, this->nbasis); }
+#else
+    pmat.nrow_bands = this->nbasis;
+    pmat.ncol_bands = nbands_in;
+#endif
+}
 
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::setup_eigenvectors_X()
@@ -717,8 +739,17 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
         /*skip_bands=*/this->nocc_max - this->nocc_in)) {
         ModuleBase::WARNING_QUIT("ESolver_LR", "read ground-state wavefunction failed.");
     }
-    this->eig_ks = std::move(this->pelec->ekb);
-    this->wg_ks = std::move(this->pelec->wg);
+
+    if (PARAM.inp.cal_force)
+    {    // allocate psi_ks_all and eig_ks_all to read all the bands
+        this->psi_ks_all = new psi::Psi<T>(this->kv.get_nks(), paraMat_all_.ncol_bands, paraMat_all_.get_row_size(), this->kv.ngk, true);
+        this->eig_ks_all.create(this->kv.get_nks(), PARAM.inp.nbands);
+        this->wg_ks_all.create(this->kv.get_nks(), PARAM.inp.nbands);
+        if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, paraMat_all_, *this->psi_ks_all, this->wg_ks_all, this->eig_ks_all,/*skip_bands=*/0))
+        {
+            GlobalV::ofs_running << " Read in all the KS wavefunctions for force calculation. " << std::endl;
+        }
+    }
 }
 
 template<typename T, typename TR>

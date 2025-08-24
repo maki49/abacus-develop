@@ -120,7 +120,7 @@ ct::Tensor LR::ESolver_LR<T, TR>::solve_zvector_eqation(const int ispin)
 template<typename T, typename TR>
 std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin)
 {
-    if (PARAM.inp.test_force) { this->test_force(ispin); }
+    if (PARAM.inp.test_force && ispin == 0) { this->test_force(); }
 
     const ct::Tensor& Z = this->solve_zvector_eqation(ispin);
 
@@ -130,7 +130,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
 
     // calculate the force (the partial gradient of Lagrangian)
     LR_Force<T> lr_force(this->ucell, this->kv.kvec_d, this->paraMat_, *this->pw_rho, this->locpp, this->sf, this->gd, this->gint_, this->two_center_bundle_);
-    GlobalV::ofs_running << "Start to calculate excited-state force of  " << this->spin_types[ispin] << std::endl;
+    GlobalV::ofs_running << "Start to calculate excited-state force of " << this->spin_types[ispin] << std::endl;
     // ground state dm for currrent spin (only for test the correctness of the force)
     // elecstate::DensityMatrix<T, T> dm_gs(this->paraMat_, 1, this->kv.kvec_d, this->nk);
 
@@ -199,7 +199,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         ModuleBase::matrix force_hxc_dmtrans = lr_force.cal_force_hxc_dmtrans(dm_trans_real, *this->pot[ispin]);
         std::cout << "Force (Hxc-DMTrans term) of state " << istate << ": " << std::endl;
         LR_Util::print_value(force_hxc_dmtrans.c, ucell.nat, 3);
-        ModuleBase::matrix force_hamiltgs_relaxed_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(relaxed_diff_dm_real, *pot_gs);
+        ModuleBase::matrix force_hamiltgs_relaxed_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(relaxed_diff_dm_real, *pot_gs, /*with_ewald=*/false);
         std::cout << "Force (GS-(T+Z) term) of state " << istate << ": " << std::endl;
         LR_Util::print_value(force_hamiltgs_relaxed_diff.c, ucell.nat, 3);
         ModuleBase::matrix force_overlap_edm = lr_force.cal_force_overlap_edm(edm_real);    // "-" sign has been included in the force factor
@@ -215,21 +215,22 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
 }
 
 template<typename T, typename TR>
-void LR::ESolver_LR<T, TR>::test_force(const int ispin)
+void LR::ESolver_LR<T, TR>::test_force()
 {
     LR_Force<T> lr_force(this->ucell, this->kv.kvec_d, this->paraMat_, *this->pw_rho, this->locpp, this->sf, this->gd, this->gint_, this->two_center_bundle_);
 
     elecstate::DensityMatrix<T, double> dm_gs(&this->paraMat_, this->nspin, this->kv.kvec_d, this->nk);   //DX
-    elecstate::cal_dm_psi(&this->paraMat_, this->wg_ks, *this->psi_ks, dm_gs);
-    LR_Util::initialize_DMR(dm_gs, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
+    elecstate::cal_dm_psi(&this->paraMat_all_, this->wg_ks_all, *this->psi_ks_all, dm_gs);   // nbands is important here
+    LR_Util::initialize_DMR(dm_gs, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);   // nbands is not important here
     dm_gs.cal_DMR();
-
+    LR_Util::print_DMR(dm_gs, this->ucell.nat, "DM(R) of ground state");
     ///========================== test 1: reproduce the force of ground state =========================
     // energy density matrix of the ground state
     elecstate::DensityMatrix<T, double> edm_gs(&this->paraMat_, this->nspin, this->kv.kvec_d, this->nk);   //DX
-    ModuleBase::matrix wg_ekb_ks(nspin, nbands);
-    std::transform(this->wg_ks.c, this->wg_ks.c + nspin * nbands, this->eig_ks.c, wg_ekb_ks.c, std::multiplies<double>());
-    elecstate::cal_dm_psi(&this->paraMat_, wg_ekb_ks, *this->psi_ks, edm_gs);
+    ModuleBase::matrix wg_ekb_ks_all(nspin, PARAM.inp.nbands);
+    std::transform(this->wg_ks_all.c, this->wg_ks_all.c + nspin * PARAM.inp.nbands,
+        this->eig_ks_all.c, wg_ekb_ks_all.c, std::multiplies<double>());
+    elecstate::cal_dm_psi(&this->paraMat_all_, wg_ekb_ks_all, *this->psi_ks_all, edm_gs);
     LR_Util::initialize_DMR(edm_gs, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
     edm_gs.cal_DMR();
     // ground-state force
@@ -239,7 +240,7 @@ void LR::ESolver_LR<T, TR>::test_force(const int ispin)
     ///========================== test 2: reproduce the DX Hartree term =========================
     ModuleBase::matrix f_hxc_potgs = lr_force.reproduce_force_gs_loc(dm_gs, *this->pot_gs_hartree);
     ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "GS Hartree force calculated by 'cal_pulay_fs' from potential (eV/Angstrom)", f_hxc_potgs, false);
-    ModuleBase::matrix f_hxc_potlr = lr_force.cal_force_hxc_dmtrans(dm_gs, *this->pot[ispin]);
+    ModuleBase::matrix f_hxc_potlr = lr_force.cal_force_hxc_dmtrans(dm_gs, *this->pot[0]);
     ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "2* GS Hxc force calculated by 'LR_Force' from kernel (eV/Angstrom)", f_hxc_potlr * 2, false);
     // 2 for spin in f->v. Spin in v->f is already multiplied in the singlet Hartree factor 2.
     /// ======================================= END test 2 =========================================

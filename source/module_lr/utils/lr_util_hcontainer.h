@@ -42,7 +42,7 @@ namespace LR_Util
         std::cout << label << "\n";
         int is = 0;
         for (auto& dr : DMR.get_DMR_vector())
-            print_HR(*dr, nat, "DMR[" + std::to_string(is++) + "]", threshold);
+            print_HR(*dr, nat, "DMR[ispin=s" + std::to_string(is++) + "]", threshold);
     }
 
     template<typename T>

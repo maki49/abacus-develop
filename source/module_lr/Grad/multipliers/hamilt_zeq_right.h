@@ -103,7 +103,7 @@ namespace LR
             for (int ib = 0;ib < nband;++ib)
             {
                 const int offset = ib * ld_psi;
-                this->cal_dm_trans(0, psi + offset);  // transition density matrix
+                // this->cal_dm_trans(0, psi + offset);  // transition density matrix, only for test
                 this->cal_dm_diff(0, psi + offset);  // difference density matrix
                 hamilt::Operator<T>* node(this->ops);
                 while (node != nullptr)
