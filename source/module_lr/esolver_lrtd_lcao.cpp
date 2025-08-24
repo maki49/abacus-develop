@@ -697,9 +697,8 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::read_ks_wfc()
 {
     assert(this->psi_ks != nullptr);
-    this->pelec->ekb.create(this->kv.get_nks(), this->nbands);
-    this->pelec->wg.create(this->kv.get_nks(), this->nbands);
-
+    this->eig_ks.create(this->kv.get_nks(), this->nbands);
+    this->wg_ks.create(this->kv.get_nks(), this->nbands);
     if (input.ri_hartree_benchmark == "aims")        // for aims benchmark
     {
 #ifdef __EXX
@@ -714,7 +713,7 @@ void LR::ESolver_LR<T, TR>::read_ks_wfc()
         ModuleBase::WARNING_QUIT("ESolver_LR", "RI benchmark is only supported when compile with LibRI.");
 #endif
     }
-    else if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, this->paraMat_, *this->psi_ks, this->pelec,
+    else if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, this->paraMat_, *this->psi_ks, this->wg_ks, this->eig_ks,
         /*skip_bands=*/this->nocc_max - this->nocc_in)) {
         ModuleBase::WARNING_QUIT("ESolver_LR", "read ground-state wavefunction failed.");
     }

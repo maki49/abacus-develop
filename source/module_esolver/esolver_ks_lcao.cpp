@@ -166,7 +166,7 @@ void ESolver_KS_LCAO<TK, TR>::before_all_runners(UnitCell& ucell, const Input_pa
     // 5) read psi from file
     if (PARAM.inp.init_wfc == "file")
     {
-        if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, this->pv, *(this->psi), this->pelec))
+        if (!ModuleIO::read_wfc_nao(PARAM.globalv.global_readin_dir, this->pv, *(this->psi), this->pelec->wg, this->pelec->ekb))
         {
             ModuleBase::WARNING_QUIT("ESolver_KS_LCAO", "read electronic wave functions failed");
         }
