@@ -51,15 +51,18 @@ namespace LR
                 *this->DM_trans, gint, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, -2.0, ATYPE::CXC);
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
-            OperatorLRHxc<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
+            hamilt::Operator<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_diff, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                { 0 }, T(-2.0), ATYPE::CC_vo);
+                { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmdiff_vo);
             this->ops->add(op_ht);
             // 3. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
             this->pot_grad = std::make_shared<PotGradXCLR>(pot.lock()->xc_kernel_components, pot.lock()->get_rho_basis(), ucell, pot.lock()->nrxx);
-            OperatorLRHxc<T>* op_gxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
+            // !!op_gxc has some bug
+            hamilt::Operator<T>* op_gxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, gint, this->pot_grad, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                { 0 }, T(-2.0), ATYPE::CC_vo);
+                { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_vo);
+            assert(op_gxc != nullptr);
+            std::cout << "op_gxc=" << op_ht << std::endl;
             this->ops->add(op_gxc);
             // // test: op_ht only 
             // delete this->ops;
@@ -87,8 +90,10 @@ namespace LR
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);
 #ifdef __MPI
                     std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_pblas(X, this->pX[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
+                    for (auto& t : dm_diff_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
                     std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_blas(X, psi_ks_is, naos, nocc[is], nvirt[is]);
+                    for (auto& t : dm_diff_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
                     for (int ik = 0;ik < this->nk;++ik) { this->DM_diff->set_DMK_pointer(ik, dm_diff_2d[ik].data<T>()); }
                     // std::cout << "difference density matrix" << std::endl;
@@ -103,7 +108,7 @@ namespace LR
             for (int ib = 0;ib < nband;++ib)
             {
                 const int offset = ib * ld_psi;
-                // this->cal_dm_trans(0, psi + offset);  // transition density matrix, only for test
+                this->cal_dm_trans(0, psi + offset);  // transition density matrix, only for test
                 this->cal_dm_diff(0, psi + offset);  // difference density matrix
                 hamilt::Operator<T>* node(this->ops);
                 while (node != nullptr)

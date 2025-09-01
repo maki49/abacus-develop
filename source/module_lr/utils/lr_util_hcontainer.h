@@ -6,6 +6,7 @@
 #include <ATen/core/tensor.h>
 #include "module_parameter/parameter.h"
 #include "module_io/single_R_io.h"
+#include "module_lr/utils/lr_util.h"
 namespace LR_Util
 {
     template <typename T>
@@ -186,6 +187,8 @@ namespace LR_Util
         initialize_DMR(dm, pmat, ucell, gd, orb_cutoff);
         for (int ik = 0; ik < nk; ++ik)
         {
+            // symmetrize
+            LR_Util::matsym(dmk[ik].data<TK>(), pmat.get_global_row_size(), pmat);
             dm.set_DMK_pointer(ik, dmk[ik].data<TK>());
         }
         if (cal_dmr) { dm.cal_DMR(); }

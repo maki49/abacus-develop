@@ -100,7 +100,7 @@ namespace LR
 #endif 
             gint, pot, pot_hxc_gs, kv, px, pc, pmat, spin_type);
         ModuleBase::timer::tick("Z_vector", "Z_vector_R");
-        ops_R.hPsi(X, R.data<T>(), nk * px[0].get_local_size(), nstates);  // act each operators on X
+        ops_R.hPsi(X, R.data<T>(), nloc_per_band, nstates);  // act each operators on X
         ModuleBase::timer::tick("Z_vector", "Z_vector_R");
 
         // 2. the left-hand side of Z-vector equation

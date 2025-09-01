@@ -46,7 +46,7 @@ namespace LR
             // 1. $2\sum_bX_{ib}K_{ab}[D^X]-2\sum_jX_{ja}K_{ij}[D^X]$
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0]);
             // 2. $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized
-            OperatorLRHxc<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
+            hamilt::Operator<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, 2.0, ATYPE::CC_vo);
             this->ops->add(op_hz);

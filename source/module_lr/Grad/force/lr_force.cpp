@@ -32,7 +32,9 @@ namespace LR
         const Charge chr_diff_relaxed = dm_to_charge(relax_diff_dm);
 
         // 1. local pp (Hellmann-Feynman)(fvl_dvl) + ewald + core correction (+ self-consistent charge)
-        ModuleBase::matrix f_pw = ForcePWTerms<double>()(this->ucell_, chr_diff_relaxed, this->rhopw_, this->locpp_, this->sf_, with_ewald);
+        ModuleBase::matrix f_pw = PARAM.inp.vl_in_h ?
+            ForcePWTerms<double>()(this->ucell_, chr_diff_relaxed, this->rhopw_, this->locpp_, this->sf_, with_ewald) :
+            ModuleBase::matrix(this->ucell_.nat, 3);
 
         // 2. nonlocal pp (Hellmann-Feynman + Pulay)
         ModuleBase::matrix fvnl = cal_force_nonlocal(this->ucell_, this->kvec_d_, this->gd_, this->two_center_bundle_, relax_diff_dm);
