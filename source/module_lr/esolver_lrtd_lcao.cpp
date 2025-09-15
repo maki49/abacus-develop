@@ -96,7 +96,7 @@ void LR::ESolver_LR<T, TR>::parameter_check()const
     {
         throw std::invalid_argument("LR-TDDFT only supports nspin = 1 or 2 now");
     }
-    if (input.cal_force && has_local_xc(this->xc_kernel))
+    if (input.cal_force && LR_Util::has_local_xc(this->xc_kernel))
     {
         std::cout << "To calculate LR-TDDFT gradients, Libxc should be compiled with kxc, i.e. `-DDISABLE_KXC=OFF` with cmake." << std::endl;
     }

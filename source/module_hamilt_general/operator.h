@@ -27,8 +27,11 @@ enum class calculation_type
     lcao_dftu,
     lcao_sc_lambda,
     lcao_tddft_velocity,
-    lr_dmtrans_vo,
-    lr_dmdiff_vo
+    lr_dmtrans_hxc,
+    lr_dmtrans_gxc,
+    lr_dmdiff_hxc,
+    lr_dmtrans_exx,
+    lr_dmdiff_exx
 };
 
 // Basic class for operator module,

@@ -40,7 +40,7 @@ namespace LR
             const std::vector<int>& ispin_ks = { 0 },
             const T factor_in = (T)1.0,
             const MO_TO_AO_TYPE dm_pq_in = MO_TO_AO_TYPE::CC_vo,
-            const hamilt::calculation_type cal_type_in = hamilt::calculation_type::lcao_gint)
+            const hamilt::calculation_type cal_type_in = hamilt::calculation_type::lr_dmtrans_hxc)
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin), psi_ks(psi_ks_in),
             DM_trans(DM_trans_in), gint(gint_in), pot(pot_in), ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in),
             kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks),

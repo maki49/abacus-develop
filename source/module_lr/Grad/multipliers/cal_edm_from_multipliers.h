@@ -4,6 +4,9 @@
 #include "module_lr/utils/lr_util_print.h"
 #include "cal_multiplier_w_from_z.h"
 #include <ATen/ops/linalg_op.h>
+#ifdef __EXX
+#include "module_lr/operator_casida/operator_lr_exx.h"
+#endif
 namespace LR
 {
 
@@ -152,7 +155,7 @@ namespace LR
         const std::vector<Parallel_2D>& px,
         const Parallel_2D& pc,
         const Parallel_Orbitals& pmat,
-        const bool has_local_xc)
+        const std::string xc_kernel)
     {
         const int nk = kv.get_nks() / nspin;
         // 1. calculate W multiplier 
@@ -164,7 +167,7 @@ namespace LR
 #ifdef __EXX
             exx_lri, exx_alpha,
 #endif
-            gint, pot_hxc_gs, kv, px, pc, p_occ_occ, pmat, has_local_xc);
+            gint, pot_hxc_gs, kv, px, pc, p_occ_occ, pmat, xc_kernel);
         std::cout << "W: " << std::endl;
         LR_Util::print_value(W.data(), nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());
 
@@ -174,11 +177,15 @@ namespace LR
             relaxed_diff_dm, gint, pot, ucell, orb_cutoff, gd, kv, px, pc, pmat,
             { 0 }, T(2.0), OperatorLRHxc<T>::MO_TO_AO_TYPE::CXC_o);
 #ifdef __EXX
-        // add EXX operators here
+        OperatorLREXX<T> op_K_exx(nspin, naos, nocc[0], nvirt[0], ucell, c,
+            relaxed_diff_dm, exx_lri, kv, px[0], pc, pmat,
+            2.0 * exx_alpha, OperatorLREXX<T>::MO_TO_AO_TYPE::CXC_o);
 #endif
         const int ld_vo = nk * px[0].get_local_size();
         std::vector<T> K_cvcx(ld_vo, 0.0);
         op_K_cvcx.act(/*nbands=*/1, ld_vo, /*npol=*/1, X, K_cvcx.data());
+        if (LR::exx_kernel_list().count(xc_kernel))
+            op_K_exx.act(/*nbands=*/1, ld_vo, /*npol=*/1, X, K_cvcx.data());
 
         return cal_edm_terms_from_XZWK(X, Z, W.data(), K_cvcx.data(), eig_ext_istate, eig_ks, c, nspin, p_occ_occ[0], px[0], pc, pmat);
     }

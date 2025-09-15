@@ -84,7 +84,7 @@ void LR::ESolver_LR<T, TR>::init_pot_groundstate(const Charge& chg_gs)
     this->pot_gs.get()->pot_register(pot_register);
     XC_Functional::set_xc_type(ucell.atoms[0].ncpp.xc_func);    // set XC type of the ground state
     this->pot_gs->init_pot(0, &chg_gs);  // call update_from_charge inside
-    if (has_local_xc(this->xc_kernel))
+    if (LR_Util::has_local_xc(this->xc_kernel))
     {
         XC_Functional::set_xc_type(this->xc_kernel);    // recover the excited state xc kernel type
     }
@@ -179,7 +179,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
 #endif
                 this->gint_, pot_weak, pot_hxc_gs_weak,
                 this->kv, this->gd, this->paraX_, this->paraC_, this->paraMat_,
-                has_local_xc(this->xc_kernel));
+                this->xc_kernel);
         if (PARAM.inp.test_force && nocc[0] == 1)
         {
             const std::vector<ct::Tensor>& dm_diff = cal_dm_diff_pblas(this->X[0].template data<T>() + offset, this->paraX_[0], c, this->paraC_, this->nbasis, this->nocc[0], this->nvirt[0], this->paraMat_);

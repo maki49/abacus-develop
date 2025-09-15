@@ -187,6 +187,11 @@ void OperatorLCAO<TK, TR>::init(const int ik_in) {
             break;
         }
         case calculation_type::lcao_exx:
+        case calculation_type::lr_dmtrans_hxc:
+        case calculation_type::lr_dmtrans_exx:
+        case calculation_type::lr_dmdiff_hxc:
+        case calculation_type::lr_dmdiff_exx:
+        case calculation_type::lr_dmtrans_gxc:
         {
             //update HR first
             if (!this->hr_done)

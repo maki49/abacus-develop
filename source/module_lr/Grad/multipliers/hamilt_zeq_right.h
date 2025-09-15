@@ -5,12 +5,18 @@
 #include "module_lr/potentials/pot_hxc_lrtd.h"
 #include "module_lr/operator_casida/operator_lr_hxc.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
+#ifdef __EXX
+#include "module_lr/operator_casida/operator_lr_exx.h"
+#endif
 namespace LR
 {
     template<typename T>
     class Z_vector_R : public HamiltLR<T>
     {
         using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
+#ifdef __EXX
+        using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
+#endif
     public:
         template<typename TGint>
         Z_vector_R(const std::string& xc_kernel,
@@ -42,36 +48,60 @@ namespace LR
                 gint, pot, kv, pX, pc, pmat, spin_type)
         {
             ModuleBase::TITLE("Z_vector_R", "Z_vector_R");
+
             this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             this->DM_diff = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_diff, pmat, ucell, gd, orb_cutoff);
+
+            // note: calculation_type cannot repeated, or it will be ignored in ops->add()
             // 1. $2\sum_bX_{ib}K_{ab}[D^X]-2\sum_jX_{ja}K_{ij}[D^X]$
             this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, gint, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, -2.0, ATYPE::CXC);
+#ifdef __EXX
+            if (exx_kernel_list().count(xc_kernel))
+            {
+                hamilt::Operator<T>* op_hz_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
+                    *this->DM_trans, exx_lri, kv, pX[0], pc, pmat,
+                    -2.0 * exx_alpha, //alpha; H=2K when D is symmetrized
+                    ATYPE_EXX::CXC, {}, hamilt::calculation_type::lr_dmtrans_exx);
+                this->ops->add(op_hz_exx);
+            }
+#endif
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
             hamilt::Operator<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_diff, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmdiff_vo);
+                { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmdiff_hxc);
             this->ops->add(op_ht);
+#ifdef __EXX
+            if (exx_kernel_list().count(xc_kernel))
+            {
+                hamilt::Operator<T>* op_ht_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
+                    *this->DM_diff, exx_lri, kv, pX[0], pc, pmat,
+                    -2.0 * exx_alpha, //alpha; H=2K when D is symmetrized
+                    ATYPE_EXX::CC_vo, {}, hamilt::calculation_type::lr_dmdiff_exx);
+                this->ops->add(op_ht_exx);
+            }
+#endif
+
             // 3. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
-            this->pot_grad = std::make_shared<PotGradXCLR>(pot.lock()->xc_kernel_components, pot.lock()->get_rho_basis(), ucell, pot.lock()->nrxx);
-            // !!op_gxc has some bug
-            hamilt::Operator<T>* op_gxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
-                *this->DM_trans, gint, this->pot_grad, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_vo);
-            assert(op_gxc != nullptr);
-            std::cout << "op_gxc=" << op_ht << std::endl;
-            this->ops->add(op_gxc);
+            if (LR_Util::has_local_xc(xc_kernel))
+            {            // !!  op_gxc has some bug now
+                this->pot_grad = std::make_shared<PotGradXCLR>(pot.lock()->xc_kernel_components, pot.lock()->get_rho_basis(), ucell, pot.lock()->nrxx);
+                hamilt::Operator<T>* op_gxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
+                    *this->DM_trans, gint, this->pot_grad, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
+                    { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_gxc);
+                assert(op_gxc != nullptr);
+                std::cout << "op_gxc=" << op_ht << std::endl;
+                this->ops->add(op_gxc);
+            }
             // // test: op_ht only 
             // delete this->ops;
             // this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
             //     *this->DM_diff, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
             //     { 0 }, T(-2.0), ATYPE::CC_vo);
-#ifdef __EXX
-            // add EXX operators here
-#endif
+
             this->cal_dm_trans = [&, this](const int& is, const T* X)->void
                 {
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);

@@ -9,6 +9,7 @@
 #include <ATen/core/tensor.h>
 #include <ATen/ops/linalg_op.h>
 #include "module_basis/module_pw/pw_basis.h"
+#include <set>
 
 using DAT = container::DataType;
 using DEV = container::DeviceType;
@@ -25,6 +26,11 @@ template <> struct ToComplex<std::complex<float>> { using type = std::complex<fl
 namespace LR_Util
 {
     /// =====================PHYSICS====================
+    /// @brief check if the xc functional has local xc kernel
+    inline bool has_local_xc(const std::string& name)
+    {
+        return std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(name);
+    }
 
     /// @brief calculate the number of electrons
     /// @tparam TCell 

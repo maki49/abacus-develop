@@ -15,8 +15,6 @@
 #include <omp.h>
 #endif
 
-bool has_local_xc(const std::string& name) { return std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(name); }
-
 LR::KernelXC::KernelXC(const ModulePW::PW_Basis& rho_basis,
     const UnitCell& ucell,
     const Charge& chg_gs,

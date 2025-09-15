@@ -5,12 +5,18 @@
 #include "module_lr/operator_casida/operator_lr_hxc.h"
 #include "module_lr/Grad/dm_diff/dm_diff.h"
 #include "module_basis/module_ao/parallel_orbitals.h"
+#ifdef __EXX
+#include "module_lr/operator_casida/operator_lr_exx.h"
+#endif
 namespace LR
 {
     template<typename T>
     class Z_vector_L : public HamiltLR<T>
     {
         using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
+#ifdef __EXX
+        using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
+#endif
     public:
         template<typename TGint>
         Z_vector_L(const std::string& xc_kernel,
@@ -51,7 +57,14 @@ namespace LR
                 { 0 }, 2.0, ATYPE::CC_vo);
             this->ops->add(op_hz);
 #ifdef __EXX
-            // add EXX operators here
+            if (exx_kernel_list().count(xc_kernel))
+            {
+                hamilt::Operator<T>* op_hz_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
+                    *this->DM_trans, exx_lri, kv, pX[0], pc, pmat,
+                    2.0 * exx_alpha, //alpha; H=2K when D is symmetrized
+                    ATYPE_EXX::CC_vo);
+                this->ops->add(op_hz_exx);
+            }
 #endif
             this->cal_dm_trans = [&, this](const int& is, const T* X)->void
                 {

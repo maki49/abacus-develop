@@ -7,7 +7,7 @@
 #include "module_basis/module_ao/parallel_orbitals.h"
 #include <ATen/ops/linalg_op.h>
 #ifdef __EXX
-#include "module_ri/Exx_LRI.h"
+#include "module_lr/operator_casida/operator_lr_exx.h"
 #endif
 #include "module_base/scalapack_connector.h"
 
@@ -78,11 +78,14 @@ namespace LR
         const Parallel_2D& pc,
         const std::vector<Parallel_2D>& p_occ_occ,   // < for W
         const Parallel_Orbitals& pmat,
-        const bool has_local_xc,
+        const std::string xc_kernel,
         const std::string& spin_type = "singlet")
     {
         ModuleBase::TITLE("cal_W_from_Z", "cal_W_from_Z");
         using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
+#ifdef __EXX
+        using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
+#endif
         const int nk = kv.get_nks() / nspin;
         // allocate memory for DMs
         elecstate::DensityMatrix<T, T> DM_trans(&pmat, 1, kv.kvec_d, nk);   //DX
@@ -94,6 +97,11 @@ namespace LR
         OperatorLRHxc<T> op_ht(nspin, naos, nocc, nvirt, psi_ks,
             DM_diff_relaxed, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             { 0 }, T(1.0), ATYPE::CC_oo);
+#ifdef __EXX
+        OperatorLREXX<T> op_ht_exx(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
+            DM_diff_relaxed, exx_lri, kv, p_occ_occ[0], pc, pmat,
+            exx_alpha, ATYPE_EXX::CC_oo);
+#endif
         // 2. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
         // use pointer here for polymorphism
         // but `weak_ptr = make_shared()` will cause a segment fault because the shared_ptr is a temporary object
@@ -105,9 +113,7 @@ namespace LR
         OperatorLRHxc<T> op_gxc(nspin, naos, nocc, nvirt, psi_ks,
             DM_trans, gint, pot_grad, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             { 0 }, T(-2.0), ATYPE::CC_oo);
-#ifdef __EXX
-        // add EXX operators here
-#endif
+
         auto cal_dm_trans = [&](const int is, const T* const x_ptr)->void //DX
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
@@ -151,7 +157,12 @@ namespace LR
         cal_dm_diff_relaxed(0, X, Z);  // relaxed difference density matrix T+DZ
         // the 3 terms
         op_ht.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);    //comment out this line to test H[T+Z]=0
-        if (has_local_xc) { op_gxc.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W); }
+        if (LR::exx_kernel_list().count(xc_kernel))
+            op_ht_exx.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);
+
+        if (LR_Util::has_local_xc(xc_kernel))
+            op_gxc.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);
+
         std::cout << "W (H[T+Z]) + W(gxc) terms: " << std::endl;
         LR_Util::print_value(W, nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());
         add_ediff_term(W, X, eig, eig_ks, nk, nocc[0], nvirt[0], px[0], p_occ_occ[0]);

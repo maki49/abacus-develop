@@ -12,6 +12,7 @@ if(ENABLE_LCAO)
     dm_trans/dm_trans_parallel.cpp
     dm_trans/dm_trans_serial.cpp
     dm_trans/dmr_complex.cpp
+    dm_band/dm_band.cpp
     operator_casida/operator_lr_hxc.cpp
     operator_casida/operator_lr_exx.cpp
     potentials/pot_hxc_lrtd.cpp
