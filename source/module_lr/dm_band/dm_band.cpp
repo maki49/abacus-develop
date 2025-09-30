@@ -27,17 +27,18 @@ namespace LR
                         {
                             const int iat1 = ucell_.itia2iat(it1, ia1);
                             const int iat2 = ucell_.itia2iat(it2, ia2);
-                            auto& D2d = dm_band[iat1][std::make_pair(iat2, cell)];
-                            const int nw1 = ucell_.atoms[it1].nw;
-                            const int nw2 = ucell_.atoms[it2].nw;
+                            const std::size_t nw1 = ucell_.atoms[it1].nw;
+                            const std::size_t nw2 = ucell_.atoms[it2].nw;
+                            RI::Tensor<double> dm_tmp({ nw1, nw2 });
                             for (int iw1 = 0;iw1 < nw1;++iw1)
                                 for (int iw2 = 0;iw2 < nw2;++iw2)
                                 {
                                     const int iwt1 = use_nws1 ? nws1[it1] : ucell_.itiaiw2iwt(it1, ia1, iw1);
                                     const int iwt2 = use_nws2 ? nws2[it2] : ucell_.itiaiw2iwt(it2, ia2, iw2);
                                     if (pmat_.in_this_processor(iwt1, iwt2))
-                                        D2d(iw1, iw2) = fac * c1_(ik, iband1, iwt1) * c2_(ik, iband2, iwt2);
+                                        dm_tmp(iw1, iw2) = fac * c1_(ik, iband1, iwt1) * c2_(ik, iband2, iwt2);
                                 }
+                            dm_band[iat1][std::make_pair(iat2, cell)] = dm_tmp;
                         }
         }
     }
@@ -56,25 +57,26 @@ namespace LR
         for (auto cell : bvk_cells_)
         {
             std::complex<double> fac_phase = RI::Global_Func::convert<std::complex<double>>(std::exp(
-                -ModuleBase::TWO_PI * ModuleBase::IMAG_UNIT * (kvec_c_.at(ik) * (RI_Util::array3_to_Vector3(cell) * ucell_.latvec))));
+                -ModuleBase::TWO_PI * ModuleBase::IMAG_UNIT * (kvec_c_.at(ik) * (RI_Util::array3_to_Vector3(cell) * ucell_.latvec)))) * fac;
             for (int it1 = 0;it1 < ucell_.ntype;++it1)
                 for (int ia1 = 0; ia1 < ucell_.atoms[it1].na; ++ia1)
                     for (int it2 = 0;it2 < ucell_.ntype;++it2)
                         for (int ia2 = 0;ia2 < ucell_.atoms[it2].na;++ia2)
                         {
-                            int iat1 = ucell_.itia2iat(it1, ia1);
-                            int iat2 = ucell_.itia2iat(it2, ia2);
-                            auto& D2d = dm_band[iat1][std::make_pair(iat2, cell)];
-                            const int nw1 = ucell_.atoms[it1].nw;
-                            const int nw2 = ucell_.atoms[it2].nw;
+                            const int iat1 = ucell_.itia2iat(it1, ia1);
+                            const int iat2 = ucell_.itia2iat(it2, ia2);
+                            const std::size_t nw1 = ucell_.atoms[it1].nw;
+                            const std::size_t nw2 = ucell_.atoms[it2].nw;
+                            RI::Tensor<std::complex<double>> dm_tmp({ nw1, nw2 });
                             for (int iw1 = 0;iw1 < nw1;++iw1)
                                 for (int iw2 = 0;iw2 < nw2;++iw2)
                                 {
                                     const int iwt1 = use_nws1 ? nws1[it1] : ucell_.itiaiw2iwt(it1, ia1, iw1);
                                     const int iwt2 = use_nws2 ? nws2[it2] : ucell_.itiaiw2iwt(it2, ia2, iw2);
                                     if (pmat_.in_this_processor(iwt1, iwt2))
-                                        D2d(iw1, iw2) = fac * c1_(ik, iband1, iwt1) * std::conj(c2_(ik, iband2, iwt2));
+                                        dm_tmp(iw1, iw2) = fac_phase * c1_(ik, iband1, iwt1) * std::conj(c2_(ik, iband2, iwt2));
                                 }
+                            dm_band[iat1][std::make_pair(iat2, cell)] = dm_tmp;
                         }
         }
     }

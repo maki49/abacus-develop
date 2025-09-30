@@ -4,6 +4,9 @@
 #include "module_lr/Grad/force/lr_force.h"
 #include "module_elecstate/module_dm/cal_dm_psi.h"
 #include "module_io/output_log.h"
+#ifdef __EXX
+#include <RI/ri/LRI_Cal_Aux.h>
+#endif
 
 template <typename Tstream>
 inline void print_force(const std::vector<ModuleBase::matrix>& force, Tstream& ofs)
@@ -58,6 +61,41 @@ inline void test_edm_H2(const T* const edm, const double* const eig_ks, const ps
         std::cout << std::endl;
     }
 }
+
+#ifdef __EXX
+// convert DensityMatrix to maps of RI::Tensors
+template <typename T>
+inline auto get_exx_Ds_spin1(const elecstate::DensityMatrix<T, T>& dm,
+    const UnitCell& ucell, const K_Vectors& kv, const Parallel_Orbitals& pmat)
+    -> std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>
+{
+    const int& nk = dm.get_DMK_nks();   // nks/nspin
+    std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
+    for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik]; }
+    return RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, DMk_trans_pointer, pmat, /*nspin=*/1)[0];
+}
+template <typename T>
+inline auto get_exx_Ds_gs(elecstate::DensityMatrix<T, double>& dm,
+    const UnitCell& ucell, const K_Vectors& kv, const Parallel_Orbitals& pmat, const int nspin)
+    -> std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>
+{
+    const int& nk = dm.get_DMK_nks() / nspin;   // nks/nspin
+    std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
+
+    std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>> Ds_allspin;
+    for (int is = 0;is < nspin;++is)
+    {
+        for (int ik = 0;ik < nk;++ik)
+        {
+            DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik + is * nk];
+        }
+        std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>  Ds_tmp
+            = RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, DMk_trans_pointer, pmat, /*nspin=*/1)[0];
+        RI::LRI_Cal_Aux::add_Ds<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>(std::move(Ds_tmp), Ds_allspin);
+    }
+    return Ds_allspin;
+}
+#endif
 
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::init_pot_groundstate(const Charge& chg_gs)
@@ -129,7 +167,11 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
     const auto& c = LR_Util::get_psi_spin(*this->psi_ks, ispin, this->nk);   // wavefunction coefficients of ground state
 
     // calculate the force (the partial gradient of Lagrangian)
-    LR_Force<T> lr_force(this->ucell, this->kv.kvec_d, this->paraMat_, *this->pw_rho, this->locpp, this->sf, this->gd, this->gint_, this->two_center_bundle_);
+    LR_Force<T> lr_force(this->ucell, this->kv.kvec_d, this->paraMat_, *this->pw_rho, this->locpp, this->sf, this->gd, this->gint_, this->two_center_bundle_
+#ifdef __EXX
+        , std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha
+#endif
+    );
     GlobalV::ofs_running << "Start to calculate excited-state force of " << this->spin_types[ispin] << std::endl;
     // ground state dm for currrent spin (only for test the correctness of the force)
     // elecstate::DensityMatrix<T, T> dm_gs(this->paraMat_, 1, this->kv.kvec_d, this->nk);
@@ -141,9 +183,12 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         const int offset = istate * this->nloc_per_band;
         // The imag part will be cancelled in the force calculation, so we use double DM(R) to calculate force. 
         // But complex transition DM(R) is still used in energy density matrix calculation.
-        elecstate::DensityMatrix<T, double> dm_trans_real =   // D(X)
-            LR_Util::build_dm_from_dmk<T, double>(
-                cal_dm_trans_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_),
+        const auto& dm_trans_k = cal_dm_trans_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
+        const elecstate::DensityMatrix<T, double>& dm_trans_real =   // D(X), double (FIXME: not enough for periodic system!)
+            LR_Util::build_dm_from_dmk<T, double>(dm_trans_k,
+                this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+        const elecstate::DensityMatrix<T, T>& dm_trans =   // D(X) complex
+            LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
 
         elecstate::DensityMatrix<T, T> relaxed_diff_dm =    // T+D(Z), (R) can be complex
@@ -199,13 +244,35 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         ModuleBase::matrix force_hxc_dmtrans = lr_force.cal_force_hxc_dmtrans(dm_trans_real, *this->pot[ispin]);
         std::cout << "Force (Hxc-DMTrans term) of state " << istate << ": " << std::endl;
         LR_Util::print_value(force_hxc_dmtrans.c, ucell.nat, 3);
+
         ModuleBase::matrix force_hamiltgs_relaxed_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(relaxed_diff_dm_real, *pot_gs, /*with_ewald=*/false);
         std::cout << "Force (GS-(T+Z) term) of state " << istate << ": " << std::endl;
         LR_Util::print_value(force_hamiltgs_relaxed_diff.c, ucell.nat, 3);
+
         ModuleBase::matrix force_overlap_edm = lr_force.cal_force_overlap_edm(edm_real);    // "-" sign has been included in the force factor
         std::cout << "Force (Overlap-EDM term) of state " << istate << ": " << std::endl;
         LR_Util::print_value(force_overlap_edm.c, ucell.nat, 3);
-        // remaining for EXX
+
+#ifdef __EXX
+        const double& alpha = this->exx_info.info_global.hybrid_alpha;
+
+        const auto& Ds_trans = get_exx_Ds_spin1(dm_trans, this->ucell, this->kv, this->paraMat_);
+        ModuleBase::matrix force_exx_dmtrans = lr_force.cal_force_exx_dm_trans(Ds_trans, alpha);
+        std::cout << "Force (EXX-DMTrans term) of state " << istate << ": " << std::endl;
+        LR_Util::print_value(force_exx_dmtrans.c, ucell.nat, 3);
+
+        elecstate::DensityMatrix<T, double> dm_gs(&this->paraMat_, this->nspin, this->kv.kvec_d, this->nk);   //DX
+        elecstate::cal_dm_psi(&this->paraMat_all_, this->wg_ks_all, *this->psi_ks_all, dm_gs);   // nbands is important here
+        const auto& Ds_gs = get_exx_Ds_gs(dm_gs, this->ucell, this->kv, this->paraMat_, this->nspin);
+        const auto& Ds_relaxed_diff = get_exx_Ds_spin1(relaxed_diff_dm, this->ucell, this->kv, this->paraMat_);
+        ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha);
+        std::cout << "Force (EXX-GS-(T+Z) term) of state " << istate << ": " << std::endl;
+        LR_Util::print_value(force_exx_gs_diff.c, ucell.nat, 3);
+
+        // add exx force to the corresponding terms
+        force_hxc_dmtrans += force_exx_dmtrans;
+        force_hamiltgs_relaxed_diff += force_exx_gs_diff;
+#endif
         forces[istate] = force_hxc_dmtrans + force_hamiltgs_relaxed_diff + force_overlap_edm;
     }
     ModuleBase::timer::tick("ESolver_LR", "cal_force");
@@ -217,7 +284,11 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::test_force()
 {
-    LR_Force<T> lr_force(this->ucell, this->kv.kvec_d, this->paraMat_, *this->pw_rho, this->locpp, this->sf, this->gd, this->gint_, this->two_center_bundle_);
+    LR_Force<T> lr_force(this->ucell, this->kv.kvec_d, this->paraMat_, *this->pw_rho, this->locpp, this->sf, this->gd, this->gint_, this->two_center_bundle_
+#ifdef __EXX
+        , std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha
+#endif
+    );
 
     elecstate::DensityMatrix<T, double> dm_gs(&this->paraMat_, this->nspin, this->kv.kvec_d, this->nk);   //DX
     elecstate::cal_dm_psi(&this->paraMat_all_, this->wg_ks_all, *this->psi_ks_all, dm_gs);   // nbands is important here

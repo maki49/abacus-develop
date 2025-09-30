@@ -112,6 +112,49 @@ namespace LR
         this->gint_->reset_DMRGint(1);
         return fvl_dphi;
     }
+
+#ifdef __EXX
+    template<typename TK>
+    ModuleBase::matrix LR_Force<TK>::cal_force_exx_dm_trans(
+        const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm_trans,
+        const double& alpha)
+    {
+        ModuleBase::matrix f_exx_dmtrans(this->ucell_.nat, 3);
+        auto& exx_lri_kernel = this->exx_lri_.lock()->get();
+        exx_lri_kernel.set_Ds(dm_trans, this->exx_lri_.lock()->get_info().dm_threshold, "0");
+        exx_lri_kernel.cal_Hs();
+        exx_lri_kernel.cal_force();// using dm_trans
+        for (std::size_t idim = 0; idim < 3; ++idim)
+            for (const auto& force_item : exx_lri_kernel.force[idim])
+                f_exx_dmtrans(force_item.first, idim) = std::real(force_item.second);
+        return f_exx_dmtrans * alpha;
+    }
+
+    template<typename TK>
+    ModuleBase::matrix LR_Force<TK>::cal_force_exx_gs_dm_relaxed_diff(
+        const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm_gs,
+        const std::map<int, std::map<TAC, RI::Tensor<TK>>>& relaxed_diff_dm,
+        const double& alpha)
+    {
+        ModuleBase::matrix f_exx_gs_diff(this->ucell_.nat, 3);
+        auto& exx_lri_kernel = this->exx_lri_.lock()->get();
+        exx_lri_kernel.set_Ds(dm_gs, this->exx_lri_.lock()->get_info().dm_threshold, "0");
+        exx_lri_kernel.cal_Hs();  // using dm_gs
+        // auto* lr_ptr = dynamic_cast<RI::LR<int, int, 3, TK>*>(&exx_lri_kernel);  // wrong: 
+        // assert(lr_ptr != nullptr);
+        RI::LR<int, int, 3, TK> lr_exx_kernel(std::move(exx_lri_kernel));
+        std::cout << "post_2D adress moved: " << &(lr_exx_kernel.post_2D) << std::endl;
+        std::cout << "begin RI::LR::cal_force" << std::endl;
+        lr_exx_kernel.cal_force(relaxed_diff_dm); // using relaxed_diff_dm
+        exx_lri_kernel = std::move(lr_exx_kernel);        // move back 
+        std::cout << "post_2D adress after move back: " << &(exx_lri_kernel.post_2D) << std::endl;
+        std::cout << "end RI::LR::cal_force" << std::endl;
+        for (std::size_t idim = 0; idim < 3; ++idim)
+            for (const auto& force_item : exx_lri_kernel.force[idim])
+                f_exx_gs_diff(force_item.first, idim) = std::real(force_item.second);
+        return f_exx_gs_diff * alpha;
+    }
+#endif
 }
 
 template class LR::LR_Force<double>;

@@ -2,7 +2,11 @@
 #include "module_lr/potentials/pot_hxc_lrtd.h"
 #include "module_lr/utils/gint_template.h"
 // free functions, usefull for both ground and excited state
-
+#ifdef __EXX
+#include "module_ri/Exx_LRI.h"
+#include <RI/physics/LR.h>
+using TAC = std::pair<int, std::array<int, 3>>;
+#endif
 namespace LR
 {
 
@@ -18,10 +22,19 @@ namespace LR
             const Structure_Factor& sf,
             const Grid_Driver& gd,
             typename TGint<TK>::type* gint, ///<  for grid integrals
-            const TwoCenterBundle& two_center_bundle)///<  for 2-center integrals
+            const TwoCenterBundle& two_center_bundle
+#ifdef __EXX
+            , std::weak_ptr<Exx_LRI<TK>> exx_lri_in,
+            const double& alpha
+#endif
+        )///<  for 2-center integrals
             : ucell_(ucell), kvec_d_(kvec_d), pv_(pv),
             rhopw_(rhopw), sf_(sf), locpp_(locpp), gd_(gd),
-            gint_(gint), two_center_bundle_(two_center_bundle) {
+            gint_(gint), two_center_bundle_(two_center_bundle)
+#ifdef __EXX
+            , exx_lri_(exx_lri_in), alpha_(alpha)
+#endif
+        {
         }
 
         /// 1. $Tr[H_{GS}^x * (T+D^Z)]$, where GS=groud state and $(T+D^Z)$ is the relaxed difference density matrix
@@ -35,11 +48,18 @@ namespace LR
         ModuleBase::matrix cal_force_hxc_dmtrans(const elecstate::DensityMatrix<TK, double>& dm_trans, const PotHxcLR& pot_hxc);
 
 #ifdef __EXX
+        // auto* lrexx_ptr = dynamic_cast<RI::LR<int, std::array<int, 3>, 3, TK>*>(&exx_lri_in.get());
         /// 4. $\alpha \sum_{mnkl}(mk|nl)^x *D^X *D^X$
-        // ModuleBase::matrix cal_force_exx_dm_diff(const elecstate::DensityMatrix<TK, double>& dm_trans);
+        ModuleBase::matrix cal_force_exx_dm_trans(
+            const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm_trans,
+            const double& alpha);
+        ModuleBase::matrix cal_force_exx_gs_dm_relaxed_diff(
+            const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm_gs,
+            const std::map<int, std::map<TAC, RI::Tensor<TK>>>& relaxed_diff_dm,
+            const double& alpha);
 #endif
 
-        /// test functions
+        // test functions
         /// reproduce the force of the ground state
         ModuleBase::matrix reproduce_force_gs(const elecstate::DensityMatrix<TK, double>& dm_gs,
             const elecstate::DensityMatrix<TK, double>& edm_gs,
@@ -58,6 +78,10 @@ namespace LR
         const Grid_Driver& gd_;
         typename TGint<TK>::type* gint_;
         const TwoCenterBundle& two_center_bundle_;
+#ifdef __EXX
+        std::weak_ptr<Exx_LRI<TK>> exx_lri_;
+        const double alpha_;
+#endif
 
         Charge dm_to_charge(const elecstate::DensityMatrix<TK, double>& dm);
 

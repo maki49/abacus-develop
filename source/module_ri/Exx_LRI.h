@@ -53,6 +53,8 @@ public:
     Exx_LRI operator=(const Exx_LRI&) = delete;
     Exx_LRI operator=(Exx_LRI&&);
 
+    RI::Exx<TA, Tcell, Ndim, Tdata>& get() { return this->exx_lri; }
+    auto& get_info() const { return this->info; }
     void reset_Cs(const std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Cs_in) { this->exx_lri.set_Cs(Cs_in, this->info.C_threshold); }
     void reset_Vs(const std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Vs_in) { this->exx_lri.set_Vs(Vs_in, this->info.V_threshold); }
 
