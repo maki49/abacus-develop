@@ -26,8 +26,34 @@ namespace LR
     }
 
     template<typename TK>
+    elecstate::Potential LR_Force<TK>::dm_to_hxc_potential(const elecstate::DensityMatrix<TK, double>& dm)
+    {
+        double etxc = 0.0, vtxc = 0.0;
+        elecstate::Potential pot(&this->rhodpw_, &this->rhopw_, &this->ucell_,
+            &this->locpp_.vloc, const_cast<Structure_Factor*>(&this->sf_),
+            nullptr/*surchem*/, &etxc, &vtxc);
+        PARAM.inp.vh_in_h ? pot.pot_register({ "hartree", "xc" }) : pot.pot_register({ "xc" });
+        const Charge& charge = this->dm_to_charge(dm);
+        pot.init_pot(0, &charge); // call update_from_charge inside
+        return pot;
+    }
+
+    template<typename TK>
+    elecstate::Potential LR_Force<TK>::local_potential()
+    {
+        elecstate::Potential pot(&this->rhodpw_, &this->rhopw_, &this->ucell_,
+            &this->locpp_.vloc, const_cast<Structure_Factor*>(&this->sf_),
+            nullptr/*surchem*/, nullptr/*etxc*/, nullptr/*vtxc*/);
+        pot.pot_register({ "local" });
+        pot.init_pot(0, nullptr);
+        return pot;
+    }
+
+    template<typename TK>
     ModuleBase::matrix LR_Force<TK>::cal_force_hamilt_gs_dm_relaxed_diff(const elecstate::DensityMatrix<TK, double>& relax_diff_dm,
-        const elecstate::Potential& pot_gs, const bool with_ewald)
+        const elecstate::DensityMatrix<TK, double>& dm_gs,
+        // const elecstate::Potential& pot_gs,
+        const bool with_ewald)
     {
         const Charge chr_diff_relaxed = dm_to_charge(relax_diff_dm);
 
@@ -39,11 +65,40 @@ namespace LR
         // 2. nonlocal pp (Hellmann-Feynman + Pulay)
         ModuleBase::matrix fvnl = cal_force_nonlocal(this->ucell_, this->kvec_d_, this->gd_, this->two_center_bundle_, relax_diff_dm);
 
-        // 3. local pp (Pulay) + Hartree + xc (grid integration)
+        // // 3. local pp (Pulay) + Hartree + xc (grid integration)
+        // ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
+        // ModuleBase::matrix stress_tmp;  // no use now, only for passing into interfaces
+        // PulayForceStress::cal_pulay_fs(relax_diff_dm.get_DMR_vector().size()/*nspin*/, fvl_dphi, stress_tmp,
+        //     relax_diff_dm, this->ucell_, &pot_gs, *this->gint_, true, false);
+
+        // 3.1. local pp (Pulay)
         ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
         ModuleBase::matrix stress_tmp;  // no use now, only for passing into interfaces
+        elecstate::Potential pot_loc = this->local_potential();
         PulayForceStress::cal_pulay_fs(relax_diff_dm.get_DMR_vector().size()/*nspin*/, fvl_dphi, stress_tmp,
-            relax_diff_dm, this->ucell_, &pot_gs, *this->gint_, true, false);
+            relax_diff_dm, this->ucell_, &pot_loc, *this->gint_, true, false);
+
+        // 3.2. Hartree + xc (Pulay) 
+        //  method 1
+        // ModuleBase::matrix fgs_dphi(this->ucell_.nat, 3);
+        // PulayForceStress::cal_pulay_fs(relax_diff_dm.get_DMR_vector().size()/*nspin*/, fgs_dphi, stress_tmp,
+        //     relax_diff_dm, this->ucell_, &pot_gs, *this->gint_, true, false);
+        // ModuleBase::matrix fhxc_dphi = (fgs_dphi - fvl_dphi) * 0.5; // avoid double count of hxc Pulay term
+        // method 2 
+        ModuleBase::matrix fhxc_dphi(this->ucell_.nat, 3);
+        this->gint_->reset_DMRGint(dm_gs.get_DMR_vector().size());
+        elecstate::Potential pot_hxc = this->dm_to_hxc_potential(dm_gs);
+        this->gint_->reset_DMRGint(relax_diff_dm.get_DMR_vector().size());
+        PulayForceStress::cal_pulay_fs(relax_diff_dm.get_DMR_vector().size()/*nspin*/, fhxc_dphi, stress_tmp,
+            relax_diff_dm, this->ucell_, &pot_hxc, *this->gint_, true, false);
+        fhxc_dphi *= 0.5; // avoid double count
+
+        // 3.3 Hartree + xc (Hellmann-Feynman)
+        ModuleBase::matrix fhxc_dvhxc(this->ucell_.nat, 3);
+        elecstate::Potential pot_hxc_relaxed_diff = this->dm_to_hxc_potential(relax_diff_dm);
+        PulayForceStress::cal_pulay_fs(1/*nspin*/, fhxc_dvhxc, stress_tmp,
+            relax_diff_dm, this->ucell_, &pot_hxc_relaxed_diff, *this->gint_, true, false);
+        // fhxc_dvhxc *= 0.5; // avoid double count, but nspin=2 of ground-state dm cancels it here 
 
         // 4. kinetic (Pulay)
         std::vector<hamilt::HContainer<double>> dT = cal_hs_grad('T', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);
@@ -54,11 +109,13 @@ namespace LR
             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "PW      FORCE (eV/Angstrom)", f_pw, false);
             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "NONLOCAL     FORCE (eV/Angstrom)", fvnl, false);
             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "KINETIC     FORCE (eV/Angstrom)", ft_dphi, false);
-            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "LOCAL Pulay FORCE (pp+Hartree+XC) (eV/Angstrom)", fvl_dphi, false);
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "LOCAL-PP Pulay FORCE (eV/Angstrom)", fvl_dphi, false);
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "HARTREE+XC Pulay FORCE (eV/Angstrom)", fhxc_dphi, false);
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "HARTREE+XC Hellmann-Feynman FORCE (eV/Angstrom)", fhxc_dvhxc, false);
         }
 
         // from the formula, we do not need the non-ortho term (overlap*edm) here.
-        return f_pw + fvnl + ft_dphi + fvl_dphi;
+        return f_pw + fvnl + ft_dphi + fvl_dphi + fhxc_dphi + fhxc_dvhxc;
     }
     template<typename TK>
     ModuleBase::matrix LR_Force<TK>::cal_force_hxc_dmtrans(const elecstate::DensityMatrix<TK, double>& dm_trans, const PotHxcLR& pot_hxc)
@@ -85,12 +142,11 @@ namespace LR
     template<typename TK>
     ModuleBase::matrix LR_Force<TK>::reproduce_force_gs(
         const elecstate::DensityMatrix<TK, double>& dm_gs,
-        const elecstate::DensityMatrix<TK, double>& edm_gs,
-        const elecstate::Potential& pot_gs)
+        const elecstate::DensityMatrix<TK, double>& edm_gs)
     {
         this->gint_->reset_DMRGint(PARAM.inp.nspin);
-        // Hartree+xc term
-        ModuleBase::matrix f_gs_hf_pulay = cal_force_hamilt_gs_dm_relaxed_diff(dm_gs, pot_gs); // pw+vnl+t_dphi+vl_dphi
+        // local + Hartree + xc term, including Hellmann-Feynman and Pulay
+        ModuleBase::matrix f_gs_hf_pulay = cal_force_hamilt_gs_dm_relaxed_diff(dm_gs, dm_gs); // pw+vnl+t_dphi+vl_dphi
         // edm term
         ModuleBase::matrix f_nonortho = cal_force_overlap_edm(edm_gs); // overlap
         this->gint_->reset_DMRGint(1);

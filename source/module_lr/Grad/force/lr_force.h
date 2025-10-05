@@ -17,6 +17,7 @@ namespace LR
         LR_Force(const UnitCell& ucell,
             const std::vector<ModuleBase::Vector3<double>>& kvec_d,
             const Parallel_Orbitals& pv,
+            const ModulePW::PW_Basis& rhodpw,
             const ModulePW::PW_Basis& rhopw,
             const pseudopot_cell_vl& locpp,
             const Structure_Factor& sf,
@@ -29,7 +30,7 @@ namespace LR
 #endif
         )///<  for 2-center integrals
             : ucell_(ucell), kvec_d_(kvec_d), pv_(pv),
-            rhopw_(rhopw), sf_(sf), locpp_(locpp), gd_(gd),
+            rhodpw_(rhodpw), rhopw_(rhopw), sf_(sf), locpp_(locpp), gd_(gd),
             gint_(gint), two_center_bundle_(two_center_bundle)
 #ifdef __EXX
             , exx_lri_(exx_lri_in), alpha_(alpha)
@@ -39,7 +40,8 @@ namespace LR
 
         /// 1. $Tr[H_{GS}^x * (T+D^Z)]$, where GS=groud state and $(T+D^Z)$ is the relaxed difference density matrix
         ModuleBase::matrix cal_force_hamilt_gs_dm_relaxed_diff(const elecstate::DensityMatrix<TK, double>& relaxed_diff_dm,
-            const elecstate::Potential& pot_gs, const bool with_ewald = true);
+            const elecstate::DensityMatrix<TK, double>& dm_gs, const bool with_ewald = true);
+        // const elecstate::Potential& pot_gs, const bool with_ewald = true);
 
         /// 2. $Tr[S^x * (EDM)]
         ModuleBase::matrix cal_force_overlap_edm(const elecstate::DensityMatrix<TK, double>& edm);
@@ -62,8 +64,8 @@ namespace LR
         // test functions
         /// reproduce the force of the ground state
         ModuleBase::matrix reproduce_force_gs(const elecstate::DensityMatrix<TK, double>& dm_gs,
-            const elecstate::DensityMatrix<TK, double>& edm_gs,
-            const elecstate::Potential& pot_gs);
+            const elecstate::DensityMatrix<TK, double>& edm_gs);
+
         /// repreduce the ground state local term
         ModuleBase::matrix reproduce_force_gs_loc(const elecstate::DensityMatrix<TK, double>& dm_gs,
             const elecstate::Potential& pot_gs);
@@ -72,6 +74,7 @@ namespace LR
         const UnitCell& ucell_;
         const std::vector<ModuleBase::Vector3<double>>& kvec_d_;
         const Parallel_Orbitals& pv_;
+        const ModulePW::PW_Basis& rhodpw_;
         const ModulePW::PW_Basis& rhopw_;
         const pseudopot_cell_vl& locpp_;
         const Structure_Factor& sf_;
@@ -84,7 +87,8 @@ namespace LR
 #endif
 
         Charge dm_to_charge(const elecstate::DensityMatrix<TK, double>& dm);
-
+        elecstate::Potential dm_to_hxc_potential(const elecstate::DensityMatrix<TK, double>& dm);
+        elecstate::Potential local_potential();
         // probably move frome the ground state?
         // void build_dHS()
     };

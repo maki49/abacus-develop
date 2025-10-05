@@ -41,7 +41,7 @@ namespace LR
         {
             // term1: Co -> CvX, i.e. [CvX] Cv
             DMBand<double> dm_band1(ucell, pmat, this->kv.kvec_c, this->BvK_cells, this->cvx_full, this->psi_ks_full);
-            dm_band1.eval(iv, io, ik);
+            dm_band1.eval(io, iv, ik);
             // term2: Cv -> CoX^T, i.e. Co [CoX^T]
             DMBand<double> dm_band2(ucell, pmat, this->kv.kvec_c, this->BvK_cells, this->psi_ks_full, this->coxt_full);
             dm_band2.eval(io, iv, ik);
@@ -149,7 +149,8 @@ namespace LR
 
         // 3. set [AX]_iak = DM_onbase * Hexxs for each occ-virt pair and each k-point
         // caution: parrallel
-        if (PARAM.inp.cal_force) this->cal_coxt_cvx(psi_in);
+        if (this->dm_pq_ == MO_TO_AO_TYPE::CXC || this->dm_pq_ == MO_TO_AO_TYPE::CXC_o)
+            this->cal_coxt_cvx(psi_in);
         for (int io = 0;io < this->nocc;++io)
         {
             for (int iv = 0;iv < this->nvirt;++iv)
