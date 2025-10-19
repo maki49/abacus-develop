@@ -166,6 +166,7 @@ class DensityMatrix
      * please make sure the size of TK* is correct
     */
     void set_DMK_pointer(const int ik, TK* DMK_in);
+    void set_DMK_vector(const int ik, const std::vector<TK>& v) { this->_DMK[ik] = v; }
 
     /**
      * @brief get pointer of paraV

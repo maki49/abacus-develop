@@ -70,6 +70,9 @@ namespace LR
         ModuleBase::matrix reproduce_force_gs_loc(const elecstate::DensityMatrix<TK, double>& dm_gs,
             const elecstate::Potential& pot_gs);
 
+        /// (i^x j | kl)
+        void cal_H2_sz_center4_grad_hxc(const std::vector<double>& orb_cutoffs);
+
     protected:
         const UnitCell& ucell_;
         const std::vector<ModuleBase::Vector3<double>>& kvec_d_;
@@ -89,7 +92,5 @@ namespace LR
         Charge dm_to_charge(const elecstate::DensityMatrix<TK, double>& dm);
         elecstate::Potential dm_to_hxc_potential(const elecstate::DensityMatrix<TK, double>& dm);
         elecstate::Potential local_potential();
-        // probably move frome the ground state?
-        // void build_dHS()
     };
 }

@@ -5,7 +5,7 @@
 #include "module_basis/module_nao/two_center_bundle.h"
 #include "module_hamilt_lcao/module_hcontainer/hcontainer.h"
 
-void filter_adjs_by_rcut(const UnitCell& ucell,
+inline void filter_adjs_by_rcut(const UnitCell& ucell,
     const int iat0, 
     AdjacentAtomInfo& adjs)
 {
@@ -63,7 +63,7 @@ hamilt::HContainer<TR> build_hcontainer_local_op(const UnitCell& ucell, const Gr
 // }
 
 
-std::vector<hamilt::HContainer<double>> cal_hs_grad(const char job,
+inline std::vector<hamilt::HContainer<double>> cal_hs_grad(const char job,
     const UnitCell& ucell,
     const Parallel_Orbitals& pv,
     const Grid_Driver& gd,

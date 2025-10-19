@@ -191,6 +191,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         const elecstate::DensityMatrix<T, T>& dm_trans =   // D(X) complex
             LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+        LR_Util::print_DMR(dm_trans, this->ucell.nat, "dm_trans of istate " + std::to_string(istate));
 
         elecstate::DensityMatrix<T, T> relaxed_diff_dm =    // T+D(Z), (R) can be complex
             LR_Util::build_dm_from_dmk<T, T>(
@@ -199,6 +200,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
                     + cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_)
                     ,// ),
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+        LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm of istate " + std::to_string(istate));
         elecstate::DensityMatrix<T, double> relaxed_diff_dm_real(&this->paraMat_, 1, this->kv.kvec_d, this->nk);
         LR_Util::initialize_DMR(relaxed_diff_dm_real, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
         LR_Util::get_DMR_real_imag_part(relaxed_diff_dm, relaxed_diff_dm_real, this->ucell.nat, 'R');
@@ -323,7 +325,11 @@ void LR::ESolver_LR<T, TR>::test_force()
     ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "2* GS Hxc force calculated by 'LR_Force' from kernel (eV/Angstrom)", f_hxc_potlr * 2, false);
     // 2 for spin in f->v. Spin in v->f is already multiplied in the singlet Hartree factor 2.
     /// ======================================= END test 2 =========================================
-
+    if (this->nbasis == 2 && ucell.nat == 2)
+    {
+        ///========================== test 3: H2 SZ 4-center gradients =========================
+        lr_force.cal_H2_sz_center4_grad_hxc(orb_cutoff_);
+    }
     // exit(0);
 }
 

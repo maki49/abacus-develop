@@ -123,52 +123,6 @@ namespace LR
         return PulayForceStress::cal_pulay_fs(dm_trans, this->ucell_, &pot_hxc, *this->gint_);
     }
 
-    template<typename TK>
-    ModuleBase::matrix LR_Force<TK>::cal_force_overlap_edm(const elecstate::DensityMatrix<TK, double>& edm)
-    {
-        // const double* dS[3] = { dSloc_x,  dSloc_y,  dSloc_z };
-        std::vector<hamilt::HContainer<double>>  dS = cal_hs_grad('S', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);
-        // test: output dS
-        // std::cout << "dS in 3 directions:\n";
-        // for (int i = 0;i < 3;++i) { LR_Util::print_HR(dS.at(i), this->ucell_.nat, "dS" + std::to_string(i)); }
-        ModuleBase::matrix foverlap = PulayForceStress::cal_pulay_fs(edm, this->ucell_, dS, -1.);
-        if (PARAM.inp.test_force)
-        {
-            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_, "OVERLAP     FORCE (eV/Angstrom)", foverlap, false);
-        }
-        return foverlap;
-    }
-
-    template<typename TK>
-    ModuleBase::matrix LR_Force<TK>::reproduce_force_gs(
-        const elecstate::DensityMatrix<TK, double>& dm_gs,
-        const elecstate::DensityMatrix<TK, double>& edm_gs)
-    {
-        this->gint_->reset_DMRGint(PARAM.inp.nspin);
-        // local + Hartree + xc term, including Hellmann-Feynman and Pulay
-        ModuleBase::matrix f_gs_hf_pulay = cal_force_hamilt_gs_dm_relaxed_diff(dm_gs, dm_gs); // pw+vnl+t_dphi+vl_dphi
-        // edm term
-        ModuleBase::matrix f_nonortho = cal_force_overlap_edm(edm_gs); // overlap
-        this->gint_->reset_DMRGint(1);
-        return f_gs_hf_pulay + f_nonortho;
-    }
-
-    template<typename TK>
-    ModuleBase::matrix LR_Force<TK>::reproduce_force_gs_loc(
-        const elecstate::DensityMatrix<TK, double>& dm_gs,
-        const elecstate::Potential& pot_gs)
-    {
-        this->gint_->reset_DMRGint(PARAM.inp.nspin);
-        const Charge chr_gs = dm_to_charge(dm_gs);
-        //  local pp (Pulay) + Hartree + xc (grid integration)
-        ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
-        ModuleBase::matrix stress_tmp;  // no use now, only for passing into interfaces
-        PulayForceStress::cal_pulay_fs(dm_gs.get_DMR_vector().size()/*nspin*/, fvl_dphi, stress_tmp,
-            dm_gs, this->ucell_, &pot_gs, *this->gint_, true, false);
-        this->gint_->reset_DMRGint(1);
-        return fvl_dphi;
-    }
-
 #ifdef __EXX
     template<typename TK>
     ModuleBase::matrix LR_Force<TK>::cal_force_exx_dm_trans(
