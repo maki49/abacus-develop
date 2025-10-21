@@ -181,16 +181,19 @@ namespace LR_Util
         const UnitCell& ucell,
         const Grid_Driver& gd,
         const std::vector<double>& orb_cutoff,
+        const bool symmetrize = true,
         const bool cal_dmr = true)
     {
         elecstate::DensityMatrix<TK, TR> dm(&pmat, 1, kvec_d, nk);
         initialize_DMR(dm, pmat, ucell, gd, orb_cutoff);
+
+        if (symmetrize)
+            for (int ik = 0; ik < nk; ++ik)
+                LR_Util::matsym(dmk[ik].data<TK>(), pmat.get_global_row_size(), pmat);
+
         for (int ik = 0; ik < nk; ++ik)
-        {
-            // symmetrize
-            LR_Util::matsym(dmk[ik].data<TK>(), pmat.get_global_row_size(), pmat);
             dm.set_DMK_pointer(ik, dmk[ik].data<TK>());
-        }
+
         if (cal_dmr) { dm.cal_DMR(); }
         return dm;
     }

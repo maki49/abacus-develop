@@ -193,14 +193,35 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
         LR_Util::print_DMR(dm_trans, this->ucell.nat, "dm_trans of istate " + std::to_string(istate));
 
-        elecstate::DensityMatrix<T, T> relaxed_diff_dm =    // T+D(Z), (R) can be complex
-            LR_Util::build_dm_from_dmk<T, T>(
-                // LR_Util::operator+(
-                    cal_dm_diff_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_)
-                    + cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_)
-                    ,// ),
-                this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
-        LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm of istate " + std::to_string(istate));
+        // difference density matrix 
+        std::vector<ct::Tensor> dm_diff_k = cal_dm_diff_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
+        // std::cout << "dm_diff_k T(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
+        // LR_Util::print_value(dm_diff_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+        for (auto& d : dm_diff_k) { LR_Util::matsym(d.data<T>(), this->nbasis, this->paraMat_); }   // symmetrize
+        // std::cout << "dm_diff_k T(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
+        // LR_Util::print_value(dm_diff_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+
+        std::vector<ct::Tensor> dm_relaxed_k = cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
+        // std::cout << "dm_relaxed_k Z(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
+        // LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+        for (auto& d : dm_relaxed_k) { LR_Util::matsym(d.data<T>(), this->nbasis, this->paraMat_); }    // symmetrize
+        // std::cout << "dm_relaxed_k Z(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
+        // LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+        // relaxed difference density matrix
+        std::vector<ct::Tensor> relaxed_diff_dm_k = dm_diff_k + dm_relaxed_k;
+        elecstate::DensityMatrix<T, T> relaxed_diff_dm =
+            LR_Util::build_dm_from_dmk<T, T>(relaxed_diff_dm_k,
+                this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_, /*symmetrize=*/false);
+        // LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm T+Z (Z symmetrized) of istate " + std::to_string(istate));
+
+        // elecstate::DensityMatrix<T, T> relaxed_diff_dm =    // T+D(Z), (R) can be complex
+        //     LR_Util::build_dm_from_dmk<T, T>(
+        //         // LR_Util::operator+(
+        //             cal_dm_diff_pb las(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_)
+        //             + cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_)
+        //             ,// ),
+        //         this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+        // LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm of istate " + std::to_string(istate));
         elecstate::DensityMatrix<T, double> relaxed_diff_dm_real(&this->paraMat_, 1, this->kv.kvec_d, this->nk);
         LR_Util::initialize_DMR(relaxed_diff_dm_real, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
         LR_Util::get_DMR_real_imag_part(relaxed_diff_dm, relaxed_diff_dm_real, this->ucell.nat, 'R');
@@ -325,11 +346,11 @@ void LR::ESolver_LR<T, TR>::test_force()
     ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "2* GS Hxc force calculated by 'LR_Force' from kernel (eV/Angstrom)", f_hxc_potlr * 2, false);
     // 2 for spin in f->v. Spin in v->f is already multiplied in the singlet Hartree factor 2.
     /// ======================================= END test 2 =========================================
-    if (this->nbasis == 2 && ucell.nat == 2)
-    {
-        ///========================== test 3: H2 SZ 4-center gradients =========================
-        lr_force.cal_H2_sz_center4_grad_hxc(orb_cutoff_);
-    }
+    ///========================== test 3: H2 SZ 4-center gradients =========================
+    // if (this->nbasis == 2 && ucell.nat == 2)
+    // {
+    //     lr_force.cal_H2_sz_center4_grad_hxc(orb_cutoff_);
+    // }
     // exit(0);
 }
 

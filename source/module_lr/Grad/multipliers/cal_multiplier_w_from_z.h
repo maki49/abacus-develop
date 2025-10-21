@@ -114,20 +114,20 @@ namespace LR
             DM_trans, gint, pot_grad, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             { 0 }, T(-2.0), ATYPE::CC_oo);
 
+        std::vector<ct::Tensor> dm_trans_2d, dm_diff_2d;
         auto cal_dm_trans = [&](const int is, const T* const x_ptr)->void //DX
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
 #ifdef __MPI
-                std::vector<ct::Tensor> dm_trans_2d = cal_dm_trans_pblas(x_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
+                dm_trans_2d = cal_dm_trans_pblas(x_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
                 for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
-                std::vector<ct::Tensor> dm_trans_2d = cal_dm_trans_blas(x_ptr, psi_ks_is, nocc[is], nvirt[is]);
+                dm_trans_2d = cal_dm_trans_blas(x_ptr, psi_ks_is, nocc[is], nvirt[is]);
                 for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
 #endif
                 for (int ik = 0;ik < nk;++ik) { DM_trans.set_DMK_pointer(ik, dm_trans_2d[ik].data<T>()); }
             };
-
-        auto cal_dm_diff_relaxed = [&](const int& is, const T* const x_ptr, const T* const z_ptr)->void  // T+DZ
+        auto cal_dm_diff_relaxed = [&](const int& is, const T* const x_ptr, const T* const z_ptr)->void  // T+DZ    // 段错误可能在这
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
 #ifdef __MPI
@@ -139,9 +139,9 @@ namespace LR
 #endif
 
 #ifdef __MPI
-                std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_pblas(x_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
+                dm_diff_2d = cal_dm_diff_pblas(x_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
 #else
-                std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_blas(x_ptr, psi_ks_is, naos, nocc[is], nvirt[is]);
+                dm_diff_2d = cal_dm_diff_blas(x_ptr, psi_ks_is, naos, nocc[is], nvirt[is]);
 #endif
                 for (int ik = 0;ik < nk;++ik)
                 {
