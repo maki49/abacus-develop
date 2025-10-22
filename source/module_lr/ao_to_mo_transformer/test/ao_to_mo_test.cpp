@@ -177,8 +177,8 @@ TEST_F(AO2MOTest, DoubleParallel)
             psi::Psi<double> c_full(s.nks, s.nocc + s.nvirt, s.naos, ngk_temp_1, true);
             for (int isk = 0;isk < s.nks;++isk)
             {
-                LR_Util::gather_2d_to_full(pV, V.at(isk).data<double>(), V_full.at(isk).data<double>(), );
-                LR_Util::gather_2d_to_full(pc, &c(isk, 0, 0), &c_full(isk, 0, 0), false);
+                LR_Util::gather_2d_to_full(pV, V.at(isk).data<double>(), V_full.at(isk).data<double>());
+                LR_Util::gather_2d_to_full(pc, &c(isk, 0, 0), &c_full(isk, 0, 0));
             }
             if (my_rank == 0)
             {
@@ -245,7 +245,7 @@ TEST_F(AO2MOTest, ComplexParallel)
             for (int isk = 0;isk < s.nks;++isk)
             {
                 LR_Util::gather_2d_to_full(pV, V.at(isk).data<std::complex<double>>(), V_full.at(isk).data<std::complex<double>>());
-                LR_Util::gather_2d_to_full(pc, &c(isk, 0, 0), &c_full(isk, 0, 0), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, &c(isk, 0, 0), &c_full(isk, 0, 0));
             }
             if (my_rank == 0)
             {

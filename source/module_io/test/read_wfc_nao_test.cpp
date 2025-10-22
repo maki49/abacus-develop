@@ -69,7 +69,7 @@ TEST_F(ReadWfcNaoTest,ReadWfcNao)
       pelec.ekb.create(nks,nbands);
       pelec.wg.create(nks,nbands);
       // Act
-      ModuleIO::read_wfc_nao(PARAM.sys.global_readin_dir, ParaV, psid, &(pelec));
+      ModuleIO::read_wfc_nao(PARAM.sys.global_readin_dir, ParaV, psid, pelec.wg, pelec.ekb);
       // Assert
       EXPECT_NEAR(pelec.ekb(0,1),0.31482195194888534794941393,1e-5);
       EXPECT_NEAR(pelec.wg(0,1),0.0,1e-5);
@@ -106,7 +106,7 @@ TEST_F(ReadWfcNaoTest, ReadWfcNaoPart)
     pelec.ekb.create(nks, nbands);
     pelec.wg.create(nks, nbands);
     // Act
-    ModuleIO::read_wfc_nao(PARAM.sys.global_readin_dir, ParaV, psid, &(pelec), /*skip_band=*/1);
+    ModuleIO::read_wfc_nao(PARAM.sys.global_readin_dir, ParaV, psid, pelec.wg, pelec.ekb, /*skip_band=*/1);
     // Assert
     EXPECT_NEAR(pelec.ekb(0, 1), 7.4141254894954844445464914e-01, 1e-5);
     if (my_rank == 0)
