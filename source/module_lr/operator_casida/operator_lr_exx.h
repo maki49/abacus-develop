@@ -55,7 +55,7 @@ namespace LR
             this->psi_ks_full.resize(this->nk, nocc + nvirt, this->naos);
             for (int ik = 0;ik < nk;++ik)
             {
-                LR_Util::gather_2d_to_full(this->pc, &this->psi_ks(ik, 0, 0), &this->psi_ks_full(ik, 0, 0), false, this->naos, nocc + nvirt);
+                LR_Util::gather_2d_to_full(this->pc, &this->psi_ks(ik, 0, 0), &this->psi_ks_full(ik, 0, 0));
             }
             if (PARAM.inp.cal_force)
             {
@@ -156,9 +156,9 @@ namespace LR
                 c.fix_k(ik);
                 const int start = ik * pX.get_local_size();
                 CvX(c.get_pointer(), pc, x_istate + start, pX, naos, nocc, nvirt, cvx.data<T>(), pcx);
-                LR_Util::gather_2d_to_full(pcx, cvx.data<T>(), &this->cvx_full(ik, 0, 0), false, this->naos, this->nocc);
+                LR_Util::gather_2d_to_full(pcx, cvx.data<T>(), &this->cvx_full(ik, 0, 0));
                 CoXT(c.get_pointer(), pc, x_istate + start, pX, naos, nocc, nvirt, coxt.data<T>(), pcxt);
-                LR_Util::gather_2d_to_full(pcxt, coxt.data<T>(), &this->coxt_full(ik, 0, 0), false, this->naos, this->nvirt);
+                LR_Util::gather_2d_to_full(pcxt, coxt.data<T>(), &this->coxt_full(ik, 0, 0));
             }
         }
 

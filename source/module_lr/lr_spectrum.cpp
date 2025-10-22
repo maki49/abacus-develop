@@ -244,7 +244,7 @@ void LR::LR_Spectrum<T>::transition_analysis(const std::string& spintype)
                 const int loffset_x = loffset_bs + ik * pX[is].get_local_size();
                 const int goffset_x = goffset_s + ik * nocc[is] * nvirt[is];
 #ifdef __MPI
-                LR_Util::gather_2d_to_full(this->pX[is], X + loffset_x, X_full.data() + goffset_x, false, nvirt[is], nocc[is]);
+                LR_Util::gather_2d_to_full(this->pX[is], X + loffset_x, X_full.data() + goffset_x);
 #endif
             }
         }

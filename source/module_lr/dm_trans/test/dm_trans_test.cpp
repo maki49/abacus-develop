@@ -167,7 +167,7 @@ TEST_F(DMTransTest, DoubleParallel)
                     {
                         X.fix_k(isk);
                         X_full.fix_k(isk);
-                        LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, dim1, dim2);
+                        LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
                     }
                 }
             };
@@ -187,7 +187,7 @@ TEST_F(DMTransTest, DoubleParallel)
             {
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
             }
 
             auto test = [&](psi::Psi<double>& X, psi::Psi<double>& X_full, const Parallel_2D& px, const LR::MO_TYPE type)
@@ -198,7 +198,7 @@ TEST_F(DMTransTest, DoubleParallel)
                     std::vector<container::Tensor> dm_gather(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
                     for (int isk = 0;isk < s.nks;++isk)
                     {
-                        LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<double>(), dm_gather[isk].data<double>(), false, s.naos, s.naos);
+                        LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<double>(), dm_gather[isk].data<double>());
                     }
                     if (my_rank == 0)
                     {
@@ -252,7 +252,7 @@ TEST_F(DMTransTest, ComplexParallel)
                     {
                         X.fix_k(isk);
                         X_full.fix_k(isk);
-                        LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, dim1, dim2);
+                        LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
                     }
                 }
             };
@@ -271,7 +271,7 @@ TEST_F(DMTransTest, ComplexParallel)
             {
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
             }
 
             auto test = [&](psi::Psi<std::complex<double>>& X, psi::Psi<std::complex<double>>& X_full, const Parallel_2D& px, const LR::MO_TYPE type)
@@ -282,7 +282,7 @@ TEST_F(DMTransTest, ComplexParallel)
                     std::vector<container::Tensor> dm_gather(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
                     for (int isk = 0;isk < s.nks;++isk)
                     {
-                        LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>(), false, s.naos, s.naos);
+                        LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>());
                     }
                     if (my_rank == 0)
                     {

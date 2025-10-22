@@ -43,8 +43,7 @@ namespace LR
 #ifdef __MPI
                     for (int ik_ai = 0;ik_ai < this->nk;++ik_ai) {
                         LR_Util::gather_2d_to_full(px, &A_aibj.get_pointer()[ik_ai * px.get_local_size()],
-                            Amat_full.data() + kbj * this->nk * npairs /*col, bj*/ + ik_ai * npairs/*row, ai*/,
-                            false, nv, no);
+                            Amat_full.data() + kbj * this->nk * npairs /*col, bj*/ + ik_ai * npairs/*row, ai*/);
 }
 #endif
                 }

@@ -127,7 +127,7 @@ TEST_F(DMDiffTest, DoubleParallel)
             {
                 X.fix_k(isk);
                 X_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
             }
         }
         for (int istate = 0;istate < nstate;++istate)
@@ -143,7 +143,7 @@ TEST_F(DMDiffTest, DoubleParallel)
             // gather dm and output
             std::vector<container::Tensor> dm_gather(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             for (int isk = 0;isk < s.nks;++isk)
-                LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<double>(), dm_gather[isk].data<double>(), false, s.naos, s.naos);
+                LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<double>(), dm_gather[isk].data<double>());
 
             // compare to global matrix
             psi::Psi<double, base_device::DEVICE_CPU> c_full(s.nks, s.nocc + s.nvirt, s.naos);
@@ -151,7 +151,7 @@ TEST_F(DMDiffTest, DoubleParallel)
             {
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
             }
             if (my_rank == 0)
             {
@@ -186,7 +186,7 @@ TEST_F(DMDiffTest, ComplexParallel)
             {
                 X.fix_k(isk);
                 X_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
             }
         }
         for (int istate = 0;istate < nstate;++istate)
@@ -202,7 +202,7 @@ TEST_F(DMDiffTest, ComplexParallel)
             // gather dm and output
             std::vector<container::Tensor> dm_gather(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             for (int isk = 0;isk < s.nks;++isk)
-                LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>(), false, s.naos, s.naos);
+                LR_Util::gather_2d_to_full(pmat, dm_pblas_loc[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>());
 
             // compare to global matrix
             psi::Psi<std::complex<double>, base_device::DEVICE_CPU> c_full(s.nks, s.nocc + s.nvirt, s.naos);
@@ -210,7 +210,7 @@ TEST_F(DMDiffTest, ComplexParallel)
             {
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
             }
             if (my_rank == 0)
             {

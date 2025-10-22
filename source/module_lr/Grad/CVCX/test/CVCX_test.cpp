@@ -167,7 +167,7 @@ TEST_F(AXTest, DoubleParallel)
             {
                 X.fix_k(isk);
                 X_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
             }
         }
 
@@ -189,17 +189,17 @@ TEST_F(AXTest, DoubleParallel)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false/*pblas: row first*/, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
             }
             // compare to global AX
             std::vector<container::Tensor> V_full(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             psi::Psi<double, base_device::DEVICE_CPU> c_full(s.nks, s.nocc + s.nvirt, s.naos);
             for (int isk = 0;isk < s.nks;++isk)
             {
-                LR_Util::gather_2d_to_full(pV, V.at(isk).data<double>(), V_full.at(isk).data<double>(), false, s.naos, s.naos);
+                LR_Util::gather_2d_to_full(pV, V.at(isk).data<double>(), V_full.at(isk).data<double>());
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
             }
             if (my_rank == 0)
             {
@@ -216,7 +216,7 @@ TEST_F(AXTest, DoubleParallel)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false/*pblas: row first*/, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
             }
             if (my_rank == 0)
             {
@@ -259,7 +259,7 @@ TEST_F(AXTest, ComplexParallel)
             {
                 X.fix_k(isk);
                 X_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
             }
         }
 
@@ -282,17 +282,17 @@ TEST_F(AXTest, ComplexParallel)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false/*pblas: row first*/, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
             }
             // compare to global AX
             std::vector<container::Tensor> V_full(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             psi::Psi<std::complex<double>, base_device::DEVICE_CPU> c_full(s.nks, s.nocc + s.nvirt, s.naos);
             for (int isk = 0;isk < s.nks;++isk)
             {
-                LR_Util::gather_2d_to_full(pV, V.at(isk).data<std::complex<double>>(), V_full.at(isk).data<std::complex<double>>(), false, s.naos, s.naos);
+                LR_Util::gather_2d_to_full(pV, V.at(isk).data<std::complex<double>>(), V_full.at(isk).data<std::complex<double>>());
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, s.nocc + s.nvirt);
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
             }
             if (my_rank == 0)
             {
@@ -308,7 +308,7 @@ TEST_F(AXTest, ComplexParallel)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false/*pblas: row first*/, s.nvirt, s.nocc);
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
             }
             if (my_rank == 0)
             {

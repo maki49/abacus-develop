@@ -157,8 +157,7 @@ namespace LR
                                 for (int ik_ai = 0;ik_ai < this->nk;++ik_ai)
                                 {
                                     LR_Util::gather_2d_to_full(pax, Aloc_col.data() + loffset_ai + ik_ai * pax.get_local_size(),
-                                        Amat_full.data() + gcol * gdim /*col, bj*/ + goffset_ai + ik_ai * npairs[is_ai]/*row, ai*/,
-                                        false, nv, no);
+                                        Amat_full.data() + gcol * gdim /*col, bj*/ + goffset_ai + ik_ai * npairs[is_ai]/*row, ai*/);
                                 }
 #else
                                 std::memcpy(Amat_full.data() + gcol * gdim + goffset_ai, Aloc_col.data() + goffset_ai, gdim_is[is_ai] * sizeof(T));

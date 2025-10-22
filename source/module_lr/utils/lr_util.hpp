@@ -145,7 +145,7 @@ namespace LR_Util
 
 #ifdef __MPI
     template <typename T>
-    void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, bool col_first, int global_nrow, int global_ncol)
+    void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, const bool col_first)
     {
         ModuleBase::TITLE("LR_Util", "gather_2d_to_full");
         auto get_mpi_datatype = []() -> MPI_Datatype {
@@ -157,9 +157,10 @@ namespace LR_Util
             else { throw std::runtime_error("gather_2d_to_full: unsupported type"); }
             };
 
+        const int global_nrow = pv.get_global_row_size();
+        const int global_ncol = pv.get_global_col_size();
         // zeros
-        for (int i = 0;i < global_nrow * global_ncol;++i) { fullmat[i] = 0.0;
-}
+        for (int i = 0;i < global_nrow * global_ncol;++i) { fullmat[i] = 0.0; }
         //copy
         for (int i = 0;i < pv.get_row_size();++i) {
             for (int j = 0;j < pv.get_col_size();++j) {
@@ -174,6 +175,19 @@ namespace LR_Util
         //reduce to root
         MPI_Allreduce(MPI_IN_PLACE, fullmat, global_nrow * global_ncol, get_mpi_datatype(), MPI_SUM, pv.comm());
     };
-#endif
 
+    template <typename T>
+    void scatter_full_to_2d(const Parallel_2D& pv, const T* fullmat, T* submat, const bool col_first)
+    {
+        ModuleBase::TITLE("LR_Util", "scatter_full_to_2d");
+        const int global_nrow = pv.get_global_row_size();
+        const int global_ncol = pv.get_global_col_size();
+        for (int i = 0;i < pv.get_row_size();++i)
+            for (int j = 0;j < pv.get_col_size();++j)
+                if (col_first)
+                    submat[i * pv.get_col_size() + j] = fullmat[pv.local2global_row(i) * global_ncol + pv.local2global_col(j)];
+                else
+                    submat[j * pv.get_row_size() + i] = fullmat[pv.local2global_col(j) * global_nrow + pv.local2global_row(i)];
+    }
+#endif
 }

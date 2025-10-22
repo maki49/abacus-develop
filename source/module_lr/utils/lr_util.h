@@ -80,6 +80,10 @@ namespace LR_Util
     void matsym(const T* in, const int n, const Parallel_2D& pmat, T* out);
     template<typename T>
     void matsym(T* inout, const int n, const Parallel_2D& pmat);
+
+    // calculate (A-A^T)/2 (in-place version)
+    template<typename T>
+    void matantisym(T* inout, const int n, const Parallel_2D& pmat);
 #endif
 
     ///===================Psi wrapper=================
@@ -100,17 +104,23 @@ namespace LR_Util
     /// @brief  gather 2d matrix to full matrix
     /// the defination of row and col is consistent with setup_2d_division
     template <typename T>
-    void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, bool col_first, int global_nrow, int global_ncol);
+    void gather_2d_to_full(const Parallel_2D& pv, const T* submat, T* fullmat, const bool col_first = false);
+    template <typename T>
+    void scatter_full_to_2d(const Parallel_2D& pv, const T* fullmat, T* submat, const bool col_first = false);
 #endif
 
     ///=================diago-lapack====================
     /// @brief  diagonalize a hermitian matrix
-    void diag_lapack(const int& n, double* mat, double* eig);
-    void diag_lapack(const int& n, std::complex<double>* mat, double* eig);
-    /// @brief  diagonalize a general matrix
-    void diag_lapack_nh(const int& n, double* mat, std::complex<double>* eig);
-    void diag_lapack_nh(const int& n, std::complex<double>* mat, std::complex<double>* eig);
+    template<typename T>
+    void diag_lapack(const int& n, T* mat, double* eig);
 
+    /// @brief  diagonalize a general matrix
+    template<typename T>
+    void diag_lapack_nh(const int& n, T* mat, std::complex<double>* eig);
+    ///================linear-solver-lapack==============
+    /// @brief  solve linear equations Ax=b using LAPACK
+    template<typename T>
+    int lapack_linear_solver(const T* A, T* x, const T* b, const int n, const int nrhs);
     ///=================string option====================
     std::string tolower(const std::string& str);
     std::string toupper(const std::string& str);

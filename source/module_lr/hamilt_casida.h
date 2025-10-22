@@ -175,13 +175,14 @@ namespace LR
             }
         }
 
-    protected:
+        // const references
         const std::vector<int>& nocc;
         const std::vector<int>& nvirt;
         const int nspin = 1;
         const int nk = 1;
-        const bool tdm_sym = false;     ///< whether to symmetrize the transition density matrix
         const std::vector<Parallel_2D>& pX;
+    protected:
+        const bool tdm_sym = false;     ///< whether to symmetrize the transition density matrix
         T one()const;
         /// transition density matrix in AO representation
         /// calculate on the same address for each bands, and commonly used by all the operators
