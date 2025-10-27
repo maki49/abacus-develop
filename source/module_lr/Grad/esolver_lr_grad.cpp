@@ -266,39 +266,44 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         }
 
         ModuleBase::matrix force_hxc_dmtrans = lr_force.cal_force_hxc_dmtrans(dm_trans_real, *this->pot[ispin]);
-        std::cout << "Force (Hxc-DMTrans term) of state " << istate << ": " << std::endl;
-        LR_Util::print_value(force_hxc_dmtrans.c, ucell.nat, 3);
+        if (PARAM.inp.test_force)
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "HXC DMTRANS FORCE (eV/Angstrom)", force_hxc_dmtrans, false);
 
         const elecstate::DensityMatrix<T, double>& dm_gs = this->cal_dm_gs();
         ModuleBase::matrix force_hamiltgs_relaxed_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(relaxed_diff_dm_real, dm_gs, /*with_ewald=*/false);
-        std::cout << "Force (GS-(T+Z) term) of state " << istate << ": " << std::endl;
-        LR_Util::print_value(force_hamiltgs_relaxed_diff.c, ucell.nat, 3);
+        if (PARAM.inp.test_force)
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "H_GS-(T+Z) FORCE (without EXX) (eV/Angstrom)", force_hamiltgs_relaxed_diff, false);
 
         ModuleBase::matrix force_overlap_edm = lr_force.cal_force_overlap_edm(edm_real);    // "-" sign has been included in the force factor
-        std::cout << "Force (Overlap-EDM term) of state " << istate << ": " << std::endl;
-        LR_Util::print_value(force_overlap_edm.c, ucell.nat, 3);
+        if (PARAM.inp.test_force)
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "OVERLAP-EDM FORCE (eV/Angstrom)", force_overlap_edm, false);
 
 #ifdef __EXX
         const double& alpha = this->exx_info.info_global.hybrid_alpha;
 
-        const auto& Ds_trans = get_exx_Ds_spin1(dm_trans, this->ucell, this->kv, this->paraMat_);
-        ModuleBase::matrix force_exx_dmtrans = lr_force.cal_force_exx_dm_trans(Ds_trans, alpha);
-        std::cout << "Force (EXX-DMTrans term) of state " << istate << ": " << std::endl;
-        LR_Util::print_value(force_exx_dmtrans.c, ucell.nat, 3);
+        if (LR::exx_kernel_list().count(xc_kernel))
+        {
+            const auto& Ds_trans = get_exx_Ds_spin1(dm_trans, this->ucell, this->kv, this->paraMat_);
+            ModuleBase::matrix force_exx_dmtrans = lr_force.cal_force_exx_dm_trans(Ds_trans, alpha);
+            if (PARAM.inp.test_force)
+                ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "EXX DMTRANS FORCE (eV/Angstrom)", force_exx_dmtrans, false);
+            force_hxc_dmtrans += force_exx_dmtrans;
 
-        const auto& Ds_gs = get_exx_Ds_gs(dm_gs, this->ucell, this->kv, this->paraMat_, this->nspin);
-        const auto& Ds_relaxed_diff = get_exx_Ds_spin1(relaxed_diff_dm, this->ucell, this->kv, this->paraMat_);
-        ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha);
-        std::cout << "Force (EXX-GS-(T+Z) term) of state " << istate << ": " << std::endl;
-        LR_Util::print_value(force_exx_gs_diff.c, ucell.nat, 3);
-
-        // add exx force to the corresponding terms
-        force_hxc_dmtrans += force_exx_dmtrans;
-        force_hamiltgs_relaxed_diff += force_exx_gs_diff;
+        }
+        if (LR::exx_kernel_list().count(PARAM.inp.dft_functional))
+        {
+            const auto& Ds_gs = get_exx_Ds_gs(dm_gs, this->ucell, this->kv, this->paraMat_, this->nspin);
+            const auto& Ds_relaxed_diff = get_exx_Ds_spin1(relaxed_diff_dm, this->ucell, this->kv, this->paraMat_);
+            ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha);
+            if (PARAM.inp.test_force)
+                ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "EXX GS-(T+Z) FORCE (eV/Angstrom)", force_exx_gs_diff, false);
+            force_hamiltgs_relaxed_diff += force_exx_gs_diff;
+        }
 #endif
         forces[istate] = force_hxc_dmtrans + force_hamiltgs_relaxed_diff + force_overlap_edm;
     }
     ModuleBase::timer::tick("ESolver_LR", "cal_force");
+    // total force
     print_force(forces, std::cout);
     print_force(forces, GlobalV::ofs_running);
     return forces;

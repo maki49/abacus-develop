@@ -56,6 +56,7 @@ namespace LR
 
             // note: calculation_type cannot repeated, or it will be ignored in ops->add()
             // 1. $2\sum_bX_{ib}K_{ab}[D^X]-2\sum_jX_{ja}K_{ij}[D^X]$
+            // kernel: excited state
             this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, gint, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, -2.0, ATYPE::CXC);
@@ -70,12 +71,13 @@ namespace LR
             }
 #endif
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
+            // kernel: ground state
             hamilt::Operator<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_diff, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmdiff_hxc);
             this->ops->add(op_ht);
 #ifdef __EXX
-            if (exx_kernel_list().count(xc_kernel))
+            if (exx_kernel_list().count(PARAM.inp.dft_functional))
             {
                 hamilt::Operator<T>* op_ht_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
                     *this->DM_diff, exx_lri, kv, pX[0], pc, pmat,

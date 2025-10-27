@@ -68,7 +68,10 @@ namespace LR
             this->BvK_cells = RI_Util::get_Born_von_Karmen_cells(period);
 
             this->allocate_Ds_onebase();
-            this->exx_lri.lock()->Hexxs.resize(1);
+            if (!this->exx_lri.expired())
+            {
+                this->exx_lri.lock()->Hexxs.resize(1);
+            }
         };
 
         void init(const int ik_in) override {};

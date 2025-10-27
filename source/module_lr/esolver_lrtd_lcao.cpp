@@ -437,8 +437,12 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
     this->gint_->initialize_pvpR(ucell, &this->gd, 1); // always use nspin=1 for transition density
 
     // if EXX from scratch, init 2-center integral and calculate Cs, Vs 
+    // when: 
+    // 1. EXX xc_kernel
+    // 2. cal_force with ground state with EXX functional
 #ifdef __EXX
-    if ((xc_kernel == "hf" || xc_kernel == "hse") && this->input.lr_solver != "spectrum")
+    if (((xc_kernel == "hf" || xc_kernel == "hse") && this->input.lr_solver != "spectrum")
+        || (PARAM.inp.cal_force && (PARAM.inp.dft_functional == "hf" || PARAM.inp.dft_functional == "hse")))
     {
         // set ccp_type according to the xc_kernel
         if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
