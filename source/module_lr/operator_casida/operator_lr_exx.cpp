@@ -41,7 +41,7 @@ namespace LR
         {
             // term1: Co -> CvX, i.e. [CvX] Cv
             DMBand<double> dm_band1(ucell, pmat, this->kv.kvec_c, this->BvK_cells, this->cvx_full, this->psi_ks_full);
-            dm_band1.eval(io, iv, ik);
+            dm_band1.eval(io, nocc + iv, ik);
             // term2: Cv -> CoX^T, i.e. Co [CoX^T]
             DMBand<double> dm_band2(ucell, pmat, this->kv.kvec_c, this->BvK_cells, this->psi_ks_full, this->coxt_full);
             dm_band2.eval(io, iv, ik);
