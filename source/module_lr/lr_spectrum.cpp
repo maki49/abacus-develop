@@ -100,10 +100,10 @@ ModuleBase::Vector3<std::complex<double>> LR::LR_Spectrum<std::complex<double>>:
         // 2. transition density
         double** rho_trans_real;
         double** rho_trans_imag;
-        LR_Util::_allocate_2order_nested_ptr(rho_trans_real, 1, this->rho_basis.nrxx);
-        LR_Util::_allocate_2order_nested_ptr(rho_trans_imag, 1, this->rho_basis.nrxx);
+        LR_Util::_allocate_2order_nested_ptr(rho_trans_real, this->nspin_x, this->rho_basis.nrxx);
+        LR_Util::_allocate_2order_nested_ptr(rho_trans_imag, this->nspin_x, this->rho_basis.nrxx);
 
-        elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&this->pmat, 1, this->kv.kvec_d, this->nk);
+        elecstate::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&this->pmat, this->nspin_x, this->kv.kvec_d, this->nk);
         LR_Util::initialize_DMR(DM_trans_real_imag, this->pmat, this->ucell, this->gd_, this->orb_cutoff_);
 
         // real part
@@ -128,10 +128,10 @@ ModuleBase::Vector3<std::complex<double>> LR::LR_Spectrum<std::complex<double>>:
             rd -= ModuleBase::Vector3<double>(0.5, 0.5, 0.5);   //shift to the center of the grid (need ?)
             ModuleBase::Vector3<double> rc = rd * ucell.latvec * ucell.lat0; // real coordinate
             ModuleBase::Vector3<std::complex<double>> rc_complex(rc.x, rc.y, rc.z);
-            trans_dipole += rc_complex * std::complex<double>(rho_trans_real[0][ir], rho_trans_imag[0][ir]);
+            trans_dipole += rc_complex * std::complex<double>(rho_trans_real[is][ir], rho_trans_imag[is][ir]);
         }
-        LR_Util::_deallocate_2order_nested_ptr(rho_trans_real, 1);
-        LR_Util::_deallocate_2order_nested_ptr(rho_trans_imag, 1);
+        LR_Util::_deallocate_2order_nested_ptr(rho_trans_real, this->nspin_x);
+        LR_Util::_deallocate_2order_nested_ptr(rho_trans_imag, this->nspin_x);
     }
     trans_dipole *= (ucell.omega / static_cast<double>(gint->get_ncxyz()));   // dv
     trans_dipole *= static_cast<double>(this->nk);  // nk is divided inside DM_trans, now recover it

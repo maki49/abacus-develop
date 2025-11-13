@@ -40,6 +40,8 @@ class Parallel_Grid
     const int& ny = this->ncy;
     const int& nz = this->ncz;
 
+    int get_nrxx() const { return this->nrxx; }
+
 	private:
 
 	void z_distribution(void);

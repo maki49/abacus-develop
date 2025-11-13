@@ -6,6 +6,7 @@
 #include "module_lr/potentials/pot_hxc_lrtd.h"
 #include "module_lr/hsolver_lrtd.hpp"
 #include "module_lr/lr_spectrum.h"
+#include "module_lr/lr_density.hpp"
 #include <memory>
 #include "module_hamilt_lcao/hamilt_lcaodft/hamilt_lcao.h"
 #include "module_io/read_wfc_nao.h"
@@ -577,6 +578,22 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
 {
     ModuleBase::TITLE("ESolver_LR", "after_all_runners");
     if (input.ri_hartree_benchmark != "none") { return; } //no need to calculate the spectrum in the benchmark routine
+
+    // cal electron-hole density
+    if (PARAM.inp.out_chg[0])
+    {
+        LR_Density<T> lr_density(gint_, ucell, kv, gd, *psi_ks, orb_cutoff_, Pgrid,
+            nspin, nocc, nvirt, nbasis,
+            paraX_, paraC_, paraMat_, openshell);
+
+        if (openshell)
+            for (int is = 0;is < this->nspin;++is)
+                lr_density.output_eh_density_all_states(this->X[0].template data<T>(), is, nstates);
+        else
+            for (int is = 0;is < this->X.size();++is)
+                lr_density.output_eh_density_all_states(this->X[is].template data<T>(), is, nstates);
+    }
+
     //cal spectrum
     std::vector<double> freq(100);
     std::vector<double> abs_wavelen_range({ 20, 200 });//default range

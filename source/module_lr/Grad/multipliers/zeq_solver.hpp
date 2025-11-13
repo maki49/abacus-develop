@@ -125,6 +125,7 @@ namespace LR
         // 1. the right-hand side of Z-vector equation
         const int nloc_per_band = nk * px[0].get_local_size();
         container::Tensor R = LR_Util::newTensor<T>({ nstates, nloc_per_band });
+        R.zero();
         Z_vector_R<T> ops_R(xc_kernel, nspin, naos, nocc, nvirt,
             ucell, orb_cutoff, gd, psi_ks, eig_ks,
 #ifdef __EXX
