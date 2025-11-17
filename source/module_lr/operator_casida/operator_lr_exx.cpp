@@ -93,8 +93,9 @@ namespace LR
         case MO_TO_AO_TYPE::CC_oo:
         {
             // Co Co^*
+            // ! note: iv traverses nocc here, i.e. io=i, iv=j
             DMBand<std::complex<double>>(ucell, pmat, this->kv.kvec_c, this->BvK_cells, this->psi_ks_full, this->psi_ks_full)
-                .cal_dm_band(io, io, ik, this->Ds_onebase, 1.0, this->aims_nbasis, this->aims_nbasis);
+                .cal_dm_band(io, iv, ik, this->Ds_onebase, 1.0, this->aims_nbasis, this->aims_nbasis);
             break;
         }
         case MO_TO_AO_TYPE::CXC_o:
@@ -151,9 +152,10 @@ namespace LR
         // caution: parrallel
         if (this->dm_pq_ == MO_TO_AO_TYPE::CXC || this->dm_pq_ == MO_TO_AO_TYPE::CXC_o)
             this->cal_coxt_cvx(psi_in);
+        const int nrow_global = (this->dm_pq_ == MO_TO_AO_TYPE::CC_oo) ? this->nocc : this->nvirt;
         for (int io = 0;io < this->nocc;++io)
         {
-            for (int iv = 0;iv < this->nvirt;++iv)
+            for (int iv = 0;iv < nrow_global;++iv)
             {
                 for (int ik = 0;ik < nk;++ik)
                 {

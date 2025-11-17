@@ -249,7 +249,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
                 this->gint_, pot_weak, pot_hxc_gs_weak,
                 this->kv, this->gd, this->paraX_, this->paraC_, this->paraMat_,
                 this->xc_kernel);
-        if (PARAM.inp.test_force && nocc[0] == 1)
+        if (PARAM.inp.test_force && nocc[0] == 1 && nvirt[0] == 1)
         {
             const std::vector<ct::Tensor>& dm_diff = cal_dm_diff_pblas(this->X[0].template data<T>() + offset, this->paraX_[0], c, this->paraC_, this->nbasis, this->nocc[0], this->nvirt[0], this->paraMat_);
             // test_dm_diff_H2<T>(relaxed_diff_dm.get_DMK_pointer(0), c, this->nbasis);

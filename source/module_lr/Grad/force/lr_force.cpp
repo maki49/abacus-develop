@@ -97,7 +97,7 @@ namespace LR
         ModuleBase::matrix fhxc_dvhxc(this->ucell_.nat, 3);
         elecstate::Potential pot_hxc_relaxed_diff = this->dm_to_hxc_potential(relax_diff_dm);
         PulayForceStress::cal_pulay_fs(1/*nspin*/, fhxc_dvhxc, stress_tmp,
-            relax_diff_dm, this->ucell_, &pot_hxc_relaxed_diff, *this->gint_, true, false);
+            dm_gs, this->ucell_, &pot_hxc_relaxed_diff, *this->gint_, true, false);
         // fhxc_dvhxc *= 0.5; // avoid double count, but nspin=2 of ground-state dm cancels it here 
 
         // 4. kinetic (Pulay)

@@ -95,7 +95,6 @@ namespace LR
                     *this->DM_trans, gint, this->pot_grad, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                     { 0 }, T(-2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_gxc);
                 assert(op_gxc != nullptr);
-                std::cout << "op_gxc=" << op_ht << std::endl;
                 this->ops->add(op_gxc);
             }
             // // test: op_ht only 
