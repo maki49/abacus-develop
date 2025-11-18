@@ -52,9 +52,11 @@ namespace LR
     }
 
     template<typename TK>
-    void LR_Force<TK>::cal_H2_sz_center4_grad_hxc(const std::vector<double>& orb_cutoffs)
+    void LR_Force<TK>::cal_H2_sz_center4(const std::vector<double>& orb_cutoffs,
+        const K_Vectors& kv, const bool is_grad)
     {
-        GlobalV::ofs_running << "  ==== Test H2_SZ_CENTER4_HXC (d_x(i) j | kl) ====" << std::endl;
+        const std::string label = is_grad ? "(d_x(i) j | kl)" : "(ij | kl)";;
+        GlobalV::ofs_running << "  ==== Test H2_SZ_CENTER4_HXC " << label << " ====" << std::endl;
         const std::vector<ModuleBase::Vector3<double>>& kvd_test = { ModuleBase::Vector3<double>(0.0, 0.0, 0.0) };
         auto init_dm_eff = [&, this](const int i, const int j) -> elecstate::DensityMatrix<TK, double>
             {
@@ -67,8 +69,10 @@ namespace LR
                 dm.cal_DMR();
                 return dm;
             };
-        ModuleBase::matrix stress_tmp;  // dummy
         this->gint_->reset_DMRGint(1);
+#ifdef __EXX
+        std::vector<std::tuple<std::set<int>, std::set<int>>> judge = RI_2D_Comm::get_2D_judge(ucell_, pv_);
+#endif
 
         for (auto&& i : { 0, 1 })
             for (auto&& j : { 0, 1 })
@@ -80,19 +84,64 @@ namespace LR
                     {
                         // 1. build dm(kl)
                         elecstate::DensityMatrix<TK, double> dm_kl = init_dm_eff(k, l);
-                        // 2. build charge & potential 
-                        elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
-                        // 3. cal force
-                        ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
-                        PulayForceStress::cal_pulay_fs(1/*nspin*/, fvl_dphi, stress_tmp,
-                            dm_ij, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);
-                        ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
-                            "H2_SZ_CENTER4_HXC_" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + " FORCE (eV/Angstrom)",
-                            fvl_dphi, false);
+                        if (is_grad)
+                        {
+                            // 2. build charge & potential 
+                            elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
+                            // 3. cal force
+                            ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
+                            ModuleBase::matrix stress_tmp;  // dummy
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fvl_dphi, stress_tmp,
+                                dm_ij, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);
+                            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
+                                "H2_SZ_CENTER4_HXC_(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (eV/Angstrom)",
+                                fvl_dphi, false);
+                        }
+                        else
+                        {
+                            //2. build charge & potential
+                            elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
+                            const Charge& charge_ij = this->dm_to_charge(dm_ij);
+                            // 3. cal energy
+                            double e_hxc = std::inner_product(charge_ij.rho[0],
+                                charge_ij.rho[0] + this->rhopw_.nrxx,
+                                pot_hxc_kl.get_effective_v(0), 0.0) * 0.5 * this->ucell_.omega / static_cast<double>(this->rhopw_.nrxx);
+                            GlobalV::ofs_running << "  H2_SZ_CENTER4_COULOMB ("
+                                << std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l)
+                                << ") by Gint: " << e_hxc * 2 << std::endl; // 2 for testing (ij|kl) instead of real Coulomb energy 0.5*(ij|kl)
+#ifdef __EXX
+                            if (!this->exx_lri_.expired())
+                            {   // match the Gint result with LibRI
+                                auto get_exx_Ds_spin1 = [&, this](const elecstate::DensityMatrix<TK, double>& dm)
+                                    -> std::map<int, std::map<TAC, RI::Tensor<TK>>>
+                                    {
+                                        const int nk = dm.get_DMK_nks();
+                                        std::vector<const std::vector<TK>*> DMk_trans_pointer(nk);
+                                        for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik]; }
+                                        return RI_2D_Comm::split_m2D_ktoR<TK>(ucell_, kv, DMk_trans_pointer, pv_, /*nspin=*/1)[0];
+                                    };
+                                auto ds_kl = get_exx_Ds_spin1(dm_kl);
+                                auto ds_ij = get_exx_Ds_spin1(dm_ij);
+                                auto lri = this->exx_lri_.lock();
+                                lri->get().set_Ds(std::move(ds_kl), lri->get_info().dm_threshold);
+                                lri->get().cal_Hs();
+                                lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
+                                    lri->get_mpi_comm(), std::move(lri->get().Hs), std::get<0>(judge[0]), std::get<1>(judge[0]));
+                                lri->post_process_Hexx(lri->Hexxs[0]);
+                                TK e_exx = this->alpha_ * lri->get().post_2D.cal_energy(ds_ij, lri->Hexxs[0]) * 2.0; // 4 is to cancel two 0.5^2 in split_m2D_ktoR(nspin=1)`, and 0.5 for Fock energy
+                                GlobalV::ofs_running << "  H2_SZ_CENTER4_COULOMB ("
+                                    << std::to_string(i) + std::to_string(l) + "|" + std::to_string(k) + std::to_string(j)
+                                    << ") by LibRI: " << -e_exx * 2.0 << ", where alpha = " << this->alpha_ << std::endl;  //-2 for Fock energy -> integral
+                            }
+#endif  
+                        }
+
                     }
             }
     }
 }
+
+
 
 template class LR::LR_Force<double>;
 template class LR::LR_Force<std::complex<double>>;

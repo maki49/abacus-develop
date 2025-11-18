@@ -162,7 +162,7 @@ namespace LR
                     const int xstart_bk = ik * pX.get_local_size();
                     this->cal_DM_onebase(io, iv, ik);       //set Ds_onebase for all e-h pairs (not only on this processor)
                     // LR_Util::print_CV(Ds_onebase, "Ds_onebase of occ " + std::to_string(io) + ", virtual " + std::to_string(iv) + " in OperatorLREXX", 1e-10);
-                    const T& ene = 2 * alpha * //minus for exchange(but here plus is right, why?), 2 for Hartree to Ry
+                    const T& ene = 2 * alpha * //minus for exchange and Hartree-to-Ry are already considered in `post_process_Hexx`, 2 for canceling 0.5 in split_m2D_ktoR(nspin=1)
                         lri->exx_lri.post_2D.cal_energy(this->Ds_onebase, lri->Hexxs[0]);
                     if (this->pX.in_this_processor(iv, io))
                     {

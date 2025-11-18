@@ -70,8 +70,9 @@ namespace LR
         ModuleBase::matrix reproduce_force_gs_loc(const elecstate::DensityMatrix<TK, double>& dm_gs,
             const elecstate::Potential& pot_gs);
 
-        /// (i^x j | kl)
-        void cal_H2_sz_center4_grad_hxc(const std::vector<double>& orb_cutoffs);
+        /// (ij | kl) or (i^x j | kl)
+        void cal_H2_sz_center4(const std::vector<double>& orb_cutoffs,
+            const K_Vectors& kv, const bool is_grad = false);
 
     protected:
         const UnitCell& ucell_;

@@ -55,6 +55,7 @@ public:
 
     RI::Exx<TA, Tcell, Ndim, Tdata>& get() { return this->exx_lri; }
     auto& get_info() const { return this->info; }
+    auto& get_mpi_comm() const { return this->mpi_comm; }
     void reset_Cs(const std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Cs_in) { this->exx_lri.set_Cs(Cs_in, this->info.C_threshold); }
     void reset_Vs(const std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Vs_in) { this->exx_lri.set_Vs(Vs_in, this->info.V_threshold); }
 
@@ -70,6 +71,9 @@ public:
         const Parallel_Orbitals& pv,
         const ModuleSymmetry::Symmetry_rotation* p_symrot = nullptr);
     std::vector<std::vector<int>> get_abfs_nchis() const;
+
+    void post_process_Hexx(std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>& Hexxs_io) const;
+    double post_process_Eexx(const double& Eexx_in) const;
 
 	std::vector< std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>> Hexxs;
     double Eexx;
@@ -89,9 +93,6 @@ private:
 
 	LRI_CV<Tdata> cv;
 	RI::Exx<TA,Tcell,Ndim,Tdata> exx_lri;
-
-	void post_process_Hexx( std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> &Hexxs_io ) const;
-    double post_process_Eexx(const double& Eexx_in) const;
 
 	friend class RPA_LRI<double, Tdata>;
 	friend class RPA_LRI<std::complex<double>, Tdata>;
