@@ -385,6 +385,10 @@ void Force_Stress_LCAO<T>::getForceStress(UnitCell& ucell,
                 exx_lri_complex.cal_exx_force(ucell.nat);
                 force_exx = GlobalC::exx_info.info_global.hybrid_alpha * exx_lri_complex.force_exx;
             }
+            if (istestf)
+            {
+                ModuleIO::print_force(GlobalV::ofs_running, ucell, "EXX    FORCE", force_exx, false);
+            }
         }
         if (isstress)
         {

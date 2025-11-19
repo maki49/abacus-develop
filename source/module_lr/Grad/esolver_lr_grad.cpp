@@ -4,9 +4,6 @@
 #include "module_lr/Grad/force/lr_force.h"
 #include "module_elecstate/module_dm/cal_dm_psi.h"
 #include "module_io/output_log.h"
-#ifdef __EXX
-#include <RI/ri/LRI_Cal_Aux.h>
-#endif
 
 template <typename Tstream>
 inline void print_force(const std::vector<ModuleBase::matrix>& force, Tstream& ofs)
@@ -61,41 +58,6 @@ inline void test_edm_H2(const T* const edm, const double* const eig_ks, const ps
         std::cout << std::endl;
     }
 }
-
-#ifdef __EXX
-// convert DensityMatrix to maps of RI::Tensors
-template <typename T>
-inline auto get_exx_Ds_spin1(const elecstate::DensityMatrix<T, T>& dm,
-    const UnitCell& ucell, const K_Vectors& kv, const Parallel_Orbitals& pmat)
-    -> std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>
-{
-    const int& nk = dm.get_DMK_nks();   // nks/nspin
-    std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
-    for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik]; }
-    return RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, DMk_trans_pointer, pmat, /*nspin=*/1)[0];
-}
-template <typename T>
-inline auto get_exx_Ds_gs(const elecstate::DensityMatrix<T, double>& dm,
-    const UnitCell& ucell, const K_Vectors& kv, const Parallel_Orbitals& pmat, const int nspin)
-    -> std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>
-{
-    const int& nk = dm.get_DMK_nks() / nspin;   // nks/nspin
-    std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
-
-    std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>> Ds_allspin;
-    for (int is = 0;is < nspin;++is)
-    {
-        for (int ik = 0;ik < nk;++ik)
-        {
-            DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik + is * nk];
-        }
-        std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>  Ds_tmp
-            = RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, DMk_trans_pointer, pmat, /*nspin=*/1)[0];
-        RI::LRI_Cal_Aux::add_Ds<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>>(std::move(Ds_tmp), Ds_allspin);
-    }
-    return Ds_allspin;
-}
-#endif
 
 template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::init_pot_groundstate(const Charge& chg_gs)
@@ -283,8 +245,8 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
 
         if (LR::exx_kernel_list().count(xc_kernel))
         {
-            const auto& Ds_trans = get_exx_Ds_spin1(dm_trans, this->ucell, this->kv, this->paraMat_);
-            ModuleBase::matrix force_exx_dmtrans = lr_force.cal_force_exx_dm_trans(Ds_trans, alpha);
+            const auto& Ds_trans = LR_Util::get_exx_Ds_spin1(dm_trans, this->ucell, this->kv, this->paraMat_);
+            ModuleBase::matrix force_exx_dmtrans = lr_force.cal_force_exx_dm_trans(Ds_trans, alpha * 4.0);  // cancel the two 0.5s in Ds
             if (PARAM.inp.test_force)
                 ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "EXX DMTRANS FORCE (eV/Angstrom)", force_exx_dmtrans, false);
             force_hxc_dmtrans += force_exx_dmtrans;
@@ -292,9 +254,10 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         }
         if (LR::exx_kernel_list().count(PARAM.inp.dft_functional))
         {
-            const auto& Ds_gs = get_exx_Ds_gs(dm_gs, this->ucell, this->kv, this->paraMat_, this->nspin);
-            const auto& Ds_relaxed_diff = get_exx_Ds_spin1(relaxed_diff_dm, this->ucell, this->kv, this->paraMat_);
-            ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha);
+            const auto& Ds_gs = LR_Util::get_exx_Ds_spin1(dm_gs, this->ucell, this->kv, this->paraMat_);    // returns 0.5*D[0]
+            const auto& Ds_relaxed_diff = LR_Util::get_exx_Ds_spin1(relaxed_diff_dm, this->ucell, this->kv, this->paraMat_);   // returns 0.5*D[0]
+            // LR_Util::print_CV(Ds_relaxed_diff, "Ds_relaxed_diff for EXX force");
+            ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha * 4.0);  // cancel the two 0.5s in Ds
             if (PARAM.inp.test_force)
                 ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "EXX GS-(T+Z) FORCE (eV/Angstrom)", force_exx_gs_diff, false);
             force_hamiltgs_relaxed_diff += force_exx_gs_diff;
@@ -341,7 +304,7 @@ void LR::ESolver_LR<T, TR>::test_force()
     LR_Util::initialize_DMR(edm_gs, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
     edm_gs.cal_DMR();
     // ground-state force
-    ModuleBase::matrix force_gs = lr_force.reproduce_force_gs(dm_gs, edm_gs);
+    ModuleBase::matrix force_gs = lr_force.reproduce_force_gs(kv, dm_gs, edm_gs);
     ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "Ground State FORCE (eV/Angstrom)", force_gs, false);
     /// ======================================= END test 1 =========================================
     ///========================== test 2: reproduce the DX Hartree term =========================

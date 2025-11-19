@@ -22,16 +22,32 @@ namespace LR
     }
 
     template<typename TK>
-    ModuleBase::matrix LR_Force<TK>::reproduce_force_gs(
+    ModuleBase::matrix LR_Force<TK>::reproduce_force_gs(const K_Vectors& kv,
         const elecstate::DensityMatrix<TK, double>& dm_gs,
         const elecstate::DensityMatrix<TK, double>& edm_gs)
     {
-        this->gint_->reset_DMRGint(PARAM.inp.nspin);
+        const int& nspin = PARAM.inp.nspin;
+        this->gint_->reset_DMRGint(nspin);
         // local + Hartree + xc term, including Hellmann-Feynman and Pulay
         ModuleBase::matrix f_gs_hf_pulay = cal_force_hamilt_gs_dm_relaxed_diff(dm_gs, dm_gs); // pw+vnl+t_dphi+vl_dphi
         // edm term
         ModuleBase::matrix f_nonortho = cal_force_overlap_edm(edm_gs); // overlap
         this->gint_->reset_DMRGint(1);
+#ifdef __EXX
+        const std::set<std::string> exx_kernel_list = { "hf", "hse" };
+        if (exx_kernel_list.count(PARAM.inp.dft_functional))
+        {
+            const auto& Ds_gs = LR_Util::get_exx_Ds_gs(dm_gs, ucell_, kv, pv_);
+            const auto& Ds_gs_2 = LR_Util::get_exx_Ds_gs(dm_gs, ucell_, kv, pv_);
+            ModuleBase::matrix f_gs_exx(ucell_.nat, 3);
+            // test the two function using the two spin channels respectively
+            f_gs_exx += cal_force_exx_gs_dm_relaxed_diff(Ds_gs.at(0), Ds_gs_2.at(0), alpha_, std::to_string(0));    // test passed
+            f_gs_exx += cal_force_exx_dm_trans(Ds_gs.at(1), alpha_, std::to_string(1));
+            if (PARAM.inp.test_force)
+                ModuleIO::print_force(GlobalV::ofs_running, ucell_, "EXX GS FORCE reproduce (eV/Angstrom)", f_gs_exx, false);
+            f_gs_hf_pulay += f_gs_exx;
+        }
+#endif
         return f_gs_hf_pulay + f_nonortho;
     }
 
@@ -112,16 +128,8 @@ namespace LR
 #ifdef __EXX
                             if (!this->exx_lri_.expired())
                             {   // match the Gint result with LibRI
-                                auto get_exx_Ds_spin1 = [&, this](const elecstate::DensityMatrix<TK, double>& dm)
-                                    -> std::map<int, std::map<TAC, RI::Tensor<TK>>>
-                                    {
-                                        const int nk = dm.get_DMK_nks();
-                                        std::vector<const std::vector<TK>*> DMk_trans_pointer(nk);
-                                        for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik]; }
-                                        return RI_2D_Comm::split_m2D_ktoR<TK>(ucell_, kv, DMk_trans_pointer, pv_, /*nspin=*/1)[0];
-                                    };
-                                auto ds_kl = get_exx_Ds_spin1(dm_kl);
-                                auto ds_ij = get_exx_Ds_spin1(dm_ij);
+                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_);
+                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_);
                                 auto lri = this->exx_lri_.lock();
                                 lri->get().set_Ds(std::move(ds_kl), lri->get_info().dm_threshold);
                                 lri->get().cal_Hs();

@@ -7,6 +7,9 @@
 #include "module_parameter/parameter.h"
 #include "module_io/single_R_io.h"
 #include "module_lr/utils/lr_util.h"
+#ifdef __EXX
+#include "module_ri/RI_2D_Comm.h"
+#endif
 namespace LR_Util
 {
     template <typename T>
@@ -302,4 +305,33 @@ namespace LR_Util
         for (auto& dr : DMR.get_DMR_vector())
             save_HR(*dr, filename + "_s" + std::to_string(is), pv, sparse_thr);
     }
+
+#ifdef __EXX
+    // convert DensityMatrix to maps of RI::Tensors
+    // return 0.5*D[0]
+    template <typename TK, typename TR>
+    auto get_exx_Ds_spin1(const elecstate::DensityMatrix<TK, TR>& dm,
+        const UnitCell& ucell, const K_Vectors& kv, const Parallel_Orbitals& pmat)
+        -> std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<TK>>>
+    {
+        const int& nk = dm.get_DMK_nks();   // nks/nspin
+        std::vector<const std::vector<TK>*> DMk_trans_pointer(nk);
+        for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &dm.get_DMK_vector()[ik]; }
+        return RI_2D_Comm::split_m2D_ktoR<TK>(ucell, kv, DMk_trans_pointer, pmat, /*nspin=*/1)[0];
+    }
+    // return SPIN_multiple*D[0] as implemented in split_m2D_ktoR
+    // SPIN_multiple = map({ {1,0.5}, {2,1}, {4,1} }).at(nspin)
+    template <typename TK, typename TR>
+    auto get_exx_Ds_gs(const elecstate::DensityMatrix<TK, TR>& dm,
+        const UnitCell& ucell, const K_Vectors& kv, const Parallel_Orbitals& pmat)
+        -> std::vector<std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<TK>>>>
+    {
+        const int& nspin = dm.get_DMR_vector().size();
+        const int& nk = dm.get_DMK_nks() / nspin;   // nks/nspin
+        std::vector<const std::vector<TK>*> DMk_trans_pointer(nk);
+        for (int iks = 0;iks < dm.get_DMK_nks();++iks)
+            DMk_trans_pointer[iks] = &dm.get_DMK_vector()[iks];
+        return RI_2D_Comm::split_m2D_ktoR<TK>(ucell, kv, DMk_trans_pointer, pmat, nspin);
+    }
+#endif
 }

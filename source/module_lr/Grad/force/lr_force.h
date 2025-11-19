@@ -54,16 +54,19 @@ namespace LR
         /// 4. $\alpha \sum_{mnkl}(mk|nl)^x *D^X *D^X$
         ModuleBase::matrix cal_force_exx_dm_trans(
             const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm_trans,
-            const double& alpha);
+            const double& alpha,
+            const std::string& spin_suffix = "");
         ModuleBase::matrix cal_force_exx_gs_dm_relaxed_diff(
             const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm_gs,
             const std::map<int, std::map<TAC, RI::Tensor<TK>>>& relaxed_diff_dm,
-            const double& alpha);
+            const double& alpha,
+            const std::string& spin_suffix = "");
 #endif
 
         // test functions
         /// reproduce the force of the ground state
-        ModuleBase::matrix reproduce_force_gs(const elecstate::DensityMatrix<TK, double>& dm_gs,
+        ModuleBase::matrix reproduce_force_gs(const K_Vectors& kv,
+            const elecstate::DensityMatrix<TK, double>& dm_gs,
             const elecstate::DensityMatrix<TK, double>& edm_gs);
 
         /// repreduce the ground state local term
