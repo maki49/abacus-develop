@@ -27,7 +27,7 @@ namespace LR
             const std::vector<int>& nocc,
             const std::vector<int>& nvirt,
             const psi::Psi<T, Device>& psi_ks_in,
-            elecstate::DensityMatrix<T, T>& DM_trans_in,
+            const elecstate::DensityMatrix<T, T>& DM_trans_in,
             typename TGint<T>::type* gint_in,
             std::weak_ptr<PotLRBase> pot_in,
             const UnitCell& ucell_in,
@@ -81,7 +81,7 @@ namespace LR
         const psi::Psi<T, Device>& psi_ks = nullptr;
 
         /// transition density matrix
-        elecstate::DensityMatrix<T, T>& DM_trans;
+        const elecstate::DensityMatrix<T, T>& DM_trans;
 
         /// transition hamiltonian in AO representation
         std::unique_ptr<hamilt::HContainer<T>> hR = nullptr;

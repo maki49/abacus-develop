@@ -135,7 +135,7 @@ namespace LR
         const T* const Z,   //lvirt*locc
         const double eig_ext_istate,    //1, the excitation energy of one state
         const double* const eig_ks,     // gocc+gvirt
-        elecstate::DensityMatrix<T, T>& relaxed_diff_dm, // D_X
+        const elecstate::DensityMatrix<T, T>& dm_trans, // D_X
         const psi::Psi<T>& c,
         const int& nspin,
         const int& naos,
@@ -174,11 +174,11 @@ namespace LR
         // 2. build K_cvcx (nvirt*nocc) = \sum_i X_{ia} K_{ij} = \sum_i X_{ia} \sum_{\mu\nu} c_{\mu i} c_{\nu j} K_{\mu\nu}[D^X]
         // $2\sum_i X_{ai} K_{ij}[D_X]$ (D_X is symmetrized)
         OperatorLRHxc<T> op_K_cvcx(nspin, naos, nocc, nvirt, c,
-            relaxed_diff_dm, gint, pot, ucell, orb_cutoff, gd, kv, px, pc, pmat,
+            dm_trans, gint, pot, ucell, orb_cutoff, gd, kv, px, pc, pmat,
             { 0 }, T(2.0), OperatorLRHxc<T>::MO_TO_AO_TYPE::CXC_o);
 #ifdef __EXX
         OperatorLREXX<T> op_K_exx(nspin, naos, nocc[0], nvirt[0], ucell, c,
-            relaxed_diff_dm, exx_lri, kv, px[0], pc, pmat,
+            dm_trans, exx_lri, kv, px[0], pc, pmat,
             2.0 * exx_alpha, OperatorLREXX<T>::MO_TO_AO_TYPE::CXC_o);
 #endif
         const int ld_vo = nk * px[0].get_local_size();

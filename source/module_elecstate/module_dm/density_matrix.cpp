@@ -53,7 +53,7 @@ DensityMatrix<TK, TR>::DensityMatrix(const Parallel_Orbitals* paraV_in, const in
 
 // calculate DMR from DMK using blas for multi-k calculation
 template <>
-void DensityMatrix<std::complex<double>, double>::cal_DMR(const int ik_in)
+void DensityMatrix<std::complex<double>, double>::cal_DMR(const int ik_in) const
 {
     ModuleBase::TITLE("DensityMatrix", "cal_DMR");
 
@@ -307,7 +307,7 @@ void DensityMatrix<std::complex<double>, double>::cal_DMR_full(hamilt::HContaine
 
 // calculate DMR from DMK using blas for gamma-only calculation
 template <>
-void DensityMatrix<double, double>::cal_DMR(const int ik_in)
+void DensityMatrix<double, double>::cal_DMR(const int ik_in) const
 {
     ModuleBase::TITLE("DensityMatrix", "cal_DMR");
 
@@ -367,7 +367,7 @@ void DensityMatrix<double, double>::cal_DMR(const int ik_in)
             double kphase = 1;
             // set DMR element
             double* target_DMR_ptr = target_mat->get_pointer();
-            double* DMK_ptr = this->_DMK[0 + ik_begin].data();
+            const double* DMK_ptr = this->_DMK[0 + ik_begin].data();
             // transpose DMK col=>row
             DMK_ptr += col_ap * this->_paraV->nrow + row_ap;
             for (int mu = 0; mu < row_size; ++mu)

@@ -201,15 +201,15 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         // std::cout << "dm_diff_k T(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
         // LR_Util::print_value(dm_diff_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
 
-        std::vector<ct::Tensor> dm_relaxed_k = cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
+        const std::vector<ct::Tensor>& dm_relaxed_k = cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
         // std::cout << "dm_relaxed_k Z(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
         // LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
         for (auto& d : dm_relaxed_k) { LR_Util::matsym(d.data<T>(), this->nbasis, this->paraMat_); }    // symmetrize
         // std::cout << "dm_relaxed_k Z(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
         // LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
         // relaxed difference density matrix
-        std::vector<ct::Tensor> relaxed_diff_dm_k = dm_diff_k + dm_relaxed_k;
-        elecstate::DensityMatrix<T, T> relaxed_diff_dm =
+        const std::vector<ct::Tensor>& relaxed_diff_dm_k = dm_diff_k + dm_relaxed_k;
+        const elecstate::DensityMatrix<T, T>& relaxed_diff_dm =
             LR_Util::build_dm_from_dmk<T, T>(relaxed_diff_dm_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_, /*symmetrize=*/false);
         // LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm T+Z (Z symmetrized) of istate " + std::to_string(istate));
@@ -241,7 +241,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
                 Z.template data<T>() + offset,
                 this->pelec->ekb.c[ ispin * nstates + istate],
                 // pack the following as a struct or use parameter package
-                this->eig_ks.c, relaxed_diff_dm,
+                this->eig_ks.c, dm_trans,
                 c, this->nspin, this->nbasis, this->nocc, this->nvirt, this->ucell, this->orb_cutoff_,
 #ifdef __EXX
                 exx_lri_weak, this->exx_info.info_global.hybrid_alpha,
@@ -352,12 +352,12 @@ void LR::ESolver_LR<T, TR>::test_force()
     // 2 for spin in f->v. Spin in v->f is already multiplied in the singlet Hartree factor 2.
     /// ======================================= END test 2 =========================================
     ///========================== test 3: H2 SZ 4-center gradients =========================
-    if (this->nbasis == 2 && ucell.nat == 2)
-    {
-        // lr_force.cal_H2_sz_center4、(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
-        lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
-        // exit(0);
-    }
+    // if (this->nbasis == 2 && ucell.nat == 2)
+    // {
+    //     // lr_force.cal_H2_sz_center4、(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
+    //     lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
+    //     // exit(0);
+    // }
 }
 
 template class LR::ESolver_LR<double, double>;
