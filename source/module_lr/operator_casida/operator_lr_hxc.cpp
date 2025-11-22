@@ -26,7 +26,7 @@ namespace LR
         const int& lgd = gint->gridt->lgd;
 
         this->DM_trans.cal_DMR();  //DM_trans.get_DMR_vector() is 2d-block parallized
-        // LR_Util::print_DMR(*DM_trans, ucell.nat, "DMR");
+        // LR_Util::print_DMR(DM_trans, ucell.nat, "DMR");
 
         // ========================= begin grid calculation=========================
         this->grid_calculation(nbands);   //DM(R) to H(R)
@@ -142,7 +142,7 @@ namespace LR
                 ModuleBase::GlobalFunc::ZEROS(rho_trans[0], nrxx);
                 Gint_inout inout_rho(rho_trans, Gint_Tools::job_type::rho, 1, false);
                 this->gint->cal_gint(&inout_rho);
-                // print_grid_nonzero(rho_trans[0], nrxx, 10, "rho_trans");
+                // LR_Util::print_grid_nonzero(rho_trans[0], nrxx, 10, "rho_trans");
 
                 // 3. v_hxc = f_hxc * rho_trans
                 ModuleBase::matrix vr_hxc(1, nrxx);   //grid

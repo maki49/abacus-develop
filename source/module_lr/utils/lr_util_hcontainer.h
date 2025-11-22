@@ -81,11 +81,10 @@ namespace LR_Util
         }
     }
 
-    template<typename T>
-    void set_HR_real_imag_part(const hamilt::HContainer<Real<T>>& HR_real,
-        hamilt::HContainer<T>& HR,
+    inline void set_HR_real_imag_part(const hamilt::HContainer<double>& HR_real,
+        hamilt::HContainer<std::complex<double>>& HR,
         const int& nat,
-        const char& type = 'R')
+        const char& type)
     {
         bool get_imag = (type == 'I' || type == 'i');
         for (int ia = 0;ia < nat;ia++) {
@@ -99,7 +98,7 @@ namespace LR_Util
                     auto dR = ap->get_R_index(iR);
                     auto ptr = ap->get_HR_values(iR).get_pointer();
                     auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
-                    for (int i = 0;i < ap->get_size();++i) { get_imag ? std::imag(ptr[i]) : std::real(ptr[i]); }
+                    for (int i = 0;i < ap->get_size();++i) { get_imag ? ptr[i].imag(ptr_real[i]) : ptr[i].real(ptr_real[i]); }
                 }
             }
         }
