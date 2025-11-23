@@ -308,7 +308,7 @@ void ReadInput::item_lr_tddft()
         read_sync_int(input.nocc);
         item.reset_value = [](const Input_Item& item, Parameter& para) {
             const int nocc_default = std::max(static_cast<int>(para.input.nelec + 1) / 2, para.input.nbands);
-            if (para.input.nocc <= 0 || para.input.nocc > nocc_default) { para.input.nocc = nocc_default; }
+            if (nocc_default && (para.input.nocc <= 0 || para.input.nocc > nocc_default)) { para.input.nocc = nocc_default; }
             };
         this->add_item(item);
     }
