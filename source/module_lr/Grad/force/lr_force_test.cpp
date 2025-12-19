@@ -75,7 +75,7 @@ namespace LR
         GlobalV::ofs_running << "  ==== Test H2_SZ_CENTER4_HXC " << label << " ====" << std::endl;
         const std::vector<ModuleBase::Vector3<double>>& kvd_test = { ModuleBase::Vector3<double>(0.0, 0.0, 0.0) };
         auto init_dm_eff = [&, this](const int i, const int j) -> elecstate::DensityMatrix<TK, double>
-            {
+            {   // dm_{ij}=1, other elements = 0, i,j = 0,1
                 std::vector<TK> dm_2d(4, 0.0);
                 std::cout<<"i<<1 + j =" << ((i<<1) + j) << std::endl;
                 dm_2d[i*2+j] = 1.0;
@@ -110,8 +110,19 @@ namespace LR
                             PulayForceStress::cal_pulay_fs(1/*nspin*/, fvl_dphi, stress_tmp,
                                 dm_ij, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);
                             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
-                                "H2_SZ_CENTER4_HXC_(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (eV/Angstrom)",
-                                fvl_dphi, false);
+                                "H2_SZ_CENTER4_HXC_(dx_i(" + std::to_string(i) + ")" + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (eV/Angstrom)",
+                                fvl_dphi * (-0.5), false);   // F_Hxc = -2(dx_i(i)j| kl)
+#ifdef __EXX
+                            if (!this->exx_lri_.expired())
+                            {   // match the Gint result with LibRI
+                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_); // returns ds_kl*0.5
+                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_); // returns ds_ij*0.5
+                                ModuleBase::matrix f_exx = this->cal_force_exx_gs_dm_relaxed_diff(ds_kl, ds_ij, alpha_ * 4.0, ""); // cancel the two 0.5s in Ds
+                                ModuleIO::print_force(GlobalV::ofs_running, ucell_,
+                                    "H2_SZ_CENTER4_EXX_(dx_i(" + std::to_string(i) + ")" + std::to_string(k) + "|" + std::to_string(j) + std::to_string(l) + ") FORCE (eV/Angstrom)",
+                                    f_exx, false);   // F_exx = (dx_i(i)k| jl)
+                            }
+#endif
                         }
                         else
                         {
@@ -128,8 +139,8 @@ namespace LR
 #ifdef __EXX
                             if (!this->exx_lri_.expired())
                             {   // match the Gint result with LibRI
-                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_);
-                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_);
+                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_); // returns ds_kl*0.5
+                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_); // returns ds_ij*0.5
                                 auto lri = this->exx_lri_.lock();
                                 lri->get().set_Ds(std::move(ds_kl), lri->get_info().dm_threshold);
                                 lri->get().cal_Hs();
@@ -138,7 +149,7 @@ namespace LR
                                 lri->post_process_Hexx(lri->Hexxs[0]);
                                 TK e_exx = this->alpha_ * lri->get().post_2D.cal_energy(ds_ij, lri->Hexxs[0]) * 2.0; // 4 is to cancel two 0.5^2 in split_m2D_ktoR(nspin=1)`, and 0.5 for Fock energy
                                 GlobalV::ofs_running << "  H2_SZ_CENTER4_COULOMB ("
-                                    << std::to_string(i) + std::to_string(l) + "|" + std::to_string(k) + std::to_string(j)
+                                    << std::to_string(i) + std::to_string(k) + "|" + std::to_string(j) + std::to_string(l)
                                     << ") by LibRI: " << -e_exx * 2.0 << ", where alpha = " << this->alpha_ << std::endl;  //-2 for Fock energy -> integral
                             }
 #endif  
