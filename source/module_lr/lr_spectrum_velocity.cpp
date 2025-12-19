@@ -58,7 +58,7 @@ namespace LR
         {
             for (int is = 0;is < this->nspin_x; ++is)
             {
-                trans_dipole[i] += LR_Util::dot_R_matrix(*vR.get_current_term_pointer(i), *DM_trans.get_DMR_pointer(is + 1), ucell.nat) * fac;
+                trans_dipole[i] += LR_Util::dot_R_matrix(*vR.get_current_term_pointer(i), *DM_trans.get_DMR_pointer(is + 1)) * fac;
             }   // end for spin_x, only matter in open-shell system
             trans_dipole[i] *= static_cast<double>(this->nk);  // nk is divided inside DM_trans, now recover it
             if (this->nspin_x == 1) { trans_dipole[i] *= sqrt(2.0); } // *2 for 2 spins, /sqrt(2) for the halfed dimension of X in the normalizaiton
@@ -174,7 +174,7 @@ namespace LR
             {
                 for (int is = 0;is < this->nspin_x; ++is)
                 {
-                    tmp_trans_dipole[i] += LR_Util::dot_R_matrix(*vR.get_current_term_pointer(i), *DM_trans.get_DMR_pointer(is + 1), ucell.nat) * ModuleBase::IMAG_UNIT;
+                    tmp_trans_dipole[i] += LR_Util::dot_R_matrix(*vR.get_current_term_pointer(i), *DM_trans.get_DMR_pointer(is + 1)) * ModuleBase::IMAG_UNIT;
                 }   // end for spin_x, only matter in open-shell system
             }   // end for direction
             this->transition_dipole_[istate] = convert_vector_to_vector3<T>(tmp_trans_dipole);

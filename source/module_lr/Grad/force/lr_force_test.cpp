@@ -94,7 +94,7 @@ namespace LR
             for (auto&& j : { 0, 1 })
             {
                 elecstate::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j);
-                LR_Util::print_DMR(dm_ij, ucell_.nat, "DMR_" + std::to_string(i) + std::to_string(j));
+                LR_Util::print_DMR(dm_ij, "DMR_" + std::to_string(i) + std::to_string(j));
                 for (auto&& k : { 0, 1 })
                     for (auto&& l : { 0, 1 })
                     {

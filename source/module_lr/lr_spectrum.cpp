@@ -107,13 +107,13 @@ ModuleBase::Vector3<std::complex<double>> LR::LR_Spectrum<std::complex<double>>:
         LR_Util::initialize_DMR(DM_trans_real_imag, this->pmat, this->ucell, this->gd_, this->orb_cutoff_);
 
         // real part
-        LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, ucell.nat, 'R');
+        LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, 'R');
         this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
         this->cal_gint_rho(rho_trans_real, this->rho_basis.nrxx);
         // LR_Util::print_grid_nonzero(rho_trans_real[0], this->rho_basis.nrxx, 10, "rho_trans");
 
         // imag part
-        LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, ucell.nat, 'I');
+        LR_Util::get_DMR_real_imag_part(DM_trans, DM_trans_real_imag, 'I');
         this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
         this->cal_gint_rho(rho_trans_imag, this->rho_basis.nrxx);
         // LR_Util::print_grid_nonzero(rho_trans_imag[0], this->rho_basis.nrxx, 10, "rho_trans");

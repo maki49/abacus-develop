@@ -163,7 +163,7 @@ namespace LR
         for (std::size_t idim = 0; idim < 3; ++idim)
             for (const auto& force_item : exx_lri_kernel.force[idim])
                 f_exx_gs_diff(force_item.first, idim) = std::real(force_item.second);
-        const double fac = -2.0 * alpha; //-2 is the same as post_process_Hexx (which didn't act on Hs)
+        const double fac = -2.0 * alpha; //-2 is the same as post_process_Hexx (a.u. to Ry, which didn't act on Hs)
         return f_exx_gs_diff * fac;
     }
 #endif

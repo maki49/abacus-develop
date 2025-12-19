@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <mutex>
-
+#ifdef __DEBUG
+#include <cassert>
+#endif
 namespace hamilt
 {
 /**

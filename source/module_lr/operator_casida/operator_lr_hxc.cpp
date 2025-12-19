@@ -128,7 +128,7 @@ namespace LR
 
         auto dmR_to_hR = [&, this](const char& type) -> void
             {
-                LR_Util::get_DMR_real_imag_part(this->DM_trans, DM_trans_real_imag, ucell.nat, type);
+                LR_Util::get_DMR_real_imag_part(this->DM_trans, DM_trans_real_imag, type);
                 // if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
 
                 this->gint->transfer_DM2DtoGrid(DM_trans_real_imag.get_DMR_vector());
@@ -160,7 +160,7 @@ namespace LR
                 HR_real_imag.set_zero();
                 this->gint->transfer_pvpR(&HR_real_imag, &ucell, &this->gd);
                 // LR_Util::print_HR(HR_real_imag, this->ucell.nat, "VR(real, 2d)");
-                LR_Util::set_HR_real_imag_part(HR_real_imag, *this->hR, ucell.nat, type);
+                LR_Util::set_HR_real_imag_part(HR_real_imag, *this->hR, type);
             };
         this->hR->set_zero();
         dmR_to_hR('R');   //real

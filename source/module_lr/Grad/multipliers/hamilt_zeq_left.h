@@ -49,10 +49,10 @@ namespace LR
             ModuleBase::TITLE("Z_vector_L", "Z_vector_L");
             this->DM_trans = LR_Util::make_unique<elecstate::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
-            //  $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized
+            // Hessian (A+B) with GS XC kernel 
             // 1. diag term in A
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0]);
-            // 2. Hessian (A+B) with GS XC kernel
+            // 2. $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized
             hamilt::Operator<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, 2.0, ATYPE::CC_vo);

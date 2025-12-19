@@ -15,44 +15,45 @@ namespace LR_Util
     template <typename T>
     using Real = typename GetTypeReal<T>::type;
     template<typename TR>
-    void print_HR(const hamilt::HContainer<TR>& HR, const int& nat, const std::string& label, const double& threshold = 1e-10)
+    void print_HR(const hamilt::HContainer<TR>& HR, const std::string& label, const double& threshold = 1e-10)
     {
         std::cout << label << "\n";
-        for (int ia = 0;ia < nat;ia++)
-            for (int ja = 0;ja < nat;ja++)
+        for (int iap = 0; iap < HR.size_atom_pairs(); ++iap)
+        {
+            auto ap = HR.get_atom_pair(iap);
+            const int ia = ap.get_atom_i();
+            const int ja = ap.get_atom_j();
+            for (int iR = 0;iR < ap.get_R_size();++iR)
             {
-                auto ap = HR.find_pair(ia, ja);
-                for (int iR = 0;iR < ap->get_R_size();++iR)
+                std::cout << "atom pair (" << ia << ", " << ja << "),  "
+                    << "R=(" << ap.get_R_index(iR)[0] << ", " << ap.get_R_index(iR)[1] << ", " << ap.get_R_index(iR)[2] << "): \n";
+                auto& mat = ap.get_HR_values(iR);
+                std::cout << "rowsize=" << ap.get_row_size() << ", colsize=" << ap.get_col_size() << "\n";
+                for (int i = 0;i < ap.get_row_size();++i)
                 {
-                    std::cout << "atom pair (" << ia << ", " << ja << "),  "
-                        << "R=(" << ap->get_R_index(iR)[0] << ", " << ap->get_R_index(iR)[1] << ", " << ap->get_R_index(iR)[2] << "): \n";
-                    auto& mat = ap->get_HR_values(iR);
-                    std::cout << "rowsize=" << ap->get_row_size() << ", colsize=" << ap->get_col_size() << "\n";
-                    for (int i = 0;i < ap->get_row_size();++i)
+                    for (int j = 0;j < ap.get_col_size();++j)
                     {
-                        for (int j = 0;j < ap->get_col_size();++j)
-                        {
-                            auto& v = mat.get_value(i, j);
-                            std::cout << (std::abs(v) > threshold ? v : 0) << " ";
-                        }
-                        std::cout << "\n";
+                        auto& v = mat.get_value(i, j);
+                        std::cout << (std::abs(v) > threshold ? v : 0) << " ";
                     }
+                    std::cout << "\n";
                 }
             }
+        }
     }
+
     template <typename TK, typename TR>
-    void print_DMR(const elecstate::DensityMatrix<TK, TR>& DMR, const int& nat, const std::string& label, const double& threshold = 1e-10)
+    void print_DMR(const elecstate::DensityMatrix<TK, TR>& DMR, const std::string& label, const double& threshold = 1e-10)
     {
         std::cout << label << "\n";
         int is = 0;
         for (auto& dr : DMR.get_DMR_vector())
-            print_HR(*dr, nat, "DMR[ispin=s" + std::to_string(is++) + "]", threshold);
+            print_HR(*dr, "DMR[ispin=s" + std::to_string(is++) + "]", threshold);
     }
 
     template<typename T>
     void get_DMR_real_imag_part(const elecstate::DensityMatrix<T, T>& DMR,
         elecstate::DensityMatrix<T, Real<T>>& DMR_real,
-        const int& nat,
         const char& type = 'R')
     {
         assert(DMR.get_DMR_vector().size() == DMR_real.get_DMR_vector().size());
@@ -63,19 +64,21 @@ namespace LR_Util
             auto dr_real = DMR_real.get_DMR_vector()[is];
             assert(dr != nullptr);
             assert(dr_real != nullptr);
-            for (int ia = 0;ia < nat;ia++) {
-                for (int ja = 0;ja < nat;ja++)
+            for (int iap = 0; iap < dr->size_atom_pairs(); ++iap)
+            {
+
+                auto ap = &dr->get_atom_pair(iap);
+                const int ia = ap->get_atom_i();
+                const int ja = ap->get_atom_j();
+                auto ap_real = dr_real->find_pair(ia, ja);
+                assert(ap_real != nullptr);
+                for (int iR = 0;iR < ap->get_R_size();++iR)
                 {
-                    auto ap = dr->find_pair(ia, ja);
-                    auto ap_real = dr_real->find_pair(ia, ja);
-                    for (int iR = 0;iR < ap->get_R_size();++iR)
-                    {
-                        // R index may be different between the two HContainers, find by R value instead of R-index
-                        auto dR = ap->get_R_index(iR);
-                        auto ptr = ap->get_HR_values(iR).get_pointer();
-                        auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
-                        for (int i = 0;i < ap->get_size();++i) { ptr_real[i] = (get_imag ? std::imag(ptr[i]) : std::real(ptr[i])); }
-                    }
+                    // R index may be different between the two HContainers, find by R value instead of R-index
+                    auto dR = ap->get_R_index(iR);
+                    auto ptr = ap->get_HR_values(iR).get_pointer();
+                    auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
+                    for (int i = 0;i < ap->get_size();++i) { ptr_real[i] = (get_imag ? std::imag(ptr[i]) : std::real(ptr[i])); }
                 }
             }
         }
@@ -83,23 +86,23 @@ namespace LR_Util
 
     inline void set_HR_real_imag_part(const hamilt::HContainer<double>& HR_real,
         hamilt::HContainer<std::complex<double>>& HR,
-        const int& nat,
         const char& type)
     {
         bool get_imag = (type == 'I' || type == 'i');
-        for (int ia = 0;ia < nat;ia++) {
-            for (int ja = 0;ja < nat;ja++)
+        for (int iap = 0; iap < HR.size_atom_pairs(); ++iap)
+        {
+            auto ap = &HR.get_atom_pair(iap);
+            const int ia = ap->get_atom_i();
+            const int ja = ap->get_atom_j();
+            auto ap_real = HR_real.find_pair(ia, ja);
+            assert(ap_real != nullptr);
+            for (int iR = 0;iR < ap->get_R_size();++iR)
             {
-                auto ap = HR.find_pair(ia, ja);
-                auto ap_real = HR_real.find_pair(ia, ja);
-                for (int iR = 0;iR < ap->get_R_size();++iR)
-                {
-                    // R index may be different between the two HContainers, find by R value instead of R-index
-                    auto dR = ap->get_R_index(iR);
-                    auto ptr = ap->get_HR_values(iR).get_pointer();
-                    auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
-                    for (int i = 0;i < ap->get_size();++i) { get_imag ? ptr[i].imag(ptr_real[i]) : ptr[i].real(ptr_real[i]); }
-                }
+                // R index may be different between the two HContainers, find by R value instead of R-index
+                auto dR = ap->get_R_index(iR);
+                auto ptr = ap->get_HR_values(iR).get_pointer();
+                auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
+                for (int i = 0;i < ap->get_size();++i) { get_imag ? ptr[i].imag(ptr_real[i]) : ptr[i].real(ptr_real[i]); }
             }
         }
     }
@@ -148,26 +151,24 @@ namespace LR_Util
 
     /// $\sum_{uvR} H1_{uv}(R) H2_{uv}(R)$
     template<typename TR1, typename TR2>
-    TR1 dot_R_matrix(const hamilt::HContainer<TR1>& h1, const hamilt::HContainer<TR2>& h2, const int& nat)
+    TR1 dot_R_matrix(const hamilt::HContainer<TR1>& h1, const hamilt::HContainer<TR2>& h2)
     {
         const auto& pmat = *h1.get_paraV();
         TR1 sum = 0;
         // in case of the different order of atom pair and R-index in h1 and h2, we search by value instead of index
-        for (int iat1 = 0;iat1 < nat;++iat1)
+        for (int iap = 0; iap < h1.size_atom_pairs(); ++iap)
         {
-            for (int iat2 = 0;iat2 < nat;++iat2)
+            auto ap1 = &h1.get_atom_pair(iap);
+            const int iat1 = ap1->get_atom_i();
+            const int iat2 = ap1->get_atom_j();
+            auto ap2 = h2.find_pair(iat1, iat2);
+            assert(ap2);
+            for (int iR = 0;iR < ap1->get_R_size();++iR)
             {
-                auto ap1 = h1.find_pair(iat1, iat2);
-                if (!ap1) { continue; }
-                auto ap2 = h2.find_pair(iat1, iat2);
-                assert(ap2);
-                for (int iR = 0;iR < ap1->get_R_size();++iR)
-                {
-                    const ModuleBase::Vector3<int>& R = ap1->get_R_index(iR);
-                    auto mat1 = ap1->get_HR_values(R.x, R.y, R.z);
-                    auto mat2 = ap2->get_HR_values(R.x, R.y, R.z);
-                    sum += std::inner_product(mat1.get_pointer(), mat1.get_pointer() + mat1.get_memory_size(), mat2.get_pointer(), (TR1)0.0);
-                }
+                const ModuleBase::Vector3<int>& R = ap1->get_R_index(iR);
+                auto mat1 = ap1->get_HR_values(R.x, R.y, R.z);
+                auto mat2 = ap2->get_HR_values(R.x, R.y, R.z);
+                sum += std::inner_product(mat1.get_pointer(), mat1.get_pointer() + mat1.get_memory_size(), mat2.get_pointer(), (TR1)0.0);
             }
         }
         Parallel_Reduce::reduce_all(sum);

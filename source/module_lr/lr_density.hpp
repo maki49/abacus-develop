@@ -41,7 +41,7 @@ namespace LR
                 {
                     elecstate::DensityMatrix<std::complex<double>, double> dm_real(&pmat_, 1, kv_.kvec_d, nk_);
                     LR_Util::initialize_DMR<std::complex<double>, double>(dm_real, pmat_, ucell_, gd_, orb_cutoff_);
-                    LR_Util::get_DMR_real_imag_part(dm, dm_real, ucell_.nat, part);
+                    LR_Util::get_DMR_real_imag_part(dm, dm_real, part);
                     this->gint_->transfer_DM2DtoGrid(dm_real.get_DMR_vector());
                     Gint_inout inout_rho(density, Gint_Tools::job_type::rho, 1, false);
                     this->gint_->cal_gint(&inout_rho);  // add-on

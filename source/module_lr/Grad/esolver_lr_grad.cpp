@@ -153,7 +153,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         const elecstate::DensityMatrix<T, T>& dm_trans =   // D(X) complex
             LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
-        LR_Util::print_DMR(dm_trans, this->ucell.nat, "dm_trans of istate " + std::to_string(istate));
+        LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
 
         // difference density matrix 
         std::vector<ct::Tensor> dm_diff_k = cal_dm_diff_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
@@ -174,7 +174,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         const elecstate::DensityMatrix<T, T>& relaxed_diff_dm =
             LR_Util::build_dm_from_dmk<T, T>(relaxed_diff_dm_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_, /*symmetrize=*/false);
-        // LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm T+Z (Z symmetrized) of istate " + std::to_string(istate));
+        // LR_Util::print_DMR(relaxed_diff_dm, "relaxed_diff_dm T+Z (Z symmetrized) of istate " + std::to_string(istate));
 
         // elecstate::DensityMatrix<T, T> relaxed_diff_dm =    // T+D(Z), (R) can be complex
         //     LR_Util::build_dm_from_dmk<T, T>(
@@ -183,10 +183,10 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         //             + cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_)
         //             ,// ),
         //         this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
-        // LR_Util::print_DMR(relaxed_diff_dm, this->ucell.nat, "relaxed_diff_dm of istate " + std::to_string(istate));
+        // LR_Util::print_DMR(relaxed_diff_dm, "relaxed_diff_dm of istate " + std::to_string(istate));
         elecstate::DensityMatrix<T, double> relaxed_diff_dm_real(&this->paraMat_, 1, this->kv.kvec_d, this->nk);
         LR_Util::initialize_DMR(relaxed_diff_dm_real, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
-        LR_Util::get_DMR_real_imag_part(relaxed_diff_dm, relaxed_diff_dm_real, this->ucell.nat, 'R');
+        LR_Util::get_DMR_real_imag_part(relaxed_diff_dm, relaxed_diff_dm_real, 'R');
 
         // get edm of type DensityMatrix
         // weak_ptr here is to avoid "could not match 'weak_ptr' against 'shared_ptr'"
@@ -224,7 +224,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         if (PARAM.inp.test_force)
         {
             LR_Util::save_DMR(edm_real, "data-EDMR-sparse", this->paraMat_);
-            // LR_Util::print_DMR(edm_real, this->ucell.nat, "edm_real (R) of istate " + std::to_string(istate));
+            // LR_Util::print_DMR(edm_real, "edm_real (R) of istate " + std::to_string(istate));
         }
 
         ModuleBase::matrix force_hxc_dmtrans = lr_force.cal_force_hxc_dmtrans(dm_trans_real, *this->pot[ispin]);
@@ -293,7 +293,7 @@ void LR::ESolver_LR<T, TR>::test_force()
     );
 
     const elecstate::DensityMatrix<T, double>& dm_gs = this->cal_dm_gs();
-    // LR_Util::print_DMR(dm_gs, this->ucell.nat, "DM(R) of ground state");
+    // LR_Util::print_DMR(dm_gs, "DM(R) of ground state");
     ///========================== test 1: reproduce the force of ground state =========================
     // energy density matrix of the ground state
     elecstate::DensityMatrix<T, double> edm_gs(&this->paraMat_, this->nspin, this->kv.kvec_d, this->nk);   //DX
@@ -317,9 +317,9 @@ void LR::ESolver_LR<T, TR>::test_force()
     ///========================== test 3: H2 SZ 4-center gradients =========================
     // if (this->nbasis == 2 && ucell.nat == 2)
     // {
-    //     // lr_force.cal_H2_sz_center4、(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
     //     lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
-    //     // exit(0);
+    //     lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
+    //     exit(0);
     // }
 }
 
