@@ -68,14 +68,71 @@ namespace LR
     }
 
     template<typename TK>
+    void LR_Force<TK>::cal_H2_sz_center2_deriv(const std::vector<double>& orb_cutoffs, const K_Vectors& kv)
+    {
+        GlobalV::ofs_running << "  ==== Test H2_SZ_CENTER2_DERIV dtau(Sij) and dtau(hij) ====" << std::endl;
+        const std::vector<ModuleBase::Vector3<double>>& kvd_test = { ModuleBase::Vector3<double>(0.0, 0.0, 0.0) };
+        auto init_dm_eff = [&, this](const int i, const int j) -> elecstate::DensityMatrix<TK, double>
+            {   // dm_{ij}=1, other elements = 0, i,j = 0,1
+                std::vector<TK> dm_2d(4, 0.0);
+                std::cout << "i<<1 + j =" << ((i << 1) + j) << std::endl;
+                dm_2d[i * 2 + j] = 1.0;
+                elecstate::DensityMatrix<TK, double> dm(&this->pv_, 1, kvd_test, 1);
+                dm.set_DMK_pointer(0, dm_2d.data());
+                LR_Util::initialize_DMR(dm, this->pv_, this->ucell_, this->gd_, orb_cutoffs);
+                dm.cal_DMR();
+                return dm;
+            };
+        for (auto&& i : { 0, 1 })
+            for (auto&& j : { 0, 1 })
+            {
+                elecstate::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j);
+                elecstate::Potential pot_hij = dm_to_hxc_potential(dm_ij);
+                // 1. dtau(S_ij)
+                {
+                    std::vector<hamilt::HContainer<double>>  dS = cal_hs_grad('S', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);   // (dr i|j)
+                    ModuleBase::matrix foverlap = PulayForceStress::cal_pulay_fs(dm_ij, this->ucell_, dS, -1.); //dtau(i|j), related to (dr i|j) (1, -1 or 2)
+                    ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
+                        "H2_SZ_CENTER2_dtau_S(" + std::to_string(i) + std::to_string(j) + ") FORCE (Ry/au)",
+                        foverlap, true);   // F_S_ij = dtau(S_ij)
+                }
+                // 2. dtau(h_ij), h = T + Vl + Vnl
+                {
+                    ModuleBase::matrix stress_tmp;  // dummy
+                    // kinetic (Pulay term only)
+                    std::vector<hamilt::HContainer<double>> dT = cal_hs_grad('T', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);
+                    ModuleBase::matrix ft_dphi = PulayForceStress::cal_pulay_fs(dm_ij, this->ucell_, dT);
+
+                    // local pp Hellmann-Feynman term (which does not depend on the charge density if Hxc is not included)
+                    const Charge chr_dummy = dm_to_charge(dm_ij);
+                    ModuleBase::matrix fvl_dvl = PARAM.inp.vl_in_h ?
+                        ForcePWTerms<double>()(this->ucell_, chr_dummy, this->rhopw_, this->locpp_, this->sf_, /*with_ewald=*/ false) :
+                        ModuleBase::matrix(this->ucell_.nat, 3);
+                    // local pp Pulay term
+                    ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
+                    elecstate::Potential pot_loc = this->local_potential();
+                    PulayForceStress::cal_pulay_fs(dm_ij.get_DMR_vector().size()/*nspin*/, fvl_dphi, stress_tmp,
+                        dm_ij, this->ucell_, &pot_loc, *this->gint_, true, false);
+
+                    // nonlocal pp term (Hellmann-Feynman + Pulay)
+                    ModuleBase::matrix fvnl = cal_force_nonlocal(this->ucell_, this->kvec_d_, this->gd_, this->two_center_bundle_, dm_ij);
+
+                    ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
+                        "H2_SZ_CENTER2_dtau_h1e(" + std::to_string(i) + std::to_string(j) + ") FORCE (Ry/au)",
+                        (ft_dphi + fvl_dvl + fvl_dphi + fvnl) * (-1), true);   // F_h_ij = -dtau(h_ij)
+                }
+            }
+    }
+
+    template<typename TK>
     void LR_Force<TK>::cal_H2_sz_center4(const std::vector<double>& orb_cutoffs,
         const K_Vectors& kv, const bool is_grad)
     {
-        const std::string label = is_grad ? "(d_x(i) j | kl)" : "(ij | kl)";;
+        const std::string label = is_grad ? "dtau(ij | kl)" : "(ij | kl)";;
         GlobalV::ofs_running << "  ==== Test H2_SZ_CENTER4_HXC " << label << " ====" << std::endl;
         const std::vector<ModuleBase::Vector3<double>>& kvd_test = { ModuleBase::Vector3<double>(0.0, 0.0, 0.0) };
         auto init_dm_eff = [&, this](const int i, const int j) -> elecstate::DensityMatrix<TK, double>
-            {
+            {   // dm_{ij}=1, other elements = 0, i,j = 0,1
                 std::vector<TK> dm_2d(4, 0.0);
                 std::cout<<"i<<1 + j =" << ((i<<1) + j) << std::endl;
                 dm_2d[i*2+j] = 1.0;
@@ -94,7 +151,7 @@ namespace LR
             for (auto&& j : { 0, 1 })
             {
                 elecstate::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j);
-                LR_Util::print_DMR(dm_ij, "DMR_" + std::to_string(i) + std::to_string(j));
+                elecstate::Potential pot_hxc_ij = dm_to_hxc_potential(dm_ij);
                 for (auto&& k : { 0, 1 })
                     for (auto&& l : { 0, 1 })
                     {
@@ -102,16 +159,32 @@ namespace LR
                         elecstate::DensityMatrix<TK, double> dm_kl = init_dm_eff(k, l);
                         if (is_grad)
                         {
-                            // 2. build charge & potential 
+                            // 2. pulay term + Hellmann-Feynman term
                             elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
-                            // 3. cal force
-                            ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
+                            ModuleBase::matrix fhartree_pulay(this->ucell_.nat, 3), fhartree_h_f(this->ucell_.nat, 3);
                             ModuleBase::matrix stress_tmp;  // dummy
-                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fvl_dphi, stress_tmp,
-                                dm_ij, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_pulay, stress_tmp, dm_ij, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);  // Pulay term
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_h_f, stress_tmp, dm_kl, this->ucell_, &pot_hxc_ij, *this->gint_, true, false);  // Hellmann-Feynman term
                             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
-                                "H2_SZ_CENTER4_HXC_(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (eV/Angstrom)",
-                                fvl_dphi, false);
+                                "H2_SZ_CENTER4_HXC_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
+                                (fhartree_pulay + fhartree_h_f) * (-2), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
+                            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
+                                "H2_SZ_CENTER4_HXC_Pulay_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
+                                fhartree_pulay * (-2), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
+                            ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
+                                "H2_SZ_CENTER4_HXC_H-F_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
+                                fhartree_h_f * (-2), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
+#ifdef __EXX
+                            if (!this->exx_lri_.expired())
+                            {   // match the Gint result with LibRI
+                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_); // returns ds_kl*0.5
+                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_); // returns ds_ij*0.5
+                                ModuleBase::matrix f_exx = this->cal_force_exx_gs_dm_relaxed_diff(ds_kl, ds_ij, alpha_ * 4.0, ""); // cancel the two 0.5s in Ds
+                                ModuleIO::print_force(GlobalV::ofs_running, ucell_,
+                                    "H2_SZ_CENTER4_EXX_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
+                                    f_exx * 4, true);   // F_exx_ijkl = 1/4(dtau(ik| jl)
+                            }
+#endif
                         }
                         else
                         {
@@ -128,8 +201,8 @@ namespace LR
 #ifdef __EXX
                             if (!this->exx_lri_.expired())
                             {   // match the Gint result with LibRI
-                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_);
-                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_);
+                                auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_); // returns ds_kl*0.5
+                                auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_); // returns ds_ij*0.5
                                 auto lri = this->exx_lri_.lock();
                                 lri->get().set_Ds(std::move(ds_kl), lri->get_info().dm_threshold);
                                 lri->get().cal_Hs();
@@ -138,7 +211,7 @@ namespace LR
                                 lri->post_process_Hexx(lri->Hexxs[0]);
                                 TK e_exx = this->alpha_ * lri->get().post_2D.cal_energy(ds_ij, lri->Hexxs[0]) * 2.0; // 4 is to cancel two 0.5^2 in split_m2D_ktoR(nspin=1)`, and 0.5 for Fock energy
                                 GlobalV::ofs_running << "  H2_SZ_CENTER4_COULOMB ("
-                                    << std::to_string(i) + std::to_string(l) + "|" + std::to_string(k) + std::to_string(j)
+                                    << std::to_string(i) + std::to_string(k) + "|" + std::to_string(j) + std::to_string(l)
                                     << ") by LibRI: " << -e_exx * 2.0 << ", where alpha = " << this->alpha_ << std::endl;  //-2 for Fock energy -> integral
                             }
 #endif  

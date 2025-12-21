@@ -315,12 +315,13 @@ void LR::ESolver_LR<T, TR>::test_force()
     // 2 for spin in f->v. Spin in v->f is already multiplied in the singlet Hartree factor 2.
     /// ======================================= END test 2 =========================================
     ///========================== test 3: H2 SZ 4-center gradients =========================
-    // if (this->nbasis == 2 && ucell.nat == 2)
-    // {
-    //     lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
-    //     lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
-    //     exit(0);
-    // }
+    if (this->nbasis == 2 && ucell.nat == 2)
+    {
+        lr_force.cal_H2_sz_center2_deriv(orb_cutoff_, kv);  // for gradient
+        // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
+        // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
+        exit(0);
+    }
 }
 
 template class LR::ESolver_LR<double, double>;
