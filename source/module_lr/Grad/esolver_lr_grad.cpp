@@ -153,7 +153,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         const elecstate::DensityMatrix<T, T>& dm_trans =   // D(X) complex
             LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
-        LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
+        // LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
 
         // difference density matrix 
         std::vector<ct::Tensor> dm_diff_k = cal_dm_diff_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
@@ -317,10 +317,10 @@ void LR::ESolver_LR<T, TR>::test_force()
     ///========================== test 3: H2 SZ 4-center gradients =========================
     if (this->nbasis == 2 && ucell.nat == 2)
     {
-        lr_force.cal_H2_sz_center2_deriv(orb_cutoff_, kv);  // for gradient
+        // lr_force.cal_H2_sz_center2_deriv(orb_cutoff_, kv);  // for gradient
         // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
         // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
-        exit(0);
+        // exit(0);
     }
 }
 

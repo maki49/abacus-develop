@@ -93,10 +93,11 @@ namespace LR
         elecstate::DensityMatrix<T, T> DM_diff_relaxed(&pmat, 1, kv.kvec_d, nk);    //T+DZ
         LR_Util::initialize_DMR(DM_diff_relaxed, pmat, ucell, gd, orb_cutoff);
         /// operators
-        // 1. 0.5$H_{ia}[T+Z]$, equals to $K_{ab}[T+Z]$ when $(T+Z)$ is symmetrized
+        // 1. 0.5$H_ij[T+Z]$, equals to $K_ij[T+Z]$ when $(T+Z)$ is symmetrized
+        // Note that K_Hxc(singlet) = 2* pot_hxc_gs, that's why there's factor 2 here.
         OperatorLRHxc<T> op_ht(nspin, naos, nocc, nvirt, psi_ks,
             DM_diff_relaxed, gint, pot_hxc_gs, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
-            { 0 }, T(1.0), ATYPE::CC_oo);
+            { 0 }, T(2.0), ATYPE::CC_oo);
 #ifdef __EXX
         OperatorLREXX<T> op_ht_exx(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
             DM_diff_relaxed, exx_lri, kv, p_occ_occ[0], pc, pmat,

@@ -21,7 +21,8 @@ namespace LR
         const Parallel_2D& pmat_mo,
         double* mat_mo,
         const bool add_on,
-        const MO_TYPE type)
+        const MO_TYPE type,
+        const double factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "ao_to_mo_pblas");
         assert(pmat_ao.comm() == pcoeff.comm() && pmat_ao.comm() == pmat_mo.comm());
@@ -60,7 +61,7 @@ namespace LR
             // mat_mo = c ^ TVc
             // descC puts M(nvirt) to row
             pdgemm_(&transa, &transb, &nmo2, &nmo1, &naos,
-                &alpha, coeff.get_pointer(), &i1, &imo2, pcoeff.desc,
+                &factor, coeff.get_pointer(), &i1, &imo2, pcoeff.desc,
                 Vc.data<double>(), &i1, &i1, pVc.desc,
                 &beta, mat_mo + start, &i1, &i1, pmat_mo.desc);
 
@@ -79,7 +80,8 @@ namespace LR
         const Parallel_2D& pmat_mo,
         std::complex<double>* const mat_mo,
         const bool add_on,
-        const MO_TYPE type)
+        const MO_TYPE type,
+        const std::complex<double> factor)
     {
         ModuleBase::TITLE("hamilt_lrtd", "cal_AX_plas");
         assert(pmat_ao.comm() == pcoeff.comm() && pmat_ao.comm() == pmat_mo.comm());
@@ -118,7 +120,7 @@ namespace LR
             // mat_mo = c ^ TVc
             // descC puts M(nvirt) to row
             pzgemm_(&transa, &transb, &nmo2, &nmo1, &naos,
-                &alpha, coeff.get_pointer(), &i1, &imo2, pcoeff.desc,
+                &factor, coeff.get_pointer(), &i1, &imo2, pcoeff.desc,
                 Vc.data<std::complex<double>>(), &i1, &i1, pVc.desc,
                 &beta, mat_mo + start, &i1, &i1, pmat_mo.desc);
         }

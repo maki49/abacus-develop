@@ -16,11 +16,13 @@ namespace LR
     namespace HSolver
     {
         template<typename T>
-        inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0)
+        inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0, const double precision = 8)
         {
-            std::cout << label << std::endl;
+            std::streamsize old = std::cout.precision();
+            std::cout << label << std::setprecision(precision) << std::endl;
             for (auto& e : eigs) { std::cout << e * factor << " "; }
             std::cout << std::endl;
+            std::cout.precision(old);
         }
 
         /// eigensolver for common Hamilt
