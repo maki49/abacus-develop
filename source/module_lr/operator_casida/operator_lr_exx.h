@@ -8,7 +8,7 @@
 #include "module_lr/Grad/dm_diff/dm_diff.h"
 namespace LR
 {
-    inline std::set<std::string> exx_kernel_list() { return { "hf", "hse" }; };
+    inline std::set<std::string> exx_kernel_list() { return { "hf", "hse", "pbe0" }; };
     template<typename T = double>
     class OperatorLREXX : public hamilt::Operator<T, base_device::DEVICE_CPU>
     {

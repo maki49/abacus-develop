@@ -177,6 +177,48 @@ namespace LR_Util
 
 
     template<typename TK, typename TR>
+    void swap_atompair_in_DMR(const elecstate::DensityMatrix<TK, TR>& dm, const int nat)
+    {
+        for (int iat1 = 0; iat1 < nat; ++iat1)
+            for (int iat2 = iat1 + 1; iat2 < nat; ++iat2)
+                for (auto& dr : dm.get_DMR_vector())
+                {
+                    auto ap1 = dr->find_pair(iat1, iat2);
+                    auto ap2 = dr->find_pair(iat2, iat1);
+                    if (ap1 && ap2)
+                        std::swap(ap1, ap2);
+                }
+    }
+
+    template<typename TK>
+    void transpose_DMR(elecstate::DensityMatrix<TK, double>& dm, const int nat)
+    {
+        auto pv = dm.get_paraV_pointer();
+        // 1. transpose dm(k)
+        for (auto& dk : dm.get_DMK_vector())
+            LR_Util::mattrans(dk.data(), pv->get_global_row_size(), *pv);
+
+        // 2. FT
+        dm.cal_DMR();
+        // 3. swap atom pair (iat1, iat2) to (iat2, iat1)
+        swap_atompair_in_DMR(dm, nat);
+    }
+    template<typename TK>
+    void transpose_DMR(elecstate::DensityMatrix<TK, std::complex<double>>& dm, const int nat)
+    {
+        throw std::runtime_error("transpose_DMR is not implemented for complex DMR, due to the lack of minus-sign FT.");
+        auto pv = dm.get_paraV_pointer();
+        // 1. dm(k) dagger
+        for (auto& dk : dm.get_DMK_vector())
+            LR_Util::mattrans(dk.data(), pv->get_global_row_size(), *pv);
+
+        // 2. FT with the minus sign in the exponent (TO DO)
+        dm.cal_DMR();
+        // 3. swap atom pair (iat1, iat2) to (iat2, iat1)
+        swap_atompair_in_DMR(dm, nat);
+    }
+
+    template<typename TK, typename TR>
     elecstate::DensityMatrix<TK, TR> build_dm_from_dmk(const std::vector<ct::Tensor>& dmk,
         const Parallel_Orbitals& pmat,
         const int& nk,
@@ -184,8 +226,9 @@ namespace LR_Util
         const UnitCell& ucell,
         const Grid_Driver& gd,
         const std::vector<double>& orb_cutoff,
-        const bool symmetrize = true,
-        const bool cal_dmr = true)
+        const bool symmetrize = false,
+        const bool cal_dmr = true,
+        const bool transpose = false)
     {
         elecstate::DensityMatrix<TK, TR> dm(&pmat, 1, kvec_d, nk);
         initialize_DMR(dm, pmat, ucell, gd, orb_cutoff);
@@ -197,7 +240,11 @@ namespace LR_Util
         for (int ik = 0; ik < nk; ++ik)
             dm.set_DMK_pointer(ik, dmk[ik].data<TK>());
 
-        if (cal_dmr) { dm.cal_DMR(); }
+        if (cal_dmr)
+        {
+            dm.cal_DMR();
+            LR_Util::swap_atompair_in_DMR(dm, ucell.nat);   // make D(R) consistent with the defination: D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1))
+        }
         return dm;
     }
 

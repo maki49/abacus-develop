@@ -24,7 +24,7 @@ LR::KernelXC::KernelXC(const ModulePW::PW_Basis& rho_basis,
     const std::vector<std::string>& lr_init_xc_kernel,
     const bool openshell) :rho_basis_(rho_basis), openshell_(openshell)
 {
-    if (!std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(kernel_name)) { return; }
+    if (!LR_Util::has_local_xc(kernel_name)) { return; }
     XC_Functional::set_xc_type(kernel_name);    // for hse, (1-alpha) and omega are set here
 
     const int& nrxx = rho_basis.nrxx;

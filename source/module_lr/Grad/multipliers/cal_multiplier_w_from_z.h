@@ -158,9 +158,12 @@ namespace LR
         cal_dm_diff_relaxed(0, X, Z);  // relaxed difference density matrix T+DZ
         // the 3 terms
         op_ht.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);    //comment out this line to test H[T+Z]=0
-        if (LR::exx_kernel_list().count(xc_kernel))
+        // std::cout << "W (H[T+Z])) local terms: " << std::endl;
+        // LR_Util::print_value(W, nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());
+        if (LR::exx_kernel_list().count(PARAM.inp.dft_functional))  // H[T+Z] term depends on ground-state kernel (dft_functional)
             op_ht_exx.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);
-
+        // std::cout << "W (H[T+Z])) local +exx terms: " << std::endl;
+        // LR_Util::print_value(W, nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());
         if (LR_Util::has_local_xc(xc_kernel))
             op_gxc.act(/*nband=*/1, ld_oo, /*npol=*/1, X, W);
 

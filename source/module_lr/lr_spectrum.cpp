@@ -30,6 +30,7 @@ elecstate::DensityMatrix<T, T> LR::LR_Spectrum<T>::cal_transition_density_matrix
     {
         LR_Util::initialize_DMR(DM_trans, this->pmat, this->ucell, this->gd_, this->orb_cutoff_);
         DM_trans.cal_DMR();
+        LR_Util::swap_atompair_in_DMR(DM_trans, ucell.nat);   // make D(R) consistent with the defination: D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1))
     }
     return DM_trans;
 }

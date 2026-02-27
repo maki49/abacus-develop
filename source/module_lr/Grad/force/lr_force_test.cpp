@@ -3,6 +3,10 @@
 #include "pulay_force_hcontainer.h"
 #include "module_hamilt_lcao/hamilt_lcaodft/pulay_force_stress.h"   // only for gint terms
 #include "module_lr/utils/lr_util_hcontainer.h"
+#include "module_lr/utils/lr_util_print.h"
+#ifdef __EXX
+#include "module_lr/operator_casida/operator_lr_exx.h"
+#endif
 namespace LR
 {
     template<typename TK>
@@ -34,8 +38,7 @@ namespace LR
         ModuleBase::matrix f_nonortho = cal_force_overlap_edm(edm_gs); // overlap
         this->gint_->reset_DMRGint(1);
 #ifdef __EXX
-        const std::set<std::string> exx_kernel_list = { "hf", "hse" };
-        if (exx_kernel_list.count(PARAM.inp.dft_functional))
+        if (exx_kernel_list().count(PARAM.inp.dft_functional))
         {
             const auto& Ds_gs = LR_Util::get_exx_Ds_gs(dm_gs, ucell_, kv, pv_);
             const auto& Ds_gs_2 = LR_Util::get_exx_Ds_gs(dm_gs, ucell_, kv, pv_);

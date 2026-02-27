@@ -26,6 +26,7 @@ namespace LR
         const int& lgd = gint->gridt->lgd;
 
         this->DM_trans.cal_DMR();  //DM_trans.get_DMR_vector() is 2d-block parallized
+        LR_Util::swap_atompair_in_DMR(this->DM_trans, ucell.nat);   // make D(R) consistent with the defination: D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1))
         // LR_Util::print_DMR(DM_trans, ucell.nat, "DMR");
 
         // ========================= begin grid calculation=========================

@@ -29,7 +29,7 @@ namespace LR_Util
     /// @brief check if the xc functional has local xc kernel
     inline bool has_local_xc(const std::string& name)
     {
-        return std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(name);
+        return std::set<std::string>({ "lda", "pwlda", "pbe", "hse", "pbe0" }).count(name);
     }
 
     /// @brief calculate the number of electrons
@@ -80,6 +80,10 @@ namespace LR_Util
     void matsym(const T* in, const int n, const Parallel_2D& pmat, T* out);
     template<typename T>
     void matsym(T* inout, const int n, const Parallel_2D& pmat);
+    template<typename T>
+    void mattrans(const T* in, const int n, const Parallel_2D& pmat, T* out);
+    template<typename T>
+    void mattrans(T* inout, const int n, const Parallel_2D& pmat);
 
     // calculate (A-A^T)/2 (in-place version)
     template<typename T>

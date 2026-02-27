@@ -84,7 +84,7 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::parameter_check()const
 {
     const std::set<std::string> lr_solvers = { "dav", "lapack" , "spectrum", "dav_subspace", "cg" };
-    const std::set<std::string> xc_kernels = { "rpa", "lda", "pwlda", "pbe", "hf" , "hse" };
+    const std::set<std::string> xc_kernels = { "rpa", "lda", "pwlda", "pbe", "hf" , "hse", "pbe0" };
     if (lr_solvers.find(this->input.lr_solver) == lr_solvers.end())
     {
         throw std::invalid_argument("ESolver_LR: unknown type of lr_solver");
@@ -255,7 +255,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
     init_pot(*ks_sol.pelec->charge);
 
 #ifdef __EXX
-    if (xc_kernel == "hf" || xc_kernel == "hse")
+    if (exx_kernel_list().count(xc_kernel) )
     {
         // if the same kernel is calculated in the esolver_ks, move it
         std::string dft_functional = LR_Util::tolower(input.dft_functional);
@@ -266,10 +266,10 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
         } else    // construct C, V from scratch
         {
             // set ccp_type according to the xc_kernel
-            if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
+            if (xc_kernel == "hf" || xc_kernel == "pbe0") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
             else if (xc_kernel == "hse") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Erfc; }
             this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
-            this->exx_lri->init(MPI_COMM_WORLD, ucell,this->kv, ks_sol.orb_);
+            this->exx_lri->init(MPI_COMM_WORLD, ucell,this->kv, ks_sol.orb_);   
             this->exx_lri->cal_exx_ions(ucell,input.out_ri_cv);
         }
     }
@@ -442,8 +442,8 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
     // 1. EXX xc_kernel
     // 2. cal_force with ground state with EXX functional
 #ifdef __EXX
-    if (((xc_kernel == "hf" || xc_kernel == "hse") && this->input.lr_solver != "spectrum")
-        || (PARAM.inp.cal_force && (PARAM.inp.dft_functional == "hf" || PARAM.inp.dft_functional == "hse")))
+    if (((exx_kernel_list().count(xc_kernel)) && this->input.lr_solver != "spectrum")
+        || (PARAM.inp.cal_force && (exx_kernel_list().count(PARAM.inp.dft_functional) )))
     {
         // set ccp_type according to the xc_kernel
         if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
@@ -516,6 +516,7 @@ void LR::ESolver_LR<T, TR>::runner(UnitCell& ucell, const int istep)
             if (input.lr_solver != "lapack") { pre_op.act(1, nloc_per_band, 1, precondition.data(), precondition.data()); }
             // auto spin_types = std::vector<std::string>({ "singlet", "triplet" });
             this->spin_types = { "singlet", "triplet" };
+            // for (int is = 0;is < nspin - 1;++is)
             for (int is = 0;is < nspin;++is)
             {
                 std::cout << "Calculating " << spin_types[is] << " excitations" << std::endl;
@@ -605,6 +606,7 @@ void LR::ESolver_LR<T, TR>::after_all_runners(UnitCell& ucell)
     double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
     for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
     // auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
+    // for (int is = 0;is < this->X.size() - 1;++is)
     for (int is = 0;is < this->X.size();++is)
     {
         LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, this->gint_, *this->pw_rho, *this->psi_ks,

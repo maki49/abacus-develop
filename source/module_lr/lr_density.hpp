@@ -85,7 +85,7 @@ namespace LR
             // 2. calculate DM(R)
             elecstate::DensityMatrix<T, T> dm_diff=
                 LR_Util::build_dm_from_dmk<T, T>(dm_diff_k,
-                    this->pmat_, this->nk_, this->kv_.kvec_d, this->ucell_, this->gd_, this->orb_cutoff_, /*symmetrize=*/false);
+                    this->pmat_, this->nk_, this->kv_.kvec_d, this->ucell_, this->gd_, this->orb_cutoff_);
             // 3. calculate electron density from DM(R)
             this->dm_to_density(dm_diff, density);
         }

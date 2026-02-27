@@ -147,14 +147,15 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         // The imag part will be cancelled in the force calculation, so we use double DM(R) to calculate force. 
         // But complex transition DM(R) is still used in energy density matrix calculation.
         const auto& dm_trans_k = cal_dm_trans_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
-        const elecstate::DensityMatrix<T, double>& dm_trans_real =   // D(X), double (FIXME: not enough for periodic system!)
+        auto dm_trans_real =   // D(X), double (FIXME: not enough for periodic system!)
             LR_Util::build_dm_from_dmk<T, double>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
-        const elecstate::DensityMatrix<T, T>& dm_trans =   // D(X) complex
+        LR_Util::transpose_DMR(dm_trans_real, this->ucell.nat); //D(X) is not symmetric, need to transpose for the left side of force calculation
+        auto dm_trans =   // D(X) complex
             LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+        LR_Util::transpose_DMR(dm_trans, this->ucell.nat);
         // LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
-
         // difference density matrix 
         std::vector<ct::Tensor> dm_diff_k = cal_dm_diff_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
         // std::cout << "dm_diff_k T(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
@@ -173,7 +174,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         const std::vector<ct::Tensor>& relaxed_diff_dm_k = dm_diff_k + dm_relaxed_k;
         const elecstate::DensityMatrix<T, T>& relaxed_diff_dm =
             LR_Util::build_dm_from_dmk<T, T>(relaxed_diff_dm_k,
-                this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_, /*symmetrize=*/false);
+                this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
         // LR_Util::print_DMR(relaxed_diff_dm, "relaxed_diff_dm T+Z (Z symmetrized) of istate " + std::to_string(istate));
 
         // elecstate::DensityMatrix<T, T> relaxed_diff_dm =    // T+D(Z), (R) can be complex
@@ -219,7 +220,7 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
             test_edm_H2<T>(edm_k[0].data<T>(), this->eig_ks.c, c, this->nbasis);
         }
         elecstate::DensityMatrix<T, double> edm_real = LR_Util::build_dm_from_dmk<T, double>(edm_k,
-            this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
+            this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_, /*symmetrize=*/true);
         // print edm_real (R)
         if (PARAM.inp.test_force)
         {

@@ -96,6 +96,42 @@ namespace LR_Util
     }
 
     template<>
+    void mattrans<double>(const double* in, const int n, const Parallel_2D& pmat, double* out)
+    {
+        std::copy(in, in + pmat.get_local_size(), out);
+        const double alpha = 1.0, beta = 0.0;
+        const int i1 = 1;
+        pdtran_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+    }
+    template<>
+    void mattrans<double>(double* inout, const int n, const Parallel_2D& pmat)
+    {
+        std::vector<double> tmp(pmat.get_local_size());
+        std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
+        const double alpha = 1.0, beta = 0.0;
+        const int i1 = 1;
+        pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+    }
+    template<>
+    void mattrans<std::complex<double>>(const std::complex<double>* in, const int n, const Parallel_2D& pmat, std::complex<double>* out)
+    {
+        std::copy(in, in + pmat.get_local_size(), out);
+        const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
+        const int i1 = 1;
+        pztranc_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+    }
+    template<>
+    void mattrans<std::complex<double>>(std::complex<double>* inout, const int n, const Parallel_2D& pmat)
+    {
+        std::vector<std::complex<double>> tmp(pmat.get_local_size());
+        std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
+        const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
+        const int i1 = 1;
+        pztranc_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+    }
+
+
+    template<>
     void matantisym<double>(double* inout, const int n, const Parallel_2D& pmat)
     {
         std::vector<double> tmp(pmat.get_local_size());
