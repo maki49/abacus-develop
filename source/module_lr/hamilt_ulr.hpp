@@ -56,7 +56,7 @@ namespace LR
             this->ops[3]->add(newHxc(1, 1));
 
 #ifdef __EXX
-            if (xc_kernel == "hf" || xc_kernel == "hse")
+            if (xc_kernel == "hf" || xc_kernel == "hse" || xc_kernel == "pbe0")
             {
                 std::vector<psi::Psi<T>> psi_ks_spin = { LR_Util::get_psi_spin(psi_ks_in, 0, nk), LR_Util::get_psi_spin(psi_ks_in, 1, nk) };
                 for (int is : {0, 1})

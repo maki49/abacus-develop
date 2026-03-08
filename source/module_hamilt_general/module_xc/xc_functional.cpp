@@ -8,6 +8,7 @@
 
 #ifdef USE_LIBXC
 #include "xc_functional_libxc.h"
+#include <xc_funcs.h>
 #endif
 
 XC_Functional::XC_Functional(){}

@@ -1,5 +1,5 @@
 #ifdef USE_LIBXC
-
+#include <xc_funcs.h>
 #include "xc_functional_libxc.h"
 #include "module_parameter/parameter.h"
 #include "module_base/tool_quit.h"

@@ -1,5 +1,5 @@
 #ifdef USE_LIBXC
-
+#include <xc_funcs.h>
 #include "xc_functional.h"
 #include "xc_functional_libxc.h"
 #include "module_elecstate/module_charge/charge.h"

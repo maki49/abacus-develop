@@ -81,7 +81,7 @@ template<typename T, typename TR>
 void LR::ESolver_LR<T, TR>::parameter_check()const
 {
     const std::set<std::string> lr_solvers = { "dav", "lapack" , "spectrum", "dav_subspace", "cg" };
-    const std::set<std::string> xc_kernels = { "rpa", "lda", "pwlda", "pbe", "hf" , "hse" };
+    const std::set<std::string> xc_kernels = { "rpa", "lda", "pwlda", "pbe", "hf" , "hse", "pbe0" };
     if (lr_solvers.find(this->input.lr_solver) == lr_solvers.end()) {
         throw std::invalid_argument("ESolver_LR: unknown type of lr_solver");
 }
@@ -229,7 +229,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
     init_pot(*ks_sol.pelec->charge);
 
 #ifdef __EXX
-    if (xc_kernel == "hf" || xc_kernel == "hse")
+    if (xc_kernel == "hf" || xc_kernel == "hse" || xc_kernel == "pbe0")
     {
         // if the same kernel is calculated in the esolver_ks, move it
         std::string dft_functional = LR_Util::tolower(input.dft_functional);
@@ -240,7 +240,7 @@ LR::ESolver_LR<T, TR>::ESolver_LR(ModuleESolver::ESolver_KS_LCAO<T, TR>&& ks_sol
         } else    // construct C, V from scratch
         {
             // set ccp_type according to the xc_kernel
-            if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
+            if (xc_kernel == "hf" || xc_kernel == "pbe0") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
             else if (xc_kernel == "hse") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Erfc; }
             this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
             this->exx_lri->init(MPI_COMM_WORLD, ucell,this->kv, ks_sol.orb_);
@@ -413,10 +413,10 @@ LR::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp, UnitCell& ucell) : inpu
 
     // if EXX from scratch, init 2-center integral and calculate Cs, Vs 
 #ifdef __EXX
-    if ((xc_kernel == "hf" || xc_kernel == "hse") && this->input.lr_solver != "spectrum")
+    if ((xc_kernel == "hf" || xc_kernel == "hse" || xc_kernel == "pbe0") && this->input.lr_solver != "spectrum")
     {
         // set ccp_type according to the xc_kernel
-        if (xc_kernel == "hf") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
+        if (xc_kernel == "hf" || xc_kernel == "pbe0") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Hf; }
         else if (xc_kernel == "hse") { exx_info.info_global.ccp_type = Conv_Coulomb_Pot_K::Ccp_Type::Erfc; }
         this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
         this->exx_lri->init(MPI_COMM_WORLD, ucell,this->kv, orb);

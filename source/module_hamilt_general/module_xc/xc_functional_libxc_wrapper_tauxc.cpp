@@ -3,7 +3,7 @@
 // 1. tau_xc
 
 #ifdef USE_LIBXC
-
+#include <xc_funcs.h>
 #include "xc_functional_libxc.h"
 #include "module_hamilt_pw/hamilt_pwdft/global.h"
 #include <array>

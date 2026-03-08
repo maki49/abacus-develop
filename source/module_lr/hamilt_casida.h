@@ -99,7 +99,7 @@ namespace LR
                 this->ops->add(lr_hxc);
             }
 #ifdef __EXX
-            if (xc_kernel == "hf" || xc_kernel == "hse")
+            if (xc_kernel == "hf" || xc_kernel == "hse" || xc_kernel == "pbe0")
             {   //add Exx operator
                 if (ri_hartree_benchmark != "none" && spin_type == "singlet")
                 {

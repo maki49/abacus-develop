@@ -125,6 +125,8 @@ namespace LR
         lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
             lri->mpi_comm, std::move(lri->exx_lri.Hs), std::get<0>(judge[0]), std::get<1>(judge[0]));
         lri->post_process_Hexx(lri->Hexxs[0]);
+        // LR_Util::print_CV(lri->Hexxs[0], "Hexxs in OperatorLREXX", 1e-10);
+
 
         // 3. set [AX]_iak = DM_onbase * Hexxs for each occ-virt pair and each k-point
         // caution: parrallel

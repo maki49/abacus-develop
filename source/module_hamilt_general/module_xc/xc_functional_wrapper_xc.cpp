@@ -6,6 +6,7 @@
 // 3. xc_spin_libxc, which is the wrapper for LDA functional, spin polarized
 
 #include "xc_functional.h"
+#include <xc_funcs.h>
 #include <stdexcept>
 
 void XC_Functional::xc(const double &rho, double &exc, double &vxc)

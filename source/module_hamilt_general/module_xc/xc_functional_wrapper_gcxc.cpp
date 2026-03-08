@@ -13,6 +13,7 @@
 
 #ifdef USE_LIBXC
 #include "xc_functional_libxc.h"
+#include <xc_funcs.h>
 #endif
 
 void XC_Functional::gcxc(const double &rho, const double &grho, double &sxc,
