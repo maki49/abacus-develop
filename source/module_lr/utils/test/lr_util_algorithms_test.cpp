@@ -152,6 +152,156 @@ TEST(LR_Util, RWValue)
     for (int i = 0;i < vec2.size();++i) { EXPECT_EQ(vec2[i], vec[i]); };
 }
 
+static void matmul2_real(const double* A, const double* V, double* AV) {
+    AV[0] = A[0] * V[0] + A[2] * V[1];
+    AV[1] = A[1] * V[0] + A[3] * V[1];
+    AV[2] = A[0] * V[2] + A[2] * V[3];
+    AV[3] = A[1] * V[2] + A[3] * V[3];
+}
+static void matmul2_complex(const std::complex<double>* A, const std::complex<double>* V, std::complex<double>* AV) {
+    AV[0] = A[0] * V[0] + A[2] * V[1];
+    AV[1] = A[1] * V[0] + A[3] * V[1];
+    AV[2] = A[0] * V[2] + A[2] * V[3];
+    AV[3] = A[1] * V[2] + A[3] * V[3];
+}
+static double resid2_real(const double* A, const double* V, const double* w) {
+    double AV[4]; matmul2_real(A, V, AV);
+    double VD[4] = { V[0] * w[0], V[1] * w[0], V[2] * w[1], V[3] * w[1] };
+    double r_col = 0.0; for (int i = 0; i < 4; ++i) r_col += std::abs(AV[i] - VD[i]);
+
+    double Vt[4] = { V[0], V[2], V[1], V[3] };
+    matmul2_real(A, Vt, AV);
+    VD[0] = Vt[0] * w[0]; VD[1] = Vt[1] * w[0]; VD[2] = Vt[2] * w[1]; VD[3] = Vt[3] * w[1];
+    double r_row = 0.0; for (int i = 0; i < 4; ++i) r_row += std::abs(AV[i] - VD[i]);
+    return std::min(r_col, r_row);
+}
+static double resid2_complex(const std::complex<double>* A, const std::complex<double>* V, const double* w) {
+    std::complex<double> AV[4]; matmul2_complex(A, V, AV);
+    std::complex<double> VD[4] = { V[0] * w[0], V[1] * w[0], V[2] * w[1], V[3] * w[1] };
+    double r_col = 0.0; for (int i = 0; i < 4; ++i) r_col += std::abs(AV[i] - VD[i]);
+
+    std::complex<double> Vt[4] = { V[0], V[2], V[1], V[3] };
+    matmul2_complex(A, Vt, AV);
+    VD[0] = Vt[0] * w[0]; VD[1] = Vt[1] * w[0]; VD[2] = Vt[2] * w[1]; VD[3] = Vt[3] * w[1];
+    double r_row = 0.0; for (int i = 0; i < 4; ++i) r_row += std::abs(AV[i] - VD[i]);
+    return std::min(r_col, r_row);
+}
+static void make_sym2(double* A) {
+    A[0] = 2.0; A[1] = 1.0; A[2] = 1.0; A[3] = 3.0;
+}
+static void make_herm2(std::complex<double>* A) {
+    A[0] = std::complex<double>(2.0, 0.0);
+    A[1] = std::complex<double>(1.0, -1.0);
+    A[2] = std::conj(A[1]);
+    A[3] = std::complex<double>(3.0, 0.0);
+}
+TEST(LR_Util, DiagLapackZheevReal)
+{
+    const int n = 2;
+    double A[4]; make_sym2(A);
+    double A0[4]; std::copy(A, A + 4, A0);
+    double w[2];
+    LR_Util::diag_lapack_zheev(n, A, w);
+    double t = 1e-10;
+    double a = A0[0], c = A0[3], b = A0[1];
+    double tr = a + c;
+    double disc = std::sqrt((a - c) * (a - c) + 4.0 * b * b);
+    double wexp0 = 0.5 * (tr - disc);
+    double wexp1 = 0.5 * (tr + disc);
+    EXPECT_NEAR(w[0], wexp0, t);
+    EXPECT_NEAR(w[1], wexp1, t);
+    const double r = resid2_real(A0, A, w);
+    if (r > 1e-8)
+    {
+        std::cerr << "DiagLapackZheevReal residual=" << r << "\n";
+        std::cerr << "A0: " << A0[0] << " " << A0[2] << " ; " << A0[1] << " " << A0[3] << "\n";
+        std::cerr << "w: " << w[0] << " " << w[1] << "\n";
+        std::cerr << "V(col-major): " << A[0] << " " << A[2] << " ; " << A[1] << " " << A[3] << "\n";
+    }
+    EXPECT_LE(r, 1e-8);
+}
+TEST(LR_Util, DiagLapackZheevComplex)
+{
+    const int n = 2;
+    std::complex<double> A[4]; make_herm2(A);
+    std::complex<double> A0[4]; std::copy(A, A + 4, A0);
+    double w[2];
+    LR_Util::diag_lapack_zheev(n, A, w);
+    double t = 1e-10;
+    double a = A0[0].real(), c = A0[3].real();
+    double b2 = std::norm(A0[1]);
+    double tr = a + c;
+    double disc = std::sqrt((a - c) * (a - c) + 4.0 * b2);
+    double wexp0 = 0.5 * (tr - disc);
+    double wexp1 = 0.5 * (tr + disc);
+    EXPECT_NEAR(w[0], wexp0, t);
+    EXPECT_NEAR(w[1], wexp1, t);
+    const double r = resid2_complex(A0, A, w);
+    if (r > 1e-8)
+    {
+        std::cerr << "DiagLapackZheevComplex residual=" << r << "\n";
+        std::cerr << "A0: (" << A0[0] << ") (" << A0[2] << ") ; (" << A0[1] << ") (" << A0[3] << ")\n";
+        std::cerr << "w: " << w[0] << " " << w[1] << "\n";
+        std::cerr << "V(col-major): (" << A[0] << ") (" << A[2] << ") ; (" << A[1] << ") (" << A[3] << ")\n";
+    }
+    EXPECT_LE(r, 1e-8);
+}
+TEST(LR_Util, DiagLapackZheevxReal)
+{
+    const int n = 2;
+    double Aref[4]; make_sym2(Aref);
+    double wref[2];
+    double Aref_evec[4]; std::copy(Aref, Aref + 4, Aref_evec);
+    LR_Util::diag_lapack_zheev(n, Aref_evec, wref);
+    double A[4]; make_sym2(A);
+    double w[2];
+    LR_Util::diag_lapack_zheevx(n, A, w);
+    EXPECT_NEAR(w[0], wref[0], 1e-10);
+    EXPECT_NEAR(w[1], wref[1], 1e-10);
+    EXPECT_LE(resid2_real(Aref, A, w), 1e-8);
+}
+TEST(LR_Util, DiagLapackZheevxComplex)
+{
+    const int n = 2;
+    std::complex<double> Aref[4]; make_herm2(Aref);
+    double wref[2];
+    std::complex<double> Aref_evec[4]; std::copy(Aref, Aref + 4, Aref_evec);
+    LR_Util::diag_lapack_zheev(n, Aref_evec, wref);
+    std::complex<double> A[4]; make_herm2(A);
+    double w[2];
+    LR_Util::diag_lapack_zheevx(n, A, w);
+    EXPECT_NEAR(w[0], wref[0], 1e-10);
+    EXPECT_NEAR(w[1], wref[1], 1e-10);
+    EXPECT_LE(resid2_complex(Aref, A, w), 1e-8);
+}
+TEST(LR_Util, DiagLapackZheevrReal)
+{
+    const int n = 2;
+    double Aref[4]; make_sym2(Aref);
+    double wref[2];
+    double Aref_evec[4]; std::copy(Aref, Aref + 4, Aref_evec);
+    LR_Util::diag_lapack_zheev(n, Aref_evec, wref);
+    double A[4]; make_sym2(A);
+    double w[2];
+    LR_Util::diag_lapack_zheevr(n, A, w);
+    EXPECT_NEAR(w[0], wref[0], 1e-10);
+    EXPECT_NEAR(w[1], wref[1], 1e-10);
+    EXPECT_LE(resid2_real(Aref, A, w), 1e-8);
+}
+TEST(LR_Util, DiagLapackZheevrComplex)
+{
+    const int n = 2;
+    std::complex<double> Aref[4]; make_herm2(Aref);
+    double wref[2];
+    std::complex<double> Aref_evec[4]; std::copy(Aref, Aref + 4, Aref_evec);
+    LR_Util::diag_lapack_zheev(n, Aref_evec, wref);
+    std::complex<double> A[4]; make_herm2(A);
+    double w[2];
+    LR_Util::diag_lapack_zheevr(n, A, w);
+    EXPECT_NEAR(w[0], wref[0], 1e-10);
+    EXPECT_NEAR(w[1], wref[1], 1e-10);
+    EXPECT_LE(resid2_complex(Aref, A, w), 1e-8);
+}
 int main(int argc, char** argv)
 {
     srand(time(NULL));  // for random number generator

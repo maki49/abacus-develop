@@ -78,6 +78,15 @@ if(ELPA_FOUND)
            IMPORTED_LOCATION "${ELPA_LIBRARY}"
            INTERFACE_INCLUDE_DIRECTORIES "${ELPA_INCLUDE_DIR}")
     endif()
+
+    if(TARGET ELPA::ELPA)
+        get_filename_component(_elpa_libdir "${ELPA_LIBRARY}" DIRECTORY)
+        if(_elpa_libdir)
+            set_property(TARGET ELPA::ELPA APPEND PROPERTY
+                INTERFACE_LINK_OPTIONS "-Wl,-rpath,${_elpa_libdir}")
+        endif()
+        unset(_elpa_libdir)
+    endif()
 endif()
 
 set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${ELPA_INCLUDE_DIR})

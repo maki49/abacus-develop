@@ -54,7 +54,11 @@ namespace LR
                 std::vector<T> Amat_full = hm.matrix();
                 const int gdim = std::sqrt(Amat_full.size());
                 eigenvalue.resize(gdim);
-                if (hermitian) { LR_Util::diag_lapack(gdim, Amat_full.data(), eigenvalue.data()); }
+                if (hermitian)
+                {
+                    LR_Util::diag_elpa(gdim, Amat_full.data(), eigenvalue.data());
+                    // LR_Util::diag_lapack_zheev(gdim, Amat_full.data(), eigenvalue.data());
+                }
                 else
                 {
                     std::vector<std::complex<double>> eig_complex(gdim);

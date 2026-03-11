@@ -33,15 +33,32 @@ ELPA_Solver::ELPA_Solver(const bool isReal,
     this->nev = nev;
     this->narows = narows;
     this->nacols = nacols;
-    for (int i = 0; i < 9; ++i)
-        this->desc[i] = desc[i];
-    cblacs_ctxt = desc[1];
-    nFull = desc[2];
-    nblk = desc[4];
-    lda = desc[8];
+    if (desc)
+    {
+        for (int i = 0; i < 9; ++i)
+            this->desc[i] = desc[i];
+        cblacs_ctxt = desc[1];
+        nFull = desc[2];
+        nblk = desc[4];
+        lda = desc[8];
+    }
+    else
+    {
+        cblacs_ctxt = 0;
+        nFull = std::max(narows, nacols);
+        nblk = nFull;
+        lda = narows;
+        nprows = 1;
+        npcols = 1;
+        myprow = 0;
+        mypcol = 0;
+    }
     // cout<<"parameters are passed\n";
     MPI_Comm_rank(comm, &myid);
-    Cblacs_gridinfo(cblacs_ctxt, &nprows, &npcols, &myprow, &mypcol);
+    if (desc)
+    {
+        Cblacs_gridinfo(cblacs_ctxt, &nprows, &npcols, &myprow, &mypcol);
+    }
     // cout<<"blacs grid is inited\n";
     allocate_work();
     // cout<<"work array is inited\n";
@@ -111,19 +128,39 @@ ELPA_Solver::ELPA_Solver(const bool isReal,
     this->nev = nev;
     this->narows = narows;
     this->nacols = nacols;
-    for (int i = 0; i < 9; ++i)
-        this->desc[i] = desc[i];
+    if (desc)
+    {
+        for (int i = 0; i < 9; ++i)
+            this->desc[i] = desc[i];
+    }
 
     kernel_id = otherParameter[0];
     useQR = otherParameter[1];
     loglevel = otherParameter[2];
 
-    cblacs_ctxt = desc[1];
-    nFull = desc[2];
-    nblk = desc[4];
-    lda = desc[8];
+    if (desc)
+    {
+        cblacs_ctxt = desc[1];
+        nFull = desc[2];
+        nblk = desc[4];
+        lda = desc[8];
+    }
+    else
+    {
+        cblacs_ctxt = 0;
+        nFull = std::max(narows, nacols);
+        nblk = nFull;
+        lda = narows;
+        nprows = 1;
+        npcols = 1;
+        myprow = 0;
+        mypcol = 0;
+    }
     MPI_Comm_rank(comm, &myid);
-    Cblacs_gridinfo(cblacs_ctxt, &nprows, &npcols, &myprow, &mypcol);
+    if (desc)
+    {
+        Cblacs_gridinfo(cblacs_ctxt, &nprows, &npcols, &myprow, &mypcol);
+    }
     allocate_work();
 
     int error;

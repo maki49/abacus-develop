@@ -2,6 +2,9 @@
 #include "lr_util.h"
 #include "module_base/lapack_connector.h"
 #include "module_base/scalapack_connector.h"
+#include "module_base/blacs_connector.h"
+#include "module_hsolver/genelpa/elpa_solver.h"
+#include "module_base/module_container/base/third_party/lapack.h"
 namespace LR_Util
 {
     /// =================PHYSICS====================
@@ -115,9 +118,9 @@ namespace LR_Util
     }
 #endif
 
-    void diag_lapack(const int& n, double* mat, double* eig)
+    void diag_lapack_zheev(const int& n, double* mat, double* eig)
     {
-        ModuleBase::TITLE("LR_Util", "diag_lapack<double>");
+        ModuleBase::TITLE("LR_Util", "diag_lapack_zheev<double>");
         int info = 0;
         char jobz = 'V', uplo = 'U';
         double work_tmp;
@@ -130,9 +133,9 @@ namespace LR_Util
         delete[] work2;
     }
 
-    void diag_lapack(const int& n, std::complex<double>* mat, double* eig)
+    void diag_lapack_zheev(const int& n, std::complex<double>* mat, double* eig)
     {
-        ModuleBase::TITLE("LR_Util", "diag_lapack<complex<double>>");
+        ModuleBase::TITLE("LR_Util", "diag_lapack_zheev<complex<double>>");
         int lwork = 2 * n;
         std::complex<double>* work2 = new std::complex<double>[lwork];
         double* rwork = new double[3 * n - 2];
@@ -144,6 +147,183 @@ namespace LR_Util
         delete[] work2;
     }
 
+    void diag_lapack_zheevx(const int& n, double* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_lapack_zheevx<double>");
+        int info = 0;
+        char jobz = 'V', range = 'A', uplo = 'U';
+        const double vl = 0.0, vu = 0.0, abstol = 0.0;
+        const int il = 0, iu = 0;
+        int m = 0;
+        const int ldz = n;
+        double* z = new double[ldz * n];
+        const int lwork = std::max(8 * n, 1);
+        const int lrwork = std::max(7 * n, 1);
+        const int liwork = std::max(5 * n, 1);
+        double* work = new double[lwork];
+        double* rwork = new double[lrwork];
+        int* iwork = new int[liwork];
+        int* ifail = new int[n];
+        dsyevx_(&jobz, &range, &uplo, &n, mat, &n, &vl, &vu, &il, &iu, &abstol, &m, eig, z, &ldz,
+                work, &lwork, rwork, iwork, ifail, &info);
+        if (info) { std::cout << "ERROR: Lapack solver dsyevx, info=" << info << std::endl; }
+        std::copy(z, z + ldz * n, mat);
+        delete[] ifail;
+        delete[] iwork;
+        delete[] rwork;
+        delete[] work;
+        delete[] z;
+    }
+
+    void diag_lapack_zheevx(const int& n, std::complex<double>* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_lapack_zheevx<complex<double>>");
+        int info = 0;
+        char jobz = 'V', range = 'A', uplo = 'U';
+        const double vl = 0.0, vu = 0.0, abstol = 0.0;
+        const int il = 0, iu = 0;
+        int m = 0;
+        const int ldz = n;
+        std::complex<double>* z = new std::complex<double>[ldz * n];
+        const int lwork = std::max(2 * n, 1);
+        const int lrwork = std::max(7 * n, 1);
+        const int liwork = std::max(5 * n, 1);
+        std::complex<double>* work = new std::complex<double>[lwork];
+        double* rwork = new double[lrwork];
+        int* iwork = new int[liwork];
+        int* ifail = new int[n];
+        zheevx_(&jobz, &range, &uplo, &n, mat, &n, &vl, &vu, &il, &iu, &abstol, &m, eig, z, &ldz,
+                work, &lwork, rwork, iwork, ifail, &info);
+        if (info) { std::cout << "ERROR: Lapack solver zheevx, info=" << info << std::endl; }
+        std::copy(z, z + ldz * n, mat);
+        delete[] ifail;
+        delete[] iwork;
+        delete[] rwork;
+        delete[] work;
+        delete[] z;
+    }
+
+    extern "C" {
+        void dsyevr_(const char* jobz, const char* range, const char* uplo, const int* n,
+                     double* a, const int* lda, const double* vl, const double* vu, const int* il, const int* iu,
+                     const double* abstol, int* m, double* w, double* z, const int* ldz, int* isuppz,
+                     double* work, const int* lwork, int* iwork, const int* liwork, int* info);
+        void zheevr_(const char* jobz, const char* range, const char* uplo, const int* n,
+                     std::complex<double>* a, const int* lda, const double* vl, const double* vu, const int* il, const int* iu,
+                     const double* abstol, int* m, double* w, std::complex<double>* z, const int* ldz, int* isuppz,
+                     std::complex<double>* work, const int* lwork, double* rwork, const int* lrwork, int* iwork, const int* liwork, int* info);
+    }
+
+    void diag_lapack_zheevr(const int& n, double* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_lapack_zheevr<double>");
+        int info = 0;
+        char jobz = 'V', range = 'A', uplo = 'U';
+        const double vl = 0.0, vu = 0.0, abstol = 0.0;
+        const int il = 0, iu = 0;
+        int m = 0;
+        const int ldz = n;
+        double* z = new double[ldz * n];
+        int* isuppz = new int[2 * n];
+        const int lwork = std::max(26 * n, 1);
+        const int liwork = std::max(10 * n, 1);
+        double* work = new double[lwork];
+        int* iwork = new int[liwork];
+        dsyevr_(&jobz, &range, &uplo, &n, mat, &n, &vl, &vu, &il, &iu, &abstol, &m, eig, z, &ldz, isuppz,
+                work, &lwork, iwork, &liwork, &info);
+        if (info) { std::cout << "ERROR: Lapack solver dsyevr, info=" << info << std::endl; }
+        std::copy(z, z + ldz * n, mat);
+        delete[] iwork;
+        delete[] work;
+        delete[] isuppz;
+        delete[] z;
+    }
+
+    void diag_lapack_zheevr(const int& n, std::complex<double>* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_lapack_zheevr<complex<double>>");
+        int info = 0;
+        char jobz = 'V', range = 'A', uplo = 'U';
+        const double vl = 0.0, vu = 0.0, abstol = 0.0;
+        const int il = 0, iu = 0;
+        int m = 0;
+        const int ldz = n;
+        std::complex<double>* z = new std::complex<double>[ldz * n];
+        int* isuppz = new int[2 * n];
+        const int lwork = std::max(2 * n, 1);
+        const int lrwork = std::max(24 * n, 1);
+        const int liwork = std::max(10 * n, 1);
+        std::complex<double>* work = new std::complex<double>[lwork];
+        double* rwork = new double[lrwork];
+        int* iwork = new int[liwork];
+        zheevr_(&jobz, &range, &uplo, &n, mat, &n, &vl, &vu, &il, &iu, &abstol, &m, eig, z, &ldz, isuppz,
+                work, &lwork, rwork, &lrwork, iwork, &liwork, &info);
+        if (info) { std::cout << "ERROR: Lapack solver zheevr, info=" << info << std::endl; }
+        std::copy(z, z + ldz * n, mat);
+        delete[] iwork;
+        delete[] rwork;
+        delete[] work;
+        delete[] isuppz;
+        delete[] z;
+    }
+
+    void diag_elpa(const int& n, double* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_elpa<double>");
+        #ifdef __MPI
+            int ctxt = Csys2blacs_handle(MPI_COMM_WORLD);
+            char layout = 'R';
+            Cblacs_gridinit(&ctxt, &layout, 1, 1);
+            int desc[9];
+            int info = 0;
+            const int m = n, nb = std::max(1, std::min(n, 128));
+            const int rsrc = 0, csrc = 0;
+            const int lda = n;
+            descinit_(desc, &m, &m, &nb, &nb, &rsrc, &csrc, &ctxt, &lda, &info);
+            if (info) { std::cout << "ERROR: descinit in diag_elpa<double>, info=" << info << std::endl; }
+            ELPA_Solver es(true, MPI_COMM_WORLD, n, n, n, desc);
+            std::vector<double> vec(n * n);
+            es.eigenvector(mat, eig, vec.data());
+            es.exit();
+            std::copy(vec.begin(), vec.end(), mat);
+            Cblacs_gridexit(&ctxt);
+        #else
+            ELPA_Solver es(true, MPI_COMM_WORLD, n, n, n, nullptr);
+            std::vector<double> vec(n * n);
+            es.eigenvector(mat, eig, vec.data());
+            es.exit();
+            std::copy(vec.begin(), vec.end(), mat);
+        #endif
+    }
+
+    void diag_elpa(const int& n, std::complex<double>* mat, double* eig)
+    {
+        ModuleBase::TITLE("LR_Util", "diag_elpa<complex<double>>");
+        #ifdef __MPI
+            int ctxt = Csys2blacs_handle(MPI_COMM_WORLD);
+            char layout = 'R';
+            Cblacs_gridinit(&ctxt, &layout, 1, 1);
+            int desc[9];
+            int info = 0;
+            const int m = n, nb = std::max(1, std::min(n, 128));
+            const int rsrc = 0, csrc = 0;
+            const int lda = n;
+            descinit_(desc, &m, &m, &nb, &nb, &rsrc, &csrc, &ctxt, &lda, &info);
+            if (info) { std::cout << "ERROR: descinit in diag_elpa<complex<double>>, info=" << info << std::endl; }
+            ELPA_Solver es(false, MPI_COMM_WORLD, n, n, n, desc);
+            std::vector<std::complex<double>> vec(n * n);
+            es.eigenvector(mat, eig, vec.data());
+            es.exit();
+            std::copy(vec.begin(), vec.end(), mat);
+            Cblacs_gridexit(&ctxt);
+        #else
+            ELPA_Solver es(false, MPI_COMM_WORLD, n, n, n, nullptr);
+            std::vector<std::complex<double>> vec(n * n);
+            es.eigenvector(mat, eig, vec.data());
+            es.exit();
+            std::copy(vec.begin(), vec.end(), mat);
+        #endif
+    }
     void diag_lapack_nh(const int& n, double* mat, std::complex<double>* eig)
     {
         ModuleBase::TITLE("LR_Util", "diag_lapack_nh<double>");

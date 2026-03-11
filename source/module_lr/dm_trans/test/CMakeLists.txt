@@ -12,3 +12,7 @@ AddTest(
   # ../../../module_base/module_container/base/core/refcount.cpp
   # ../../../module_base/module_container/ATen/kernels/memory_impl.cpp
 )
+
+if(USE_ELPA)
+  target_link_libraries(dm_trans_test ELPA::ELPA genelpa)
+endif()

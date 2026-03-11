@@ -11,3 +11,8 @@ AddTest(
   LIBS parameter base ${math_libs} device psi container planewave #for FFT
   SOURCES lr_util_algorithms_test.cpp ../lr_util.cpp 
 )
+
+if(USE_ELPA)
+  target_link_libraries(lr_util_phys_test ELPA::ELPA genelpa)
+  target_link_libraries(lr_util_algo_test ELPA::ELPA genelpa)
+endif()

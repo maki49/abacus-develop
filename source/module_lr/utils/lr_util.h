@@ -98,8 +98,14 @@ namespace LR_Util
 
     ///=================diago-lapack====================
     /// @brief  diagonalize a hermitian matrix
-    void diag_lapack(const int& n, double* mat, double* eig);
-    void diag_lapack(const int& n, std::complex<double>* mat, double* eig);
+    void diag_lapack_zheev(const int& n, double* mat, double* eig);
+    void diag_lapack_zheev(const int& n, std::complex<double>* mat, double* eig);
+    void diag_lapack_zheevx(const int& n, double* mat, double* eig);
+    void diag_lapack_zheevx(const int& n, std::complex<double>* mat, double* eig);
+    void diag_lapack_zheevr(const int& n, double* mat, double* eig);
+    void diag_lapack_zheevr(const int& n, std::complex<double>* mat, double* eig);
+    void diag_elpa(const int& n, double* mat, double* eig);
+    void diag_elpa(const int& n, std::complex<double>* mat, double* eig);
     /// @brief  diagonalize a general matrix
     void diag_lapack_nh(const int& n, double* mat, std::complex<double>* eig);
     void diag_lapack_nh(const int& n, std::complex<double>* mat, std::complex<double>* eig);
