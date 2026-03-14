@@ -41,6 +41,19 @@ namespace LR
                         LR_Util::gather_2d_to_full(px, &A_aibj.get_pointer()[ik_ai * px.get_local_size()],
                             Amat_full.data() + kbj * this->nk * npairs /*col, bj*/ + ik_ai * npairs/*row, ai*/,
                             false, nv, no);
+                    // use kweights
+                    // for (int ik_ai = 0; ik_ai < this->nk; ++ik_ai)
+                    // {
+                    //     LR_Util::gather_2d_to_full(px, &A_aibj.get_pointer()[ik_ai * px.get_local_size()],
+                    //     Amat_full.data() + kbj * this->nk * npairs /*col, bj*/ + ik_ai * npairs/*row, ai*/,
+                    //     false, nv, no);
+                    //     // multiply the weight factor
+                    //     const double weight = std::sqrt(this->kv.wk[ik] * this->kv.wk[ik_ai]) * this->nk;
+                    //     for (int i = 0;i < npairs;++i)
+                    //     {
+                    //         Amat_full[kbj * this->nk * npairs + i * npairs + ik_ai] *= weight;
+                    //     }
+                    // }
 #endif
                 }
         // // output Amat

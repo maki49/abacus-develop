@@ -56,8 +56,8 @@ namespace LR
                 eigenvalue.resize(gdim);
                 if (hermitian)
                 {
-                    LR_Util::diag_elpa(gdim, Amat_full.data(), eigenvalue.data());
-                    // LR_Util::diag_lapack_zheev(gdim, Amat_full.data(), eigenvalue.data());
+                    // LR_Util::diag_elpa(gdim, Amat_full.data(), eigenvalue.data());
+                    LR_Util::diag_lapack_zheevr(gdim, Amat_full.data(), eigenvalue.data());
                 }
                 else
                 {

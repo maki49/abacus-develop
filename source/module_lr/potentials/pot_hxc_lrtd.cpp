@@ -20,7 +20,7 @@ namespace LR
         xc_kernel_components_(rho_basis, ucell, chg_gs, pgrid, nspin_, xc_kernel, lr_init_xc_kernel, (st == SpinType::S2_updown)), //call XC_Functional::set_func_type and libxc
         xc_type_(XCType(XC_Functional::get_func_type()))
     {
-        if (std::set<std::string>({ "lda", "pwlda", "pbe", "hse" }).count(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
+        if (std::set<std::string>({ "lda", "pwlda", "pbe", "hse" , "pbe0"}).count(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
     }
 
     void PotHxcLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op)
