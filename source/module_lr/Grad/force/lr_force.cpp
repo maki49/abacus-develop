@@ -138,8 +138,9 @@ namespace LR
         for (std::size_t idim = 0; idim < 3; ++idim)
             for (const auto& force_item : exx_lri_kernel.force[idim])
                 f_exx_dmtrans(force_item.first, idim) = std::real(force_item.second);
-        const double fac = -2.0 * alpha; //-2 is the same as post_process_Hexx (which didn't act on Hs)
-        return f_exx_dmtrans * fac;
+        const double fac = -2.0 * alpha; //-2 is the same as post_process_Hexx, Hartree to Ry (which didn't act on Hs)
+        return f_exx_dmtrans * fac; // dm_trans (DX) already contain the spin channel (sqrt(2) times of up/down channel DX)
+        // return f_exx_dmtrans * fac * 2; // 2 is the same in post_process_Eexx at nspin=1 ( up->up + down->down, 2 spin-conserving transitions)
     }
 
     template<typename TK>
@@ -151,19 +152,55 @@ namespace LR
     {
         ModuleBase::matrix f_exx_gs_diff(this->ucell_.nat, 3);
         auto& exx_lri_kernel = this->exx_lri_.lock()->get();
-        exx_lri_kernel.set_Ds(dm_gs, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
-        exx_lri_kernel.cal_Hs({ "", "", spin_suffix });  // using dm_gs
-        // // test: print Hs here
-        // LR_Util::print_CV(exx_lri_kernel.Hs, "EXX Hs from gs dm in cal_force_exx_gs_dm_relaxed_diff");
-        // auto* lr_ptr = dynamic_cast<RI::LR<int, int, 3, TK>*>(&exx_lri_kernel);  // wrong: 
-        // assert(lr_ptr != nullptr);
         RI::LR<int, int, 3, TK> lr_exx_kernel(std::move(exx_lri_kernel));
-        lr_exx_kernel.cal_force(relaxed_diff_dm, { "", "", spin_suffix , "", "" }); // using relaxed_diff_dm
-        exx_lri_kernel = std::move(lr_exx_kernel);        // move back 
-        for (std::size_t idim = 0; idim < 3; ++idim)
-            for (const auto& force_item : exx_lri_kernel.force[idim])
-                f_exx_gs_diff(force_item.first, idim) = std::real(force_item.second);
-        const double fac = -2.0 * alpha; //-2 is the same as post_process_Hexx (a.u. to Ry, which didn't act on Hs)
+
+        auto add_force_from_kernel = [&]() {
+            for (std::size_t idim = 0; idim < 3; ++idim)
+                for (const auto& force_item : lr_exx_kernel.force[idim])
+                    f_exx_gs_diff(force_item.first, idim) += std::real(force_item.second);
+            };
+
+        auto transpose_dm = [](const std::map<int, std::map<TAC, RI::Tensor<TK>>>& dm)
+            -> std::map<int, std::map<TAC, RI::Tensor<TK>>>
+            {
+                std::map<int, std::map<TAC, RI::Tensor<TK>>> dm_transpose;
+                for (const auto& pair0 : dm)
+                    for (const auto& pair1 : pair0.second)
+                    {
+                        const int& iat0 = pair0.first;
+                        const int& iat1 = pair1.first.first;
+                        const auto& R = pair1.first.second;
+                        dm_transpose[iat1][{iat0, { -R[0], -R[1], -R[2] }}] = pair1.second.transpose();
+                    }
+                return dm_transpose;
+            };
+
+        // `cal_force` calculates Pulay term. 
+        // If D_IJ = D_KL(H - F = Pulay), it caluclates 0.5 * d(ik | jl).
+        // Multiply spin factor (outside) on it gives the final result.
+        // The spin factor is not hard-coded in this function.
+
+        // 1. Pulay term
+        lr_exx_kernel.set_Ds(dm_gs, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
+        lr_exx_kernel.cal_Hs({ "", "", spin_suffix });  // using dm_gs as D_KL
+        lr_exx_kernel.cal_force(relaxed_diff_dm, { "", "", spin_suffix , "", "" }); // using relaxed_diff_dm as D_IJ
+        add_force_from_kernel();
+
+        // 2. Hellmann-Feynman term
+        const auto& dm_gs_transpose = transpose_dm(dm_gs);
+        const auto& relaxed_diff_dm_transpose = transpose_dm(relaxed_diff_dm);
+        lr_exx_kernel.set_Ds(relaxed_diff_dm_transpose, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
+        lr_exx_kernel.cal_Hs({ "", "", spin_suffix });  // using relaxed_diff_dm as D_KL
+        lr_exx_kernel.cal_force(dm_gs_transpose, { "", "", spin_suffix , "", "" }); // using dm_gs as D_IJ
+        add_force_from_kernel();
+
+        // move back 
+        exx_lri_kernel = std::move(lr_exx_kernel);
+
+        // -2 * 0.5 * alpha
+        // -2 is the same as post_process_Hexx (a.u. to Ry, which didn't act on Hs)
+        // 0.5 is the 2-electron integral prefactor
+        const double fac = -alpha;
         return f_exx_gs_diff * fac;
     }
 #endif

@@ -222,7 +222,7 @@ void LR::LR_Spectrum<T>::transition_analysis(const std::string& spintype)
         std::setw(90) << "Transition dipole x, y, z (a.u.)" << std::setw(30) << "Oscillator strength(a.u.)" << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;
     for (int istate = 0;istate < nstate;++istate)
-        ofs << std::setw(8) << istate << std::setw(15) << std::setprecision(6) << eig[istate] << std::setw(15) << eig[istate] * ModuleBase::Ry_to_eV
+        ofs << std::setw(8) << istate << std::setw(15) << std::setprecision(10) << eig[istate] << std::setw(15) << eig[istate] * ModuleBase::Ry_to_eV
         << std::setprecision(4) << std::setw(30) << transition_dipole_[istate].x << std::setw(30) << transition_dipole_[istate].y << std::setw(30) << transition_dipole_[istate].z
         << std::setprecision(6) << std::setw(30) << oscillator_strength_[istate] << std::endl;
     ofs << "------------------------------------------------------------------------------------ " << std::endl;

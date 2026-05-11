@@ -44,7 +44,7 @@ namespace LR
             const auto& Ds_gs_2 = LR_Util::get_exx_Ds_gs(dm_gs, ucell_, kv, pv_);
             ModuleBase::matrix f_gs_exx(ucell_.nat, 3);
             // test the two function using the two spin channels respectively
-            f_gs_exx += cal_force_exx_gs_dm_relaxed_diff(Ds_gs.at(0), Ds_gs_2.at(0), alpha_, std::to_string(0));    // test passed
+            f_gs_exx += cal_force_exx_gs_dm_relaxed_diff(Ds_gs.at(0), Ds_gs_2.at(0), alpha_, std::to_string(0));    // test passed， = 0.5 groud-state EXX force
             f_gs_exx += cal_force_exx_dm_trans(Ds_gs.at(1), alpha_, std::to_string(1));
             if (PARAM.inp.test_force)
                 ModuleIO::print_force(GlobalV::ofs_running, ucell_, "EXX GS FORCE reproduce (eV/Angstrom)", f_gs_exx, false);
@@ -80,6 +80,7 @@ namespace LR
                 std::vector<TK> dm_2d(4, 0.0);
                 std::cout << "i<<1 + j =" << ((i << 1) + j) << std::endl;
                 dm_2d[i * 2 + j] = 1.0;
+                LR_Util::matsym(dm_2d.data(), 2);   //symmetrization is a must for calling 1-electron Pulay force funcs
                 elecstate::DensityMatrix<TK, double> dm(&this->pv_, 1, kvd_test, 1);
                 dm.set_DMK_pointer(0, dm_2d.data());
                 LR_Util::initialize_DMR(dm, this->pv_, this->ucell_, this->gd_, orb_cutoffs);
@@ -134,11 +135,12 @@ namespace LR
         const std::string label = is_grad ? "dtau(ij | kl)" : "(ij | kl)";;
         GlobalV::ofs_running << "  ==== Test H2_SZ_CENTER4_HXC " << label << " ====" << std::endl;
         const std::vector<ModuleBase::Vector3<double>>& kvd_test = { ModuleBase::Vector3<double>(0.0, 0.0, 0.0) };
-        auto init_dm_eff = [&, this](const int i, const int j) -> elecstate::DensityMatrix<TK, double>
+        auto init_dm_eff = [&, this](const int i, const int j, const bool symmetrize = false) -> elecstate::DensityMatrix<TK, double>
             {   // dm_{ij}=1, other elements = 0, i,j = 0,1
                 std::vector<TK> dm_2d(4, 0.0);
                 std::cout<<"i<<1 + j =" << ((i<<1) + j) << std::endl;
-                dm_2d[i*2+j] = 1.0;
+                dm_2d[i * 2 + j] = 1.0;
+                if (symmetrize) { LR_Util::matsym(dm_2d.data(), 2); }   //symmetrization is a must for calling 1-electron Pulay force funcs
                 elecstate::DensityMatrix<TK, double> dm(&this->pv_, 1, kvd_test, 1);
                 dm.set_DMK_pointer(0, dm_2d.data());
                 LR_Util::initialize_DMR(dm, this->pv_, this->ucell_, this->gd_, orb_cutoffs);
@@ -153,39 +155,44 @@ namespace LR
         for (auto&& i : { 0, 1 })
             for (auto&& j : { 0, 1 })
             {
-                elecstate::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j);
+                elecstate::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j, false);
                 elecstate::Potential pot_hxc_ij = dm_to_hxc_potential(dm_ij);
+                elecstate::DensityMatrix<TK, double> dm_ij_sym = init_dm_eff(i, j, true);
                 for (auto&& k : { 0, 1 })
                     for (auto&& l : { 0, 1 })
                     {
                         // 1. build dm(kl)
-                        elecstate::DensityMatrix<TK, double> dm_kl = init_dm_eff(k, l);
+                        elecstate::DensityMatrix<TK, double> dm_kl = init_dm_eff(k, l, false);
                         if (is_grad)
                         {
                             // 2. pulay term + Hellmann-Feynman term
                             elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
+                            elecstate::DensityMatrix<TK, double> dm_kl_sym = init_dm_eff(k, l, true);
                             ModuleBase::matrix fhartree_pulay(this->ucell_.nat, 3), fhartree_h_f(this->ucell_.nat, 3);
                             ModuleBase::matrix stress_tmp;  // dummy
-                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_pulay, stress_tmp, dm_ij, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);  // Pulay term
-                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_h_f, stress_tmp, dm_kl, this->ucell_, &pot_hxc_ij, *this->gint_, true, false);  // Hellmann-Feynman term
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_pulay, stress_tmp, dm_ij_sym, this->ucell_, &pot_hxc_kl, *this->gint_, true, false);  // 2 * Pulay term
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_h_f, stress_tmp, dm_kl_sym, this->ucell_, &pot_hxc_ij, *this->gint_, true, false);  // 2 * Hellmann-Feynman term
                             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
                                 "H2_SZ_CENTER4_HXC_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
-                                (fhartree_pulay + fhartree_h_f) * (-2), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
+                                -(fhartree_pulay + fhartree_h_f), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl), dtau(ij|kl) = -2F = -(2F_pulay + 2F_H-F)
                             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
                                 "H2_SZ_CENTER4_HXC_Pulay_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
-                                fhartree_pulay * (-2), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
+                                -fhartree_pulay, true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
                             ModuleIO::print_force(GlobalV::ofs_running, this->ucell_,
                                 "H2_SZ_CENTER4_HXC_H-F_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
-                                fhartree_h_f * (-2), true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
+                                -fhartree_h_f, true);   // F_Hxc_ijkl = -1/2*dtau(ij|kl)
 #ifdef __EXX
                             if (!this->exx_lri_.expired())
                             {   // match the Gint result with LibRI
                                 auto ds_kl = LR_Util::get_exx_Ds_spin1(dm_kl, ucell_, kv, pv_); // returns ds_kl*0.5
                                 auto ds_ij = LR_Util::get_exx_Ds_spin1(dm_ij, ucell_, kv, pv_); // returns ds_ij*0.5
-                                ModuleBase::matrix f_exx = this->cal_force_exx_gs_dm_relaxed_diff(ds_kl, ds_ij, alpha_ * 4.0, ""); // cancel the two 0.5s in Ds
+                                // calulates F=0.5*d(ik|jl) (only one spin channel). 0.5 is the 2-electron integral prefactor.
+                                // 4 cancels the two 0.5s in Ds, induced by `split_m2D_ktoR`. 
+                                // No spin factor hard-coded in this function.
+                                ModuleBase::matrix f_exx = this->cal_force_exx_gs_dm_relaxed_diff(ds_kl, ds_ij, alpha_ * 4.0, "");
                                 ModuleIO::print_force(GlobalV::ofs_running, ucell_,
                                     "H2_SZ_CENTER4_EXX_dtau(" + std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l) + ") FORCE (Ry/au)",
-                                    f_exx * 4, true);   // F_exx_ijkl = 1/4(dtau(ik| jl)
+                                    f_exx * 2, true);   //d(ik|jl)=2F
                             }
 #endif
                         }
@@ -200,7 +207,7 @@ namespace LR
                                 pot_hxc_kl.get_effective_v(0), 0.0) * 0.5 * this->ucell_.omega / static_cast<double>(this->rhopw_.nrxx);
                             GlobalV::ofs_running << "  H2_SZ_CENTER4_COULOMB ("
                                 << std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l)
-                                << ") by Gint: " << e_hxc * 2 << std::endl; // 2 for testing (ij|kl) instead of real Coulomb energy 0.5*(ij|kl)
+                                << ") by Gint: " << std::setprecision(15) << e_hxc * 2 << std::endl; // 2 for testing (ij|kl) instead of real Coulomb energy 0.5*(ij|kl)
 #ifdef __EXX
                             if (!this->exx_lri_.expired())
                             {   // match the Gint result with LibRI
@@ -215,7 +222,7 @@ namespace LR
                                 TK e_exx = this->alpha_ * lri->get().post_2D.cal_energy(ds_ij, lri->Hexxs[0]) * 2.0; // 4 is to cancel two 0.5^2 in split_m2D_ktoR(nspin=1)`, and 0.5 for Fock energy
                                 GlobalV::ofs_running << "  H2_SZ_CENTER4_COULOMB ("
                                     << std::to_string(i) + std::to_string(k) + "|" + std::to_string(j) + std::to_string(l)
-                                    << ") by LibRI: " << -e_exx * 2.0 << ", where alpha = " << this->alpha_ << std::endl;  //-2 for Fock energy -> integral
+                                    << ") by LibRI: " << std::setprecision(15) << -e_exx * 2.0 << " where alpha = " << this->alpha_ << std::endl;  //-2 for Fock energy -> integral
                             }
 #endif  
                         }

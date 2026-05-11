@@ -158,20 +158,23 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         // LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
         // difference density matrix 
         std::vector<ct::Tensor> dm_diff_k = cal_dm_diff_pblas(this->X[ispin].template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
-        // std::cout << "dm_diff_k T(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
-        // LR_Util::print_value(dm_diff_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
-        for (auto& d : dm_diff_k) { LR_Util::matsym(d.data<T>(), this->nbasis, this->paraMat_); }   // symmetrize
+        std::cout << "dm_diff_k T(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
+        LR_Util::print_value(dm_diff_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+        // for (auto& d : dm_diff_k) { LR_Util::matsym(d.data<T>(), this->nbasis, this->paraMat_); }   // symmetrize
         // std::cout << "dm_diff_k T(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
         // LR_Util::print_value(dm_diff_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
 
         const std::vector<ct::Tensor>& dm_relaxed_k = cal_dm_trans_pblas(Z.template data<T>() + offset, this->paraX_[ispin], c, this->paraC_, this->nbasis, this->nocc[ispin], this->nvirt[ispin], this->paraMat_);
-        // std::cout << "dm_relaxed_k Z(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
-        // LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+        std::cout << "dm_relaxed_k Z(k) before symmetrization, istate " + std::to_string(istate) << std::endl;
+        LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
         for (auto& d : dm_relaxed_k) { LR_Util::matsym(d.data<T>(), this->nbasis, this->paraMat_); }    // symmetrize
-        // std::cout << "dm_relaxed_k Z(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
-        // LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
+        std::cout << "dm_relaxed_k Z(k) after symmetrization, istate " + std::to_string(istate) << std::endl;
+        LR_Util::print_value(dm_relaxed_k[0].data<T>(), this->paraMat_.get_col_size(), this->paraMat_.get_row_size());
         // relaxed difference density matrix
         const std::vector<ct::Tensor>& relaxed_diff_dm_k = dm_diff_k + dm_relaxed_k;
+        const elecstate::DensityMatrix<T, T>& diff_dm =
+            LR_Util::build_dm_from_dmk<T, T>(dm_diff_k,
+                this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
         const elecstate::DensityMatrix<T, T>& relaxed_diff_dm =
             LR_Util::build_dm_from_dmk<T, T>(relaxed_diff_dm_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, this->ucell, this->gd, this->orb_cutoff_);
@@ -241,6 +244,20 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
         if (PARAM.inp.test_force)
             ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "OVERLAP-EDM FORCE (eV/Angstrom)", force_overlap_edm, false);
 
+        if (PARAM.inp.test_force)
+        {
+            // test H[T] force (Z=0), non-EXX part
+            elecstate::DensityMatrix<T, double> diff_dm_real(&this->paraMat_, 1, this->kv.kvec_d, this->nk);
+            LR_Util::initialize_DMR(diff_dm_real, this->paraMat_, this->ucell, this->gd, this->orb_cutoff_);
+            LR_Util::get_DMR_real_imag_part(diff_dm, diff_dm_real, 'R');
+
+            GlobalV::ofs_running << "========== [TEST H_GS-(T) force (Z=0), non-EXX part] ===========" << std::endl;
+            ModuleBase::matrix force_hamiltgs_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(diff_dm_real, dm_gs, /*with_ewald=*/false);
+            ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "H_GS-T FORCE (without EXX) (eV/Angstrom)", force_hamiltgs_diff, false);
+            GlobalV::ofs_running << "========== [\\TEST H_GS-(T) force (Z=0), non-EXX part] ===========" << std::endl;
+        }
+
+
 #ifdef __EXX
         const double& alpha = this->exx_info.info_global.hybrid_alpha;
 
@@ -253,15 +270,26 @@ std::vector<ModuleBase::matrix> LR::ESolver_LR<T, TR>::cal_force(const int ispin
             force_hxc_dmtrans += force_exx_dmtrans;
 
         }
+
         if (LR::exx_kernel_list().count(PARAM.inp.dft_functional))
         {
             const auto& Ds_gs = LR_Util::get_exx_Ds_spin1(dm_gs, this->ucell, this->kv, this->paraMat_);    // returns 0.5*D[0]
             const auto& Ds_relaxed_diff = LR_Util::get_exx_Ds_spin1(relaxed_diff_dm, this->ucell, this->kv, this->paraMat_);   // returns 0.5*D[0]
             // LR_Util::print_CV(Ds_relaxed_diff, "Ds_relaxed_diff for EXX force");
-            ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha * 4.0);  // cancel the two 0.5s in Ds
+            ModuleBase::matrix force_exx_gs_relaxed_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_relaxed_diff, alpha * 4.0);  // cancel the two 0.5s in Ds
             if (PARAM.inp.test_force)
-                ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "EXX GS-(T+Z) FORCE (eV/Angstrom)", force_exx_gs_diff, false);
-            force_hamiltgs_relaxed_diff += force_exx_gs_diff;
+                ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "EXX GS-(T+Z) FORCE (eV/Angstrom)", force_exx_gs_relaxed_diff, false);
+            force_hamiltgs_relaxed_diff += force_exx_gs_relaxed_diff;
+
+            if (PARAM.inp.test_force)
+            {
+                // test H[T] force (Z=0), EXX part
+                const auto& Ds_diff = LR_Util::get_exx_Ds_spin1(diff_dm, this->ucell, this->kv, this->paraMat_);   // returns 0.5*D[0]
+                GlobalV::ofs_running << "========== [TEST H_GS-(T) force (Z=0), EXX part] ===========" << std::endl;
+                ModuleBase::matrix force_exx_gs_diff = lr_force.cal_force_exx_gs_dm_relaxed_diff(Ds_gs, Ds_diff, alpha * 4.0);  // cancel the two 0.5s in Ds
+                ModuleIO::print_force(GlobalV::ofs_running, this->ucell, "H_GS-T EXX FORCE (Z=0) (eV/Angstrom)", force_exx_gs_diff, false);
+                GlobalV::ofs_running << "========== [\\TEST H_GS-(T) force (Z=0), EXX part] ===========" << std::endl;
+            }
         }
 #endif
         forces[istate] = force_hxc_dmtrans + force_hamiltgs_relaxed_diff + force_overlap_edm;
@@ -319,7 +347,7 @@ void LR::ESolver_LR<T, TR>::test_force()
     if (this->nbasis == 2 && ucell.nat == 2)
     {
         // lr_force.cal_H2_sz_center2_deriv(orb_cutoff_, kv);  // for gradient
-        // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for Coulomb energy
+        // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for 4-center integrals
         // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
         // exit(0);
     }
