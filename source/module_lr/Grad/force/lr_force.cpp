@@ -89,16 +89,19 @@ namespace LR
         this->gint_->reset_DMRGint(dm_gs.get_DMR_vector().size());
         elecstate::Potential pot_hxc = this->dm_to_hxc_potential(dm_gs);
         this->gint_->reset_DMRGint(relax_diff_dm.get_DMR_vector().size());
+        // `cal_pulay_fs` calculates 1*Pulay-term. 
+        // For ground-state DFT, Pulay term = Hellmann-Feynman term, F = 1/2(Pulay + H-F) = Pulay, so directly call it once gives correct result.
         PulayForceStress::cal_pulay_fs(relax_diff_dm.get_DMR_vector().size()/*nspin*/, fhxc_dphi, stress_tmp,
             relax_diff_dm, this->ucell_, &pot_hxc, *this->gint_, true, false);
-        fhxc_dphi *= 0.5; // avoid double count
+        // fhxc_dphi *= 0.5; // avoid double count
 
         // 3.3 Hartree + xc (Hellmann-Feynman)
         ModuleBase::matrix fhxc_dvhxc(this->ucell_.nat, 3);
         elecstate::Potential pot_hxc_relaxed_diff = this->dm_to_hxc_potential(relax_diff_dm);
+        //`cal_pulay_fs` calculates only one spin channel because `relax_diff_dm` has only one.
         PulayForceStress::cal_pulay_fs(1/*nspin*/, fhxc_dvhxc, stress_tmp,
             dm_gs, this->ucell_, &pot_hxc_relaxed_diff, *this->gint_, true, false);
-        // fhxc_dvhxc *= 0.5; // avoid double count, but nspin=2 of ground-state dm cancels it here 
+        fhxc_dvhxc *= 2; // for the two channels of the ground-state dm. 
 
         // 4. kinetic (Pulay)
         std::vector<hamilt::HContainer<double>> dT = cal_hs_grad('T', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);
@@ -120,6 +123,9 @@ namespace LR
     template<typename TK>
     ModuleBase::matrix LR_Force<TK>::cal_force_hxc_dmtrans(const elecstate::DensityMatrix<TK, double>& dm_trans, const PotHxcLR& pot_hxc)
     {
+        // `dm_trans` (D^X) carries the singlet spin normalization (sqrt(2) per channel), 
+        // so D^X in pot_hxc and cal_pulay_fs together already contribute a factor 2.
+        // So cal_pulay_fs here returns 2*Pulay = Pulay + Hellmann-Feynman force. *2 is not needed here.
         return PulayForceStress::cal_pulay_fs(dm_trans, this->ucell_, &pot_hxc, *this->gint_);
     }
 
@@ -134,12 +140,13 @@ namespace LR
         auto& exx_lri_kernel = this->exx_lri_.lock()->get();
         exx_lri_kernel.set_Ds(dm_trans, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
         exx_lri_kernel.cal_Hs({ "", "", spin_suffix });
-        exx_lri_kernel.cal_force({ "", "", spin_suffix, "", "" });// using dm_trans
+        exx_lri_kernel.cal_force({ "", "", spin_suffix, "", "" });// using dm_trans，Pulay term only
         for (std::size_t idim = 0; idim < 3; ++idim)
             for (const auto& force_item : exx_lri_kernel.force[idim])
                 f_exx_dmtrans(force_item.first, idim) = std::real(force_item.second);
         const double fac = -2.0 * alpha; //-2 is the same as post_process_Hexx, Hartree to Ry (which didn't act on Hs)
-        return f_exx_dmtrans * fac; // dm_trans (DX) already contain the spin channel (sqrt(2) times of up/down channel DX)
+        const double pulay_to_total_sym = 2.0;  // Pulay -> Pulay + Hellmann-Feynman, only when Ds_left and Ds_right are equal
+        return f_exx_dmtrans * fac * pulay_to_total_sym; // dm_trans (DX) already contain the spin channel (sqrt(2) times of up/down channel DX)
         // return f_exx_dmtrans * fac * 2; // 2 is the same in post_process_Eexx at nspin=1 ( up->up + down->down, 2 spin-conserving transitions)
     }
 
@@ -199,8 +206,9 @@ namespace LR
 
         // -2 * 0.5 * alpha
         // -2 is the same as post_process_Hexx (a.u. to Ry, which didn't act on Hs)
-        // 0.5 is the 2-electron integral prefactor
-        const double fac = -alpha;
+        // 0.5 is the 2-electron integral prefactor，used in ground-state energy/force where two density matrix are identical
+        // But the LR-grad Lagrangian/force 2-e term here Tr[(T+Z)H[D]] does not have 1/2 factor.
+        const double fac = -2 * alpha;
         return f_exx_gs_diff * fac;
     }
 #endif
