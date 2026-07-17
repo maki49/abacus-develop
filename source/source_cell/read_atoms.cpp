@@ -107,7 +107,7 @@ bool unitcell::read_atom_positions(UnitCell& ucell,
         } // end for ntype
 
         // Auto-set magnetization if needed
-        unitcell::autoset_magnetization(ucell, nspin, ofs_running);
+        // unitcell::autoset_magnetization(ucell, nspin, ofs_running);
     }   // end scan_begin
 
     // Final validation and output
