@@ -294,7 +294,7 @@ void Symmetry::analy_sys(const Lattice& lat, const Statistics& st, Atom* atoms, 
     // symmetrization. See ref/2026-07-SOC磁群对称性判据.md.
     if (PARAM.inp.nspin == 4)
     {
-        this->analyze_magnetic_group_soc(atoms, st, latvec1);
+        this->analyze_magnetic_group_nspin4(atoms, st, latvec1);
     }
 
     // Do this here for debug
