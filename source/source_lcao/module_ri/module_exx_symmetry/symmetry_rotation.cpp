@@ -7,6 +7,7 @@
 #include "source_base/tool_title.h"
 #include "source_base/timer.h"
 #include "source_base/mathzone.h"
+#include "source_base/global_variable.h"
 
 namespace ModuleSymmetry
 {
@@ -52,6 +53,31 @@ namespace ModuleSymmetry
         if (PARAM.inp.nspin == 4)
         {
             for (int i = 0;i < nsym_;++i) { spin_U[i] = SpinRotation::so3_to_su2(gmatc[i]); }
+            // (nspin=4) Pure time reversal Theta reverses the magnetization, so it is a symmetry
+            // of the crystal only when every local moment vanishes. With SOC the two spin channels
+            // are not decoupled, so for a magnetic system D(-k) = sigma_y D^*(k) sigma_y belongs to
+            // the m -> -m configuration and must NOT be used to fill the k-star: restore_dm would
+            // otherwise substitute Theta for a genuine space-group operation whenever a star member
+            // happens to equal -k (e.g. when the magnetic point group contains inversion), yielding
+            // a density matrix of the time-reversed system and an inconsistent Hexx.
+            // Disabling TRS_first_ makes restore_dm fall back to the space-group rotation branch.
+            // (nspin<4 keeps TRS: without SOC the per-channel conjugation D_s(-k)=D_s^*(k) stays valid.)
+            bool has_local_moment = false;
+            for (int it = 0;it < ucell.ntype && !has_local_moment;++it)
+            {
+                for (int ia = 0;ia < ucell.atoms[it].na;++ia)
+                {
+                    const ModuleBase::Vector3<double>& m = ucell.atoms[it].m_loc_[ia];
+                    if (m.x * m.x + m.y * m.y + m.z * m.z > 1e-10) { has_local_moment = true; break; }
+                }
+            }
+            if (has_local_moment)
+            {
+                this->TRS_first_ = false;
+                GlobalV::ofs_running << "\n EXX symmetry: magnetic system detected (nspin=4 with nonzero"
+                                     << " local moments); pure time-reversal is disabled in restore_dm,"
+                                     << " the k-star is restored by space-group operations only.\n" << std::endl;
+            }
         }
         this->spin_U_ = spin_U;  // keep for restore_HR_soc (real-space EXX H(R) spin mixing)
 
