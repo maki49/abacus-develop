@@ -11,7 +11,7 @@ namespace
 	// The rotated vector is returned via ii, jj, kk.
 	// ------------------------------------------------------------------------
 	//rotate function (different from real space, without scaling gmatrix)
-	static inline void rotate_recip(ModuleBase::Matrix3& g, ModuleBase::Vector3<int>& g0, int& ii, int& jj, int& kk,
+	static inline void rotate_recip(const ModuleBase::Matrix3& g, const ModuleBase::Vector3<int>& g0, int& ii, int& jj, int& kk,
 		const int& nx, const int& ny, const int& nz)
 	{
 	    ii = int(g.e11 * g0.x + g.e21 * g0.y + g.e31 * g0.z) ;
@@ -43,10 +43,10 @@ namespace
 	// The code marks the point as processed to avoid redundant calculations
 	// by using int* symflag.
 	// This grouping is purely spatial (depends only on kgmatrix/invmap and the
-	// FFT-grid geometry), so it is shared between rhog_symmetry and rhog_symmetry_soc;
+	// FFT-grid geometry), so it is shared between rhog_symmetry and rhog_symmetry_nspin4;
 	// the differing spin/phase accumulation happens after this call.
 	// ------------------------------------------------------------------------
-	static void group_fft_grids(const int& nrotk, ModuleBase::Matrix3* kgmatrix, const std::vector<int>& invmap,
+	static void group_fft_grids(const int& nrotk, const ModuleBase::Matrix3* kgmatrix, const std::vector<int>& invmap,
 		int* ixyz2ipw, const int& nx, const int& ny, const int& nz,
 		const int& fftnx, const int& fftny, const int& fftnz,
 		int* symflag, int (*isymflag)[48], int (*table_xyz)[48], int* count_xyz, int& group_index)
@@ -172,9 +172,16 @@ void Symmetry::rho_symmetry( double *rho,
 
 void Symmetry::rhog_symmetry(std::complex<double> *rhogtot, 
     int* ixyz2ipw, const int &nx, const int &ny, const int &nz, 
-    const int &fftnx, const int &fftny, const int &fftnz)
+    const int &fftnx, const int &fftny, const int &fftnz,
+    const ModuleBase::Matrix3* kgmatrix_in, const ModuleBase::Vector3<double>* gtrans_in, const int nop)
 {
 	ModuleBase::timer::start("Symmetry","rhog_symmetry");
+	// Operation set: default = the nrotk unitary members; the nspin=4 magnetic caller passes the
+	// full Shubnikov list from density_sym_ops() (Theta leaves the charge invariant, so the
+	// antiunitary elements act on rho exactly like unitary ones).
+	const ModuleBase::Matrix3* kgmatrix_use = (kgmatrix_in != nullptr) ? kgmatrix_in : this->kgmatrix;
+	const ModuleBase::Vector3<double>* gtrans_use = (gtrans_in != nullptr) ? gtrans_in : this->gtrans;
+	const int nrot_use = (nop > 0) ? nop : this->nrotk;
 	// ----------------------------------------------------------------------
 	// the current way is to cluster the FFT grid points into groups in advance.
 	// and use OpenMP to realize parallel calculation, one thread works in one group.
@@ -202,17 +209,17 @@ void Symmetry::rhog_symmetry(std::complex<double> *rhogtot,
 	}
 	int group_index = 0;
 
-	assert(nrotk >0 );
-	assert(nrotk <=48 );
+	assert(nrot_use >0 );
+	assert(nrot_use <=48 );
 
 	//map the gmatrix to inv
-    std::vector<int>invmap(this->nrotk, -1);
-    this->gmatrix_invmap(kgmatrix, nrotk, invmap.data());
+    std::vector<int>invmap(nrot_use, -1);
+    this->gmatrix_invmap(kgmatrix_use, nrot_use, invmap.data());
 
 	// ------------------------------------------------------------------------
     // Group the FFT grids connected by symmetry (spatial grouping only).
 	// ------------------------------------------------------------------------
-    group_fft_grids(nrotk, kgmatrix, invmap, ixyz2ipw, nx, ny, nz, fftnx, fftny, fftnz,
+    group_fft_grids(nrot_use, kgmatrix_use, invmap, ixyz2ipw, nx, ny, nz, fftnx, fftny, fftnz,
         symflag, isymflag, table_xyz, count_xyz, group_index);
 
 	// -------------------------------------------------------------------
@@ -230,9 +237,9 @@ void Symmetry::rhog_symmetry(std::complex<double> *rhogtot,
 	for (int g_index = 0; g_index < group_index; g_index++)
 	{
 		// record the index and gphase but not the final gdirect for each symm-opt
-		int *ipw_record = new int[nrotk];
-		int *ixyz_record = new int[nrotk];
-		std::complex<double>* gphase_record = new std::complex<double> [nrotk];
+		int *ipw_record = new int[nrot_use];
+		int *ixyz_record = new int[nrot_use];
+		std::complex<double>* gphase_record = new std::complex<double> [nrot_use];
 		std::complex<double> sum(0, 0);
 		int rot_count=0;
 
@@ -259,7 +266,7 @@ void Symmetry::rhog_symmetry(std::complex<double> *rhogtot,
 				tmp_gdirect_double = tmp_gdirect_double * ModuleBase::TWO_PI;
 
 				double cos_arg = 0.0, sin_arg = 0.0;
-				double arg_gtrans = tmp_gdirect_double * gtrans[isymflag[g_index][c_index]];
+				double arg_gtrans = tmp_gdirect_double * gtrans_use[isymflag[g_index][c_index]];
 
 				std::complex<double> phase_gtrans (ModuleBase::libm::cos(arg_gtrans), 
 						ModuleBase::libm::sin(arg_gtrans));
@@ -321,12 +328,24 @@ void Symmetry::rhog_symmetry(std::complex<double> *rhogtot,
 	ModuleBase::timer::end("Symmetry","rhog_symmetry");
 }
 
-void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<double>* rhogtot_y,
+void Symmetry::rhog_symmetry_nspin4(std::complex<double>* rhogtot_x, std::complex<double>* rhogtot_y,
     std::complex<double>* rhogtot_z, const ModuleBase::Matrix3* wspin,
     int* ixyz2ipw, const int &nx, const int &ny, const int &nz,
-    const int & fftnx, const int &fftny, const int &fftnz)
+    const int & fftnx, const int &fftny, const int &fftnz,
+    const double* trs_inv, const ModuleBase::Matrix3* kgmatrix_in,
+    const ModuleBase::Vector3<double>* gtrans_in, const int nop)
 {
-	ModuleBase::timer::start("Symmetry","rhog_symmetry_soc");
+	// Operation set: default = the nrotk unitary members; 
+	// the nspin=4 magnetic caller passes the full Shubnikov list from density_sym_ops(). 
+	// `trs_inv` is the time-reversal sign of each operation: Theta reverses the magnetization, 
+	// so an antiunitary element contributes m -> -W(g) m. 
+	const ModuleBase::Matrix3* kgmatrix_use = (kgmatrix_in != nullptr) ? kgmatrix_in : this->kgmatrix;
+	const ModuleBase::Vector3<double>* gtrans_use = (gtrans_in != nullptr) ? gtrans_in : this->gtrans;
+	const int nrot_use = (nop > 0) ? nop : this->nrotk;
+	std::vector<double> trs_inv_default;
+	if (trs_inv == nullptr) { trs_inv_default.assign(nrot_use, 1.0); }
+	const double* trs_invp = (trs_inv != nullptr) ? trs_inv : trs_inv_default.data();
+	ModuleBase::timer::start("Symmetry","rhog_symmetry_nspin4");
 	// The grouping of FFT grid points into symmetry-connected orbits is purely spatial and
 	// therefore identical to rhog_symmetry. Only the accumulation/write-back is changed:
 	// the three spin components are mixed by W(g) (rotated to the orbit-representative frame
@@ -347,17 +366,17 @@ void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<d
 	}
 	int group_index = 0;
 
-	assert(nrotk >0 );
-	assert(nrotk <=48 );
+	assert(nrot_use >0 );
+	assert(nrot_use <=48 );
 
 	//map the gmatrix to inv
-    std::vector<int>invmap(this->nrotk, -1);
-    this->gmatrix_invmap(kgmatrix, nrotk, invmap.data());
+    std::vector<int>invmap(nrot_use, -1);
+    this->gmatrix_invmap(kgmatrix_use, nrot_use, invmap.data());
 
     // Group the FFT grids connected by symmetry (spatial grouping only, shared
     // with rhog_symmetry); see the shared helpers rotate_recip/group_fft_grids
     // defined above.
-    group_fft_grids(nrotk, kgmatrix, invmap, ixyz2ipw, nx, ny, nz, fftnx, fftny, fftnz,
+    group_fft_grids(nrot_use, kgmatrix_use, invmap, ixyz2ipw, nx, ny, nz, fftnx, fftny, fftnz,
         symflag, isymflag, table_xyz, count_xyz, group_index);
 
 #ifdef _OPENMP
@@ -365,10 +384,10 @@ void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<d
 #endif
 	for (int g_index = 0; g_index < group_index; g_index++)
 	{
-		int *ipw_record = new int[nrotk];
-		int *ixyz_record = new int[nrotk];
-		int *sym_record = new int[nrotk];
-		std::complex<double>* gphase_record = new std::complex<double> [nrotk];
+		int *ipw_record = new int[nrot_use];
+		int *ixyz_record = new int[nrot_use];
+		int *sym_record = new int[nrot_use];
+		std::complex<double>* gphase_record = new std::complex<double> [nrot_use];
 		// orbit-representative-frame spin vector accumulated over the symmetry operations
 		std::complex<double> sum_x(0, 0), sum_y(0, 0), sum_z(0, 0);
 		int rot_count=0;
@@ -392,7 +411,7 @@ void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<d
 				tmp_gdirect_double = tmp_gdirect_double * ModuleBase::TWO_PI;
 
 				double cos_arg = 0.0, sin_arg = 0.0;
-				double arg_gtrans = tmp_gdirect_double * gtrans[isymflag[g_index][c_index]];
+				double arg_gtrans = tmp_gdirect_double * gtrans_use[isymflag[g_index][c_index]];
 
 				std::complex<double> phase_gtrans (ModuleBase::libm::cos(arg_gtrans),
 						ModuleBase::libm::sin(arg_gtrans));
@@ -429,9 +448,10 @@ void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<d
 				const std::complex<double> vx = rhogtot_x[ipw0] * gphase;
 				const std::complex<double> vy = rhogtot_y[ipw0] * gphase;
 				const std::complex<double> vz = rhogtot_z[ipw0] * gphase;
-				sum_x += W.e11 * vx + W.e21 * vy + W.e31 * vz; // (W^T v)_x
-				sum_y += W.e12 * vx + W.e22 * vy + W.e32 * vz; // (W^T v)_y
-				sum_z += W.e13 * vx + W.e23 * vy + W.e33 * vz; // (W^T v)_z
+				const double trs_sign = trs_invp[isym];
+				sum_x += trs_sign * (W.e11 * vx + W.e21 * vy + W.e31 * vz); // trs_inv * (W^T v)_x
+				sum_y += trs_sign * (W.e12 * vx + W.e22 * vy + W.e32 * vz); // trs_inv * (W^T v)_y
+				sum_z += trs_sign * (W.e13 * vx + W.e23 * vy + W.e33 * vz); // trs_inv * (W^T v)_z
 
 				gphase_record[rot_count]=gphase;
 				ipw_record[rot_count]=ipw0;
@@ -451,9 +471,10 @@ void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<d
 			// push the representative-frame value back out to this member: W(g) * S / gphase.
 			const ModuleBase::Matrix3& W = wspin[sym_record[ir]];
 			const std::complex<double> inv_gphase = 1.0 / gphase_record[ir];
-			rhogtot_x[ipw_record[ir]] = (W.e11 * sum_x + W.e12 * sum_y + W.e13 * sum_z) * inv_gphase;
-			rhogtot_y[ipw_record[ir]] = (W.e21 * sum_x + W.e22 * sum_y + W.e23 * sum_z) * inv_gphase;
-			rhogtot_z[ipw_record[ir]] = (W.e31 * sum_x + W.e32 * sum_y + W.e33 * sum_z) * inv_gphase;
+			const double trs_sign = trs_invp[sym_record[ir]];
+			rhogtot_x[ipw_record[ir]] = trs_sign * (W.e11 * sum_x + W.e12 * sum_y + W.e13 * sum_z) * inv_gphase;
+			rhogtot_y[ipw_record[ir]] = trs_sign * (W.e21 * sum_x + W.e22 * sum_y + W.e23 * sum_z) * inv_gphase;
+			rhogtot_z[ipw_record[ir]] = trs_sign * (W.e31 * sum_x + W.e32 * sum_y + W.e33 * sum_z) * inv_gphase;
 		}
 
 		delete[] ipw_record;
@@ -466,5 +487,5 @@ void Symmetry::rhog_symmetry_soc(std::complex<double>* rhogtot_x, std::complex<d
 	delete[] isymflag;
 	delete[] table_xyz;
 	delete[] count_xyz;
-	ModuleBase::timer::end("Symmetry","rhog_symmetry_soc");
+	ModuleBase::timer::end("Symmetry","rhog_symmetry_nspin4");
 }
