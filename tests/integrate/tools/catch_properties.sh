@@ -767,13 +767,13 @@ fi
 # Linear response function 
 #--------------------------------------------
 if [ $is_lr == 1 ]; then
-	lrns=$(get_input_key_value "lr_nstates" "INPUT")
-	lrns1=`echo "$lrns + 1" |bc`
-	grep -A$lrns1 "Excitation Energy" $running_path | awk 'NR > 2 && $2 ~ /^[0-9]+\.[0-9]+$/ {print $2}' > lr_eig.txt
-	lreig_tot=`sum_file lr_eig.txt`
-	echo "totexcitationenergyref $lreig_tot" >>$1
+	shopt -s nullglob
+	lr_files=(OUT.autotest/trans_analysis_*_tda.dat)
+	if [ ${#lr_files[@]} -gt 0 ]; then
+		cat "${lr_files[@]}" | awk '/Excitation Energy/{p=1; next} p && /^[[:space:]]*[0-9]+[[:space:]]/{printf "excitationenergyref%d %.6f\n", ++n, $2} /Occupied orbital/{p=0}' >>$1
+	fi
+	shopt -u nullglob
 fi
-
 #--------------------------------------------
 # Check RDMFT method 
 #--------------------------------------------
