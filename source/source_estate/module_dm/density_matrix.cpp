@@ -196,13 +196,13 @@ void DensityMatrix_Tools::cal_DMR(
 }
 
 template <>
-void DensityMatrix<std::complex<double>, double>::cal_DMR(const int ik_in)
+void DensityMatrix<std::complex<double>, double>::cal_DMR(const int ik_in) const
 {
     DensityMatrix_Tools::cal_DMR(*this, this->_DMR, ik_in);
 }
 
 template <>
-void DensityMatrix<std::complex<double>, std::complex<double>>::cal_DMR(const int ik_in)
+void DensityMatrix<std::complex<double>, std::complex<double>>::cal_DMR(const int ik_in) const
 {
     DensityMatrix_Tools::cal_DMR(*this, this->_DMR, ik_in);
 }
@@ -476,7 +476,7 @@ void DensityMatrix<std::complex<double>, double>::cal_DMR_full(
 
 // calculate DMR from DMK using blas for gamma-only calculation
 template <>
-void DensityMatrix<double, double>::cal_DMR(const int ik_in)
+void DensityMatrix<double, double>::cal_DMR(const int ik_in) const
 {
     ModuleBase::TITLE("DensityMatrix", "cal_DMR");
     using TK = double;

@@ -5,7 +5,7 @@
 namespace elecstate
 {
     template<>
-    void DensityMatrix<std::complex<double>, std::complex<double>>::cal_DMR(int ik_in)
+    void DensityMatrix<std::complex<double>, std::complex<double>>::cal_DMR(int ik_in) const
     {
         ModuleBase::TITLE("DensityMatrix", "cal_DMR");
         ModuleBase::timer::start("DensityMatrix", "cal_DMR");

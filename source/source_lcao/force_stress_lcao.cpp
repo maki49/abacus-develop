@@ -239,7 +239,7 @@ void Force_Stress_LCAO<T>::getForceStress(UnitCell& ucell,
         // Calculate local potential force/stress (vl_dphi)
         // This uses grid integration, not operator-based method
         flk.ParaV = dmat.dm->get_paraV_pointer();
-        PulayForceStress::cal_pulay_fs(fvl_dphi, svl_dphi, *dmat.dm, ucell, pelec->pot,
+        PulayForceStress::cal_pulay_fs(PARAM.inp.nspin, fvl_dphi, svl_dphi, *dmat.dm, ucell, pelec->pot,
                                        isforce, isstress, false /*reset dm to gint*/);
     }
     else if (PARAM.inp.nspin == 4)
@@ -275,7 +275,7 @@ void Force_Stress_LCAO<T>::getForceStress(UnitCell& ucell,
 
         // Calculate local potential force/stress (vl_dphi)
         flk.ParaV = dmat.dm->get_paraV_pointer();
-        PulayForceStress::cal_pulay_fs(fvl_dphi, svl_dphi, *dmat.dm, ucell, pelec->pot,
+        PulayForceStress::cal_pulay_fs(PARAM.inp.nspin, fvl_dphi, svl_dphi, *dmat.dm, ucell, pelec->pot,
                                        isforce, isstress, false /*reset dm to gint*/);
     }
 
@@ -534,6 +534,10 @@ void Force_Stress_LCAO<T>::getForceStress(UnitCell& ucell,
             {
                 exx_nao.exc->cal_exx_force(ucell.nat);
                 force_exx = hybrid_alpha * exx_nao.exc->get_force();
+            }
+            if (istestf)
+            {
+                ModuleIO::print_force(GlobalV::ofs_running, ucell, "EXX    FORCE", force_exx, false);
             }
         }
         if (isstress)
