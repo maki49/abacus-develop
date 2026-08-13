@@ -265,6 +265,17 @@ void write_Vxc(const int nspin,
                            vxc_file, 
                            p2d,
                            drank);
+        // ModuleIO::save_mat(-1,
+        //     vxc_k_ao.get_hk(),
+        //     nbasis,
+        //     false /*binary*/,
+        //     PARAM.inp.out_ndigits,
+        //     true /*triangle*/,
+        //     false /*append*/,
+        //     "Vxc_AO",
+        //     "k-" + std::to_string(ik),
+        //     *pv,
+        //     drank);
         // ======test=======
         // total_energy += all_band_energy(ik, vxc_tot_k_mo, p2d, wg);
         // ======test=======

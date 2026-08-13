@@ -32,7 +32,9 @@ class Parallel_Grid
     int get_ny() const { return ncy; }
     int get_nz() const { return ncz; }
 
-    private:
+    int get_nrxx() const { return this->nrxx; }
+
+	private:
 
     void z_distribution(void);
 

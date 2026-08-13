@@ -203,6 +203,7 @@ class DensityMatrix
      * please make sure the size of TK* is correct
     */
     void set_DMK_pointer(const int ik, TK* DMK_in);
+    void set_DMK_vector(const int ik, const std::vector<TK>& v) { this->_DMK[ik] = v; }
 
     /**
      * @brief get pointer of paraV
@@ -217,7 +218,7 @@ class DensityMatrix
      * if ik_in < 0, calculate all k-points
      * if ik_in >= 0, calculate only one k-point without summing over k-points
      */
-    void cal_DMR(const int ik_in = -1);
+    void cal_DMR(const int ik_in = -1) const;
 
     /**
      * @brief calculate density matrix DMR with additional vector potential phase, used for hybrid gauge tddft
@@ -280,7 +281,7 @@ class DensityMatrix
      * vector.size() = 1 for non-polarization and SOC
      * vector.size() = 2 for spin-polarization
      */
-    std::vector<hamilt::HContainer<TR>*> _DMR;
+      mutable std::vector<hamilt::HContainer<TR>*> _DMR;    // mutable for const function `cal_DMR`, which logically does not change the object
     std::vector<std::vector<TR>> _DMR_save;
 
     /**
