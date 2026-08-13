@@ -202,7 +202,8 @@ void Force_LCAO<double>::ftable(const bool isforce,
     PulayForceStress::cal_pulay_fs(ftvnl_dphi, stvnl_dphi, *dm, ucell, pv, dHx, dHxy, isforce, isstress);
 
     // vl_dphi
-    PulayForceStress::cal_pulay_fs(fvl_dphi,
+    PulayForceStress::cal_pulay_fs(PARAM.inp.nspin,
+                                   fvl_dphi,
                                    svl_dphi,
                                    *dm,
                                    ucell,
