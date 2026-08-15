@@ -26,6 +26,8 @@ namespace ModuleSymmetry
         this->nsym_ = ucell.symm.nrotk;
         this->nanti_ = ucell.symm.nrotk_anti;
         this->magnetic_nspin4_ = ucell.symm.magnetic_nspin4;
+        this->nflip_ = ucell.symm.nrotk_flip;
+        this->spin_flip_nspin2_ = ucell.symm.spin_flip_nspin2;
         this->eps_ = ucell.symm.epsilon;
         if (this->irs_.invmap_.empty())
         {
@@ -33,11 +35,16 @@ namespace ModuleSymmetry
             ucell.symm.gmatrix_invmap(ucell.symm.gmatrix, ucell.symm.nrotk, this->irs_.invmap_.data());
         }
         // 1. calculate the rotation matrix in real spherical harmonics representation for each symmetry operation: [T_l (isym)]_mm'
-        const int nop_tot = this->nsym_ + this->nanti_;
+        // The extra [nsym_, nsym_+next) columns hold the nspin=4 antiunitary coset OR the nspin=2 SSG
+        // spin-flip coset (mutually exclusive; the unused count is 0), addressed by the same raw index.
+        const int next = this->nanti_ + this->nflip_;
+        const int nop_tot = this->nsym_ + next;
         std::vector<ModuleBase::Matrix3> gmatc(nop_tot);
         for (int i = 0;i < nsym_;++i) { gmatc[i] = this->irs_.direct_to_cartesian(ucell.symm.gmatrix[i], ucell.latvec); }
         for (int j = 0;j < this->nanti_;++j)
         { gmatc[nsym_ + j] = this->irs_.direct_to_cartesian(ucell.symm.gmatrix_anti[j], ucell.latvec); }
+        for (int j = 0;j < this->nflip_;++j)
+        { gmatc[nsym_ + j] = this->irs_.direct_to_cartesian(ucell.symm.gmatrix_flip[j], ucell.latvec); }
         this->cal_rotmat_Slm(gmatc.data(), std::max(this->abfs_Lmax_, ucell.lmax), nop_tot);
 
         // 1.5 (nspin=4) the SU(2) spin-1/2 rotation U(isym) for each symmetry operation. The AO
@@ -70,8 +77,13 @@ namespace ModuleSymmetry
         {
             // const TCdouble& kvec_d_ibz = restrict_kpt((*kstars[ik_ibz].begin()).second * ucell.symm.kgmatrix[(*kstars[ik_ibz].begin()).first], ucell.symm.epsilon);
             for (auto& isym_kvd : kv.kstars[ik_ibz]) {
-                if (isym_kvd.first < nop_tot) {
-                    this->Ms_[ik_ibz][isym_kvd.first] = this->contruct_2d_rot_mat_ao(ucell.symm, ucell.atoms, ucell.st, kv.kvec_d[ik_ibz], isym_kvd.first, pv, spin_U[isym_kvd.first]);
+                // (nspin=2 SSG) the k-reduction inv-doubles the {unitary,flip} group; the second half
+                // (isym >= nop_tot) is Theta*g and shares the spatial rotation M of its base g. Strip it
+                // so Ms is built once per spatial op (base in [0, nop_tot)); Theta is applied in restore_dm.
+                int base = isym_kvd.first;
+                if (this->spin_flip_nspin2_ && base >= nop_tot) { base -= nop_tot; }
+                if (base < nop_tot && this->Ms_[ik_ibz].find(base) == this->Ms_[ik_ibz].end()) {
+                    this->Ms_[ik_ibz][base] = this->contruct_2d_rot_mat_ao(ucell.symm, ucell.atoms, ucell.st, kv.kvec_d[ik_ibz], base, pv, spin_U[base]);
 }
 }
         }
@@ -117,6 +129,23 @@ namespace ModuleSymmetry
                         std::vector<std::complex<double>> dm_scaled(pv.get_local_size());
                         for (int i = 0;i < pv.get_local_size();++i) { dm_scaled[i] = factor * dm_k_ibz[ik_ibz + is * nk][i]; }
                         dm_k_full.push_back(dm_scaled);
+                    }
+                    else if (this->spin_flip_nspin2_)
+                    {
+                        // (nspin=2 collinear SSG) The k-reduction folded with the full spin space group and
+                        // inv-doubled it, so the raw index encodes four kinds of element (n_uf = nsym_+nflip_):
+                        //   base = isym (isym < n_uf)  or  isym - n_uf (isym >= n_uf, the Theta=K half);
+                        //   is_flip = base >= nsym_  (a spin-flip coset element [C2_perp||g]);
+                        //   theta   = isym >= n_uf   (time reversal K: conjugate, applied in rot_matrix_ao).
+                        // A flip element maps D_up(k) <-> D_down(g k), so pull the OPPOSITE spin channel's
+                        // ibz DM; the orbital-only rotation M (base) is spin-independent for collinear.
+                        const int n_uf = this->nsym_ + this->nflip_;
+                        const int isym = isym_kvd.first;
+                        const bool theta = isym >= n_uf;
+                        const int base = theta ? isym - n_uf : isym;
+                        const bool is_flip = base >= this->nsym_;
+                        const int src = ik_ibz + (is_flip ? (1 - is) : is) * nk;
+                        dm_k_full.push_back(this->rot_matrix_ao(dm_k_ibz[src], ik_ibz, kv.kstars[ik_ibz].size(), base, pv, theta));
                     }
                     else if (isym_kvd.first < nsym_)
                     { //space group operations
@@ -410,10 +439,13 @@ namespace ModuleSymmetry
         // isym >= symm.nrotk addresses the antiunitary coset (spatial part gmatrix_anti[isym-nrotk]),
         // whose atom map lives in a separate table.
         const int nrotk_u = symm.nrotk;
-        auto rotated_atom = [&symm, nrotk_u](const int is, const int iat) -> int
+        const bool spin_flip = this->spin_flip_nspin2_;
+        auto rotated_atom = [&symm, nrotk_u, spin_flip](const int is, const int iat) -> int
             {
-                return (is < nrotk_u) ? symm.get_rotated_atom(is, iat)
-                                      : symm.get_rotated_atom_anti(is - nrotk_u, iat);
+                if (is < nrotk_u) { return symm.get_rotated_atom(is, iat); }
+                // extra [nrotk, nrotk+next) slots: nspin=2 SSG spin-flip coset or nspin=4 antiunitary coset
+                return spin_flip ? symm.get_rotated_atom_flip(is - nrotk_u, iat)
+                                 : symm.get_rotated_atom_anti(is - nrotk_u, iat);
             };
         for (int iat1 = 0;iat1 < cell_st.nat;++iat1)
         {

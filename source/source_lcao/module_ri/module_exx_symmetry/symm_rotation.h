@@ -186,6 +186,15 @@ namespace ModuleSymmetry
         /// Shubnikov elements Theta*gmatrix_anti[] instead of the generic -k shortcut.
         bool magnetic_nspin4_ = false;
 
+        /// (nspin=2 collinear SSG) number of UNITARY spin-flip coset elements [C2_perp||g]. Their
+        /// orbital rotations / return lattices / Ms are appended in the SAME [nsym_, nsym_+nflip_)
+        /// slots the antiunitary coset would use (nspin=2 => nanti_=0), pointing at gmatrix_flip[].
+        int nflip_ = 0;
+        /// (nspin=2) true when the spin space group has a non-empty spin-flip coset. A flip element
+        /// maps D_up(k) <-> D_down(g k) (up<->down channel swap + spatial rotation, NO conjugation),
+        /// so restore_dm pulls the OPPOSITE spin channel's ibz DM for a flip star member.
+        bool spin_flip_nspin2_ = false;
+
         double eps_ = 1e-6;
 
         // (removed, not needed) TRS_first_: 

@@ -110,7 +110,9 @@ namespace ModuleSymmetry
         // Columns [0, nrotk) are the unitary operations; columns [nrotk, nrotk+nrotk_anti) are the
         // spatial parts of the antiunitary elements Theta*g of the Shubnikov group (nspin=4 magnetic),
         // so that Symmetry_rotation can address both with one raw index. 
-        this->return_lattice_.resize(st.nat, std::vector<TCdouble>(symm.nrotk + symm.nrotk_anti));
+        // (nspin=2 SSG) the spin-flip coset reuses the extra [nrotk, nrotk+nrotk_flip) columns
+        // (nrotk_anti==0 in that case), so Symmetry_rotation can address it with the same raw index.
+        this->return_lattice_.resize(st.nat, std::vector<TCdouble>(symm.nrotk + symm.nrotk_anti + symm.nrotk_flip));
         for (int iat1 = 0;iat1 < st.nat;++iat1)
         {
             int it = st.iat2it[iat1];
@@ -126,6 +128,12 @@ namespace ModuleSymmetry
                 int iat2 = symm.get_rotated_atom_anti(j, iat1);
                 int ia2 = st.iat2ia[iat2];
                 this->return_lattice_[iat1][symm.nrotk + j] = get_return_lattice(symm, symm.gmatrix_anti[j], symm.gtrans_anti[j], atoms[it].taud[ia1], atoms[it].taud[ia2]);
+            }
+            for (int j = 0;j < symm.nrotk_flip;++j)
+            {
+                int iat2 = symm.get_rotated_atom_flip(j, iat1);
+                int ia2 = st.iat2ia[iat2];
+                this->return_lattice_[iat1][symm.nrotk + symm.nrotk_anti + j] = get_return_lattice(symm, symm.gmatrix_flip[j], symm.gtrans_flip[j], atoms[it].taud[ia1], atoms[it].taud[ia2]);
             }
         }
         // test: output return_lattice
