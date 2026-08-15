@@ -106,6 +106,19 @@ public:
     /// the exact symmetry there is the larger spin space group, where spin and space rotations decouple).
     bool magnetic_nspin4 = false;
 
+    /// (nspin=2, collinear SSG) UNITARY spin-flip coset [C2_perp || g] of the spin space group:
+    /// spatial operations g that map the up-sublattice onto the down-sublattice (mag[iat] = -mag[g(iat)]).
+    /// Unlike the antiunitary gmatrix_anti[] there is NO complex conjugation here (real collinear H):
+    /// the operation just swaps the two spin channels (up <-> down) while rotating space by g.
+    /// The current nspin=2 magnetic path (analyze_magnetic_group) discards these ops; enabling
+    /// symmetry_ssg recovers them to enlarge the group used for k-point/density reduction (altermagnets).
+    /// Index convention (downstream): j + nrotk  <->  spin-flip gmatrix_flip[j].
+    ModuleBase::Matrix3 gmatrix_flip[48];
+    ModuleBase::Matrix3 kgmatrix_flip[48];
+    ModuleBase::Vector3<double> gtrans_flip[48];
+    int nrotk_flip = 0;              ///< number of unitary spin-flip coset elements (nspin=2 SSG)
+    bool spin_flip_nspin2 = false;   ///< nspin=2 collinear with a non-empty spin-flip coset (SSG active)
+
     ModuleBase::Matrix3 symop[48];    ///< the rotation matrices for the pure bravais lattice
     int nop=0;    ///< the number of point group operations of the pure bravais lattice without basis
     int nrot=0;    ///< the number of pure point group rotations
@@ -194,6 +207,20 @@ public:
             std::vector<double>& trs_inv) const;
 
     /**
+     * @brief (nspin=2 collinear SSG) Assemble the operations used to symmetrize the collinear
+     * density: the `nrotk` unitary operations (sign +1) followed by the `nrotk_flip` spatial parts
+     * of the spin-flip coset [C2_perp||g] (sign -1). The combined set is the full chemical space
+     * group (a group, closed under inverse), so the invmap/grouping in rhog_symmetry* stays valid.
+     * In the (charge, mag) = (rho_up+rho_down, rho_up-rho_down) basis the charge is invariant under
+     * a flip (symmetrized over all ops, ignoring the sign) and the magnetization picks up the sign
+     * (mag -> flip_sign * mag), exactly like the nspin=4 antiunitary machinery reuses trs_inv.
+     * @return the total number of operations (nrotk + nrotk_flip)
+     */
+    int spin_flip_sym_ops(std::vector<ModuleBase::Matrix3>& kgmatrix_in,
+            std::vector<ModuleBase::Vector3<double>>& gtrans_in,
+            std::vector<double>& flip_sign) const;
+
+    /**
      * @brief Symmetrize charge density in reciprocal space.
      *
      * @param rhogtot charge density in reciprocal space
@@ -247,6 +274,23 @@ public:
             int* ixyz2ipw, const int &nx, const int &ny, const int &nz,
             const int & fftnx, const int &fftny, const int &fftnz,
             const double* trs_inv,
+            const ModuleBase::Matrix3* kgmatrix_in,
+            const ModuleBase::Vector3<double>* gtrans_in, const int nop);
+
+    /**
+     * @brief (nspin=2 collinear SSG) Symmetrize the spin-up/spin-down densities in reciprocal space
+     *        COUPLED through the full spin space group. A spin-flip coset element [C2_perp||g] maps
+     *        rho_up(G) <-> rho_down(g^{-1}G) (up<->down channel swap + spatial rotation); a unitary
+     *        element keeps each channel. Equivalent to symmetrizing charge=up+down over all ops as a
+     *        scalar and mag=up-down with the per-op flip sign. Spatial bookkeeping (grouping/phase)
+     *        is identical to rhog_symmetry.
+     * @param flip_flag per-operation flag: true if the operation is a spin-flip coset element.
+     * @param kgmatrix_in,gtrans_in,nop the combined {unitary, spin-flip} operation set from
+     *        Symmetry::spin_flip_sym_ops() (a group, so invmap/grouping stay valid).
+     */
+    void rhog_symmetry_nspin2_ssg(std::complex<double>* rhogtot_up, std::complex<double>* rhogtot_down,
+            const bool* flip_flag, int* ixyz2ipw, const int &nx, const int &ny, const int &nz,
+            const int & fftnx, const int &fftny, const int &fftnz, const bool gamma_only_pw,
             const ModuleBase::Matrix3* kgmatrix_in,
             const ModuleBase::Vector3<double>* gtrans_in, const int nop);
 
@@ -336,6 +380,13 @@ public:
         else { return -1; }
     }
 
+    /// atom map for the j-th UNITARY spin-flip operation (spatial part gmatrix_flip[j]).
+    int get_rotated_atom_flip(int j, int iat)const
+    {
+        if (!this->isym_rotiat_flip_.empty()) { return this->isym_rotiat_flip_[j][iat]; }
+        else { return -1; }
+    }
+
     private:
 
     /// atom-map for each symmetry operation: isym_rotiat[isym][iat]=rotiat
@@ -344,6 +395,10 @@ public:
     /// atom-map for each ANTIUNITARY operation: isym_rotiat_anti_[j][iat]=rotiat.
     /// Captured in analyze_magnetic_group_nspin4 before the unitary arrays are compacted.
     std::vector<std::vector<int>> isym_rotiat_anti_;
+
+    /// atom-map for each UNITARY spin-flip operation: isym_rotiat_flip_[j][iat]=rotiat.
+    /// Captured in analyze_spin_space_group_nspin2 before the unitary arrays are compacted.
+    std::vector<std::vector<int>> isym_rotiat_flip_;
 
     /// @brief  set atom map for each symmetry operation
     void set_atom_map(const Atom* atoms);
@@ -376,6 +431,14 @@ public:
     /// from being applied in k-reduction and density symmetrization.
     /// Non-magnetic (m_i=0) keeps all operations.
     void analyze_magnetic_group_nspin4(const Atom* atoms, const Statistics& st, const ModuleBase::Matrix3& latvec);
+
+    /// (nspin=2 collinear, spin space group) Split the already-built FULL chemical space group into
+    /// the unitary magnetic subgroup (mag[iat]=mag[g(iat)], kept in gmatrix[0..nrotk)) and the
+    /// UNITARY spin-flip coset (mag[iat]=-mag[g(iat)], captured in gmatrix_flip[]/nrotk_flip). The
+    /// latter are [C2_perp||g] operations that swap the up/down sublattices; there is no time reversal
+    /// (real collinear H), so this is a plain spin-channel swap, distinct from analyze_magnetic_group_nspin4's
+    /// antiunitary coset. Called only when symmetry_ssg is enabled and the moments differ between sublattices.
+    void analyze_spin_space_group_nspin2(const Atom* atoms, const Statistics& st);
 };
 }
 

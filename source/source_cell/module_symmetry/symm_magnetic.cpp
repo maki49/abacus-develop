@@ -188,6 +188,101 @@ void Symmetry::analyze_magnetic_group_nspin4(const Atom* atoms, const Statistics
     ModuleBase::GlobalFunc::OUT(GlobalV::ofs_running, "MAGNETIC SPACE GROUP OPERATIONS", this->nrotk);
 }
 
+void Symmetry::analyze_spin_space_group_nspin2(const Atom* atoms, const Statistics& st)
+{
+    // (nspin=2 collinear spin space group) The FULL chemical space group is already in
+    // gmatrix[0..nrotk). Split it, using the scalar collinear moments mag[iat], into:
+    //   - unitary magnetic subgroup : mag[iat] == mag[g(iat)]  for every atom  -> kept in gmatrix
+    //   - unitary spin-flip coset   : mag[iat] == -mag[g(iat)] for every atom  -> gmatrix_flip[]
+    // The spin-flip coset elements are [C2_perp||g]: they swap the up/down spin channels while
+    // rotating space by g. There is NO time reversal here (the collinear Hamiltonian is real, the two
+    // spin blocks are independent), so this is a plain channel swap - distinct from the antiunitary
+    // Theta*g coset built by analyze_magnetic_group_nspin4. Operations that neither preserve nor exactly
+    // flip the moment pattern are dropped.
+    std::vector<int> keep;   // unitary magnetic subgroup
+    keep.reserve(this->nrotk);
+    std::vector<int> flip;   // unitary spin-flip coset [C2_perp||g]
+    flip.reserve(this->nrotk);
+    int nrot_new = 0;
+    for (int isym = 0; isym < this->nrotk; ++isym)
+    {
+        bool preserve = true;
+        for (int iat = 0; iat < this->nat && preserve; ++iat)
+        {
+            const double mi = atoms[st.iat2it[iat]].mag[st.iat2ia[iat]];
+            const int jat = this->get_rotated_atom(isym, iat);
+            const double mj = atoms[st.iat2it[jat]].mag[st.iat2ia[jat]];
+            if (!this->equal(mi, mj)) { preserve = false; }
+        }
+        if (preserve)
+        {
+            keep.push_back(isym);
+            if (isym < this->nrot) { ++nrot_new; }   // pure point-group rotations are the first nrot ops
+            continue;
+        }
+        // g does not preserve the moment pattern; check whether it exactly FLIPS it, i.e.
+        // mag[iat] = -mag[g(iat)] for every atom. Then [C2_perp||g] (spatial g + up<->down swap) is a symmetry.
+        bool flip_ok = true;
+        for (int iat = 0; iat < this->nat && flip_ok; ++iat)
+        {
+            const double mi = atoms[st.iat2it[iat]].mag[st.iat2ia[iat]];
+            const int jat = this->get_rotated_atom(isym, iat);
+            const double mj = atoms[st.iat2it[jat]].mag[st.iat2ia[jat]];
+            if (!this->equal(mi, -mj)) { flip_ok = false; }
+        }
+        if (flip_ok) { flip.push_back(isym); }
+    }
+
+    // Capture the spin-flip coset BEFORE the unitary arrays are compacted in place below.
+    this->nrotk_flip = static_cast<int>(flip.size());
+    this->spin_flip_nspin2 = (this->nrotk_flip > 0);
+    if (this->nrotk_flip > 0)
+    {
+        this->isym_rotiat_flip_.resize(this->nrotk_flip);
+        for (int j = 0; j < this->nrotk_flip; ++j)
+        {
+            const int isym = flip[j];
+            this->gmatrix_flip[j] = this->gmatrix[isym];
+            this->kgmatrix_flip[j] = this->kgmatrix[isym];
+            this->gtrans_flip[j] = this->gtrans[isym];
+            this->isym_rotiat_flip_[j] = this->isym_rotiat_[isym];
+        }
+        ModuleBase::GlobalFunc::OUT(GlobalV::ofs_running,
+            "SPIN-FLIP COSET OPERATIONS (nspin=2 SSG)", this->nrotk_flip);
+    }
+
+    const int nrotk_new = static_cast<int>(keep.size());
+    if (nrotk_new != this->nrotk)
+    {
+        // compact the unitary subgroup in ascending order (keeps the rotations-first layout).
+        for (int i = 0; i < nrotk_new; ++i)
+        {
+            const int isym = keep[i];
+            if (i != isym)
+            {
+                this->gmatrix[i] = this->gmatrix[isym];
+                this->kgmatrix[i] = this->kgmatrix[isym];
+                this->gtrans[i] = this->gtrans[isym];
+                this->isym_rotiat_[i] = this->isym_rotiat_[isym];
+            }
+        }
+        this->isym_rotiat_.resize(nrotk_new);
+        this->nrot = nrot_new;
+        this->nrotk = nrotk_new;
+
+        // refresh the point-/space-group labels for the reduced (unitary magnetic) group
+        this->pointgroup(this->nrot, this->pgnumber, this->pgname, this->gmatrix, GlobalV::ofs_running, nullptr);
+        this->pointgroup(this->nrotk, this->spgnumber, this->spgname, this->gmatrix, GlobalV::ofs_running, nullptr);
+        ModuleBase::GlobalFunc::OUT(GlobalV::ofs_running, "MAGNETIC POINT GROUP (unitary, nspin=2)", this->pgname);
+        ModuleBase::GlobalFunc::OUT(GlobalV::ofs_running, "MAGNETIC SPACE GROUP OPERATIONS", this->nrotk);
+    }
+    if (this->spin_flip_nspin2)
+    {
+        ModuleBase::GlobalFunc::OUT(GlobalV::ofs_running,
+            "SPIN SPACE GROUP OPERATIONS (unitary + spin-flip)", this->nrotk + this->nrotk_flip);
+    }
+}
+
 bool Symmetry::magmom_same_check(const Atom* atoms)const
 {
     ModuleBase::TITLE("Symmetry", "magmom_same_check");
@@ -237,5 +332,34 @@ int Symmetry::density_sym_ops(std::vector<ModuleBase::Matrix3>& kgmat,
         trs_inv[nu + j] = -1.0;
     }
     return nu + na;
+}
+
+int Symmetry::spin_flip_sym_ops(std::vector<ModuleBase::Matrix3>& kgmat,
+                                std::vector<ModuleBase::Vector3<double>>& gtr,
+                                std::vector<double>& flip_sign) const
+{
+    // (nspin=2 collinear SSG) Assemble the full spin space group used to symmetrize the collinear
+    // density and to fold the k-points: the nrotk unitary operations (flip_sign +1) followed by the
+    // nrotk_flip spatial parts of the spin-flip coset [C2_perp||g] (flip_sign -1). The combined set
+    // is the full chemical space group -- a group, closed under inverse -- so the invmap/grouping in
+    // rhog_symmetry* remains valid. In the (charge, mag) basis the charge is invariant (all ops act
+    // as ordinary space-group operations) and the magnetization flips sign under the coset.
+    const int nu = this->nrotk;
+    const int nf = (this->spin_flip_nspin2 ? this->nrotk_flip : 0);
+    kgmat.resize(nu + nf);
+    gtr.resize(nu + nf);
+    flip_sign.assign(nu + nf, 1.0);
+    for (int i = 0; i < nu; ++i)
+    {
+        kgmat[i] = this->kgmatrix[i];
+        gtr[i] = this->gtrans[i];
+    }
+    for (int j = 0; j < nf; ++j)
+    {
+        kgmat[nu + j] = this->kgmatrix_flip[j];
+        gtr[nu + j] = this->gtrans_flip[j];
+        flip_sign[nu + j] = -1.0;
+    }
+    return nu + nf;
 }
 

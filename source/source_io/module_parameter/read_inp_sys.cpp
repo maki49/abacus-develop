@@ -298,6 +298,24 @@ void ReadInput::item_system()
         this->add_item(item);
     }
     {
+        Input_Item item("symmetry_ssg");
+        item.annotation = "enable spin-space-group reduction for nspin=2 collinear magnets (altermagnets)";
+        item.category = "System variables";
+        item.type = "Integer";
+        item.description = "Enable the collinear spin-space-group (SSG) reduction for nspin=2 magnetic systems.\n"
+                          "When set to 1, spatial operations that map the up-sublattice onto the down-sublattice "
+                          "(mag[iat]=-mag[g(iat)]) are recovered as a UNITARY spin-flip coset [C2_perp||g] instead of "
+                          "being discarded, enlarging the symmetry group used for k-point/density reduction "
+                          "(useful for altermagnets). Only takes effect for nspin==2 with sublattice moment differences; "
+                          "otherwise the behavior is unchanged.\n"
+                          "* 0: disabled (default)\n"
+                          "* 1: enabled";
+        item.default_value = "0";
+        item.availability = "symmetry==1";
+        read_sync_int(input.symmetry_ssg);
+        this->add_item(item);
+    }
+    {
         Input_Item item("cal_force");
         item.annotation = "if calculate the force at the end of the electronic iteration";
         item.category = "System variables";

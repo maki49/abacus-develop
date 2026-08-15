@@ -188,9 +188,91 @@ void Symmetry_rho::psymmg_soc(std::complex<double>* rhog_x, std::complex<double>
 	return;
 }
 
+void Symmetry_rho::psymmg_nspin2_ssg(std::complex<double>* rhog_up, std::complex<double>* rhog_down,
+	const ModulePW::PW_Basis* rho_basis, ModuleSymmetry::Symmetry& symm) const
+{
+	// (nspin=2 collinear SSG) symmetrize the up/down channels COUPLED through the full spin space
+	// group: the spin-flip coset [C2_perp||g] swaps up<->down while rotating space. Same MPI
+	// gather/scatter as psymmg_soc, but two channels and the coupled kernel rhog_symmetry_nspin2_ssg.
+
+	//(1) get fftixy2is and do Allreduce
+	int * fftixy2is = new int [rho_basis->fftnxy];
+	rho_basis->getfftixy2is(fftixy2is);
+#ifdef __MPI
+	Parallel_Reduce::reduce_pool(fftixy2is, rho_basis->fftnxy);
+	if(rho_basis->poolnproc>1)
+		for (int i=0;i<rho_basis->fftnxy;++i)
+			fftixy2is[i]+=rho_basis->poolnproc-1;
+
+	// (2) reduce both spin channels from the first pool.
+	std::complex<double>* rhogtot_up = nullptr;
+	std::complex<double>* rhogtot_down = nullptr;
+	int* ig2isztot = nullptr;
+	if(GlobalV::RANK_IN_POOL == 0)
+	{
+		rhogtot_up = new std::complex<double>[rho_basis->npwtot];
+		rhogtot_down = new std::complex<double>[rho_basis->npwtot];
+		ModuleBase::GlobalFunc::ZEROS(rhogtot_up, rho_basis->npwtot);
+		ModuleBase::GlobalFunc::ZEROS(rhogtot_down, rho_basis->npwtot);
+		ig2isztot = new int[rho_basis->npwtot];
+		ModuleBase::GlobalFunc::ZEROS(ig2isztot, rho_basis->npwtot);
+	}
+	int max_npw=0;
+	for (int proc = 0; proc < rho_basis->poolnproc; ++proc)
+	{
+		if(rho_basis->npw_per[proc] > max_npw) { max_npw=rho_basis->npw_per[proc]; }
+	}
+	this->reduce_to_fullrhog(rho_basis, rhogtot_up, rhog_up, ig2isztot, rho_basis->ig2isz, max_npw);
+	this->reduce_to_fullrhog(rho_basis, rhogtot_down, rhog_down, ig2isztot, rho_basis->ig2isz, max_npw);
+
+	// (3) do the coupled symmetrization on proc 0 of each pool
+	if(GlobalV::RANK_IN_POOL==0)
+	{
+#endif
+		int* ixyz2ipw = new int[rho_basis->fftnxyz];
+		for(int i=0;i<rho_basis->fftnxyz;++i) ixyz2ipw[i]=-1;
+		std::vector<ModuleBase::Matrix3> kgmat;
+		std::vector<ModuleBase::Vector3<double>> gtr;
+		std::vector<double> flip_sign;
+		const int nop = symm.spin_flip_sym_ops(kgmat, gtr, flip_sign);
+		bool* flip_flag = new bool[nop];
+		for (int i = 0; i < nop; ++i) { flip_flag[i] = (flip_sign[i] < 0.0); }
+#ifdef __MPI
+		this->get_ixyz2ipw(rho_basis, ig2isztot, fftixy2is, ixyz2ipw);
+		symm.rhog_symmetry_nspin2_ssg(rhogtot_up, rhogtot_down, flip_flag,
+			ixyz2ipw, rho_basis->nx, rho_basis->ny, rho_basis->nz,
+			rho_basis->fftnx, rho_basis->fftny, rho_basis->fftnz, rho_basis->gamma_only,
+			kgmat.data(), gtr.data(), nop);
+#else
+		this->get_ixyz2ipw(rho_basis, rho_basis->ig2isz, fftixy2is, ixyz2ipw);
+		symm.rhog_symmetry_nspin2_ssg(rhog_up, rhog_down, flip_flag,
+			ixyz2ipw, rho_basis->nx, rho_basis->ny, rho_basis->nz,
+			rho_basis->fftnx, rho_basis->fftny, rho_basis->fftnz, rho_basis->gamma_only,
+			kgmat.data(), gtr.data(), nop);
+#endif
+		delete[] flip_flag;
+		delete[] ixyz2ipw;
+#ifdef __MPI
+	}
+
+	// (4) send the result to other procs in the same pool
+	this->rhog_piece_to_all(rho_basis, rhogtot_up, rhog_up);
+	this->rhog_piece_to_all(rho_basis, rhogtot_down, rhog_down);
+
+	if(GlobalV::RANK_IN_POOL==0)
+	{
+		delete[] rhogtot_up;
+		delete[] rhogtot_down;
+		delete[] ig2isztot;
+	}
+#endif
+	delete[] fftixy2is;
+	return;
+}
+
 #ifdef __MPI
 
-void Symmetry_rho::reduce_to_fullrhog(const ModulePW::PW_Basis *rho_basis, 
+void Symmetry_rho::reduce_to_fullrhog(const ModulePW::PW_Basis *rho_basis,
 	std::complex<double>* rhogtot, std::complex<double>* rhogin, 
 	int* ig2isztot, const int* ig2iszin, int max_npw) const
 {

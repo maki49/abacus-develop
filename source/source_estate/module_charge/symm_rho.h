@@ -61,6 +61,15 @@ class Symmetry_rho
                    const ModulePW::PW_Basis* pw,
                    ModuleSymmetry::Symmetry& symm) const;
 
+    /// @brief (nspin=2 collinear SSG) Symmetrize the spin-up/spin-down densities (rho[0], rho[1])
+    ///        COUPLED through the full spin space group: the spin-flip coset [C2_perp||g] swaps
+    ///        up<->down while rotating space. Done in the (charge, mag) = (rho[0]+rho[1],
+    ///        rho[0]-rho[1]) basis: charge is symmetrized over all ops as a scalar, mag over the
+    ///        same ops with the per-op flip sign. Replaces the two independent scalar begin() calls.
+    void begin_nspin2_ssg(const Charge& CHR,
+                          const ModulePW::PW_Basis* pw,
+                          ModuleSymmetry::Symmetry& symm) const;
+
   private:
     // in real space:
     void psymm(double* rho_part,
@@ -77,6 +86,11 @@ class Symmetry_rho
                     std::complex<double>* rhog_z,
                     const ModulePW::PW_Basis* rho_basis,
                     ModuleSymmetry::Symmetry& symm) const;
+    // in reciprocal space, the two coupled collinear channels (rho_up, rho_down) for nspin=2 SSG:
+    void psymmg_nspin2_ssg(std::complex<double>* rhog_up,
+                           std::complex<double>* rhog_down,
+                           const ModulePW::PW_Basis* rho_basis,
+                           ModuleSymmetry::Symmetry& symm) const;
 #ifdef __MPI
     void reduce_to_fullrhog(const ModulePW::PW_Basis* rho_basis,
                             std::complex<double>* rhogtot,

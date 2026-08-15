@@ -240,6 +240,27 @@ int append_time_reversal_ops(const ModuleSymmetry::Symmetry& symm,
         }
         return symm.nrotk + symm.nrotk_anti;
     }
+    if (symm.spin_flip_nspin2)
+    {
+        // (nspin=2 collinear spin space group) fold with the full spin space group: the nrotk
+        // unitary operations plus the nrotk_flip spatial parts of the spin-flip coset [C2_perp||g].
+        // A flip element relates (k, up) to (g k, down); folding both channels together shrinks
+        // the IBZ, and the density symmetrization (begin_nspin2_ssg) uses the SAME operation set.
+        // Time reversal (K) still gives eps_s(-k)=eps_s(k) per spin, so the -k doubling is kept.
+        int n = symm.nrotk;
+        for (int j = 0; j < symm.nrotk_flip; ++j)
+        {
+            if (symm.kgmatrix_flip[j] == inv) { include_inv = true; }
+            kgmatrix[n + j] = symm.kgmatrix_flip[j];
+        }
+        n += symm.nrotk_flip;
+        if (!include_inv)
+        {
+            for (int i = 0; i < n; ++i) { kgmatrix[i + n] = inv * kgmatrix[i]; }
+            n *= 2;
+        }
+        return n;
+    }
     if (!include_inv)
     {
         for (int i = 0; i < symm.nrotk; ++i)

@@ -27,6 +27,13 @@ void Symmetry_rho::symmetrize_rho(const int nspin,
         srho.begin_soc(chr, pw, symm);
         return;
     }
+    if (nspin == 2 && symm.spin_flip_nspin2)
+    {
+        // (nspin=2 collinear SSG) the spin-up/spin-down densities are COUPLED by the spin-flip coset
+        // (up<->down swap), so they must be symmetrized together rather than as two scalars.
+        srho.begin_nspin2_ssg(chr, pw, symm);
+        return;
+    }
     for (int is = 0; is < nspin; is++)
     {
         srho.begin(is, chr, pw, symm);
@@ -156,6 +163,45 @@ void Symmetry_rho::begin_soc(double** rho,
     }
 
     ModuleBase::timer::end("Symmetry_rho", "begin_soc");
+    return;
+}
+
+void Symmetry_rho::begin_nspin2_ssg(const Charge& chr,
+                                    const ModulePW::PW_Basis* rho_basis,
+                                    ModuleSymmetry::Symmetry& symm) const
+{
+    if (ModuleSymmetry::Symmetry::symm_flag != 1)
+    {
+        return;
+    }
+
+    ModuleBase::TITLE("Symmetry_rho", "begin_nspin2_ssg");
+    ModuleBase::timer::start("Symmetry_rho", "begin_nspin2_ssg");
+
+    // the two collinear channels (rho[0]=up, rho[1]=down) are coupled by the spin-flip coset, so
+    // they are transformed to reciprocal space and symmetrized together.
+    rho_basis->real2recip(chr.rho[0], chr.rhog[0]);
+    rho_basis->real2recip(chr.rho[1], chr.rhog[1]);
+
+    psymmg_nspin2_ssg(chr.rhog[0], chr.rhog[1], rho_basis, symm);
+
+    rho_basis->recip2real(chr.rhog[0], chr.rho[0]);
+    rho_basis->recip2real(chr.rhog[1], chr.rho[1]);
+
+    // kinetic energy density (meta-GGA / ELF) transforms per spin like the charge, so it is coupled
+    // through the same spin-flip machinery.
+    if (XC_Functional::get_ked_flag() || chr.cal_elf)
+    {
+        std::vector<std::complex<double>> kin_g_up(chr.ngmc);
+        std::vector<std::complex<double>> kin_g_down(chr.ngmc);
+        rho_basis->real2recip(chr.kin_r[0], kin_g_up.data());
+        rho_basis->real2recip(chr.kin_r[1], kin_g_down.data());
+        psymmg_nspin2_ssg(kin_g_up.data(), kin_g_down.data(), rho_basis, symm);
+        rho_basis->recip2real(kin_g_up.data(), chr.kin_r[0]);
+        rho_basis->recip2real(kin_g_down.data(), chr.kin_r[1]);
+    }
+
+    ModuleBase::timer::end("Symmetry_rho", "begin_nspin2_ssg");
     return;
 }
 

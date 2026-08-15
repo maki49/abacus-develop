@@ -1,5 +1,6 @@
 #include "symmetry.h"
 #include "source_base/output.h"
+#include "source_io/module_parameter/parameter.h"
 
 using namespace ModuleSymmetry;
 
@@ -115,12 +116,21 @@ void Symmetry::analy_sys(const Lattice& lat, const Statistics& st, Atom* atoms, 
             // which should be loop over all atoms, f.e only loop over spin-up atoms
             // --------------------------------
             // AFM analysis Start
-            if (nspin > 1) 
+            if (nspin > 1)
             {
                 pricell_loop = this->magmom_same_check(atoms);
             }
 
-            if (!pricell_loop && nspin == 2)
+            if (PARAM.inp.symmetry_ssg && !pricell_loop && nspin == 2)
+            {
+                // spin space group (collinear): keep the FULL chemical space group here; the split into
+                // the unitary magnetic subgroup and the unitary spin-flip coset is done after set_atom_map
+                // by analyze_spin_space_group_nspin2 (mirrors the nspin=4 path).
+                this->getgroup(nrot_out, nrotk_out, ofs_running, this->nop, this->symop,
+                        this->gmatrix, this->gtrans, this->newpos, this->rotpos, this->index,
+                        this->ntype, this->itmin_type, this->itmin_start, this->istart, this->na);
+            }
+            else if (!pricell_loop && nspin == 2)
             {
                 this->analyze_magnetic_group(atoms, st, nrot_out, nrotk_out);
             }
@@ -295,6 +305,14 @@ void Symmetry::analy_sys(const Lattice& lat, const Statistics& st, Atom* atoms, 
     if (nspin == 4)
     {
         this->analyze_magnetic_group_nspin4(atoms, st, latvec1);
+    }
+
+    // (nspin=2 collinear spin space group) split the full chemical group into the unitary magnetic
+    // subgroup + the unitary spin-flip coset [C2_perp||g]. Gated on symmetry_ssg and matched to the
+    // getgroup branch above (!magmom_same_check == the lambda's !pricell_loop for nspin==2).
+    if (PARAM.inp.symmetry_ssg && nspin == 2 && !this->magmom_same_check(atoms))
+    {
+        this->analyze_spin_space_group_nspin2(atoms, st);
     }
 
     // Do this here for debug

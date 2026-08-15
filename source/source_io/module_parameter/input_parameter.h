@@ -28,6 +28,8 @@ struct Input_para
     double symmetry_prec = 1.0e-6;                ///< LiuXh add 2021-08-12, accuracy for symmetry
     bool symmetry_autoclose = true;               ///< whether to close symmetry automatically
                                                   ///< when error occurs in symmetry analysis
+    int symmetry_ssg = 0;                         ///< (nspin=2 collinear) enable spin-space-group reduction:
+                                                  ///< use the unitary spin-flip coset [C2_perp||g] (altermagnets)
     bool cal_force = false;                       ///< calculate the force
     bool cal_stress = false;                      ///< calculate the stress
     int kpar = 1;                                 ///< ecch pool is for one k point

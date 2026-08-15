@@ -490,3 +490,139 @@ void Symmetry::rhog_symmetry_nspin4(std::complex<double>* rhogtot_x, std::comple
 	delete[] count_xyz;
 	ModuleBase::timer::end("Symmetry","rhog_symmetry_nspin4");
 }
+
+void Symmetry::rhog_symmetry_nspin2_ssg(std::complex<double>* rhogtot_up, std::complex<double>* rhogtot_down,
+    const bool* flip_flag, int* ixyz2ipw, const int &nx, const int &ny, const int &nz,
+    const int & fftnx, const int &fftny, const int &fftnz, const bool gamma_only_pw,
+    const ModuleBase::Matrix3* kgmatrix_in, const ModuleBase::Vector3<double>* gtrans_in, const int nop)
+{
+    ModuleBase::timer::start("Symmetry","rhog_symmetry_nspin2_ssg");
+    // The grouping of FFT grid points into symmetry-connected orbits is purely spatial and identical
+    // to rhog_symmetry. Only the accumulation/write-back is changed: a spin-flip operation swaps the
+    // up/down channels (charge=up+down is invariant, mag=up-down flips sign), so on the way in/out of
+    // the orbit-representative frame the two channels are exchanged when flip_flag[isym] is true.
+    const ModuleBase::Matrix3* kgmatrix_use = (kgmatrix_in != nullptr) ? kgmatrix_in : this->kgmatrix;
+    const ModuleBase::Vector3<double>* gtrans_use = (gtrans_in != nullptr) ? gtrans_in : this->gtrans;
+    const int nrot_use = (nop > 0) ? nop : this->nrotk;
+
+    const int nxyz = fftnx*fftny*fftnz;
+    assert(nxyz>0);
+
+    int* symflag = new int[nxyz];
+    int(*isymflag)[48] = new int[nxyz][48];
+    int(*table_xyz)[48] = new int[nxyz][48];
+    int* count_xyz = new int[nxyz];
+    for (int i = 0; i < nxyz; i++) { symflag[i] = -1; }
+    int group_index = 0;
+
+    assert(nrot_use >0 );
+    assert(nrot_use <=48 );
+
+    std::vector<int>invmap(nrot_use, -1);
+    this->gmatrix_invmap(kgmatrix_use, nrot_use, invmap.data());
+
+    group_fft_grids(nrot_use, kgmatrix_use, invmap, ixyz2ipw, nx, ny, nz, fftnx, fftny, fftnz, gamma_only_pw,
+        symflag, isymflag, table_xyz, count_xyz, group_index);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int g_index = 0; g_index < group_index; g_index++)
+    {
+        int *ipw_record = new int[nrot_use];
+        int *sym_record = new int[nrot_use];
+        std::complex<double>* gphase_record = new std::complex<double> [nrot_use];
+        // orbit-representative-frame (up, down) densities accumulated over the symmetry operations
+        std::complex<double> sum_up(0, 0), sum_down(0, 0);
+        int rot_count=0;
+
+        for (int c_index = 0; c_index < count_xyz[g_index]; ++c_index)
+        {
+            int ixyz0 = table_xyz[g_index][c_index];
+            int ipw0 = ixyz2ipw[ixyz0];
+
+            if (symflag[ixyz0] == g_index)
+            {
+                int k = ixyz0%fftnz;
+                int j = ((ixyz0-k)/fftnz)%fftny;
+                int i = ((ixyz0-k)/fftnz-j)/fftny;
+
+                ModuleBase::Vector3<double> tmp_gdirect_double(0.0, 0.0, 0.0);
+                tmp_gdirect_double.x=static_cast<double>((i>int(nx/2)+1)?(i-nx):i);
+                tmp_gdirect_double.y=static_cast<double>((j>int(ny/2)+1)?(j-ny):j);
+                tmp_gdirect_double.z=static_cast<double>((k>int(nz/2)+1)?(k-nz):k);
+
+                tmp_gdirect_double = tmp_gdirect_double * ModuleBase::TWO_PI;
+
+                double cos_arg = 0.0, sin_arg = 0.0;
+                double arg_gtrans = tmp_gdirect_double * gtrans_use[isymflag[g_index][c_index]];
+
+                std::complex<double> phase_gtrans (ModuleBase::libm::cos(arg_gtrans),
+                        ModuleBase::libm::sin(arg_gtrans));
+
+                for (int ipt = 0;ipt < ((ModuleSymmetry::Symmetry::pricell_loop) ? this->ncell : 1);++ipt)
+                {
+                    double arg = tmp_gdirect_double * ptrans[ipt];
+                    double tmp_cos = 0.0, tmp_sin = 0.0;
+                    ModuleBase::libm::sincos(arg, &tmp_sin, &tmp_cos);
+                    cos_arg += tmp_cos;
+                    sin_arg += tmp_sin;
+                }
+
+                cos_arg/=static_cast<double>(ncell);
+                sin_arg/=static_cast<double>(ncell);
+
+                if (equal(cos_arg, 0.0) && equal(sin_arg, 0.0)) { continue; }
+
+                std::complex<double> gphase(cos_arg, sin_arg);
+                gphase = phase_gtrans * gphase;
+
+                if (equal(gphase.real(), 1.0) && equal(gphase.imag(), 0)) { gphase = std::complex<double>(1.0, 0.0); }
+
+                // pull this orbit member back to the representative frame: multiply by gphase, and
+                // swap up<->down if the connecting operation is a spin-flip coset element.
+                const int isym = isymflag[g_index][c_index];
+                const std::complex<double> vu = rhogtot_up[ipw0] * gphase;
+                const std::complex<double> vd = rhogtot_down[ipw0] * gphase;
+                if (flip_flag[isym]) { sum_up += vd; sum_down += vu; }
+                else                 { sum_up += vu; sum_down += vd; }
+
+                gphase_record[rot_count]=gphase;
+                ipw_record[rot_count]=ipw0;
+                sym_record[rot_count]=isym;
+                ++rot_count;
+            }//end if section
+        }//end c_index loop
+        if (rot_count!=0)
+        {
+            sum_up/= rot_count;
+            sum_down/= rot_count;
+        }
+        for (int ir = 0; ir < rot_count; ++ir)
+        {
+            // push the representative-frame value back out to this member, swapping channels again
+            // for spin-flip elements. (flip_flag is a Z2 homomorphism so flip(g)=flip(g^{-1}).)
+            const std::complex<double> inv_gphase = 1.0 / gphase_record[ir];
+            if (flip_flag[sym_record[ir]])
+            {
+                rhogtot_up[ipw_record[ir]]   = sum_down * inv_gphase;
+                rhogtot_down[ipw_record[ir]] = sum_up * inv_gphase;
+            }
+            else
+            {
+                rhogtot_up[ipw_record[ir]]   = sum_up * inv_gphase;
+                rhogtot_down[ipw_record[ir]] = sum_down * inv_gphase;
+            }
+        }
+
+        delete[] ipw_record;
+        delete[] sym_record;
+        delete[] gphase_record;
+    }//end g_index loop
+
+    delete[] symflag;
+    delete[] isymflag;
+    delete[] table_xyz;
+    delete[] count_xyz;
+    ModuleBase::timer::end("Symmetry","rhog_symmetry_nspin2_ssg");
+}
