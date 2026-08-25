@@ -311,7 +311,7 @@ void ReadInput::item_system()
                           "* 0: disabled (default)\n"
                           "* 1: enabled";
         item.default_value = "0";
-        item.availability = "symmetry==1";
+        item.set_availability("symmetry==1");
         read_sync_int(input.symmetry_ssg);
         this->add_item(item);
     }

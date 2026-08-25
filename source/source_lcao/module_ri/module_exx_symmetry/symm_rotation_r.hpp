@@ -248,6 +248,48 @@ namespace ModuleSymmetry
         return HR_full;
     }
 
+    // (nspin=2 SSG) derive the opposite spin channel's FULL H(R) from a full H(R) by one spin-flip
+    // coset op f=[C2_perp||g] (raw isym = nrotk, i.e. gmatrix_flip[0]). With SOC off the two spin
+    // channels are independent real matrices, and f's spatial/orbital rotation is identical to a
+    // unitary op (only the target spin channel differs), so the covariance is exactly the one used
+    // by restore_HR:  H_other[Z] = rotate_f( H_this[ f.Z ] ),  with f.Z = rotate_apR_by_formula(f, Z).
+    // f is a bijection on the full atom-pair set, so a single forward pass fills the whole channel.
+    template<typename Tdata>
+    std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> Symmetry_rotation::restore_HR_flip_nspin2(
+        const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_full_this) const
+    {
+        ModuleBase::TITLE("Symmetry_rotation", "restore_HR_flip_nspin2");
+        ModuleBase::timer::start("Symmetry_rotation", "restore_HR_flip_nspin2");
+        assert(symm.spin_flip_nspin2);
+        assert(symm.nrotk_flip > 0);
+        const int isym_flip = symm.nrotk;   // flip op j=0, raw sector index nrotk (nrotk_anti==0 here)
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_other;
+        for (auto& tmp1 : HR_full_this)
+        {
+            const int& z1 = tmp1.first;
+            for (auto& tmp2 : tmp1.second)
+            {
+                const int& z2 = tmp2.first.first;
+                const TC& Rz = tmp2.first.second;
+                const TapR& src = this->irs_.rotate_apR_by_formula(symm, isym_flip, { { z1, z2 }, Rz });
+                const int& s1 = src.first.first;
+                const int& s2 = src.first.second;
+                const TC& Rs = src.second;
+                // f is a bijection on the full apR set, so H_this[src] should exist; a missing entry
+                // can only be a below-threshold drop, treated as zero (skip).
+                auto it1 = HR_full_this.find(s1);
+                if (it1 == HR_full_this.end()) { continue; }
+                auto it2 = it1->second.find({ s2, Rs });
+                if (it2 == it1->second.end()) { continue; }
+                HR_other[z1][{z2, Rz}] = rotate_atompair_serial(it2->second, isym_flip,
+                    atoms[st.iat2it[s1]], atoms[st.iat2it[s2]], mode);
+            }
+        }
+        ModuleBase::timer::end("Symmetry_rotation", "restore_HR_flip_nspin2");
+        return HR_other;
+    }
+
     template<typename Tdata>
     inline void set_block(const int starti, const int startj, const RI::Tensor<std::complex<double>>& block,
         RI::Tensor<Tdata>& obj_tensor)

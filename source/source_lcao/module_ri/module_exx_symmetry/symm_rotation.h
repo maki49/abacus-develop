@@ -127,6 +127,16 @@ namespace ModuleSymmetry
         std::array<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>, 4> restore_HR_nspin4(
             const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
             const std::array<std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>, 4>& HR_irreducible_soc)const;
+        /// (nspin=2 SSG) derive the FULL H(R) of the OPPOSITE spin channel from a full H(R), using a
+        /// single spin-flip coset operation f=[C2_perp||g]. With SOC off the spin channels are
+        /// independent real matrices and f's spatial/orbital rotation is identical to a unitary op,
+        /// so H_down(f.apR)=rotate_f(H_up(apR)); f is a bijection on the full atom-pair set, so one
+        /// forward pass over HR_full_this yields the whole opposite channel. This lets cal_exx_elec
+        /// skip the second spin's cal_Hs entirely. Uses flip op j=0 (raw isym = nrotk).
+        template<typename Tdata>    // RI::Tensor type
+        std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> restore_HR_flip_nspin2(
+            const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+            const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_full_this)const;
 
         //--------------------------------------------------------------------------------
         /// test functions

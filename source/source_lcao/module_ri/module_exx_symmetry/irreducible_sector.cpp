@@ -9,12 +9,17 @@ namespace ModuleSymmetry
     // leaves R and the atom pair untouched, so the sector bookkeeping is identical for both kinds.
     static inline const ModuleBase::Matrix3& sector_gmatrix(const Symmetry& symm, const int isym)
     {
-        return (isym < symm.nrotk) ? symm.gmatrix[isym] : symm.gmatrix_anti[isym - symm.nrotk];
+        if (isym < symm.nrotk) { return symm.gmatrix[isym]; }
+        // (nspin=2 SSG) the spin-flip coset reuses the [nrotk, nrotk+nrotk_flip) index range
+        // (nrotk_anti==0 in that case); its spatial part is gmatrix_flip[isym-nrotk].
+        return symm.spin_flip_nspin2 ? symm.gmatrix_flip[isym - symm.nrotk]
+                                     : symm.gmatrix_anti[isym - symm.nrotk];
     }
     static inline int sector_rotated_atom(const Symmetry& symm, const int isym, const int iat)
     {
-        return (isym < symm.nrotk) ? symm.get_rotated_atom(isym, iat)
-                                   : symm.get_rotated_atom_anti(isym - symm.nrotk, iat);
+        if (isym < symm.nrotk) { return symm.get_rotated_atom(isym, iat); }
+        return symm.spin_flip_nspin2 ? symm.get_rotated_atom_flip(isym - symm.nrotk, iat)
+                                     : symm.get_rotated_atom_anti(isym - symm.nrotk, iat);
     }
 
     TC Irreducible_Sector::rotate_R(const Symmetry& symm,

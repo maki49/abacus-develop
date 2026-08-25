@@ -803,6 +803,12 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		return;
 	}
 
+	// (nspin=2 SSG) the up-sublattice-to-down-sublattice spin-flip coset makes the down channel's
+	// H(R) a single flip-op rotation of the up channel's, so we compute cal_Hs for is=0 only and
+	// derive is=1 from the stored up-channel full H(R); see restore_HR_flip_nspin2.
+	const bool ssg_flip = (p_symrot && PARAM.inp.nspin == 2 && ucell.symm.spin_flip_nspin2);
+	std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Hs_full_up;
+
 	this->Hexxs.resize(PARAM.inp.nspin);
 	this->Eexx = 0;
 	for(int is=0; is<PARAM.inp.nspin; ++is)
@@ -810,7 +816,7 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		const std::string suffix = ((PARAM.inp.cal_force || PARAM.inp.cal_stress) ? std::to_string(is) : "");
 
 		this->exx_lri.set_Ds(Ds[is], this->info.dm_threshold, suffix);
-		this->exx_lri.cal_Hs({ "","",suffix });
+		if (!(ssg_flip && is == 1)) { this->exx_lri.cal_Hs({ "","",suffix }); }
 
 		if (!p_symrot)
 		{
@@ -819,10 +825,20 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 		}
 		else
 		{
-			// reduce but not repeat
-			auto Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs);
-			// rotate locally without repeat
-			Hs_a2D = p_symrot->restore_HR(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_a2D);
+			std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Hs_a2D;
+			if (ssg_flip && is == 1)
+			{
+				// down channel: derive the full H(R) from the stored up channel by one spin-flip op
+				Hs_a2D = p_symrot->restore_HR_flip_nspin2(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_full_up);
+			}
+			else
+			{
+				// reduce but not repeat
+				Hs_a2D = this->exx_lri.post_2D.set_tensors_map2(this->exx_lri.Hs);
+				// rotate locally without repeat
+				Hs_a2D = p_symrot->restore_HR(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_a2D);
+				if (ssg_flip && is == 0) { Hs_full_up = Hs_a2D; }   // keep up channel for the flip derivation
+			}
 			// cal energy using full Hs without repeat
 			this->exx_lri.energy = this->exx_lri.post_2D.cal_energy(
 				this->exx_lri.post_2D.saves["Ds_" + suffix],
