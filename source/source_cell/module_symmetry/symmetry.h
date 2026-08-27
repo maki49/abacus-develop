@@ -119,6 +119,18 @@ public:
     int nrotk_flip = 0;              ///< number of unitary spin-flip coset elements (nspin=2 SSG)
     bool spin_flip_nspin2 = false;   ///< nspin=2 collinear with a non-empty spin-flip coset (SSG active)
 
+    /// (nspin=4, noncollinear SSG, SOC off) INDEPENDENT spin rotations of the spin space group.
+    /// The magnetic (Shubnikov) path locks the spin rotation to the spatial op via spin_so3(gmatc);
+    /// with SOC off the spin rotation R_spin decouples and is instead FITTED from the moment
+    /// configuration ({m_i} -> {m_{g(i)}}), keeping more operations than the magnetic subgroup.
+    /// These parallel the operation arrays: spin_rotation_ssg[i] is aligned with the (compacted)
+    /// unitary gmatrix[i]; spin_rotation_anti_ssg[j] is the proper spin rotation of the antiunitary
+    /// element Theta*gmatrix_anti[j] (Theta itself is the trs_inv=-1 / sigma_y factor applied downstream).
+    /// Fed to build_wspin (density) and cal_Ms (EXX, via so3_to_su2) in place of spin_so3(gmatc).
+    ModuleBase::Matrix3 spin_rotation_ssg[48];
+    ModuleBase::Matrix3 spin_rotation_anti_ssg[48];
+    bool spin_space_group_nspin4 = false;   ///< nspin=4 noncollinear SSG active (SOC off + symmetry_ssg)
+
     ModuleBase::Matrix3 symop[48];    ///< the rotation matrices for the pure bravais lattice
     int nop=0;    ///< the number of point group operations of the pure bravais lattice without basis
     int nrot=0;    ///< the number of pure point group rotations
@@ -439,6 +451,19 @@ public:
     /// (real collinear H), so this is a plain spin-channel swap, distinct from analyze_magnetic_group_nspin4's
     /// antiunitary coset. Called only when symmetry_ssg is enabled and the moments differ between sublattices.
     void analyze_spin_space_group_nspin2(const Atom* atoms, const Statistics& st);
+
+    /// (nspin=4 noncollinear, spin space group, SOC off) Like analyze_magnetic_group_nspin4, but the
+    /// spin rotation is DECOUPLED from space: for each operation g we FIT an independent proper spin
+    /// rotation R_spin (SpinRotation::fit_spin_rotation) mapping the moment set {m_i} -> {m_{g(i)}}.
+    /// g is kept as unitary if R_spin exactly maps +m (stored in spin_rotation_ssg[], aligned with the
+    /// compacted gmatrix[]); as an antiunitary Theta*g if R_spin maps -m (stored in spin_rotation_anti_ssg[],
+    /// aligned with gmatrix_anti[]); otherwise dropped. This keeps MORE operations than the magnetic
+    /// (Shubnikov) subgroup, so IBZ / density / EXX reduction is stronger. The operation-array layout
+    /// (gmatrix / gmatrix_anti / nrotk / nrotk_anti / magnetic_nspin4 / isym_rotiat_*) is populated
+    /// EXACTLY as analyze_magnetic_group_nspin4 does, so all downstream consumers are unchanged; only the
+    /// spin rotation SOURCE differs (fitted R_spin instead of spin_so3(gmatc)).
+    /// Called only for symmetry_ssg && nspin==4 && !lspinorb.
+    void analyze_spin_space_group_nspin4(const Atom* atoms, const Statistics& st, const ModuleBase::Matrix3& latvec);
 };
 }
 

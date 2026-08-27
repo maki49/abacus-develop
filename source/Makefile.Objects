@@ -576,6 +576,7 @@ OBJS_SYMMETRY=symm_other.o\
     symm_hermite.o\
     symm_lattice.o\
     symm_magnetic.o\
+    symm_spin_group.o\
     symm_pricell.o\
     symm_rho.o\
     little_group.o\

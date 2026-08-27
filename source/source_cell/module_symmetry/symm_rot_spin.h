@@ -52,6 +52,29 @@ Su2 so3_to_su2(const ModuleBase::Matrix3& gmatc, const double eps = 1e-6);
 ///        Computed directly from gmatc as W = R_proper^T (R_proper = proper part).
 ModuleBase::Matrix3 spin_so3(const ModuleBase::Matrix3& gmatc);
 
+/// @brief (nspin=4 SSG) Fit the INDEPENDENT proper spin rotation R (det=+1) that maps one
+///        set of moment vectors onto another: R * from[i] == to[i] for all i, using the
+///        same column-vector action `R * m` as spin_so3() (so it drops in for W).
+///
+/// Unlike spin_so3(gmatc), R is NOT derived from any spatial operation -- it is found from
+/// the moment configuration alone, which is exactly the spin/space decoupling of the spin
+/// space group (valid with SOC off). Built by an orthonormal-frame (Gram-Schmidt) construction
+/// from two linearly independent moment pairs, so no SVD is needed and det(R)=+1 is guaranteed:
+///   e1=norm(from[a]), e2=norm(from[b] perp e1), e3=e1 x e2;  f_k likewise from to[];  R = F E^T.
+/// Then R is VERIFIED to map every moment within `tol`; `ok` is set false if the verification
+/// fails or the moments are rank-deficient (collinear -> no independent second axis; that is the
+/// nspin=2 collinear regime, out of Phase-2 scope). A false `ok` means "reject this operation".
+///
+/// @param from  source moments m_i (all atoms)
+/// @param to    target moments (m_{g(i)} for the unitary test, -m_{g(i)} for the antiunitary test)
+/// @param[out] ok  true iff a proper rotation exactly mapping all moments (within tol) was found
+/// @param tol   absolute tolerance for the per-component moment match (default matches Symmetry::epsilon usage)
+/// @return the fitted rotation R (identity when ok is false; caller must check ok)
+ModuleBase::Matrix3 fit_spin_rotation(const std::vector<ModuleBase::Vector3<double>>& from,
+                                      const std::vector<ModuleBase::Vector3<double>>& to,
+                                      bool& ok,
+                                      const double tol = 1e-5);
+
 /// @brief The same W matrix computed independently from a given SU(2) matrix U via
 ///        W_ij = (1/2) Tr(sigma_i U sigma_j U^dagger). Used for verification.
 ModuleBase::Matrix3 pauli_rotation_matrix(const Su2& U);

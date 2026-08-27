@@ -90,16 +90,19 @@ void Symmetry_rho::psymmg_soc(std::complex<double>* rhog_x, std::complex<double>
 		// index [0,nrotk) unitary, [nrotk, nrotk+nrotk_anti) the spatial parts of the
 		// antiunitary elements Theta*g -- same layout as density_sym_ops().
 		const int na = symm.magnetic_nspin4 ? symm.nrotk_anti : 0;
+		// (nspin=4 SSG, SOC off) the spin rotation is decoupled from space: use the independently
+		// FITTED R_spin stored by analyze_spin_space_group_nspin4 instead of spin_so3(gmatc). 
+		const bool ssg = symm.spin_space_group_nspin4;
 		std::vector<ModuleBase::Matrix3> wspin(symm.nrotk + na);
 		for (int i = 0; i < symm.nrotk; ++i)
 		{
 			const ModuleBase::Matrix3 gmatc = ilatvec * symm.gmatrix[i] * latvec;
-			wspin[i] = ModuleSymmetry::SpinRotation::spin_so3(gmatc);
+			wspin[i] = ssg ? symm.spin_rotation_ssg[i] : ModuleSymmetry::SpinRotation::spin_so3(gmatc);
 		}
 		for (int j = 0; j < na; ++j)
 		{
 			const ModuleBase::Matrix3 gmatc = ilatvec * symm.gmatrix_anti[j] * latvec;
-			wspin[symm.nrotk + j] = ModuleSymmetry::SpinRotation::spin_so3(gmatc);
+			wspin[symm.nrotk + j] = ssg ? symm.spin_rotation_anti_ssg[j] : ModuleSymmetry::SpinRotation::spin_so3(gmatc);
 		}
 		return wspin;
 	};

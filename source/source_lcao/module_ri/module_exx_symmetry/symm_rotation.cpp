@@ -55,7 +55,22 @@ namespace ModuleSymmetry
         std::vector<SpinRotation::Su2> spin_U(nop_tot, SpinRotation::Su2{ 1.0, 0.0, 0.0, 1.0 });
         if (PARAM.inp.nspin == 4)
         {
-            for (int i = 0;i < nop_tot;++i) { spin_U[i] = SpinRotation::so3_to_su2(gmatc[i]); }
+            // (nspin=4 SSG, SOC off) the spin rotation is decoupled from space: build U from the
+            // independently FITTED R_spin (spin_rotation_ssg / spin_rotation_anti_ssg) instead of
+            // from the spatial op gmatc[i]. so3_to_su2 accepts any proper rotation, so the downstream
+            // rotation formulas (restore_dm, restore_HR_nspin4) are unchanged.
+            if (ucell.symm.spin_space_group_nspin4)
+            {
+                for (int i = 0;i < nop_tot;++i)
+                {
+                    spin_U[i] = SpinRotation::so3_to_su2(i < nsym_ ? ucell.symm.spin_rotation_ssg[i]
+                                                                   : ucell.symm.spin_rotation_anti_ssg[i - nsym_]);
+                }
+            }
+            else
+            {
+                for (int i = 0;i < nop_tot;++i) { spin_U[i] = SpinRotation::so3_to_su2(gmatc[i]); }
+            }
         }
         this->spin_U_ = spin_U;  // keep for restore_HR_nspin4 (real-space EXX H(R) spin mixing)
 

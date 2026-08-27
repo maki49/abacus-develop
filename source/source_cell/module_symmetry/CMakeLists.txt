@@ -12,6 +12,7 @@ add_library(
     symm_hermite.cpp
     symm_lattice.cpp
     symm_magnetic.cpp
+    symm_spin_group.cpp
     symm_pricell.cpp
     symm_rho.cpp
     symmetry.cpp

@@ -125,6 +125,60 @@ ModuleBase::Matrix3 spin_so3(const ModuleBase::Matrix3& gmatc)
     return proper_part(gmatc).Transpose();
 }
 
+ModuleBase::Matrix3 fit_spin_rotation(const std::vector<ModuleBase::Vector3<double>>& from,
+                                      const std::vector<ModuleBase::Vector3<double>>& to,
+                                      bool& ok,
+                                      const double tol)
+{
+    ok = false;
+    const ModuleBase::Matrix3 identity(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    const int n = static_cast<int>(from.size());
+    if (n == 0 || static_cast<int>(to.size()) != n) { return identity; }
+
+    // A norm below this is treated as a zero (non-magnetic) moment: it constrains nothing.
+    const double nrm_eps = 1e-6;
+
+    // 1st frame axis: the first non-zero moment.
+    int a = -1;
+    for (int i = 0; i < n; ++i) { if (from[i].norm() > nrm_eps) { a = i; break; } }
+    if (a < 0) { return identity; }   // all moments zero: no constraint (handled by has_moment gate upstream)
+    const ModuleBase::Vector3<double> e1 = from[a] * (1.0 / from[a].norm());
+    const ModuleBase::Vector3<double> f1 = to[a] * (1.0 / std::max(to[a].norm(), nrm_eps));
+
+    // 2nd frame axis: the first moment with a component perpendicular to e1 (rank >= 2).
+    int b = -1;
+    ModuleBase::Vector3<double> e2, f2;
+    for (int i = 0; i < n; ++i)
+    {
+        const ModuleBase::Vector3<double> perp = from[i] - e1 * (e1 * from[i]);
+        if (perp.norm() > nrm_eps) { b = i; e2 = perp * (1.0 / perp.norm()); break; }
+    }
+    if (b < 0) { return identity; }   // rank-1 (collinear moments): degenerate, out of nspin=4 SSG scope
+    const ModuleBase::Vector3<double> fperp = to[b] - f1 * (f1 * to[b]);
+    if (fperp.norm() <= nrm_eps) { return identity; }   // target lost its perpendicular part -> not a rotation
+    f2 = fperp * (1.0 / fperp.norm());
+
+    // 3rd axis by right-handed cross product -> both frames right-handed -> det(R)=+1.
+    const ModuleBase::Vector3<double> e3 = e1 ^ e2;
+    const ModuleBase::Vector3<double> f3 = f1 ^ f2;
+
+    // R maps e_k -> f_k :  R = F E^T,  R_ij = sum_k f_k[i] e_k[j].  Acts as column vectors: R * m.
+    const ModuleBase::Matrix3 R(
+        f1.x * e1.x + f2.x * e2.x + f3.x * e3.x, f1.x * e1.y + f2.x * e2.y + f3.x * e3.y, f1.x * e1.z + f2.x * e2.z + f3.x * e3.z,
+        f1.y * e1.x + f2.y * e2.x + f3.y * e3.x, f1.y * e1.y + f2.y * e2.y + f3.y * e3.y, f1.y * e1.z + f2.y * e2.z + f3.y * e3.z,
+        f1.z * e1.x + f2.z * e2.x + f3.z * e3.x, f1.z * e1.y + f2.z * e2.y + f3.z * e3.y, f1.z * e1.z + f2.z * e2.z + f3.z * e3.z);
+
+    // Verify R exactly maps EVERY moment (this is what makes the fit correct AND, for rank>=2
+    // moments, guarantees group closure: R is the unique proper map of the moment set).
+    for (int i = 0; i < n; ++i)
+    {
+        const ModuleBase::Vector3<double> d = R * from[i] - to[i];
+        if (std::fabs(d.x) > tol || std::fabs(d.y) > tol || std::fabs(d.z) > tol) { return identity; }
+    }
+    ok = true;
+    return R;
+}
+
 ModuleBase::Matrix3 pauli_rotation_matrix(const Su2& U)
 {
     // sigma matrices (row-major 2x2)

@@ -304,7 +304,17 @@ void Symmetry::analy_sys(const Lattice& lat, const Statistics& st, Atom* atoms, 
     // the magnetization (pseudovector), so they are not applied in k-reduction / density symmetrization.
     if (nspin == 4)
     {
-        this->analyze_magnetic_group_nspin4(atoms, st, latvec1);
+        // (SSG, SOC off) decouple the spin rotation from space: fit an independent R_spin per op,
+        // keeping more operations than the magnetic (Shubnikov) subgroup. Falls back to the magnetic
+        // path when SOC is on (spin locked to space) or symmetry_ssg is disabled -> bit-for-bit unchanged.
+        if (PARAM.inp.symmetry_ssg && !PARAM.inp.lspinorb)
+        {
+            this->analyze_spin_space_group_nspin4(atoms, st, latvec1);
+        }
+        else
+        {
+            this->analyze_magnetic_group_nspin4(atoms, st, latvec1);
+        }
     }
 
     // (nspin=2 collinear spin space group) split the full chemical group into the unitary magnetic
