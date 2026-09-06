@@ -828,8 +828,10 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 			std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Hs_a2D;
 			if (ssg_flip && is == 1)
 			{
-				// down channel: derive the full H(R) from the stored up channel by one spin-flip op
-				Hs_a2D = p_symrot->restore_HR_flip_nspin2(ucell.symm, ucell.atoms, ucell.st, 'H', Hs_full_up);
+				// down channel: derive the full H(R) from the stored up channel by one spin-flip op.
+				// Pass the BvK period so the flip's screw/glide src cell is folded back into the stored box.
+				Hs_a2D = p_symrot->restore_HR_flip_nspin2(ucell.symm, ucell.atoms, ucell.st, 'H',
+					RI_Util::get_Born_vonKarmen_period(*this->p_kv), Hs_full_up);
 			}
 			else
 			{

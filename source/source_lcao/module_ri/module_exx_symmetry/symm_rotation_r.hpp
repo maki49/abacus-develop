@@ -257,6 +257,7 @@ namespace ModuleSymmetry
     template<typename Tdata>
     std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> Symmetry_rotation::restore_HR_flip_nspin2(
         const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+        const TC& bvk_period,
         const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_full_this) const
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR_flip_nspin2");
@@ -264,6 +265,19 @@ namespace ModuleSymmetry
         assert(symm.spin_flip_nspin2);
         assert(symm.nrotk_flip > 0);
         const int isym_flip = symm.nrotk;   // flip op j=0, raw sector index nrotk (nrotk_anti==0 here)
+        // H(R) is Born-von-Karman-periodic, so the stored keys live in one BvK supercell (R % period,
+        // centered as [-n/2,n/2), matching RI::Array_Operator). The flip op's spatial part is a screw/
+        // glide, so rotate_apR_by_formula can return a src cell one BvK translation outside that box;
+        // fold it back before the lookup, else most entries miss and the opposite channel comes out empty.
+        auto bvk_fold = [&bvk_period](const TC& R) -> TC {
+            TC r;
+            for (int i = 0; i < 3; ++i)
+            {
+                const int n = bvk_period[i];
+                r[i] = (n > 0) ? ((R[i] % n + 3 * n / 2) % n - n / 2) : R[i];
+            }
+            return r;
+            };
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_other;
         for (auto& tmp1 : HR_full_this)
         {
@@ -275,7 +289,7 @@ namespace ModuleSymmetry
                 const TapR& src = this->irs_.rotate_apR_by_formula(symm, isym_flip, { { z1, z2 }, Rz });
                 const int& s1 = src.first.first;
                 const int& s2 = src.first.second;
-                const TC& Rs = src.second;
+                const TC Rs = bvk_fold(src.second);
                 // f is a bijection on the full apR set, so H_this[src] should exist; a missing entry
                 // can only be a below-threshold drop, treated as zero (skip).
                 auto it1 = HR_full_this.find(s1);

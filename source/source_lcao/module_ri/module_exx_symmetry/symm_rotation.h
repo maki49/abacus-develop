@@ -136,6 +136,7 @@ namespace ModuleSymmetry
         template<typename Tdata>    // RI::Tensor type
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> restore_HR_flip_nspin2(
             const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
+            const TC& bvk_period,
             const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_full_this)const;
 
         //--------------------------------------------------------------------------------
