@@ -258,17 +258,21 @@ namespace ModuleSymmetry
     std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> Symmetry_rotation::restore_HR_flip_nspin2(
         const Symmetry& symm, const Atom* atoms, const Statistics& st, const char mode,
         const TC& bvk_period,
-        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_full_this) const
+        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_targets,
+        const std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>>& HR_source) const
     {
         ModuleBase::TITLE("Symmetry_rotation", "restore_HR_flip_nspin2");
         ModuleBase::timer::start("Symmetry_rotation", "restore_HR_flip_nspin2");
         assert(symm.spin_flip_nspin2);
         assert(symm.nrotk_flip > 0);
         const int isym_flip = symm.nrotk;   // flip op j=0, raw sector index nrotk (nrotk_anti==0 here)
-        // H(R) is Born-von-Karman-periodic, so the stored keys live in one BvK supercell (R % period,
-        // centered as [-n/2,n/2), matching RI::Array_Operator). The flip op's spatial part is a screw/
-        // glide, so rotate_apR_by_formula can return a src cell one BvK translation outside that box;
-        // fold it back before the lookup, else most entries miss and the opposite channel comes out empty.
+        // The opposite channel at target pair Z is H_other[Z] = rotate_f( H_this[f(Z)] ). We iterate
+        // HR_targets for the output keys Z (this rank's OWN up pairs, disjoint across ranks, so the
+        // gathered result is not double-counted) and read the flip source f(Z) from HR_source, which
+        // the caller has gathered to contain exactly those flip images (they may be owned by other
+        // ranks in MPI). H(R) is Born-von-Karman-periodic, so the stored keys live in one BvK supercell
+        // (R % period, centered [-n/2,n/2), matching RI::Array_Operator); the flip op's spatial part is
+        // a screw/glide, so f(Z)'s src cell can be one BvK translation outside that box -> fold it back.
         auto bvk_fold = [&bvk_period](const TC& R) -> TC {
             TC r;
             for (int i = 0; i < 3; ++i)
@@ -279,7 +283,7 @@ namespace ModuleSymmetry
             return r;
             };
         std::map<int, std::map<std::pair<int, TC>, RI::Tensor<Tdata>>> HR_other;
-        for (auto& tmp1 : HR_full_this)
+        for (auto& tmp1 : HR_targets)
         {
             const int& z1 = tmp1.first;
             for (auto& tmp2 : tmp1.second)
@@ -290,10 +294,10 @@ namespace ModuleSymmetry
                 const int& s1 = src.first.first;
                 const int& s2 = src.first.second;
                 const TC Rs = bvk_fold(src.second);
-                // f is a bijection on the full apR set, so H_this[src] should exist; a missing entry
+                // f is a bijection on the full apR set, so H_source[src] should exist; a missing entry
                 // can only be a below-threshold drop, treated as zero (skip).
-                auto it1 = HR_full_this.find(s1);
-                if (it1 == HR_full_this.end()) { continue; }
+                auto it1 = HR_source.find(s1);
+                if (it1 == HR_source.end()) { continue; }
                 auto it2 = it1->second.find({ s2, Rs });
                 if (it2 == it1->second.end()) { continue; }
                 HR_other[z1][{z2, Rz}] = rotate_atompair_serial(it2->second, isym_flip,

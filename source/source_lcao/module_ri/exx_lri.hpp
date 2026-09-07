@@ -805,7 +805,11 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 
 	// (nspin=2 SSG) the up-sublattice-to-down-sublattice spin-flip coset makes the down channel's
 	// H(R) a single flip-op rotation of the up channel's, so we compute cal_Hs for is=0 only and
-	// derive is=1 from the stored up-channel full H(R); see restore_HR_flip_nspin2.
+	// derive is=1 from the up-channel full H(R) by one flip op f=[C2_perp||g]; see restore_HR_flip_nspin2.
+	// The flip maps a local atom pair to one whose atoms = g(.) may be owned by another MPI rank, so
+	// before the flip we gather (comm_map2_first) the up pairs whose atoms are this rank's atoms UNION
+	// their flip images; without that gather the derived down channel misses cross-rank source pairs
+	// and HSE diverges in parallel (it is correct in serial). See the is==1 branch below.
 	const bool ssg_flip = (p_symrot && PARAM.inp.nspin == 2 && ucell.symm.spin_flip_nspin2);
 	std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Hs_full_up;
 
@@ -828,10 +832,24 @@ void Exx_LRI<Tdata>::cal_exx_elec(const std::vector<std::map<TA, std::map<TAC, R
 			std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Hs_a2D;
 			if (ssg_flip && is == 1)
 			{
-				// down channel: derive the full H(R) from the stored up channel by one spin-flip op.
-				// Pass the BvK period so the flip's screw/glide src cell is folded back into the stored box.
+				// down channel: H_down[Z] = rotate_f( H_up[f(Z)] ). Iterate THIS rank's own up pairs as
+				// targets Z (they are disjoint across ranks, so the comm_map2_first below does not double
+				// count), and read the flip source f(Z) from a gathered copy of the up channel: f(Z)'s
+				// atoms are the flip images g(.) of Z's atoms and may be owned by another MPI rank, so
+				// collect exactly those images with comm_map2_first. (get_Born_vonKarmen_period folds the
+				// screw/glide src cell back into the stored BvK box.)
+				std::set<TA> fa, fb;
+				for (const auto& t1 : Hs_full_up)
+				{
+					fa.insert(ucell.symm.get_rotated_atom_flip(0, t1.first));
+					for (const auto& t2 : t1.second) { fb.insert(ucell.symm.get_rotated_atom_flip(0, t2.first.first)); }
+				}
+				// gather the needed source pairs for flip (fa, fb) to current rank
+				std::map<TA, std::map<TAC, RI::Tensor<Tdata>>> Hs_up_src
+					= RI::Communicate_Tensors_Map_Judge::comm_map2_first(this->mpi_comm,
+						std::map<TA, std::map<TAC, RI::Tensor<Tdata>>>(Hs_full_up), fa, fb);
 				Hs_a2D = p_symrot->restore_HR_flip_nspin2(ucell.symm, ucell.atoms, ucell.st, 'H',
-					RI_Util::get_Born_vonKarmen_period(*this->p_kv), Hs_full_up);
+					RI_Util::get_Born_vonKarmen_period(*this->p_kv), Hs_full_up, Hs_up_src);
 			}
 			else
 			{
