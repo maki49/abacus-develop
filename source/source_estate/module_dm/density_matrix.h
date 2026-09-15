@@ -294,7 +294,9 @@ class DensityMatrix
     std::vector<std::vector<TR>> _DMR_save;
 
     /// @brief whether _DMR holds a density matrix calculated from DMK (reset by init_DMR, set by cal_DMR)
-    bool _dmr_ready = false;
+    /// mutable for the same reason as `_DMR` above: `cal_DMR` is const, and recording that the
+    /// cache is now populated does not change the object logically.
+    mutable bool _dmr_ready = false;
 
     /**
      * @brief HContainer for density matrix in real space for gird parallelization
