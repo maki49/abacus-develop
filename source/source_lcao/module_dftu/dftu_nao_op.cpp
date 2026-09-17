@@ -159,7 +159,7 @@ void hamilt::DFTU_onsite<hamilt::OperatorLCAO<TK, TR>>::contributeHR()
         for (int ik_local = 0; ik_local < nk_local; ++ik_local)
         {
             const int ik_ibz = this->kv_->ik2iktot[ik_local] % nks_ibz_global;
-            for (auto& isym_kvd : this->kv_->kstars[ik_ibz]) { kvec_d_full.push_back(isym_kvd.second); }
+            for (const std::pair<const int, ModuleBase::Vector3<double>>& isym_kvd : this->kv_->kstars[ik_ibz]) { kvec_d_full.push_back(isym_kvd.second); }
         }
         const std::vector<std::vector<TK>> dmk_full = this->symrot_.restore_dm(*this->kv_, this->dm_->get_DMK_vector(), *pv);
         dmr_sym.reset(new elecstate::DensityMatrix<TK, double>(pv, nspin0, kvec_d_full, static_cast<int>(kvec_d_full.size())));

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SYMM_ROTATION_K_H
+#define SYMM_ROTATION_K_H
 #include "irreducible_sector.h"
 #include "source_base/parallel_2d.h"
 #include "source_base/complexmatrix.h"
@@ -173,3 +174,4 @@ namespace ModuleSymmetry
         Irreducible_Sector irs_;
     };
 }
+#endif // SYMM_ROTATION_K_H

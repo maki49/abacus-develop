@@ -92,7 +92,7 @@ namespace ModuleSymmetry
         for (int ik_ibz = 0; ik_ibz < nks_ibz; ++ik_ibz)
         {
             std::set<int> needed;
-            for (const auto& member : kv.kstars[ik_ibz])
+            for (const std::pair<const int, ModuleBase::Vector3<double>>& member : kv.kstars[ik_ibz])
             {
                 const int op = (!this->magnetic_nspin4_ && member.first >= nsym_)
                                    ? member.first - nsym_ : member.first;
@@ -100,7 +100,7 @@ namespace ModuleSymmetry
             }
             for (int op = 0; op < nsym_; ++op)
             {
-                const auto delta = kvec_d_ibz_global[ik_ibz] * ucell.symm.kgmatrix[op] - kvec_d_ibz_global[ik_ibz];
+                const ModuleBase::Vector3<double> delta = kvec_d_ibz_global[ik_ibz] * ucell.symm.kgmatrix[op] - kvec_d_ibz_global[ik_ibz];
                 if (std::abs(delta.x - std::round(delta.x)) < this->eps_
                     && std::abs(delta.y - std::round(delta.y)) < this->eps_
                     && std::abs(delta.z - std::round(delta.z)) < this->eps_)
@@ -152,7 +152,7 @@ namespace ModuleSymmetry
                 // P_k D = |G_k|^{-1} sum_g M_g^T D M_g^*. This preserves
                 // Hermiticity and makes restoration independent of the chosen
                 // star representative; rotating just one arbitrary D does not.
-                const auto& little_group = this->little_groups_.at(ik_ibz);
+                const std::vector<int>& little_group = this->little_groups_.at(ik_ibz);
                 assert(!little_group.empty());
                 std::vector<std::complex<double>> projected = dm_k_ibz[ik_local + is * nk];
                 if (little_group.size() > 1)
@@ -160,7 +160,7 @@ namespace ModuleSymmetry
                     std::fill(projected.begin(), projected.end(), 0.0);
                     for (const int op : little_group)
                     {
-                        const auto rotated = this->rot_matrix_ao(
+                        const std::vector<std::complex<double>> rotated = this->rot_matrix_ao(
                             dm_k_ibz[ik_local + is * nk], ik_ibz, little_group.size(), op, pv);
                         for (size_t i = 0; i < projected.size(); ++i)
                         {
@@ -168,7 +168,7 @@ namespace ModuleSymmetry
                         }
                     }
                 }
-                for (auto& isym_kvd : kv.kstars[ik_ibz])
+                for (const std::pair<const int, ModuleBase::Vector3<double>>& isym_kvd : kv.kstars[ik_ibz])
                 {
                     if (isym_kvd.first == 0)
                     {

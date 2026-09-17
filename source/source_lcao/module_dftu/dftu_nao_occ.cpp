@@ -39,7 +39,7 @@ void accumulate_occ_over_kstar(OccupationMatrix& occmat,
     const int nsym = ucell.symm.nrotk;
     const size_t kstar_size = kv.kstars[ik_ibz].size();
     std::vector<std::complex<double>> sigma_y;
-    for (auto& isym_kvd : kv.kstars[ik_ibz])
+    for (const std::pair<const int, ModuleBase::Vector3<double>>& isym_kvd : kv.kstars[ik_ibz])
     {
         const int isym = isym_kvd.first;
         std::vector<std::complex<double>> srho_rot;
