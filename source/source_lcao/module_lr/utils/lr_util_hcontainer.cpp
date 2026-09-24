@@ -19,6 +19,9 @@ namespace LR_Util
                 {
                     auto ap = dr->find_pair(ia, ja);
                     auto ap_real = dr_real->find_pair(ia, ja);
+                    // under MPI-parallel (2D block-cyclic) HContainer, an atom pair not owned by this rank
+                    // is absent from find_pair() and returns nullptr here; skip it
+                    if (!ap || !ap_real) { continue; }
                     for (int iR = 0;iR < ap->get_R_size();++iR)
                     {
                         // R index may be different between the two HContainers, find by R value instead of R-index
@@ -50,6 +53,9 @@ namespace LR_Util
             {
                 auto ap = dr->find_pair(ia, ja);
                 auto ap_real = dr_real->find_pair(ia, ja);
+                // under MPI-parallel (2D block-cyclic) HContainer, an atom pair not owned by this rank
+                // is absent from find_pair() and returns nullptr here; skip it
+                if (!ap || !ap_real) { continue; }
                 for (int iR = 0;iR < ap->get_R_size();++iR)
                 {
                     // R index may be different between the two HContainers, find by R value instead of R-index
@@ -73,6 +79,9 @@ namespace LR_Util
             {
                 auto ap = HR.find_pair(ia, ja);
                 auto ap_real = HR_real.find_pair(ia, ja);
+                // under MPI-parallel (2D block-cyclic) HContainer, an atom pair not owned by this rank
+                // is absent from find_pair() and returns nullptr here; skip it
+                if (!ap || !ap_real) { continue; }
                 for (int iR = 0;iR < ap->get_R_size();++iR)
                 {
                     // R index may be different between the two HContainers, find by R value instead of R-index
