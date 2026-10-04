@@ -1,6 +1,7 @@
 add_subdirectory(dm_diff)
 add_subdirectory(CVCX)
 add_subdirectory(degenerate)
+add_subdirectory(multipliers)
 
 add_library(
 lr_grad
@@ -12,5 +13,6 @@ xc/pot_grad_xc.cpp
 force/lr_force.cpp
 force/lr_force_test.cpp
 multipliers/cal_edm_from_multipliers.cpp
+multipliers/zeq_linear_solver.cpp
 esolver_lr_grad.cpp
 )
