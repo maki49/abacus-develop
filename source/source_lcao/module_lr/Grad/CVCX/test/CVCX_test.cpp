@@ -141,7 +141,8 @@ TEST_F(AXTest, DoubleParallel)
         LR_Util::setup_2d_division(pV, s.nb, s.naos, s.naos);
         std::vector<container::Tensor> V(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { pV.get_col_size(), pV.get_row_size() }));
         Parallel_2D pc;
-        LR_Util::setup_2d_division(pc, s.nb, s.naos, s.nocc + s.nvirt, pV.blacs_ctxt);
+        const int nmo = s.nocc + s.nvirt;
+        LR_Util::setup_2d_division(pc, s.nb, s.naos, nmo, pV.blacs_ctxt);
         psi::Psi<double, base_device::DEVICE_CPU> c(s.nks, pc.get_col_size(), pc.get_row_size(), {}, true);
         Parallel_2D px;
         LR_Util::setup_2d_division(px, s.nb, s.nvirt, s.nocc, pV.blacs_ctxt);
@@ -159,6 +160,7 @@ TEST_F(AXTest, DoubleParallel)
         psi::Psi<double, base_device::DEVICE_CPU> X(s.nks, nstate, px.get_local_size(), {}, false);
         set_rand(X.get_pointer(), nstate * s.nks * px.get_local_size());
         psi::Psi<double, base_device::DEVICE_CPU> X_full(s.nks, nstate, s.nocc * s.nvirt, {}, false);        // allocate X_full
+        X_full.zero_out();
         for (int istate = 0;istate < nstate;++istate)
         {
             X.fix_b(istate);
@@ -167,7 +169,7 @@ TEST_F(AXTest, DoubleParallel)
             {
                 X.fix_k(isk);
                 X_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
             }
         }
 
@@ -184,22 +186,25 @@ TEST_F(AXTest, DoubleParallel)
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
             LR::CVCX_occ_pblas(V, pV, c, pc, X.get_pointer(), px, s.naos, s.nocc, s.nvirt, AX_pblas_loc.get_pointer(), false);
+            AX_gather.zero_out();
             // gather AX and output
             for (int isk = 0;isk < s.nks;++isk)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false, s.nvirt, s.nocc);
             }
             // compare to global AX
             std::vector<container::Tensor> V_full(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             psi::Psi<double, base_device::DEVICE_CPU> c_full(s.nks, s.nocc + s.nvirt, s.naos, {}, true);
+            c_full.zero_out();
             for (int isk = 0;isk < s.nks;++isk)
             {
-                LR_Util::gather_2d_to_full(pV, V.at(isk).data<double>(), V_full.at(isk).data<double>());
+                V_full.at(isk).zero();
+                LR_Util::gather_2d_to_full(pV, V.at(isk).data<double>(), V_full.at(isk).data<double>(), false, s.naos, s.naos);
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, nmo);
             }
             if (my_rank == 0)
             {
@@ -216,11 +221,12 @@ TEST_F(AXTest, DoubleParallel)
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
             LR::CVCX_virt_pblas(V, pV, c, pc, X.get_pointer(), px, s.naos, s.nocc, s.nvirt, AX_pblas_loc.get_pointer(), false);
+            AX_gather.zero_out();
             for (int isk = 0;isk < s.nks;++isk)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false, s.nvirt, s.nocc);
             }
             if (my_rank == 0)
             {
@@ -243,7 +249,8 @@ TEST_F(AXTest, ComplexParallel)
         LR_Util::setup_2d_division(pV, s.nb, s.naos, s.naos);
         std::vector<container::Tensor> V(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pV.get_col_size(), pV.get_row_size() }));
         Parallel_2D pc;
-        LR_Util::setup_2d_division(pc, s.nb, s.naos, s.nocc + s.nvirt, pV.blacs_ctxt);
+        const int nmo = s.nocc + s.nvirt;
+        LR_Util::setup_2d_division(pc, s.nb, s.naos, nmo, pV.blacs_ctxt);
         psi::Psi<std::complex<double>, base_device::DEVICE_CPU> c(s.nks, pc.get_col_size(), pc.get_row_size(), {}, true);
         Parallel_2D px;
         LR_Util::setup_2d_division(px, s.nb, s.nvirt, s.nocc, pV.blacs_ctxt);
@@ -255,6 +262,7 @@ TEST_F(AXTest, ComplexParallel)
         psi::Psi<std::complex<double>, base_device::DEVICE_CPU> X(s.nks, nstate, px.get_local_size(), {}, false);
         set_rand(X.get_pointer(), nstate * s.nks * px.get_local_size());
         psi::Psi<std::complex<double>, base_device::DEVICE_CPU> X_full(s.nks, nstate, s.nocc * s.nvirt, {}, false);        // allocate X_full
+        X_full.zero_out();
         for (int istate = 0;istate < nstate;++istate)
         {
             X.fix_b(istate);
@@ -263,7 +271,7 @@ TEST_F(AXTest, ComplexParallel)
             {
                 X.fix_k(isk);
                 X_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer());
+                LR_Util::gather_2d_to_full(px, X.get_pointer(), X_full.get_pointer(), false, s.nvirt, s.nocc);
             }
         }
 
@@ -280,23 +288,26 @@ TEST_F(AXTest, ComplexParallel)
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
             LR::CVCX_occ_pblas(V, pV, c, pc, X.get_pointer(), px, s.naos, s.nocc, s.nvirt, AX_pblas_loc.get_pointer(), false);
+            AX_gather.zero_out();
 
             // gather AX and output
             for (int isk = 0;isk < s.nks;++isk)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false, s.nvirt, s.nocc);
             }
             // compare to global AX
             std::vector<container::Tensor> V_full(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             psi::Psi<std::complex<double>, base_device::DEVICE_CPU> c_full(s.nks, s.nocc + s.nvirt, s.naos, {}, true);
+            c_full.zero_out();
             for (int isk = 0;isk < s.nks;++isk)
             {
-                LR_Util::gather_2d_to_full(pV, V.at(isk).data<std::complex<double>>(), V_full.at(isk).data<std::complex<double>>());
+                V_full.at(isk).zero();
+                LR_Util::gather_2d_to_full(pV, V.at(isk).data<std::complex<double>>(), V_full.at(isk).data<std::complex<double>>(), false, s.naos, s.naos);
                 c.fix_k(isk);
                 c_full.fix_k(isk);
-                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer());
+                LR_Util::gather_2d_to_full(pc, c.get_pointer(), c_full.get_pointer(), false, s.naos, nmo);
             }
             if (my_rank == 0)
             {
@@ -312,11 +323,12 @@ TEST_F(AXTest, ComplexParallel)
             AX_pblas_loc.fix_b(istate);
             AX_gather.fix_b(istate);
             LR::CVCX_virt_pblas(V, pV, c, pc, X.get_pointer(), px, s.naos, s.nocc, s.nvirt, AX_pblas_loc.get_pointer(), false);
+            AX_gather.zero_out();
             for (int isk = 0;isk < s.nks;++isk)
             {
                 AX_pblas_loc.fix_k(isk);
                 AX_gather.fix_k(isk);
-                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer());
+                LR_Util::gather_2d_to_full(px, AX_pblas_loc.get_pointer(), AX_gather.get_pointer(), false, s.nvirt, s.nocc);
             }
             if (my_rank == 0)
             {
