@@ -440,7 +440,7 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
         std::weak_ptr<PotHxcLR>(this->pot[ispin]), std::weak_ptr<PotHxcLR>(this->pot_hxc_gs),
         this->kv, this->paraX_z_, this->paraC_z_,
         this->paraMat_, this->spin_types[ispin], this->in_dir, this->out_dir, this->inp_->ks_solver,
-        this->inp_->dft_functional, this->openshell);
+        this->inp_->dft_functional, this->openshell, this->inp_->lr_grad_solver);
     ModuleBase::timer::end("ESolver_LR", "solve_zvector_eqation");
     return Z;
 }

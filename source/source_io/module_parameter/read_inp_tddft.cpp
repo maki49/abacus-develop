@@ -1187,6 +1187,47 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         this->add_item(item);
     }
     {
+        Input_Item item("lr_grad_solver");
+        item.annotation = "the linear solver of the Z-vector equation for LR-TDDFT gradients";
+        item.category = "Linear Response TDDFT";
+        item.type = "String";
+        item.description = R"(The method to solve the Z-vector (relaxed-density) equation $(A+B)Z=R$ in LR-TDDFT force and relaxation calculations, the linear-equation counterpart of `lr_solver`. Its dimension is $n_k n_{occ} n_{virt}$ summed over spin, where $n_{virt}$ counts every virtual band of the ground state, not only the `nvirt` window of the excitation.
+* cg: Solve iteratively with the conjugate-gradient method, applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built.
+* lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
+* scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
+* elpa: Construct the matrix distributed as for scalapack and solve by an ELPA Cholesky factorization, about half the flops of the LU.
+
+[NOTE] The three direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column; scalapack and elpa need an MPI build, elpa also an ELPA build.
+
+[NOTE] elpa requires $A+B$ to be positive definite, which holds at a stable ground state. If it is not, a single-process run stops with an error, but a multi-process run hangs inside ELPA; use scalapack in that case.)";
+        item.default_value = "cg";
+        item.unit = "";
+        item.check_value = [](const Input_Item& item, const Parameter& para) {
+            const std::string& solver = para.input.lr_grad_solver;
+            const std::vector<std::string> solvers = { "cg", "lapack", "scalapack", "elpa" };
+            if (std::find(solvers.begin(), solvers.end(), solver) == solvers.end())
+            {
+                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_solver must be cg, lapack, scalapack or elpa");
+            }
+#ifndef __MPI
+            if (solver == "scalapack" || solver == "elpa")
+            {
+                ModuleBase::WARNING_QUIT("ReadInput",
+                    "lr_grad_solver = " + solver + " needs an MPI build; use cg or lapack");
+            }
+#endif
+#ifndef __ELPA
+            if (solver == "elpa")
+            {
+                ModuleBase::WARNING_QUIT("ReadInput",
+                    "lr_grad_solver = elpa needs ABACUS compiled with ELPA; use scalapack");
+            }
+#endif
+        };
+        read_sync_string(input.lr_grad_solver);
+        this->add_item(item);
+    }
+    {
         Input_Item item("lr_target_spin");
         item.annotation = "spin channel of lr_target_state: singlet, triplet or updown";
         item.category = "Linear Response TDDFT";

@@ -3013,6 +3013,22 @@ parameters:
     default_value: state
     unit: ""
     availability: ""
+  - name: lr_grad_solver
+    category: Linear Response TDDFT
+    type: String
+    description: |
+      The method to solve the Z-vector (relaxed-density) equation $(A+B)Z=R$ in LR-TDDFT force and relaxation calculations, the linear-equation counterpart of `lr_solver`. Its dimension is $n_k n_{occ} n_{virt}$ summed over spin, where $n_{virt}$ counts every virtual band of the ground state, not only the `nvirt` window of the excitation.
+      * cg: Solve iteratively with the conjugate-gradient method, applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built.
+      * lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
+      * scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
+      * elpa: Construct the matrix distributed as for scalapack and solve by an ELPA Cholesky factorization, about half the flops of the LU.
+
+      [NOTE] The three direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column; scalapack and elpa need an MPI build, elpa also an ELPA build.
+
+      [NOTE] elpa requires $A+B$ to be positive definite, which holds at a stable ground state. If it is not, a single-process run stops with an error, but a multi-process run hangs inside ELPA; use scalapack in that case.
+    default_value: cg
+    unit: ""
+    availability: ""
   - name: lr_init_xc_kernel
     category: Linear Response TDDFT
     type: "Vector of String (>=1 values)"
