@@ -1095,7 +1095,9 @@ void ReadInput::item_lr_tddft()
         item.type = "Integer";
         item.description = R"(Index of the excited state whose potential energy surface `calculation = relax` follows, counted from 0 within the spin channel selected by `lr_target_spin`.
 
-Only the gradient of this one state is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy by `cal_energy`, which is what the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
+Only the gradient of this one state is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy, which is the quantity the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
+
+Ignored outside `calculation = relax`: a single-point run solves and reports the gradients of every state.
 
 [NOTE] The state is followed by index, not by character. If it crosses another state during the relaxation, the optimizer will silently continue on the other surface.)";
         item.default_value = "0";
@@ -1159,7 +1161,7 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.description = R"(What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_grad_degen_thr`. It has no effect when the target state is non-degenerate.
 
 * state: follow the gradient of that one state, as returned by the eigensolver. This is the historical behaviour and is what reproduces earlier results, but inside a multiplet it is not a well-defined quantity: the per-state gradients are the diagonal of the subspace gradient matrix in whichever basis the eigensolver happened to return, so they depend on numerical details of the diagonalisation rather than on physics.
-* average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. Unlike the individual states this is a smooth, basis-independent surface, and by symmetry its gradient is totally symmetric, so following it keeps the geometry on the symmetric configuration. Both `cal_energy` and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.
+* average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. Unlike the individual states this is a smooth, basis-independent surface, and by symmetry its gradient is totally symmetric, so following it keeps the geometry on the symmetric configuration. Both the reported energy and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.
 * jt: descend the Jahn-Teller branch. Solves $\min_{\|u\|=1}\lambda_{\min}(\sum_{A\alpha}u_{A\alpha}G^{(A\alpha)})$ -- a joint optimisation over the displacement and the mixing inside the multiplet, since the two are determined together -- and follows the force of the resulting branch. This needs the off-diagonal part of the gradient matrix, so it costs $d(d-1)/2$ further Z-vector solves per step on top of the $d$ diagonal ones. The running log reports the branch's force, its mixing coefficients, and its split into the part common to the multiplet and the part that actually breaks the degeneracy.
 
 [NOTE] The usual sequence is `average` first, to reach the symmetric stationary point, then `jt` from there: at a stationary point of the average surface the common part vanishes and the whole force is Jahn-Teller. `jt` is self-limiting -- once a step has split the multiplet there is no group left and the ordinary single-state gradient takes over.
@@ -1235,9 +1237,11 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.description = R"(Which spin channel `lr_target_state` indexes.
 
 * singlet / triplet: the two closed-shell channels solved at `nspin = 2`. At `nspin = 1` only `singlet` exists.
-* updown: the single spin-unrestricted channel of an open-shell calculation (`lr_unrestricted`, or a spin-polarised ground state with a non-zero moment).
+* updown: the single spin-conserving channel of an open-shell calculation (`lr_unrestricted`, or a spin-polarised ground state with a non-zero moment).
 
-Checked against the actual open/closed-shell character in `ESolver_LR::parameter_check`, which is only known after the ground-state occupations have been read.)";
+An open-shell calculation has only one channel, so any value is accepted there and relaxes that channel; an explicit `triplet` is reported as ignored. A closed-shell calculation rejects `updown`, since singlet and triplet are separate states with separate gradients.
+
+Ignored outside `calculation = relax`.)";
         item.default_value = "singlet";
         item.unit = "";
         read_sync_string(input.lr_target_spin);
