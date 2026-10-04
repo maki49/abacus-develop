@@ -216,7 +216,8 @@ namespace LR
 
     /// @brief Distributed dense Z-vector solve: the Hessian (`zvec_hessian_2d`) and the
     /// right-hand side are laid out 2D block-cyclically on the BLACS grid of `hm.pX[0]`, and
-    /// `linear_solver` (`scalapack_linear_solver` or `elpa_linear_solver`) solves them in place.
+    /// `linear_solver` (`scalapack_linear_solver`, `scalapack_cholesky_linear_solver` or
+    /// `elpa_linear_solver`) solves them in place.
     template<typename T, typename THam>
     void solve_Z_2d(T* const Z, const T* const R, const int ld, const int nstates,
         const THam& hm, const int nspin_x,
@@ -274,6 +275,20 @@ namespace LR
 #endif
     }
 
+    /// @brief Distributed dense Z-vector solve with a ScaLAPACK Cholesky factorization (p?potrf),
+    /// about half the flops of the LU in `solve_Z_scalapack`. Like `solve_Z_elpa` it needs the
+    /// orbital Hessian to be positive definite, but a failure is an error on every rank, not a hang.
+    template<typename T, typename THam>
+    inline void solve_Z_scalapack_chol(T* const Z, const T* const R, const int ld, const int nstates,
+        const THam& hm, const int nspin_x)
+    {
+#ifdef __MPI
+        solve_Z_2d(Z, R, ld, nstates, hm, nspin_x, &scalapack_cholesky_linear_solver<T>);
+#else
+        throw std::runtime_error("Z-vector solver 'scalapack_chol' needs an MPI build; use 'lapack' or 'cg'");
+#endif
+    }
+
     /// @brief Distributed dense Z-vector solve with an ELPA Cholesky factorization: the orbital
     /// Hessian A+B is symmetric positive definite at a stable ground state, so this needs about
     /// half the flops of the LU in `solve_Z_scalapack`. Fails loudly if the Hessian is not positive
@@ -305,6 +320,7 @@ namespace LR
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
+        else if (zvec_solver == "scalapack_chol") { solve_Z_scalapack_chol(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "elpa") { solve_Z_elpa(Z, R, ld, nstates, ops_L, nspin_x); }
         else { throw std::runtime_error("Unsupported Z-vector solver: " + zvec_solver); }
     }

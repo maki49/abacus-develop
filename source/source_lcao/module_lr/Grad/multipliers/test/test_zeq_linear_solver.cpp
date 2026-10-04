@@ -146,6 +146,61 @@ TEST_F(ZeqLinearSolverTest, ScalapackNonSymmetric)
     }
 }
 
+TEST_F(ZeqLinearSolverTest, ScalapackCholDouble)
+{
+    for (const auto& s : sizes)
+    {
+        const std::vector<double> a = hermitian_matrix<double>(s[0], s[0] + 1.0);
+        check_against_lapack<double>(&LR::scalapack_cholesky_linear_solver<double>, a, a, s[0], s[1], s[2]);
+    }
+}
+
+TEST_F(ZeqLinearSolverTest, ScalapackCholComplex)
+{
+    typedef std::complex<double> C;
+    for (const auto& s : sizes)
+    {
+        const std::vector<C> a = hermitian_matrix<C>(s[0], s[0] + 1.0);
+        check_against_lapack<C>(&LR::scalapack_cholesky_linear_solver<C>, a, a, s[0], s[1], s[2]);
+    }
+}
+
+TEST_F(ZeqLinearSolverTest, ScalapackCholSolvesHermitianPart)
+{
+    // as for ELPA: a slightly non-symmetric input is solved as (A + A^T)/2
+    for (const auto& s : sizes)
+    {
+        const int n = s[0];
+        const std::vector<double> a_sym = hermitian_matrix<double>(n, n + 1.0);
+        std::vector<double> a = a_sym;
+        for (int j = 0; j < n; ++j)
+        {
+            for (int i = 0; i < j; ++i)
+            {
+                a[j * n + i] += 1e-2 * entry(i, j, 5);
+                a[i * n + j] -= 1e-2 * entry(i, j, 5);
+            }
+        }
+        check_against_lapack<double>(&LR::scalapack_cholesky_linear_solver<double>, a, a_sym, n, s[1], s[2]);
+    }
+}
+
+TEST_F(ZeqLinearSolverTest, ScalapackCholRejectsIndefinite)
+{
+    // every rank: p?potrf's INFO is global, so unlike ELPA this must throw everywhere, not hang
+    const int n = 20;
+    const int nb = 3;
+    const std::vector<double> a = hermitian_matrix<double>(n, -(n + 1.0));   // negative definite
+    Parallel_2D pa;
+    LR_Util::setup_2d_division(pa, nb, n, n);
+    Parallel_2D pb;
+    LR_Util::setup_2d_division(pb, nb, n, 1, pa.blacs_ctxt);
+    std::vector<double> a_loc = to_local(a, pa);
+    std::vector<double> b_loc = to_local(rhs_matrix<double>(n, 1), pb);
+    EXPECT_THROW(LR::scalapack_cholesky_linear_solver<double>(a_loc.data(), b_loc.data(), pa, pb),
+                 std::runtime_error);
+}
+
 #ifdef __ELPA
 TEST_F(ZeqLinearSolverTest, ElpaDouble)
 {

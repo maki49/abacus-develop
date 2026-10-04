@@ -5228,11 +5228,12 @@
   - cg: Solve iteratively with the conjugate-gradient method, applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built.
   - lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
   - scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
-  - elpa: Construct the matrix distributed as for scalapack and solve by an ELPA Cholesky factorization, about half the flops of the LU.
+  - scalapack_chol: Construct the matrix distributed as for scalapack and solve by a ScaLAPACK Cholesky factorization, about half the flops of the LU and in place.
+  - elpa: Construct the matrix distributed as for scalapack and solve by an ELPA Cholesky factorization.
 
-  > Note: The three direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column; scalapack and elpa need an MPI build, elpa also an ELPA build.
+  > Note: The direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column, which usually dominates the cost of the solve itself; scalapack, scalapack_chol and elpa need an MPI build, elpa also an ELPA build.
 
-  > Note: elpa requires $A+B$ to be positive definite, which holds at a stable ground state. If it is not, a single-process run stops with an error, but a multi-process run hangs inside ELPA; use scalapack in that case.
+  > Note: scalapack_chol and elpa require $A+B$ to be positive definite, which holds at a stable ground state. If it is not, scalapack_chol stops with an error, while elpa does so only in a single-process run and hangs in a multi-process one; scalapack (LU) has no such requirement.
 - **Default**: cg
 
 ### lr_target_spin
