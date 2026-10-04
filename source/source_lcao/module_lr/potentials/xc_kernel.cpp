@@ -7,6 +7,7 @@
 #include <set>
 #include <chrono>
 #include <cstdlib>
+#include <algorithm>
 #include <iostream>
 #include <cmath>
 #include "source_io/module_output/cube_io.h"
@@ -230,26 +231,31 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         case XC_FAMILY_GGA:
         case XC_FAMILY_HYB_GGA:
         {
-            xc_gga_vxc(&func, nrxx, rho.data(), sigma.data(), vrho_tmp.data(), vsigma_tmp.data());
             // HSE06's short-range exchange (libxc's gga_x_wpbeh, folded into the single combined
-            // XC_HYB_GGA_XC_HSE06 functional evaluated here) has a closed-form whose 2nd/3rd
-            // sigma-derivatives are numerically unstable (catastrophic cancellation) near the
-            // reduced gradient s->0 (a symmetry-forced grad-rho=0 node at otherwise ordinary
-            // density, e.g. rho=0.415 in 06_N2/hse). The true derivative is FINITE there (the
-            // functional is smooth in s^2); libxc just loses precision evaluating the closed form
-            // at that point. Clamping sigma from below before the libxc call evaluates the same
-            // closed form at a point just off the instability, borrowing smoothness instead of
-            // removing the cancellation algebraically. Plain GGA functionals (e.g. PBE) have a
-            // clean rational enhancement factor with no such cancellation, so sigma_cut=-1 below
-            // is a true no-op for them (sigma = |grad rho|^2 >= 0 always, so max(sigma, -1) ==
-            // sigma); xc_kernel=rpa never reaches this switch at all (no GGA kernel is evaluated
-            // for the Z-vector/Casida equations), so it needs no guard either.
+            // XC_HYB_GGA_XC_HSE06 functional evaluated here) has a closed-form whose derivatives
+            // are numerically unstable (catastrophic cancellation) near the reduced gradient s->0
+            // (a symmetry-forced grad-rho=0 node at otherwise ordinary density, e.g. rho=0.415 in
+            // 06_N2/hse). The true derivative is FINITE there (the functional is smooth in s^2);
+            // libxc just loses precision evaluating the closed form at that point. Clamping sigma
+            // from below before the libxc call evaluates the same closed form at a point just off
+            // the instability, borrowing smoothness instead of removing the cancellation
+            // algebraically. Plain GGA functionals (e.g. PBE) have a clean rational enhancement
+            // factor with no such cancellation, so sigma_cut=-1 below is a true no-op for them
+            // (sigma = |grad rho|^2 >= 0 always, so max(sigma, -1) == sigma); xc_kernel=rpa never
+            // reaches this switch at all (no GGA kernel is evaluated for the Z-vector/Casida
+            // equations), so it needs no guard either.
             //
             // `cal_sgn` returns all-ones for exchange functionals, so `cutoff_grid_data_spin2`
-            // below is a no-op for wpbeh; v2* and v3* are therefore equally unprotected and BOTH
-            // must be clamped with the same sigma_cut -- fxc alone or kxc alone is not just
-            // insufficient, it can be WORSE (breaks whatever partial cancellation existed between
-            // the two orders at the raw, unclamped point).
+            // below is a no-op for wpbeh; vsigma (1st order, read by the LR GGA kernel formula in
+            // pot_hxc_lrtd.cpp as the coefficient of the transition-density gradient) and v2*/v3*
+            // are therefore all equally unprotected and must ALL be clamped with the same
+            // sigma_cut -- clamping only a subset is not just insufficient, it can be WORSE
+            // (breaks whatever partial cancellation existed between the orders at the raw,
+            // unclamped point). Confirmed on 09_CH4/hse: with 1st-order vsigma left unclamped (as
+            // it originally was here), max|vsigma| reaches 3.9e7 at a vacuum grid point
+            // (rho~0, sigma~3.3e-19), which propagates into a ~1e4-magnitude AO-basis V_Hxc
+            // element on the carbon 2nd-zeta s/p shell and three ~-19404 Ry ghost eigenvalues in
+            // the full (lr_solver=lapack) Casida spectrum.
             //
             // Threshold choice (1e-6): g(sigma) is smooth at sigma=0, so g(sigma_cut) = g(0) +
             // O(sigma_cut) -- any sigma_cut small enough stays a good approximation to the true
@@ -268,12 +274,11 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             // of functionals that were never broken; also confirmed to resolve 08_BeH2/hse (both
             // its DZP and TZDP bases, all excited states) -- see
             // LR-Grad-formulas/log/2026-08-最新解析&差分结果.md §3.8.6 for the full scan table.
-            const double sigma_cut = (func.info->number == XC_HYB_GGA_XC_HSE06) ? 1e-6 : -1.;
-            {
-                std::vector<double> sigma_clamped(sigma.size());
-                for (size_t i = 0; i < sigma.size(); ++i) { sigma_clamped[i] = std::max(sigma[i], sigma_cut); }
-                xc_gga_fxc(&func, nrxx, rho.data(), sigma_clamped.data(), v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
-            }
+            double sigma_cut = (func.info->number == XC_HYB_GGA_XC_HSE06) ? 1e-6 : -1.;
+            std::vector<double> sigma_clamped(sigma.size());
+            for (size_t i = 0; i < sigma.size(); ++i) { sigma_clamped[i] = std::max(sigma[i], sigma_cut); }
+            xc_gga_vxc(&func, nrxx, rho.data(), sigma_clamped.data(), vrho_tmp.data(), vsigma_tmp.data());
+            xc_gga_fxc(&func, nrxx, rho.data(), sigma_clamped.data(), v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
             // std::cout << "max element of v2sigma2_tmp: " << *std::max_element(v2sigma2_tmp.begin(), v2sigma2_tmp.end()) << std::endl;
             // std::cout << "rho corresponding to max element of v2sigma2_tmp: " << rho[(std::max_element(v2sigma2_tmp.begin(), v2sigma2_tmp.end()) - v2sigma2_tmp.begin()) / 6] << std::endl;
             // cut off by sgn. nspin=2 only: `cutoff_grid_data_spin2` assumes >1 component per
@@ -289,9 +294,7 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             }
             if (need_kxc)
             {
-                // Same sigma_cut as the xc_gga_fxc call above -- see the threshold-choice note there.
-                std::vector<double> sigma_clamped(sigma.size());
-                for (size_t i = 0; i < sigma.size(); ++i) { sigma_clamped[i] = std::max(sigma[i], sigma_cut); }
+                // Same sigma_clamped as the xc_gga_vxc/fxc calls above -- see the threshold-choice note there.
                 xc_gga_kxc(&func, nrxx, rho.data(), sigma_clamped.data(),
                     v3rho3_tmp.data(),
                     v3rho2sigma_tmp.data(),
