@@ -2250,6 +2250,39 @@ TEST_F(InputTest, Item_test2)
         it->second.reset_value(it->second, param);
         EXPECT_EQ(TestParameters::input(param).nocc, 4);
     }
+    { // lr_grad_solver
+        auto it = find_label("lr_grad_solver", readinput.input_lists);
+        for (const std::string solver : { "cg", "lapack" })
+        {
+            TestParameters::input(param).lr_grad_solver = solver;
+            it->second.check_value(it->second, param);   // accepted in every build
+        }
+        TestParameters::input(param).lr_grad_solver = "gmres";
+        testing::internal::CaptureStdout();
+        EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
+        output = testing::internal::GetCapturedStdout();
+        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, lapack, scalapack or elpa"));
+#ifdef __MPI
+        TestParameters::input(param).lr_grad_solver = "scalapack";
+        it->second.check_value(it->second, param);
+#else
+        TestParameters::input(param).lr_grad_solver = "scalapack";
+        testing::internal::CaptureStdout();
+        EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
+        output = testing::internal::GetCapturedStdout();
+        EXPECT_THAT(output, testing::HasSubstr("needs an MPI build"));
+#endif
+#if defined(__MPI) && defined(__ELPA)
+        TestParameters::input(param).lr_grad_solver = "elpa";
+        it->second.check_value(it->second, param);
+#else   // rejected by the MPI or the ELPA check; both messages name the value
+        TestParameters::input(param).lr_grad_solver = "elpa";
+        testing::internal::CaptureStdout();
+        EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
+        output = testing::internal::GetCapturedStdout();
+        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver = elpa"));
+#endif
+    }
 }
 
 TEST_F(InputTest, Item_test_out_mat_vec)

@@ -393,6 +393,7 @@ struct Input_para
     std::string lr_target_spin = "singlet";          ///< spin channel of that state: singlet / triplet / updown
     double lr_grad_degen_thr = 0.0;                  ///< max excitation-energy spread of a degenerate multiplet whose gradient matrix is computed (Ry); 0 disables
     std::string lr_relax_degen_mode = "state";       ///< what a relaxation follows when the target state sits in a degenerate multiplet: state / average
+    std::string lr_grad_solver = "cg";               ///< the linear solver of the Z-vector equation for LR-TDDFT gradients: cg / lapack / scalapack / elpa
     std::vector<std::string> lr_init_xc_kernel = {}; ///< The method to initalize the xc kernel
     int nocc = -1;                                   ///< the number of occupied orbitals to form the 2-particle basis
     int nvirt = 1;                              ///< the number of virtual orbitals to form the 2-particle basis (nocc + nvirt <= nbands)

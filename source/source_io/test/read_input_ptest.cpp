@@ -458,6 +458,7 @@ TEST_F(InputParaTest, ParaRead)
     EXPECT_EQ(param.inp.lr_init_xc_kernel[0], "default");
     EXPECT_EQ(param.inp.lr_solver, "dav");
     EXPECT_DOUBLE_EQ(param.inp.lr_thr, 1e-2);
+    EXPECT_EQ(param.inp.lr_grad_solver, "cg");
     EXPECT_FALSE(param.inp.lr_unrestricted);
     EXPECT_FALSE(param.inp.out_wfc_lr);
     EXPECT_EQ(param.inp.abs_wavelen_range.size(), 2);

@@ -355,8 +355,8 @@ namespace LR
         const std::string& out_dir,
         const std::string& ks_solver,
         const std::string& dft_functional,
-        const bool openshell = false,
-        const std::string& zvec_solver = "cg")
+        const bool openshell,
+        const std::string& zvec_solver)
     {
         ModuleBase::TITLE("Z_vector", "Z_vector");
         const int nk = kv.get_nks() / nspin;

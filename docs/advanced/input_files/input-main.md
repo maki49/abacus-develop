@@ -578,6 +578,7 @@
     - [lr\_target\_spin](#lr_target_spin)
     - [lr\_grad\_degen\_thr](#lr_grad_degen_thr)
     - [lr\_relax\_degen\_mode](#lr_relax_degen_mode)
+    - [lr\_grad\_solver](#lr_grad_solver)
     - [lr\_unrestricted](#lr_unrestricted)
     - [abs\_wavelen\_range](#abs_wavelen_range)
     - [out\_wfc\_lr](#out_wfc_lr)
@@ -5230,6 +5231,20 @@
 
   `jt` gives the first-order DIRECTION. The distortion amplitude also needs the harmonic term, and the step norm is Cartesian rather than mass-weighted. A linear molecule has no first-order term at all (the effect is second-order Renner-Teller) and the log says so.
 - **Default**: state
+
+### lr_grad_solver
+
+- **Type**: String
+- **Description**: The method to solve the Z-vector (relaxed-density) equation $(A+B)Z=R$ in LR-TDDFT force and relaxation calculations, the linear-equation counterpart of `lr_solver`. Its dimension is $n_k n_{occ} n_{virt}$ summed over spin, where $n_{virt}$ counts every virtual band of the ground state, not only the `nvirt` window of the excitation.
+  - cg: Solve iteratively with the conjugate-gradient method, applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built.
+  - lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
+  - scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
+  - elpa: Construct the matrix distributed as for scalapack and solve by an ELPA Cholesky factorization, about half the flops of the LU.
+
+  > Note: The three direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column; scalapack and elpa need an MPI build, elpa also an ELPA build.
+
+  > Note: elpa requires $A+B$ to be positive definite, which holds at a stable ground state. If it is not, a single-process run stops with an error, but a multi-process run hangs inside ELPA; use scalapack in that case.
+- **Default**: cg
 
 ### lr_unrestricted
 
