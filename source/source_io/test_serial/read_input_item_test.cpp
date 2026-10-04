@@ -2261,17 +2261,19 @@ TEST_F(InputTest, Item_test2)
         testing::internal::CaptureStdout();
         EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
         output = testing::internal::GetCapturedStdout();
-        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, lapack, scalapack or elpa"));
+        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, lapack, scalapack, scalapack_chol or elpa"));
+        for (const std::string solver : { "scalapack", "scalapack_chol" })
+        {
+            TestParameters::input(param).lr_grad_solver = solver;
 #ifdef __MPI
-        TestParameters::input(param).lr_grad_solver = "scalapack";
-        it->second.check_value(it->second, param);
+            it->second.check_value(it->second, param);
 #else
-        TestParameters::input(param).lr_grad_solver = "scalapack";
-        testing::internal::CaptureStdout();
-        EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
-        output = testing::internal::GetCapturedStdout();
-        EXPECT_THAT(output, testing::HasSubstr("needs an MPI build"));
+            testing::internal::CaptureStdout();
+            EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
+            output = testing::internal::GetCapturedStdout();
+            EXPECT_THAT(output, testing::HasSubstr("needs an MPI build"));
 #endif
+        }
 #if defined(__MPI) && defined(__ELPA)
         TestParameters::input(param).lr_grad_solver = "elpa";
         it->second.check_value(it->second, param);
