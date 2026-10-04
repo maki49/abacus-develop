@@ -1,10 +1,14 @@
 #pragma once
 #include <fstream>
 #include "zeq_solver.h"
+#include <algorithm>
 #include <cstdlib>
+#include <stdexcept>
+#include <vector>
 #include "source_base/opt_cg.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
+#include "zeq_linear_solver.h"
 
 namespace LR
 {
@@ -62,27 +66,79 @@ namespace LR
         throw std::runtime_error("complex Z-vector solver is not implemented yet");
     }
 
+    /// @brief Global length of one state's Z-vector: $\sum_\sigma n_k n_{occ,\sigma} n_{virt,\sigma}$.
+    /// `THam` only has to expose `nk`, `nocc` and `nvirt`.
+    template<typename THam>
+    inline int zvec_global_dim(const THam& hm, const int nspin_x)
+    {
+        int n_global = 0;
+        for (int is = 0;is < nspin_x;++is) { n_global += hm.nk * hm.nocc[is] * hm.nvirt[is]; }
+        return n_global;
+    }
+
+#ifdef __MPI
+    /// @brief Gather one state's Z-vector from the `hm.pX` layout (`local`, length `ld`) into the
+    /// global vector `full` (length `zvec_global_dim`), replicated on every rank. Collective.
+    template<typename T, typename THam>
+    inline void zvec_local_to_full(const THam& hm, const int nspin_x, const T* const local, T* const full)
+    {
+        const int n_global = zvec_global_dim(hm, nspin_x);
+        // `gather_2d_to_full` sums over the ranks, so the entries a rank does not own must be zero
+        std::fill(full, full + n_global, T(0));
+        int loffset = 0;
+        int goffset = 0;
+        for (int is = 0;is < nspin_x;++is)
+        {
+            const int npairs = hm.nocc[is] * hm.nvirt[is];
+            const int lsize = hm.pX[is].get_local_size();
+            for (int ik = 0;ik < hm.nk;++ik)
+            {
+                LR_Util::gather_2d_to_full(hm.pX[is], local + loffset + ik * lsize,
+                    full + goffset + ik * npairs, false, hm.nvirt[is], hm.nocc[is]);
+            }
+            loffset += hm.nk * lsize;
+            goffset += hm.nk * npairs;
+        }
+    }
+
+    /// @brief Inverse of `zvec_local_to_full`: pick this rank's entries of the global vector
+    /// `full` into the `hm.pX` layout `local`. No communication.
+    template<typename T, typename THam>
+    inline void zvec_full_to_local(const THam& hm, const int nspin_x, const T* const full, T* const local)
+    {
+        int loffset = 0;
+        int goffset = 0;
+        for (int is = 0;is < nspin_x;++is)
+        {
+            const int npairs = hm.nocc[is] * hm.nvirt[is];
+            const int lsize = hm.pX[is].get_local_size();
+            for (int ik = 0;ik < hm.nk;++ik)
+            {
+                LR_Util::scatter_full_to_2d(hm.pX[is], full + goffset + ik * npairs,
+                    local + loffset + ik * lsize, false);
+            }
+            loffset += hm.nk * lsize;
+            goffset += hm.nk * npairs;
+        }
+    }
+#endif
+
     /// @brief Solve the Z-vector equation with a dense LAPACK solve.
     ///
     /// Works for both the closed-shell (`nspin_x == 1`) and the open-shell (`nspin_x == 2`,
     /// X = [up | down]) layouts: everything is expressed through per-spin segment sizes, which
     /// collapse to the single-block case when `nspin_x == 1`.
     /// `THam` only has to expose `matrix()`, `nk`, `nocc`, `nvirt` and `pX`.
+    /// @attention Every rank builds the full Hessian and solves the same system redundantly;
+    /// see `solve_Z_scalapack` / `solve_Z_elpa` for the distributed solves.
     template<typename T, typename THam>
     inline void solve_Z_lapack(T* const Z, const T* const R, const int& ld, const int& nstates,
         const THam& hm, const int nspin_x = 1)
     {
         ModuleBase::TITLE("Z_vector", "solve_Z_lapack");
-        std::vector<int> npairs(nspin_x), ldim_is(nspin_x), gdim_is(nspin_x);
-        int n_global = 0, ld_expect = 0;
-        for (int is = 0;is < nspin_x;++is)
-        {
-            npairs[is] = hm.nocc[is] * hm.nvirt[is];
-            gdim_is[is] = hm.nk * npairs[is];
-            ldim_is[is] = hm.nk * hm.pX[is].get_local_size();
-            n_global += gdim_is[is];
-            ld_expect += ldim_is[is];
-        }
+        const int n_global = zvec_global_dim(hm, nspin_x);
+        int ld_expect = 0;
+        for (int is = 0;is < nspin_x;++is) { ld_expect += hm.nk * hm.pX[is].get_local_size(); }
         assert(ld == ld_expect);
 
         std::vector<T> hessian_full = hm.matrix();   // MO-hessian, A+B
@@ -97,20 +153,7 @@ namespace LR
 #ifdef __MPI
         for (int istate = 0; istate < nstates; ++istate)
         {
-            int loffset = istate * ld;
-            int goffset = istate * n_global;
-            for (int is = 0;is < nspin_x;++is)
-            {
-                for (int ik = 0;ik < hm.nk;++ik)
-                {
-                    LR_Util::gather_2d_to_full(hm.pX[is],
-                        R + loffset + ik * hm.pX[is].get_local_size(),
-                        R_full.data() + goffset + ik * npairs[is],
-                        false, hm.nvirt[is], hm.nocc[is]);
-                }
-                loffset += ldim_is[is];
-                goffset += gdim_is[is];
-            }
+            zvec_local_to_full(hm, nspin_x, R + istate * ld, R_full.data() + istate * n_global);
         }
 #else
         std::copy(R, R + static_cast<std::size_t>(n_global) * nstates, R_full.begin());
@@ -129,25 +172,121 @@ namespace LR
 #ifdef __MPI
         for (int istate = 0; istate < nstates; ++istate)
         {
-            int loffset = istate * ld;
-            int goffset = istate * n_global;
-            for (int is = 0;is < nspin_x;++is)
-            {
-                for (int ik = 0;ik < hm.nk;++ik)
-                {
-                    LR_Util::scatter_full_to_2d(hm.pX[is],
-                        Z_full.data() + goffset + ik * npairs[is],
-                        Z + loffset + ik * hm.pX[is].get_local_size(), false);
-                }
-                loffset += ldim_is[is];
-                goffset += gdim_is[is];
-            }
+            zvec_full_to_local(hm, nspin_x, Z_full.data() + istate * n_global, Z + istate * ld);
         }
 #else
         std::copy(Z_full.begin(), Z_full.end(), Z);
 #endif
         std::cout << "The local Z-vector solved by LAPACK:" << std::endl;
         LR_Util::print_value(Z, nstates, ld);
+    }
+
+#ifdef __MPI
+    /// @brief Build this rank's block of the Z-vector Hessian on the 2D block-cyclic layout `ph`
+    /// (n_global x n_global), one column at a time: column g is `hm.hPsi` of the g-th unit vector,
+    /// i.e. exactly the operator the CG solve applies. Only O(n_global) is replicated per rank
+    /// (one column in flight), instead of the O(n_global^2) of `hm.matrix()`.
+    /// Collective: every rank walks every column, since `hPsi` and the gather communicate.
+    template<typename T, typename THam>
+    std::vector<T> zvec_hessian_2d(const THam& hm, const int nspin_x, const int ld, const Parallel_2D& ph)
+    {
+        ModuleBase::TITLE("Z_vector", "zvec_hessian_2d");
+        ModuleBase::timer::start("Z_vector", "zvec_hessian_2d");
+        const int n_global = ph.get_global_row_size();
+        std::vector<T> h_loc(ph.get_local_size(), T(0));
+        std::vector<T> e_full(n_global, T(0));
+        std::vector<T> e_loc(ld, T(0));
+        std::vector<T> he_loc(ld, T(0));
+        std::vector<T> he_full(n_global, T(0));
+        for (int gcol = 0; gcol < n_global; ++gcol)
+        {
+            e_full[gcol] = T(1);
+            zvec_full_to_local(hm, nspin_x, e_full.data(), e_loc.data());
+            e_full[gcol] = T(0);
+            hm.hPsi(e_loc.data(), he_loc.data(), ld, 1);
+            zvec_local_to_full(hm, nspin_x, he_loc.data(), he_full.data());
+            const int lcol = ph.global2local_col(gcol);
+            if (lcol < 0) { continue; }
+            T* const h_col = h_loc.data() + static_cast<std::size_t>(lcol) * ph.get_row_size();
+            for (int lrow = 0; lrow < ph.get_row_size(); ++lrow) { h_col[lrow] = he_full[ph.local2global_row(lrow)]; }
+        }
+        ModuleBase::timer::end("Z_vector", "zvec_hessian_2d");
+        return h_loc;
+    }
+
+    /// @brief Distributed dense Z-vector solve: the Hessian (`zvec_hessian_2d`) and the
+    /// right-hand side are laid out 2D block-cyclically on the BLACS grid of `hm.pX[0]`, and
+    /// `linear_solver` (`scalapack_linear_solver` or `elpa_linear_solver`) solves them in place.
+    template<typename T, typename THam>
+    void solve_Z_2d(T* const Z, const T* const R, const int ld, const int nstates,
+        const THam& hm, const int nspin_x,
+        void (*linear_solver)(T*, T*, const Parallel_2D&, const Parallel_2D&))
+    {
+        ModuleBase::TITLE("Z_vector", "solve_Z_2d");
+        ModuleBase::timer::start("Z_vector", "solve_Z_2d");
+        const int n_global = zvec_global_dim(hm, nspin_x);
+        const Parallel_2D& px0 = hm.pX[0];
+        // 32 suits both ScaLAPACK and ELPA; shrink it for small systems so no rank is left empty
+        const int nproc_dim = std::max(px0.get_dim0(), px0.get_dim1());
+        const int nb = std::max(1, std::min(32, n_global / nproc_dim));
+        Parallel_2D ph;
+        LR_Util::setup_2d_division(ph, nb, n_global, n_global, px0.blacs_ctxt);
+        Parallel_2D pz;
+        LR_Util::setup_2d_division(pz, nb, n_global, nstates, px0.blacs_ctxt);
+
+        std::vector<T> h_loc = zvec_hessian_2d<T>(hm, nspin_x, ld, ph);
+
+        // right-hand side: pX layout -> 2D block-cyclic on pz
+        std::vector<T> z_loc(pz.get_local_size(), T(0));
+        std::vector<T> r_full(n_global, T(0));
+        for (int istate = 0; istate < nstates; ++istate)
+        {
+            zvec_local_to_full(hm, nspin_x, R + istate * ld, r_full.data());
+            const int lcol = pz.global2local_col(istate);
+            if (lcol < 0) { continue; }
+            T* const z_col = z_loc.data() + static_cast<std::size_t>(lcol) * pz.get_row_size();
+            for (int lrow = 0; lrow < pz.get_row_size(); ++lrow) { z_col[lrow] = r_full[pz.local2global_row(lrow)]; }
+        }
+
+        linear_solver(h_loc.data(), z_loc.data(), ph, pz);
+
+        // solution: 2D block-cyclic on pz -> pX layout
+        std::vector<T> z_full(static_cast<std::size_t>(n_global) * nstates, T(0));
+        LR_Util::gather_2d_to_full(pz, z_loc.data(), z_full.data(), false, n_global, nstates);
+        for (int istate = 0; istate < nstates; ++istate)
+        {
+            zvec_full_to_local(hm, nspin_x, z_full.data() + static_cast<std::size_t>(istate) * n_global, Z + istate * ld);
+        }
+        ModuleBase::timer::end("Z_vector", "solve_Z_2d");
+    }
+#endif
+
+    /// @brief Distributed dense Z-vector solve with ScaLAPACK LU (p?gesv). Same system as
+    /// `solve_Z_lapack`, but neither the Hessian nor the factorization is replicated.
+    template<typename T, typename THam>
+    inline void solve_Z_scalapack(T* const Z, const T* const R, const int ld, const int nstates,
+        const THam& hm, const int nspin_x)
+    {
+#ifdef __MPI
+        solve_Z_2d(Z, R, ld, nstates, hm, nspin_x, &scalapack_linear_solver<T>);
+#else
+        throw std::runtime_error("Z-vector solver 'scalapack' needs an MPI build; use 'lapack' or 'cg'");
+#endif
+    }
+
+    /// @brief Distributed dense Z-vector solve with an ELPA Cholesky factorization: the orbital
+    /// Hessian A+B is symmetric positive definite at a stable ground state, so this needs about
+    /// half the flops of the LU in `solve_Z_scalapack`. Fails loudly if the Hessian is not positive
+    /// definite (an unstable ground state).
+    template<typename T, typename THam>
+    inline void solve_Z_elpa(T* const Z, const T* const R, const int ld, const int nstates,
+        const THam& hm, const int nspin_x)
+    {
+#ifdef __MPI
+        solve_Z_2d(Z, R, ld, nstates, hm, nspin_x, &elpa_linear_solver<T>);
+#else
+        throw std::runtime_error("Z-vector solver 'elpa' needs an MPI build; use 'lapack' or 'cg'");
+#endif
     }
 
     /// @brief Run the configured solver (and then, for testing, every supported one).
@@ -165,6 +304,8 @@ namespace LR
                 { ops_L.hPsi(in, out, ld, nstates); });
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x); }
+        else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
+        else if (zvec_solver == "elpa") { solve_Z_elpa(Z, R, ld, nstates, ops_L, nspin_x); }
         else { throw std::runtime_error("Unsupported Z-vector solver: " + zvec_solver); }
     }
 

@@ -1067,6 +1067,7 @@ OBJS_LR_GRAD=lr_force.o\
     CVCX_serial.o\
     CVCX_parallel.o\
     cal_edm_from_multipliers.o\
+    zeq_linear_solver.o\
     pot_grad_xc.o\
     esolver_lr_grad.o\
 
