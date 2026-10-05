@@ -259,7 +259,7 @@ namespace ModuleESolver
         /// normalized vector inside a degenerate multiplet is an eigenvector with the same
         /// `omega`, so passing a linear combination is what turns the per-state gradient into the
         /// full degenerate-subspace gradient matrix; see `cal_grad_matrix_degenerate` and
-        /// `Grad/degenerate/grad_matrix_degenerate.h`.
+        /// `grad_degen.h`.
         ///
         /// @param omega        excitation energy of each block (Ry); its size sets the block count
         /// @param label_begin  state index the first block is reported under (labels only)
@@ -331,7 +331,7 @@ namespace ModuleESolver
         /// eigenvectors depend on $u$ -- so this whole matrix, not its diagonal, is the first-order
         /// information. It is obtained from the polarization identity
         /// $G_{kl}=\mathcal F[(X_k{+}X_l)/\sqrt2]-\tfrac12(G_{kk}+G_{ll})$, which needs no new
-        /// physics. `Grad/degenerate/grad_matrix_degenerate.h` derives why that is exact.
+        /// physics. `grad_degen.h` derives why that is exact.
         ///
         /// @param group  state indices of the multiplet, from `LR::group_degenerate_states`
         /// @param diag   their per-state gradients, i.e. $G_{kk}$, already computed by `cal_force`

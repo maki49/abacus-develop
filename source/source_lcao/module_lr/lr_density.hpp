@@ -1,7 +1,7 @@
 #pragma once
 #include "source_hamilt/module_gint/gint_interface.h"
 #include "source_psi/psi.h"
-#include "source_lcao/module_lr/Grad/dm_diff/dm_diff.h"
+#include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 #include "source_io/module_output/cube_io.h"
 namespace LR

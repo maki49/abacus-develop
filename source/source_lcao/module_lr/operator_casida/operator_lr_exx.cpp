@@ -5,7 +5,7 @@
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "source_lcao/module_lr/ri_benchmark/ri_benchmark.h"
-#include "source_lcao/module_lr/dm_band/dm_band.h"
+#include "source_lcao/module_lr/dm_band.h"
 namespace LR
 {
     template<typename T>

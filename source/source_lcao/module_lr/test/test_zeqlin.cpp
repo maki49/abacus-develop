@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "mpi.h"
-#include "../zeq_linear_solver.h"
+#include "../zeqlin_solv.h"
 
 #include <cmath>
 #include <complex>

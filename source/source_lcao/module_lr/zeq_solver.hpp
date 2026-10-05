@@ -3,12 +3,13 @@
 #include "zeq_solver.h"
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 #include "source_base/opt_cg.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
-#include "zeq_linear_solver.h"
+#include "zeqlin_solv.h"
 
 namespace LR
 {

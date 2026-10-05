@@ -7,7 +7,7 @@
 #include "source_lcao/module_ri/exx_lri.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_io/module_parameter/parameter.h"
-#include "source_lcao/module_lr/Grad/dm_diff/dm_diff.h"
+#include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include <cstdlib>
 namespace LR
 {

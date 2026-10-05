@@ -1,11 +1,12 @@
 #pragma once
+#include <cstdlib>
 #include "source_hamilt/hamilt.h"
 #include "source_estate/module_dm/density_matrix.h"
-#include "source_lcao/module_lr/Grad/xc/pot_grad_xc.h"
+#include "source_lcao/module_lr/potentials/pot_grad_xc.h"
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
 #include "source_lcao/module_lr/operator_casida/operator_lr_hxc.h"
-#include "hamilt_zeq_ulr.h"
-#include "source_lcao/module_lr/Grad/xc/operator_gxc_ulr.h"
+#include "hamilt_zequlr.h"
+#include "source_lcao/module_lr/operator_casida/operator_gxc_ulr.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #ifdef __EXX
 #include "source_lcao/module_lr/operator_casida/operator_lr_exx.h"
@@ -77,7 +78,7 @@ namespace LR
             // 2. $H_{ia}[T]$, equals to $2K_{ab}[T]$ when $T$ is symmetrized
             // kernel: ground state
             // Factor -4 (not -2), for the same reason as in `hamilt_zeq_left.h`:
-            // $K^S_\text{Hxc}=2$`pot_hxc_gs`, so $H^S=2K^S$ needs 4. 
+            // $K^S_\text{Hxc}=2$`pot_hxc_gs`, so $H^S=2K^S$ needs 4.
             hamilt::Operator<T>* op_ht = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_diff, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
                 { 0 }, T(-4.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmdiff_hxc);

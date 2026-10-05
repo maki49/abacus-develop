@@ -1,10 +1,10 @@
-#include "force_funcs_lcao.h"
+#include "force_funcs.h"
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
-#include "source_lcao/module_lr/Grad/xc/pot_grad_xc.h"
+#include "source_lcao/module_lr/potentials/pot_grad_xc.h"
 // free functions, usefull for both ground and excited state
 #ifdef __EXX
 #include "source_lcao/module_ri/exx_lri.h"
-#include "exx_force_two_dm.h"
+#include "exx_force_dm.h"
 using TAC = std::pair<int, std::array<int, 3>>;
 #endif
 namespace LR

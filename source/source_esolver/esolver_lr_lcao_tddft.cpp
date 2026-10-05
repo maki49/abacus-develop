@@ -36,7 +36,7 @@
 #endif
 
 // gradient
-#include "source_lcao/module_lr/Grad/multipliers/zeq_solver.h"
+#include "source_lcao/module_lr/zeq_solver.h"
 
 #ifdef __EXX
 namespace

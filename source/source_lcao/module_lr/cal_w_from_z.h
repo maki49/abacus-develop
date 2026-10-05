@@ -1,8 +1,8 @@
 #pragma once
 #include "source_hamilt/hamilt.h"
 #include "source_estate/module_dm/density_matrix.h"
-#include "source_lcao/module_lr/Grad/xc/pot_grad_xc.h"
-#include "source_lcao/module_lr/Grad/xc/operator_gxc_ulr.h"
+#include "source_lcao/module_lr/potentials/pot_grad_xc.h"
+#include "source_lcao/module_lr/operator_casida/operator_gxc_ulr.h"
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
 #include "source_lcao/module_lr/operator_casida/operator_lr_hxc.h"
 #include "source_basis/module_ao/parallel_orbitals.h"

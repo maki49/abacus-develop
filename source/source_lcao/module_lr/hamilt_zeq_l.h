@@ -1,10 +1,11 @@
 #pragma once
+#include <cstdlib>
 #include "source_lcao/module_lr/hamilt_casida.h"
-#include "hamilt_zeq_ulr.h"
+#include "hamilt_zequlr.h"
 #include "source_estate/module_dm/density_matrix.h"
-#include "source_lcao/module_lr/Grad/xc/pot_grad_xc.h"
+#include "source_lcao/module_lr/potentials/pot_grad_xc.h"
 #include "source_lcao/module_lr/operator_casida/operator_lr_hxc.h"
-#include "source_lcao/module_lr/Grad/dm_diff/dm_diff.h"
+#include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #ifdef __EXX
 #include "source_lcao/module_lr/operator_casida/operator_lr_exx.h"
@@ -55,7 +56,7 @@ namespace LR
             // 1. diag term in A
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0]);
             // 2. $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized.
-            // Factor 4 (not 2): the singlet kernel is $K^S_\text{Hxc}=2$`pot_hxc_gs` (not doubled), 
+            // Factor 4 (not 2): the singlet kernel is $K^S_\text{Hxc}=2$`pot_hxc_gs` (not doubled),
             // while `pot` is the already-doubled singlet potential, so $H^S=2K^S$ here needs 4.
             // The EXX line below is already $2\alpha$ and is consistent.
             hamilt::Operator<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,

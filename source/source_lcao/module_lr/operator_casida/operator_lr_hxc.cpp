@@ -1,6 +1,8 @@
 #include "operator_lr_hxc.h"
 #include <cstdlib>
 #include <vector>
+#include <iostream>
+#include <cmath>
 #include "source_io/module_parameter/parameter.h"
 #include "source_base/timer.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
@@ -10,7 +12,7 @@
 #include "source_hamilt/module_hcontainer/hcontainer_funcs.h"
 #include "source_lcao/module_lr/ao_to_mo_transformer/ao_to_mo.h"
 #include "source_hamilt/module_gint/gint_interface.h"
-#include "source_lcao/module_lr/Grad/CVCX/CVCX.h"
+#include "source_lcao/module_lr/ao_to_mo_transformer/CVCX.h"
 
 inline double conj(double a) { return a; }
 inline std::complex<double> conj(std::complex<double> a) { return std::conj(a); }
