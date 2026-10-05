@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQ_R_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQ_R_H
 #include "source_hamilt/hamilt.h"
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_lr/potentials/pot_grad_xc.h"
@@ -342,3 +343,5 @@ namespace LR
         std::unique_ptr<OperatorGxcULR<T>> gxc_;
     };
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQ_R_H

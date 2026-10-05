@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQ_L_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQ_L_H
 #include "source_lcao/module_lr/hamilt_casida.h"
 #include "hamilt_zequlr.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -203,3 +204,5 @@ namespace LR
         mutable std::vector<ct::Tensor> dm_buf_;
     };
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQ_L_H

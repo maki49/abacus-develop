@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_PULAY_HC_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_PULAY_HC_H
 #include "source_basis/module_nao/two_center_bundle.h"
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_cell/unitcell.h"
@@ -147,3 +148,5 @@ ModuleBase::matrix cal_pulay_fs_openshell(
     return force;
 }
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_PULAY_HC_H

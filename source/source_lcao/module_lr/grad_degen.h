@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_GRAD_DEGEN_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_GRAD_DEGEN_H
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -184,3 +185,5 @@ namespace LR
         const std::vector<double>& mixing,
         std::vector<double>& jt_part);
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_GRAD_DEGEN_H

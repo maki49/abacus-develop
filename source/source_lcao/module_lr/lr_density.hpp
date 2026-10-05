@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_LR_DENSITY_HPP
+#define ABACUS_SOURCE_LCAO_MODULE_LR_LR_DENSITY_HPP
 #include "source_hamilt/module_gint/gint_interface.h"
 #include "source_psi/psi.h"
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
@@ -119,3 +120,4 @@ namespace LR
     };
 
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_LR_DENSITY_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_EXX_FORCE_DM_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_EXX_FORCE_DM_H
 #ifdef __EXX
 #include <RI/physics/Exx.h>
 
@@ -51,3 +52,5 @@ namespace LR
     };
 }
 #endif
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_EXX_FORCE_DM_H

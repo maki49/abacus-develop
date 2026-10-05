@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_GXC_ULR_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_GXC_ULR_H
 #include "source_lcao/module_lr/potentials/pot_grad_xc.h"
 #include "source_cell/klist.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -141,3 +142,5 @@ namespace LR
         std::unique_ptr<hamilt::HContainer<double>> hR_;
     };
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_GXC_ULR_H

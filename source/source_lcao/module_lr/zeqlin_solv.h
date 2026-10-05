@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_ZEQLIN_SOLV_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_ZEQLIN_SOLV_H
 #include "source_base/parallel_2d.h"
 
 namespace LR
@@ -32,3 +33,5 @@ namespace LR
     void elpa_linear_solver(T* A, T* B, const Parallel_2D& pA, const Parallel_2D& pB);
 #endif
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_ZEQLIN_SOLV_H

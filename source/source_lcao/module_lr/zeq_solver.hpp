@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_HPP
+#define ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_HPP
 #include <fstream>
 #include "zeq_solver.h"
 #include <algorithm>
@@ -415,3 +416,5 @@ namespace LR
         }
     }
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_PAR_HPP
+#define ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_PAR_HPP
 #ifdef __MPI
 // #include <ATen/core/tensor_types.h>
 #include "source_base/module_container/ATen/core/tensor_types.h"
@@ -189,3 +190,5 @@ namespace LR
     }
 }
 #endif
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_PAR_HPP

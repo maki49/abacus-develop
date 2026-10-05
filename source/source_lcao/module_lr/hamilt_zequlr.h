@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQULR_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQULR_H
 #include "source_hamilt/hamilt.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
@@ -160,3 +161,5 @@ namespace LR
         std::vector<hamilt::Operator<T>*> ops;
     };
 }
+
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQULR_H

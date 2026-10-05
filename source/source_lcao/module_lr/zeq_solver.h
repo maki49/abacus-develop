@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_H
 #include "hamilt_zeq_l.h"
 #include "hamilt_zeq_r.h"
 
@@ -7,3 +8,4 @@
 // happened to match it would have failed at link time.
 
 #include "zeq_solver.hpp"
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_H

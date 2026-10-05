@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_GRAD_XC_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_GRAD_XC_H
 #include "source_lcao/module_lr/potentials/xc_kernel.h"
 #include "source_lcao/module_lr/potentials/pot_lr_base.h"
 
@@ -43,3 +44,4 @@ namespace LR
     };
 
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_GRAD_XC_H

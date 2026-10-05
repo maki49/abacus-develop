@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_FORCE_FUNCS_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_FORCE_FUNCS_H
 #include "source_pw/module_pwdft/force_pw.h"
 #include "source_lcao/module_operator_lcao/nonlocal.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -136,3 +137,4 @@ ModuleBase::matrix cal_force_nonlocal_dvnl(
     tmp_nonlocal.cal_force_stress(/*force*/true, /*stress*/false, &tmp_dmr, fvnl, svnl);
     return fvnl;
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_FORCE_FUNCS_H
