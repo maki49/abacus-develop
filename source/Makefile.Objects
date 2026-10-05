@@ -1059,7 +1059,7 @@ OBJS_LR_GRAD=lr_force.o\
     CVCX_serial.o\
     CVCX_par.o\
     cal_edm.o\
-    zeq_lin_solv.o\
+    zeqlin_solv.o\
     pot_grad_xc.o\
     esolver_lr_grad.o\
 
