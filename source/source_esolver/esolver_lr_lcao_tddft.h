@@ -123,7 +123,7 @@ namespace ModuleESolver
 
         std::vector<int> nocc;   ///< number of occupied orbitals for each spin used in the calculation
         int nocc_in = 1;    ///< nocc read from input (adjusted by nelec): max(spin-up, spindown)
-        int nocc_max = 1;   ///< nelec/2
+        int nocc_max = 1;   ///< full occupied count in the largest spin channel
         std::vector<int> nvirt;   ///< number of virtual orbitals for each spin used in the calculation
         int nvirt_in = 1;   ///< nvirt read from input (adjusted by nelec): min(spin-up, spindown)
         int nbands = 2;

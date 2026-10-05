@@ -5166,9 +5166,10 @@
 ### nocc
 
 - **Type**: Integer
-- **Description**: The number of occupied orbitals (up to HOMO) used in the LR-TDDFT calculation.
-  - Note: If the value is illegal ( &gt; nelec/2 or &lt;= 0), it will be autoset to nelec/2.
-- **Default**: nband
+- **Description**: The number of occupied orbitals (up to HOMO) retained in the majority-spin LR-TDDFT window. A positive value selects a shared core prefix to discard from both spin channels; it does not change the ground-state occupations.
+  - If omitted, non-positive, or larger than the occupied majority-spin channel, all occupied orbitals are used.
+  - The full occupied window is determined by the effective electron number (including nelec_delta once) and the ground-state spin populations. For nspin=2, the minority-spin window has abs(N_up-N_down) fewer occupied orbitals.
+- **Default**: all occupied orbitals
 
 ### nvirt
 

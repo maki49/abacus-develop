@@ -64,6 +64,12 @@ namespace LR_Util
     /// @brief calculate the number of occupied orbitals
     /// @param nelec 
     int cal_nocc(int nelec);
+
+    /// Largest occupied spin channel; nelec already includes the charge correction.
+    int cal_nocc(double nelec, int nspin, int nupdown);
+
+    /// Retain a positive user window, otherwise use all occupied orbitals.
+    int cal_nocc_window(int requested_nocc, int nocc_max);
     
     /// @brief  set the index map: ix to (ic, iv) and vice versa
     /// by diagonal traverse the c-v pairs

@@ -1,6 +1,7 @@
 #include "esolver_lr_lcao_tddft.h"
 #include "source_basis/module_pw/pw_basis_big.h" // use PW_Basis_Big
 #include <cstdlib>
+#include "source_base/parallel_reduce.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -109,6 +110,17 @@ int ModuleESolver::ESolver_LR<T, TR>::cal_nupdown_form_occ(const ModuleBase::mat
     // down, and which way they land is pure noise.
     double up = 0.0, dn = 0.0;
     for (int ib = 0;ib < wg.nc;++ib) { up += occ_sum_k(0, ib); dn += occ_sum_k(1, ib); }
+    // wg is replicated within a pool, but each pool holds different k points.
+    if (this->kv.para_k.kpar > 1)
+    {
+        if (this->kv.para_k.rank_in_pool != 0)
+        {
+            up = 0.0;
+            dn = 0.0;
+        }
+        Parallel_Reduce::reduce_all(up);
+        Parallel_Reduce::reduce_all(dn);
+    }
     return static_cast<int>(std::lround(up) - std::lround(dn));
 }
 
@@ -168,7 +180,29 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     this->nstates = this->inp_->lr_nstates;
     this->nbasis = PARAM.globalv.nlocal;
     int ks_nbands = this->inp_->nbands;
-    this->nocc_max = LR_Util::cal_nocc(LR_Util::cal_nelec(*this->ucell_));
+    if (this->nspin == 2)
+    {
+        this->nupdown = static_cast<int>(std::lround(this->inp_->nupdown));
+        if (this->ks_)
+        {
+            this->nupdown = cal_nupdown_form_occ(this->ks_->pelec->wg);
+        }
+        else if (this->inp_->ri_hartree_benchmark != "aims"
+                 && this->inp_->ri_hartree_benchmark != "aims-librpa")
+        {
+            std::vector<double> populations;
+            const bool gamma_only = std::is_same<T, double>::value;
+            const bool binary = this->inp_->init_wfc_file_format == "binary";
+            if (!ModuleIO::read_wfc_nao_spin_populations(this->in_dir, this->kv.get_nkstot(), this->nspin, gamma_only, binary,
+                    this->my_rank_, populations))
+            {
+                ModuleBase::WARNING_QUIT("ESolver_LR", "read complete KS occupations failed");
+            }
+            this->nupdown = static_cast<int>(std::lround(populations[0]) - std::lround(populations[1]));
+        }
+    }
+    // read_pseudo/ParamUpdater has already resolved nelec and applied nelec_delta.
+    this->nocc_max = LR_Util::cal_nocc(this->inp_->nelec, this->nspin, this->nupdown);
     if (this->inp_->ri_hartree_benchmark == "aims" || this->inp_->ri_hartree_benchmark == "aims-librpa"
         && !this->inp_->aims_nbasis.empty())
     {
@@ -197,7 +231,7 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     }
     // calculate the number of occupied and unoccupied states
     // which determines the basis size of the excited states    
-    this->nocc_in = std::max(1, std::min(this->inp_->nocc, this->nocc_max));
+    this->nocc_in = LR_Util::cal_nocc_window(this->inp_->nocc, this->nocc_max);
     this->nvirt_in = ks_nbands - this->nocc_max;   //nbands-nocc
     if (this->inp_->nvirt > this->nvirt_in) { this->ofs_running_ << "ESolver_LR: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = " << this->nvirt_in << std::endl; }
     else if (this->inp_->nvirt > 0) { this->nvirt_in = this->inp_->nvirt; }
@@ -211,6 +245,9 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     }
     for (int is = 0;is < nspin;++is) { this->npairs.push_back(nocc[is] * nvirt[is]); }
     this->ofs_running_ << "Setting LR-TDDFT parameters: " << std::endl;
+    this->ofs_running_ << "full occupied bands in largest spin channel: " << nocc_max << std::endl;
+    const int skipped_core_bands = nocc_max - nocc_in;
+    this->ofs_running_ << "shared core bands omitted from LR window: " << skipped_core_bands << std::endl;
     this->ofs_running_ << "number of occupied bands: " << nocc_in << std::endl;
     this->ofs_running_ << "number of virtual bands: " << nvirt_in << std::endl;
     this->ofs_running_ << "number of Atom orbitals (LCAO-basis size): " << this->nbasis << std::endl;
@@ -228,7 +265,10 @@ void ModuleESolver::ESolver_LR<T, TR>::reset_dim_spin2()
 	if (nupdown != 0)
     {
         this->openshell = true;
-        nupdown > 0 ? ((nocc[1] -= nupdown) && (nvirt[1] += nupdown)) : ((nocc[0] += nupdown) && (nvirt[0] -= nupdown));
+        const int minority_spin = nupdown > 0 ? 1 : 0;
+        const int polarization = std::abs(nupdown);
+        nocc[minority_spin] -= polarization;
+        nvirt[minority_spin] += polarization;
         npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
         std::cout << "** Solve the spin-up and spin-down states separately for open-shell system. **" << std::endl;
     }
@@ -562,9 +602,8 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
 
 
     if (nspin == 2)
-    {   // `read_ks_wfc` fills `wg_ks`, not `pelec->wg` -- reading the latter here meant nupdown was
-        // always 0, so a spin-polarised ground state silently took the closed-shell branch
-        this->nupdown = cal_nupdown_form_occ(this->wg_ks);
+    {
+        // Complete file populations were read before selecting the occupied window.
         reset_dim_spin2();
     }
     // the Z-vector window: after `reset_dim_spin2`, so nocc/nvirt/openshell are final
