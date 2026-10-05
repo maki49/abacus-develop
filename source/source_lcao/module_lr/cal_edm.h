@@ -190,7 +190,8 @@ namespace LR
         std::vector<Parallel_2D> p_occ_occ(nspin);
         for (int is = 0;is < nspin;++is)
         {
-            LR_Util::setup_2d_division(p_occ_occ[is], 1, nocc[is], nocc[is]
+            const int block_size = px[is].get_block_size();
+            LR_Util::setup_2d_division(p_occ_occ[is], block_size, nocc[is], nocc[is]
 #ifdef __MPI
                 , px[is].blacs_ctxt
 #endif
@@ -277,7 +278,8 @@ namespace LR
         std::vector<Parallel_2D> p_occ_occ(2);
         for (int is : {0, 1})
         {
-            LR_Util::setup_2d_division(p_occ_occ[is], 1, nocc[is], nocc[is]
+            const int block_size = px[is].get_block_size();
+            LR_Util::setup_2d_division(p_occ_occ[is], block_size, nocc[is], nocc[is]
 #ifdef __MPI
                 , px[is].blacs_ctxt
 #endif
