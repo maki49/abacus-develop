@@ -2,6 +2,7 @@
 #include "source_hamilt/module_xc/xc_functional.h"
 #include "source_io/module_parameter/parameter.h"
 #include "source_base/timer.h"
+#include "source_base/tool_quit.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_xc.hpp"
 #include <set>
@@ -101,7 +102,13 @@ inline void add_assign_op(const std::vector<T>& src, std::vector<T>& dst)
 template<typename Telement, typename Tscalar>
 inline void cutoff_grid_data_spin2(std::vector<Telement>& func, const std::vector<Tscalar>& mask)
 {
-    const int& nrxx = mask.size() / 2;
+    const int nrxx = mask.size() / 2;
+    if (nrxx == 0)
+    {
+        ModuleBase::WARNING_QUIT("LR::cutoff_grid_data_spin2",
+                                "An MPI rank has no local real-space grid points for the LR XC kernel. "
+                                "Reduce the number of MPI processes (and increase OpenMP threads if needed).");
+    }
     assert(func.size() % nrxx == 0 && func.size() / nrxx > 1);
     const int n_component = func.size() / nrxx;
 #ifdef _OPENMP

@@ -344,12 +344,21 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_ks_(UnitCell& ucell, cons
 
     this->set_dimension();
 
-    // setup_2d_division is not need to be covered in #ifdef __MPI, see its implementation
-    LR_Util::setup_2d_division(this->paraMat_, 1, this->nbasis, this->nbasis);
+    // KS and LR must use the same AO distribution, including its BLACS grid.
+    const int ks_block_size = ks_sol.pv.get_block_size();
+    LR_Util::setup_2d_division(this->paraMat_, ks_block_size, this->nbasis, this->nbasis
+#ifdef __MPI
+        , ks_sol.pv.blacs_ctxt
+#endif
+    );
     this->set_parallel_orbitals_band(this->paraMat_, this->nbands);
     if (this->inp_->cal_force)
     {
-        LR_Util::setup_2d_division(this->paraMat_all_, 1, this->nbasis, this->nbasis);
+        LR_Util::setup_2d_division(this->paraMat_all_, ks_block_size, this->nbasis, this->nbasis
+#ifdef __MPI
+            , ks_sol.pv.blacs_ctxt
+#endif
+        );
         this->set_parallel_orbitals_band(this->paraMat_all_, this->inp_->nbands);
     }
 
@@ -357,7 +366,7 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_ks_(UnitCell& ucell, cons
     this->paraMat_.atom_begin_col = ks_sol.pv.atom_begin_col;
     this->paraMat_.iat2iwt_ = ucell.get_iat2iwt();
 
-    LR_Util::setup_2d_division(this->paraC_, 1, this->nbasis, this->nbands
+    LR_Util::setup_2d_division(this->paraC_, ks_block_size, this->nbasis, this->nbands
 #ifdef __MPI
         , this->paraMat_.blacs_ctxt
 #endif
@@ -940,10 +949,11 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_eigenvectors_X()
     // this function is called once per `runner`, and `paraX_` is only ever appended to,
     // so without this reset a second ionic step would double its size
     this->paraX_.clear();
+    const int block_size = this->paraC_.get_block_size();
     for (int is = 0;is < nspin;++is)
     {
         Parallel_2D px;
-        LR_Util::setup_2d_division(px, /*nb2d=*/1, this->nvirt[is], this->nocc[is]
+        LR_Util::setup_2d_division(px, block_size, this->nvirt[is], this->nocc[is]
 #ifdef __MPI
             , this->paraC_.blacs_ctxt
 #endif
@@ -1138,7 +1148,8 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
     this->nvirt_z_.assign(this->nspin, 0);
     for (int is = 0; is < this->nspin; ++is) { this->nvirt_z_[is] = this->nbands_z_ - this->nocc[is]; }
 
-    LR_Util::setup_2d_division(this->paraC_z_, 1, this->nbasis, this->nbands_z_
+    const int block_size = this->paraC_.get_block_size();
+    LR_Util::setup_2d_division(this->paraC_z_, block_size, this->nbasis, this->nbands_z_
 #ifdef __MPI
         , this->paraMat_.blacs_ctxt
 #endif
@@ -1147,7 +1158,7 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
     for (int is = 0; is < this->nspin; ++is)
     {
         Parallel_2D px;
-        LR_Util::setup_2d_division(px, /*nb2d=*/1, this->nvirt_z_[is], this->nocc[is]
+        LR_Util::setup_2d_division(px, block_size, this->nvirt_z_[is], this->nocc[is]
 #ifdef __MPI
             , this->paraC_z_.blacs_ctxt
 #endif
