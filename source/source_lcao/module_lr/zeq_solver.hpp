@@ -2,8 +2,6 @@
 #include <fstream>
 #include "zeq_solver.h"
 #include <algorithm>
-#include <cstdlib>
-#include <cmath>
 #include <stdexcept>
 #include <vector>
 #include "source_base/opt_cg.h"

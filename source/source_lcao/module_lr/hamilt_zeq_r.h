@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdlib>
 #include "source_hamilt/hamilt.h"
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_lr/potentials/pot_grad_xc.h"
