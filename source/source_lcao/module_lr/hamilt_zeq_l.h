@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdlib>
 #include "source_lcao/module_lr/hamilt_casida.h"
 #include "hamilt_zequlr.h"
 #include "source_estate/module_dm/density_matrix.h"

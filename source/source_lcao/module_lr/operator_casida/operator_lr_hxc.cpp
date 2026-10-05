@@ -1,8 +1,6 @@
 #include "operator_lr_hxc.h"
 #include <cstdlib>
 #include <vector>
-#include <iostream>
-#include <cmath>
 #include "source_io/module_parameter/parameter.h"
 #include "source_base/timer.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
