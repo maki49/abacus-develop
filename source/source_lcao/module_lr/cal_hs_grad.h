@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_CAL_HS_GRAD_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_CAL_HS_GRAD_H
 #include <cassert>
 #include "source_cell/module_neighbor/sltk_grid_driver.h"
 #include "source_cell/unitcell.h"
@@ -148,3 +149,4 @@ inline std::vector<hamilt::HContainer<double>> cal_hs_grad(const char job,
     }
     return dHS;
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_CAL_HS_GRAD_H

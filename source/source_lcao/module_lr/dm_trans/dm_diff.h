@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_H
 #include <ATen/core/tensor.h>
 #include "source_psi/psi.h"
 #include <vector>
@@ -49,3 +50,4 @@ namespace LR
 
 #include "dm_diff_ser.hpp"
 #include "dm_diff_par.hpp"
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_H

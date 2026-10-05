@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_LR_BASE_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_LR_BASE_H
 #include "source_cell/unitcell.h"
 #include "source_basis/module_pw/pw_basis.h"
 
@@ -20,3 +21,4 @@ namespace LR
         const double& tpiba_;
     };
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_LR_BASE_H

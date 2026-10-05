@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_SER_HPP
+#define ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_SER_HPP
 #include "source_base/module_container/ATen/core/tensor_types.h"
 #include "source_base/module_external/blas_connector.h"
 #include "source_base/tool_title.h"
@@ -203,3 +204,4 @@ namespace LR
         return dm_diff;
     }
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_SER_HPP

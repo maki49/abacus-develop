@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_AO_TO_MO_TRANSFORMER_CVCX_H
+#define ABACUS_SOURCE_LCAO_MODULE_LR_AO_TO_MO_TRANSFORMER_CVCX_H
 #include <ATen/core/tensor.h>
 #include "source_psi/psi.h"
 #include <vector>
@@ -84,3 +85,4 @@ namespace LR
         const T factor = (T)1.0);
 #endif
 }
+#endif // ABACUS_SOURCE_LCAO_MODULE_LR_AO_TO_MO_TRANSFORMER_CVCX_H
