@@ -2239,17 +2239,8 @@ TEST_F(InputTest, Item_test2)
         output = testing::internal::GetCapturedStdout();
         EXPECT_THAT(output, testing::HasSubstr("NOTICE"));
     }
-    { // nocc 
-        auto it = find_label("nocc", readinput.input_lists);
-        TestParameters::input(param).nocc = 5;
-        TestParameters::input(param).nbands = 4;
-        TestParameters::input(param).nelec = 0.0;
-        it->second.reset_value(it->second, param);
-        EXPECT_EQ(TestParameters::input(param).nocc, 4);
-        TestParameters::input(param).nocc = 0;
-        it->second.reset_value(it->second, param);
-        EXPECT_EQ(TestParameters::input(param).nocc, 4);
-    }
+    // nocc no longer has a reset_value here: it's resolved from ground-state spin populations
+    // after SCF (see esolver_lr_lcao_tddft.cpp), not at INPUT-parse time.
     { // lr_grad_solver
         auto it = find_label("lr_grad_solver", readinput.input_lists);
         for (const std::string solver : { "cg", "lapack" })
