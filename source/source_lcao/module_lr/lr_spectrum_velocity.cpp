@@ -261,7 +261,9 @@ namespace LR
         std::vector<double> eig_ks_diff(this->ldim);
         for (int is = 0;is < this->nspin_x;++is)
         {
-            cal_eig_ks_diff(eig_ks_diff.data() + is * nk * pX[0].get_local_size(), eig_ks, pX[is], nk, nocc[is], nvirt[is]);
+            const int nbands = nocc[is] + nvirt[is];
+            const double* eig_spin = eig_ks + is * nk * nbands;
+            cal_eig_ks_diff(eig_ks_diff.data() + is * nk * pX[0].get_local_size(), eig_spin, pX[is], nk, nocc[is], nvirt[is]);
         }
 
         //  X/(ec-ev)
