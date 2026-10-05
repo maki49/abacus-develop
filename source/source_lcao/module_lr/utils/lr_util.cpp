@@ -1,5 +1,8 @@
 #include "source_base/constants.h"
 #include "lr_util.h"
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
 #include "source_base/module_external/lapack_connector.h"
 #include "source_base/module_external/scalapack_connector.h"
 #include "source_base/module_container/base/third_party/lapack.h"
@@ -7,6 +10,31 @@ namespace LR_Util
 {
     /// =================PHYSICS====================
     int cal_nocc(int nelec) { return nelec / ModuleBase::DEGSPIN + nelec % static_cast<int>(ModuleBase::DEGSPIN); }
+
+    int cal_nocc(double nelec, int nspin, int nupdown)
+    {
+        const double polarization = nspin == 2 ? std::abs(nupdown) : 0.0;
+        if (!std::isfinite(nelec) || nelec <= 0.0 || polarization > nelec)
+        {
+            throw std::invalid_argument("LR: invalid electron number or spin population");
+        }
+        // Use ceil to include a partially occupied frontier orbital, without promoting
+        // a numerically noisy integer population to the next orbital.
+        const double population = (nelec + polarization) / 2.0;
+        const double nearest_integer = std::round(population);
+        const double stable_population = std::abs(population - nearest_integer) < 1e-8
+                                             ? nearest_integer : population;
+        return static_cast<int>(std::ceil(stable_population));
+    }
+
+    int cal_nocc_window(int requested_nocc, int nocc_max)
+    {
+        if (nocc_max <= 0)
+        {
+            throw std::invalid_argument("LR: no occupied orbitals");
+        }
+        return requested_nocc <= 0 ? nocc_max : std::min(requested_nocc, nocc_max);
+    }
 
     std::pair<ModuleBase::matrix, std::vector<std::pair<int, int>>>
         set_ix_map_diagonal(bool mode, int nocc, int nvirt)

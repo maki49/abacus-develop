@@ -1051,18 +1051,16 @@ void ReadInput::item_lr_tddft()
     }
     {
         Input_Item item("nocc");
-        item.annotation = "the number of occupied orbitals to form the 2-particle basis ( <= nelec/2)";
+        item.annotation = "the occupied orbital window ending at HOMO for LR-TDDFT";
         item.category = "Linear Response TDDFT";
         item.type = "Integer";
-        item.description = R"(The number of occupied orbitals (up to HOMO) used in the LR-TDDFT calculation.
-* Note: If the value is illegal ( > nelec/2 or <= 0), it will be autoset to nelec/2.)";
-        item.default_value = "nband";
+        item.description = R"(The number of occupied orbitals (up to HOMO) retained in the majority-spin LR-TDDFT window. A positive value selects a shared core prefix to discard from both spin channels; it does not change the ground-state occupations.
+* If omitted, non-positive, or larger than the occupied majority-spin channel, all occupied orbitals are used.
+* The full occupied window is determined by the effective electron number (including nelec_delta once) and the ground-state spin populations. For nspin=2, the minority-spin window has abs(N_up-N_down) fewer occupied orbitals.)";
+        item.default_value = "all occupied orbitals";
         item.unit = "";
         read_sync_int(input.nocc);
-        item.reset_value = [](const Input_Item& item, Parameter& para) {
-            const int nocc_default = std::max(static_cast<int>(para.input.nelec + 1) / 2, para.input.nbands);
-            if (para.input.nocc <= 0 || para.input.nocc > nocc_default) { para.input.nocc = nocc_default; }
-            };
+        // Resolve the occupied window only after effective nelec and KS spin populations are known.
         this->add_item(item);
     }
     {

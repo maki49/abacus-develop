@@ -397,3 +397,12 @@ TEST_F(InputTest, Check)
     EXPECT_THAT(output, testing::HasSubstr("INPUT parameters have been successfully checked!"));
     EXPECT_TRUE(std::remove("./INPUT.ref") == 0);
 }
+
+TEST_F(InputTest, ExplicitNoccSurvivesUnresolvedElectronNumber)
+{
+    Parameter parameters;
+    read_parameters("nocc_window_INPUT", "basis_type lcao\nesolver_type ks-lr\nnocc 4\n", parameters);
+    EXPECT_EQ(parameters.inp.nelec, 0.0);
+    EXPECT_EQ(parameters.inp.nbands, 0);
+    EXPECT_EQ(parameters.inp.nocc, 4);
+}
