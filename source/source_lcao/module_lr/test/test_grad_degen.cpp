@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "source_base/matrix.h"
-#include "../grad_matrix_degenerate.h"
+#include "../grad_degen.h"
 
 /// Tests for the degenerate-subspace gradient matrix algebra; `../grad_matrix_degenerate.h`
 /// states the identity being exercised.

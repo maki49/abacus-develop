@@ -535,7 +535,7 @@ void LR::KernelXC::get_rho_drho_sigma(const int& nspin,
 // In the singlet the two coincide, which is why the singlet formula looked tidier than it is.
 // Getting theta~ wrong is invisible in every singlet test.
 // libxc component indices for nspin=2 now live in `xc_kernel.h` (namespace LR::libxc_idx).
-// The open-shell g^xc code in `Grad/xc/pot_grad_xc.cpp` needs the same tables.
+// The open-shell g^xc code in `pot_grad_xc.cpp` needs the same tables.
 using LR::libxc_idx::p2;
 using LR::libxc_idx::p3;
 

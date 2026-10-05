@@ -1,6 +1,6 @@
 #include "lr_force.h"
 #include "cal_hs_grad.h"
-#include "pulay_force_hcontainer.h"
+#include "pulay_hc.h"
 #include "source_lcao/pulay_fs.h"   // only for gint terms
 #include "source_hamilt/module_gint/gint_interface.h"
 #include "source_lcao/module_lr/utils/lr_util.h"

@@ -1,8 +1,8 @@
 #include "source_esolver/esolver_lr_lcao_tddft.h"
-#include "source_lcao/module_lr/Grad/multipliers/zeq_solver.h"
-#include "source_lcao/module_lr/Grad/multipliers/cal_edm_from_multipliers.h"
-#include "source_lcao/module_lr/Grad/force/lr_force.h"
-#include "source_lcao/module_lr/Grad/degenerate/grad_matrix_degenerate.h"
+#include "source_lcao/module_lr/zeq_solver.h"
+#include "source_lcao/module_lr/cal_edm.h"
+#include "source_lcao/module_lr/lr_force.h"
+#include "source_lcao/module_lr/grad_degen.h"
 #include "source_base/parallel_reduce.h"
 #include <algorithm>
 #include <complex>
@@ -149,7 +149,7 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_relax_target_()
     this->excited_relax_ = (this->inp_->calculation == "relax");
     if (!this->excited_relax_) { return; }
 
-    // The Z-vector equation has no complex solver (see Grad/multipliers/zeq_solver.hpp), so an
+    // The Z-vector equation has no complex solver (see zeq_solver.hpp), so an
     // excited-state gradient only exists at gamma. Fail here rather than after the SCF.
     if (!std::is_same<T, double>::value)
     {
@@ -319,7 +319,7 @@ void ModuleESolver::ESolver_LR<T, TR>::cal_stress(BaseCell& basecell, ModuleBase
     static_cast<void>(stress);
     basecell.require_kind(BaseCell::Kind::unitcell, __FUNCTION__);
     ModuleBase::WARNING_QUIT("ESolver_LR::cal_stress",
-        "the excited-state stress is not implemented (every stress term under module_lr/Grad is a "
+        "the excited-state stress is not implemented (every LR gradient stress term is a "
         "dummy passed with isstress=false).");
 }
 

@@ -1,4 +1,4 @@
-#include "grad_matrix_degenerate.h"
+#include "grad_degen.h"
 
 #include <algorithm>
 #include <cassert>

@@ -31,7 +31,7 @@
 /// The construction admits two checks that need no finite differences and are worth running on
 /// any new case: $\mathcal F[2X]=4\mathcal F[X]$ (it is a quadratic form at all), and
 /// covariance under a rotation of the subspace basis, $\mathcal F[X'_k]=(U^\top GU)_{kk}$ with
-/// $X'_k=\sum_lU_{lk}X_l$. Both are exercised in `test/test_grad_matrix_degenerate.cpp`.
+/// $X'_k=\sum_lU_{lk}X_l$. Both are exercised in `test/test_grad_degen.cpp`.
 ///
 /// The alternative -- deriving an explicitly bilinear Z-vector right-hand side that takes two
 /// different $X$ -- yields the same $G$, but it has to re-derive every factor and hand-polarize

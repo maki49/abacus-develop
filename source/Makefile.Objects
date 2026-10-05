@@ -82,16 +82,9 @@ VPATH=./src_global:\
 ./source_lcao/module_lr:\
 ./source_lcao/module_lr/ao_to_mo_transformer:\
 ./source_lcao/module_lr/dm_trans:\
-./source_lcao/module_lr/dm_band:\
 ./source_lcao/module_lr/operator_casida:\
 ./source_lcao/module_lr/potentials:\
 ./source_lcao/module_lr/utils:\
-./source_lcao/module_lr/Grad:\
-./source_lcao/module_lr/Grad/CVCX:\
-./source_lcao/module_lr/Grad/degenerate:\
-./source_lcao/module_lr/Grad/force:\
-./source_lcao/module_lr/Grad/multipliers:\
-./source_lcao/module_lr/Grad/xc:\
 ./source_lcao/module_rdmft:\
 ./\
 
@@ -1062,11 +1055,11 @@ endif
 
 OBJS_LR_GRAD=lr_force.o\
     lr_force_test.o\
-    grad_matrix_degenerate.o\
+    grad_degen.o\
     CVCX_serial.o\
-    CVCX_parallel.o\
-    cal_edm_from_multipliers.o\
-    zeq_linear_solver.o\
+    CVCX_par.o\
+    cal_edm.o\
+    zeq_lin_solv.o\
     pot_grad_xc.o\
     esolver_lr_grad.o\
 

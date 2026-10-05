@@ -2,7 +2,7 @@
 #include "source_lcao/module_lr/dm_trans/dm_trans.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
-#include "cal_multiplier_w_from_z.h"
+#include "cal_w_from_z.h"
 #include <ATen/ops/linalg_op.h>
 #ifdef __EXX
 #include "source_lcao/module_lr/operator_casida/operator_lr_exx.h"

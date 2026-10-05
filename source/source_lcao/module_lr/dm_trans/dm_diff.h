@@ -47,5 +47,5 @@ namespace LR
         const int nspin = 1);
 }
 
-#include "dm_diff_serial.hpp"
-#include "dm_diff_parallel.hpp"
+#include "dm_diff_ser.hpp"
+#include "dm_diff_par.hpp"

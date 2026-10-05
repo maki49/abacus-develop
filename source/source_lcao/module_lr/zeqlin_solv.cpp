@@ -1,4 +1,4 @@
-#include "zeq_linear_solver.h"
+#include "zeqlin_solv.h"
 
 #ifdef __MPI
 #include <algorithm>
