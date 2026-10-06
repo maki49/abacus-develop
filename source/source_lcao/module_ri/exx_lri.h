@@ -1,8 +1,6 @@
-//=======================
-// AUTHOR : Peize Lin
+//================// AUTHOR : Peize Lin
 // DATE :   2022-08-17
-//=======================
-
+//================
 #ifndef EXX_LRI_H
 #define EXX_LRI_H
 
@@ -17,6 +15,7 @@
 #include <array>
 #include <map>
 #include <deque>
+#include <iosfwd>
 #include <mpi.h>
 
 #include "module_exx_symmetry/symm_rotation.h"
@@ -83,6 +82,8 @@ public:
     // Share read-only geometry tensors, but keep all electronic work buffers independent.
     std::shared_ptr<Exx_LRI<Tdata>> make_lr_workspace(const UnitCell& ucell,
                                                    const K_Vectors& kv) const;
+    /// Select the contraction backend at the owning solver's initialization boundary.
+    void configure_execution(const bool use_gpu, std::ostream& log);
 
     void init(
         const MPI_Comm &mpi_comm_in,
