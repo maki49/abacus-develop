@@ -16,10 +16,12 @@ using namespace LR;
 template <typename Tstream>
 inline void print_force(const std::vector<ModuleBase::matrix>& force, Tstream& ofs, const int istate_begin = 0)
 {
+    const std::ios::fmtflags old_flags = ofs.flags();
+    const std::streamsize old_precision = ofs.precision();
     const int nstate = force.size();
     ofs << "Forces (-gradients) of each excited state: (eV/Angstrom)" << std::endl;
-    ofs << std::setprecision(6) << std::setw(6) << "state" << std::setw(6) << "atom"
-        << std::setw(15) << "x" << std::setw(15) << "y" << std::setw(15) << "z" << std::endl;
+    ofs << std::fixed << std::setprecision(10) << std::setw(6) << "state" << std::setw(6) << "atom"
+        << std::setw(20) << "x" << std::setw(20) << "y" << std::setw(20) << "z" << std::endl;
     const double fac = ModuleBase::Ry_to_eV / ModuleBase::BOHR_TO_A;
     for (int i = 0;i < nstate;++i)
     {
@@ -27,10 +29,12 @@ inline void print_force(const std::vector<ModuleBase::matrix>& force, Tstream& o
         {
             std::string istate = iat == 0 ? std::to_string(istate_begin + i) : " ";
             ofs << std::setw(6) << istate << std::setw(6) << iat << std::setw(6) << "force";
-            for (int ixyz = 0;ixyz < 3;++ixyz) { ofs << std::setw(15) << force[i](iat, ixyz) * fac; }
+            for (int ixyz = 0;ixyz < 3;++ixyz) { ofs << std::setw(20) << force[i](iat, ixyz) * fac; }
             ofs << std::endl;
         }
     }
+    ofs.flags(old_flags);
+    ofs.precision(old_precision);
 }
 
 /// @brief The mean of a set of force matrices.
