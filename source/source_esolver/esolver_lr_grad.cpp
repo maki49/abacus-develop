@@ -471,6 +471,7 @@ template<typename T, typename TR>
 std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_Xz(const int ispin,
     const ct::Tensor& Xz, const std::vector<double>& omega, const int label_begin)
 {
+    ModuleBase::timer::start("ESolver_LR", "cal_force_Xz");
     // for each block, calculate dm_trans, dm_relaxed_diff, edm and force
     const int nst = static_cast<int>(omega.size());
     assert(static_cast<int>(Xz.shape().dim_size(0)) == nst);
@@ -486,7 +487,6 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_Xz(c
     const ct::Tensor& Z = this->solve_zvector_eqation(ispin, nst, Xz);
 
     ModuleBase::TITLE("ESolver_LR", "cal_force");
-    ModuleBase::timer::start("ESolver_LR", "cal_force");
     // Spin channel 0, NOT `ispin`. `ispin` indexes `spin_types` = {singlet, triplet}.
     // Closed shell always use spin-up channel of psi_ks, i.e. psi_ks(0).
     const auto& c = LR_Util::get_psi_spin(*this->psi_ks_z_, 0, this->nk);   // wavefunction coefficients of ground state
@@ -704,10 +704,10 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_Xz(c
 #endif
         forces[istate - ist_begin] = force_hxc_dmtrans + force_hamiltgs_relaxed_diff + force_overlap_edm;
     }
-    ModuleBase::timer::end("ESolver_LR", "cal_force");
     // total force
     print_force(forces, std::cout, ist_begin);
     print_force(forces, this->ofs_running_, ist_begin);
+    ModuleBase::timer::end("ESolver_LR", "cal_force_Xz");
     return forces;
 }
 
@@ -1014,7 +1014,6 @@ template<typename T, typename TR>
 std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_openshell(const int istate_only)
 {
     ModuleBase::TITLE("ESolver_LR", "cal_force_openshell");
-    ModuleBase::timer::start("ESolver_LR", "cal_force");
 
     // Open shell: there is a single eigenproblem whose vector is the concatenation
     // [up-block | down-block], and every density matrix has two independent channels.
@@ -1036,6 +1035,7 @@ template<typename T, typename TR>
 std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_openshell_Xz(
     const ct::Tensor& Xz, const std::vector<double>& omega, const int label_begin)
 {
+    ModuleBase::timer::start("ESolver_LR", "cal_force_openshell_Xz");
     const int nst = static_cast<int>(omega.size());
     assert(static_cast<int>(Xz.shape().dim_size(0)) == nst);
     const int ist_begin_ = label_begin;
@@ -1202,9 +1202,9 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_open
 #endif
         forces[istate - ist_begin] = force_hxc_dmtrans + force_hamiltgs_relaxed_diff + force_overlap_edm;
     }
-    ModuleBase::timer::end("ESolver_LR", "cal_force");
     print_force(forces, std::cout, ist_begin);
     print_force(forces, this->ofs_running_, ist_begin);
+    ModuleBase::timer::end("ESolver_LR", "cal_force_openshell_Xz");
     return forces;
 }
 
