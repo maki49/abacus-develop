@@ -104,13 +104,25 @@ namespace LR
                     }
                 }
             }
+            if (projection_workspace_) { projection_workspace_->prepare(h.data()); }
+            const auto project = [&](const T* left, const T* right, const double scale)
+            {
+                if (projection_workspace_)
+                {
+                    projection_workspace_->accumulate(left, right, scale);
+                }
+                else
+                {
+                    project_exx(h.data(), left, right, naos, nocc, nright, scale,
+                                scratch.data(), result.data());
+                }
+            };
             const T* co = &psi_ks_full(ik, 0, 0);
             const T* cv = &psi_ks_full(ik, nocc, 0);
             if (dm_pq_ == MO_TO_AO_TYPE::CC_vo || occupied)
             {
                 const T* right = occupied ? co : cv;
-                project_exx(h.data(), co, right, naos, nocc, nright, factor,
-                            scratch.data(), result.data());
+                project(co, right, factor);
             }
             else
             {
@@ -118,13 +130,12 @@ namespace LR
                 if (dm_pq_ == MO_TO_AO_TYPE::CXC)
                 {
                     const T* cvx = &cvx_full(ik, 0, 0);
-                    project_exx(h.data(), cvx, cv, naos, nocc, nvirt, factor,
-                                scratch.data(), result.data());
+                    project(cvx, cv, factor);
                 }
                 const double occ_factor = dm_pq_ == MO_TO_AO_TYPE::CXC ? -factor : factor;
-                project_exx(h.data(), co, coxt, naos, nocc, nvirt, occ_factor,
-                            scratch.data(), result.data());
+                project(co, coxt, occ_factor);
             }
+            if (projection_workspace_) { projection_workspace_->download(result.data()); }
             const int result_size = static_cast<int>(result.size());
             Parallel_Reduce::reduce_all(result.data(), result_size);
             const bool transpose = occupied && std::is_same<T, std::complex<double>>::value;

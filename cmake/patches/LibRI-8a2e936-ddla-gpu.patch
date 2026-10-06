@@ -1,0 +1,91 @@
+--- a/include/RI/global/gpu/GPU_Backend.h
++++ b/include/RI/global/gpu/GPU_Backend.h
+@@ -40,6 +40,13 @@
+ {
+ 
+ #ifdef __DDLA_RI
++    inline void check_device(const ddla::deviceError_t status)
++    {
++        if (status != ddla::deviceSuccess)
++        {
++            throw std::runtime_error(deviceGetErrorString(status));
++        }
++    }
+     using Int = int;
+     using Transpose = ddla::deblasOperation_t;
+     using Queue = ddla::DdlaHandle_t;
+@@ -107,7 +114,7 @@
+ 
+     int device_count = 0;
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(ddla::deviceGetDeviceCount(&device_count));
++    check_device(ddla::deviceGetDeviceCount(&device_count));
+ #elif defined(__MAGMA_RI)
+     device_count = Magma_Wrapper::magma_get_size();
+ #endif
+@@ -174,7 +181,7 @@
+         return;
+     }
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(ddla::deviceMalloc(pointer, count * sizeof(T)));
++    check_device(ddla::deviceMalloc(pointer, count * sizeof(T)));
+ #elif defined(__MAGMA_RI)
+     MAGMA_CHECK_RI(magma_malloc(reinterpret_cast<void**>(pointer), count * sizeof(T)));
+ #endif
+@@ -186,7 +193,7 @@
+     if (pointer == nullptr)
+         return;
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(ddla::deviceFree(pointer));
++    check_device(ddla::deviceFree(pointer));
+ #elif defined(__MAGMA_RI)
+     MAGMA_CHECK_RI(magma_free(pointer));
+ #endif
+@@ -199,7 +206,7 @@
+     if (count == 0)
+         return;
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(deviceMemcpyAsync(
++    check_device(deviceMemcpyAsync(
+         device_data, host_data, count * sizeof(T),
+         ddla::deviceMemcpyHostToDevice, stream(queue)));
+ #elif defined(__MAGMA_RI)
+@@ -215,7 +222,7 @@
+     if (count == 0)
+         return;
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(deviceMemcpyAsync(
++    check_device(deviceMemcpyAsync(
+         host_data, device_data, count * sizeof(T),
+         ddla::deviceMemcpyDeviceToHost, stream(queue)));
+ #elif defined(__MAGMA_RI)
+@@ -229,7 +236,7 @@
+     if (bytes == 0)
+         return;
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(deviceMemsetAsync(
++    check_device(deviceMemsetAsync(
+         pointer, value, bytes, stream(queue)));
+ #elif defined(__MAGMA_RI)
+     MAGMA_CHECK_RI(magma_memset(pointer, value, bytes));
+@@ -239,7 +246,7 @@
+ inline void sync(Queue queue)
+ {
+ #ifdef __DDLA_RI
+-    ddla::DEVICE_CHECK_RI(
++    check_device(
+         ddla::deviceStreamSynchronize(stream(queue)));
+ #elif defined(__MAGMA_RI)
+     magma_queue_sync(queue);
+--- a/include/RI/ri/LRI-cal_loop3_GPU.hpp
++++ b/include/RI/ri/LRI-cal_loop3_GPU.hpp
+@@ -2690,7 +2690,8 @@
+ 		LRI_Cal_Aux::add_Ds_omp_wait_map(Ds_result_thread, Ds_result, lock_Ds_result_add_map, fac_add_Ds);
+ 	} // end #pragma omp parallel
+ 
+-	LRI_Cal_Aux::destroy_lock_result(lock_Ds_result_add_map, Ds_result);
++	LRI_Cal_Aux::destroy_lock(lock_Ds_result_add_map);
++	LRI_Cal_Aux::destroy_Ds_result(Ds_result);
+ 	#ifdef __MKL_RI
+ 	mkl_set_num_threads(mkl_threads);
+ 	#endif

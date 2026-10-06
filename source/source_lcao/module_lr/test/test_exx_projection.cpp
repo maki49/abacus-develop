@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 #include <vector>
+#include <stdexcept>
+#ifdef __CUDA
+#include "source_base/module_external/blas_connector.h"
+#endif
 
 namespace
 {
@@ -312,3 +316,133 @@ TEST(ExxProjection, TransposedResponseMatchesSwappedCxcOProbe)
 }
 
 }
+
+TEST(ExxProjection, WorkspaceAccumulationAndRefresh)
+{
+    const bool use_gpu = false;
+    LR::ExxProjectionWorkspace<double> workspace(use_gpu, naos, nocc, nvirt);
+    const auto left = coefficients(nocc, 0.3);
+    const auto right = coefficients(nvirt, -0.2);
+    std::vector<double> h(naos * naos);
+    std::vector<double> result(nocc * nvirt);
+    for (int geometry = 0; geometry < 2; ++geometry)
+    {
+        for (int i = 0; i < naos * naos; ++i)
+        {
+            h[i] = 0.17 * i + geometry * 0.3;
+        }
+        workspace.prepare(h.data());
+        workspace.accumulate(left.data(), right.data(), 1.7);
+        workspace.accumulate(left.data(), right.data(), -0.4);
+        workspace.download(result.data());
+        const auto expected = reference(h, left, right, nvirt, 1.3);
+        for (std::size_t i = 0; i < result.size(); ++i)
+        {
+            EXPECT_NEAR(result[i], expected[i], 1e-12);
+        }
+    }
+}
+
+#ifndef __CUDA
+TEST(ExxProjection, WorkspaceRejectsUnavailableGpu)
+{
+    const bool use_gpu = true;
+    EXPECT_THROW((LR::ExxProjectionWorkspace<double>(use_gpu, naos, nocc, nvirt)), std::runtime_error);
+}
+#endif
+
+TEST(ExxProjection, ComplexWorkspacePreservesConjugation)
+{
+    typedef std::complex<double> Complex;
+    const bool use_gpu = false;
+    LR::ExxProjectionWorkspace<Complex> workspace(use_gpu, naos, nocc, nvirt);
+    std::vector<Complex> h(naos * naos);
+    std::vector<Complex> left(naos * nocc);
+    std::vector<Complex> right(naos * nvirt);
+    std::vector<Complex> result(nocc * nvirt);
+    for (std::size_t i = 0; i < h.size(); ++i) { h[i] = Complex(0.1 * i, 0.2 - 0.03 * i); }
+    for (std::size_t i = 0; i < left.size(); ++i) { left[i] = Complex(0.3 - 0.01 * i, 0.07 * i); }
+    for (std::size_t i = 0; i < right.size(); ++i) { right[i] = Complex(0.02 * i, 0.4 - 0.01 * i); }
+    workspace.prepare(h.data());
+    workspace.accumulate(left.data(), right.data(), 1.2);
+    workspace.download(result.data());
+    for (int io = 0; io < nocc; ++io)
+    {
+        for (int iv = 0; iv < nvirt; ++iv)
+        {
+            Complex expected(0.0, 0.0);
+            for (int mu = 0; mu < naos; ++mu)
+            {
+                for (int nu = 0; nu < naos; ++nu)
+                {
+                    expected += 1.2 * std::conj(right[iv * naos + mu])
+                              * h[nu * naos + mu] * left[io * naos + nu];
+                }
+            }
+            EXPECT_NEAR(std::abs(result[io * nvirt + iv] - expected), 0.0, 1e-12);
+        }
+    }
+}
+
+#ifdef __CUDA
+TEST(ExxProjection, GpuWorkspaceAccumulationAndRefresh)
+{
+    int devices = 0;
+    const cudaError_t status = cudaGetDeviceCount(&devices);
+    if (status != cudaSuccess || devices == 0) { GTEST_SKIP() << "CUDA device unavailable"; }
+    BlasUtils::createGpuBlasHandle();
+    {
+        const bool use_gpu = true;
+        LR::ExxProjectionWorkspace<double> workspace(use_gpu, naos, nocc, nvirt);
+        const auto left = coefficients(nocc, 0.3);
+        const auto right = coefficients(nvirt, -0.2);
+        std::vector<double> h(naos * naos);
+        std::vector<double> result(nocc * nvirt);
+        for (int geometry = 0; geometry < 2; ++geometry)
+        {
+            for (std::size_t i = 0; i < h.size(); ++i) { h[i] = 0.17 * i + 0.3 * geometry; }
+            workspace.prepare(h.data());
+            workspace.accumulate(left.data(), right.data(), 1.7);
+            workspace.accumulate(left.data(), right.data(), -0.4);
+            workspace.download(result.data());
+            const auto expected = reference(h, left, right, nvirt, 1.3);
+            for (std::size_t i = 0; i < result.size(); ++i)
+            {
+                EXPECT_NEAR(result[i], expected[i], 1e-11);
+            }
+        }
+    }
+    {
+        typedef std::complex<double> Complex;
+        const bool use_gpu = true;
+        LR::ExxProjectionWorkspace<Complex> workspace(use_gpu, naos, nocc, nvirt);
+        std::vector<Complex> h(naos * naos);
+        std::vector<Complex> left(naos * nocc);
+        std::vector<Complex> right(naos * nvirt);
+        std::vector<Complex> result(nocc * nvirt);
+        for (std::size_t i = 0; i < h.size(); ++i) { h[i] = Complex(0.1 * i, 0.2 - 0.03 * i); }
+        for (std::size_t i = 0; i < left.size(); ++i) { left[i] = Complex(0.3 - 0.01 * i, 0.07 * i); }
+        for (std::size_t i = 0; i < right.size(); ++i) { right[i] = Complex(0.02 * i, 0.4 - 0.01 * i); }
+        workspace.prepare(h.data());
+        workspace.accumulate(left.data(), right.data(), 1.2);
+        workspace.download(result.data());
+        for (int io = 0; io < nocc; ++io)
+        {
+            for (int iv = 0; iv < nvirt; ++iv)
+            {
+                Complex expected(0.0, 0.0);
+                for (int mu = 0; mu < naos; ++mu)
+                {
+                    for (int nu = 0; nu < naos; ++nu)
+                    {
+                        expected += 1.2 * std::conj(right[iv * naos + mu])
+                                  * h[nu * naos + mu] * left[io * naos + nu];
+                    }
+                }
+                EXPECT_NEAR(std::abs(result[io * nvirt + iv] - expected), 0.0, 1e-11);
+            }
+        }
+    }
+    BlasUtils::destoryBLAShandle();
+}
+#endif
