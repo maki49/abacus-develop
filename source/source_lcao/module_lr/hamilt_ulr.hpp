@@ -107,13 +107,16 @@ namespace LR
                 {
                     const int offset_bj = offset_band + is_bj * xdim_is[0];
                     cal_dm_trans(is_bj, psi_in + offset_bj);   // calculate transition density matrix here
+                    typename OperatorLRHxc<T>::TransitionDensityCache density_cache;
                     for (int is_ai : {0, 1})
                     {
                         const int offset_ai = offset_band + is_ai * xdim_is[0];
                         hamilt::Operator<T>* node(this->ops[(is_ai << 1) + is_bj]);
                         while (node != nullptr)
                         {
-                            node->act(/*nband=*/1, xdim_is[is_bj], /*npol=*/1, psi_in + offset_bj, hpsi + offset_ai);
+                            const T* input = psi_in + offset_bj;
+                            T* output = hpsi + offset_ai;
+                            act_with_shared_density(node, xdim_is[is_bj], input, output, density_cache);
                             node = (hamilt::Operator<T>*)(node->next_op);
                         }
                     }
