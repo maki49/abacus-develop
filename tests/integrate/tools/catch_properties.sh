@@ -190,7 +190,8 @@ fi
 #----------------------------
 if [ $is_lr == 1 ] && ! test -z "$has_force" && [ $has_force == 1 ]; then
 	awk '/Forces \(-gradients\) of each excited state/{flag=1; next} flag{for(i=1;i<=NF;i++) if($i=="force"){print $(i+1),$(i+2),$(i+3)}}' $running_path > lr_force.txt
-	total_lr_force=`sum_file lr_force.txt`
+	# Accumulate all printed components before rounding the LR force total.
+	total_lr_force=$(awk '{for (i=1; i<=NF; ++i) sum += sqrt($i*$i)} END {printf "%.10f\n", sum}' lr_force.txt)
 	rm lr_force.txt
 	echo "totallrforceref $total_lr_force" >>$1
 fi
