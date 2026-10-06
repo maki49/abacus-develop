@@ -1,6 +1,7 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQULR_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQULR_H
 #include "source_hamilt/hamilt.h"
+#include "source_lcao/module_lr/operator_casida/operator_lr_hxc.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include <cassert>
@@ -60,6 +61,7 @@ namespace LR
                 {
                     const int offset_in = offset_band + is_in * ldim_is[0];
                     this->set_dm(is_in, psi_in + offset_in);
+                    typename OperatorLRHxc<T>::TransitionDensityCache density_cache;
                     for (int is_out : {0, 1})
                     {
                         const int offset_out = offset_band + is_out * ldim_is[0];
@@ -73,8 +75,9 @@ namespace LR
                             // -- only $D^X$ carries the summed spin. `OperatorLRHxc`'s CXC branch
                             // says the same thing in code: it reads `psi_in` through `pX[sl]`, the
                             // OUT channel's distribution. 
-                            node->act(/*nband=*/1, ldim_is[is_out], /*npol=*/1,
-                                psi_in + offset_out, hpsi + offset_out);
+                            const T* input = psi_in + offset_out;
+                            T* output = hpsi + offset_out;
+                            act_with_shared_density(node, ldim_is[is_out], input, output, density_cache);
                             node = (hamilt::Operator<T>*)(node->next_op);
                         }
                     }

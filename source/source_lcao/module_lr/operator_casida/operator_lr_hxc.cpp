@@ -20,18 +20,30 @@ namespace LR
     template<typename T, typename Device>
     void OperatorLRHxc<T, Device>::act(const int nbands, const int nbasis, const int npol, const T* psi_in, T* hpsi, const int ngk_ik, const bool is_first_node)const
     {
-        ModuleBase::TITLE("OperatorLRHxc", "act");
-        ModuleBase::timer::start("OperatorLRHxc", "act");
+        TransitionDensityCache density_cache;
+        this->act_with_shared_density(psi_in, hpsi, density_cache);
+    }
+
+    template<typename T, typename Device>
+    void OperatorLRHxc<T, Device>::act_with_shared_density(
+        const T* psi_in, T* hpsi, TransitionDensityCache& density_cache) const
+    {
+        ModuleBase::TITLE("OperatorLRHxc", "act_with_shared_density");
+        ModuleBase::timer::start("OperatorLRHxc", "act_with_shared_density");
 
         const int& sl = ispin_ks[0];
         const auto psil_ks = LR_Util::get_psi_spin(psi_ks, sl, nk);
 
-        this->DM_trans.cal_dmr(-1);  //DM_trans.get_dmr_vec() is 2d-block parallized
-        LR_Util::swap_atompair_in_DMR(this->DM_trans, ucell.nat);   // make D(R) consistent with the defination: D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1))
-
-        // ========================= begin grid calculation=========================
-        this->grid_calculation(nbands);   //DM(R) to H(R)
-        // ========================= end grid calculation =========================
+        if (density_cache.count(&this->DM_trans) == 0)
+        {
+            this->DM_trans.cal_dmr(-1);  // DM_trans.get_dmr_vec() is 2D-block parallelized.
+            // Make D(R) consistent with the definition:
+            // D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1)).
+            LR_Util::swap_atompair_in_DMR(this->DM_trans, ucell.nat);
+        }
+        // ========================= begin grid calculation =========================
+        this->grid_calculation(density_cache);   // DM(R) -> rho(r) -> V_Hxc(r) -> H(R)
+        // ========================= end grid calculation ===========================
 
         // V(R)->V(k) 
         std::vector<ct::Tensor> v_hxc_2d(nk, LR_Util::newTensor<T>({ pmat.get_col_size(), pmat.get_row_size() }));
@@ -89,27 +101,33 @@ namespace LR
         //std::cout << "After Hxc, hpsi: [nvirt= " << nvirt[sl] << " nocc= " << nocc[sl] << " nk= " << nk << " ]" << std::endl;
         //LR_Util::print_value(hpsi, nk, nocc[sl], nvirt[sl]);
 
-        ModuleBase::timer::end("OperatorLRHxc", "act");
+        ModuleBase::timer::end("OperatorLRHxc", "act_with_shared_density");
     }
 
 
     template<>
-    void OperatorLRHxc<double, base_device::DEVICE_CPU>::grid_calculation(const int& nbands) const
+    void OperatorLRHxc<double, base_device::DEVICE_CPU>::grid_calculation(TransitionDensityCache& density_cache) const
     {
         ModuleBase::TITLE("OperatorLRHxc", "grid_calculation(real)");
         ModuleBase::timer::start("OperatorLRHxc", "grid_calculation");
 
         // 2. transition electron density
         // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
-        double** rho_trans = nullptr;
-        const int& nrxx = this->pot.lock()->nrxx;
-        LR_Util::_allocate_2order_nested_ptr(rho_trans, 1, nrxx); // currently gint_kernel_rho uses PARAM.inp.nspin, it needs refactor
-        ModuleBase::GlobalFunc::ZEROS(rho_trans[0], nrxx);
-        ModuleGint::cal_gint_rho(this->DM_trans.get_dmr_vec(), 1, rho_trans, false);
-        // 3. v_hxc = f_hxc * rho_trans
-        ModuleBase::matrix vr_hxc(1, nrxx);   //grid
-        this->pot.lock()->cal_v_eff(rho_trans, ucell, vr_hxc, ispin_ks);
-        LR_Util::_deallocate_2order_nested_ptr(rho_trans, 1);
+        // For a fixed input spin, rho is shared by both output-spin kernels.
+        const int nrxx = this->pot.lock()->nrxx;
+        auto& density = density_cache[&this->DM_trans];
+        if (density.empty())
+        {
+            const std::vector<double> zeros(nrxx, 0.0);
+            density.assign(1, zeros);  // nspin=1 for transition density
+            double* rho = density[0].data();
+            const auto& dmr = this->DM_trans.get_dmr_vec();
+            ModuleGint::cal_gint_rho(dmr, 1, &rho, false);
+        }
+        // 3. v_hxc = f_hxc * rho_trans, evaluated separately for each output spin
+        double* rho = density[0].data();
+        ModuleBase::matrix vr_hxc(1, nrxx);   // grid
+        this->pot.lock()->cal_v_eff(&rho, ucell, vr_hxc, ispin_ks);
 
         // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\nu(r)
         this->hR->set_zero();   // clear hR for each bands
@@ -118,47 +136,49 @@ namespace LR
     }
 
     template<>
-    void OperatorLRHxc<std::complex<double>, base_device::DEVICE_CPU>::grid_calculation(const int& nbands) const
+    void OperatorLRHxc<std::complex<double>, base_device::DEVICE_CPU>::grid_calculation(TransitionDensityCache& density_cache) const
     {
         ModuleBase::TITLE("OperatorLRHxc", "grid_calculation(complex)");
         ModuleBase::timer::start("OperatorLRHxc", "grid_calculation");
 
-        module_dm::DensityMatrix<std::complex<double>, double> DM_trans_real_imag(&pmat, 1, kv.kvec_d, kv.get_nks() / nspin);
-        DM_trans_real_imag.init_dmr(*this->hR);
-        hamilt::HContainer<double> HR_real_imag(ucell, &this->pmat);
-        LR_Util::initialize_HR<std::complex<double>, double>(HR_real_imag, ucell, gd, orb_cutoff_);
-
-        auto dmR_to_hR = [&, this](const char& type) -> void
+        // 2. transition electron density, evaluated for each real/imaginary part
+        // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
+        const int nrxx = this->pot.lock()->nrxx;
+        const int nparts = nk > 1 ? 2 : 1;  // real; also imaginary for multi-k
+        auto& density = density_cache[&this->DM_trans];
+        if (density.empty())
+        {
+            module_dm::DensityMatrix<std::complex<double>, double> dm_real_imag(&pmat, 1, kv.kvec_d, nk);
+            dm_real_imag.init_dmr(*this->hR);
+            const std::vector<double> zeros(nrxx, 0.0);
+            density.assign(nparts, zeros);
+            for (int ipart = 0; ipart < nparts; ++ipart)
             {
-                LR_Util::get_DMR_real_imag_part(this->DM_trans, DM_trans_real_imag, type);
-                // if (this->first_print)LR_Util::print_DMR(DM_trans_real_imag, ucell.nat, "DMR(2d, real)");
+                const char part = ipart == 0 ? 'R' : 'I';
+                LR_Util::get_DMR_real_imag_part(this->DM_trans, dm_real_imag, part);
+                // nspin=1 for each real/imaginary transition-density component
+                double* rho = density[ipart].data();
+                const auto& dmr = dm_real_imag.get_dmr_vec();
+                ModuleGint::cal_gint_rho(dmr, 1, &rho, false);
+            }
+        }
 
+        hamilt::HContainer<double> hr_real_imag(ucell, &this->pmat);
+        LR_Util::initialize_HR<std::complex<double>, double>(hr_real_imag, ucell, gd, orb_cutoff_);
+        this->hR->set_zero();   // clear hR for each band
+        for (int ipart = 0; ipart < nparts; ++ipart)
+        {
+            const char part = ipart == 0 ? 'R' : 'I';
+            // 3. v_hxc = f_hxc * rho_trans, evaluated separately for each output spin
+            double* rho = density[ipart].data();
+            ModuleBase::matrix vr_hxc(1, nrxx);   // grid
+            this->pot.lock()->cal_v_eff(&rho, ucell, vr_hxc, ispin_ks);
 
-                // 2. transition electron density
-                double** rho_trans = nullptr;
-                const int& nrxx = this->pot.lock()->nrxx;
-
-                LR_Util::_allocate_2order_nested_ptr(rho_trans, 1, nrxx); // nspin=1 for transition density
-                ModuleBase::GlobalFunc::ZEROS(rho_trans[0], nrxx);
-                ModuleGint::cal_gint_rho(DM_trans_real_imag.get_dmr_vec(), 1, rho_trans, false);
-                // print_grid_nonzero(rho_trans[0], nrxx, 10, "rho_trans");
-
-                // 3. v_hxc = f_hxc * rho_trans
-                ModuleBase::matrix vr_hxc(1, nrxx);   //grid
-                this->pot.lock()->cal_v_eff(rho_trans, ucell, vr_hxc, ispin_ks);
-                // print_grid_nonzero(vr_hxc.c, this->poticab->nrxx, 10, "vr_hxc");
-
-                LR_Util::_deallocate_2order_nested_ptr(rho_trans, 1);
-
-                // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\nu(r)
-                HR_real_imag.set_zero();
-                ModuleGint::cal_gint_vl(vr_hxc.c, &HR_real_imag);
-                // LR_Util::print_HR(HR_real_imag, this->ucell.nat, "VR(real, 2d)");
-                LR_Util::set_HR_real_imag_part(HR_real_imag, *this->hR, type);
-            };
-        this->hR->set_zero();
-        dmR_to_hR('R');   //real
-        if (kv.get_nks() / this->nspin > 1) { dmR_to_hR('I'); }   //imag for multi-k
+            // 4. V^{Hxc}_{\mu,\nu}=\int{dr} \phi_\mu(r) v_{Hxc}(r) \phi_\nu(r)
+            hr_real_imag.set_zero();
+            ModuleGint::cal_gint_vl(vr_hxc.c, &hr_real_imag);
+            LR_Util::set_HR_real_imag_part(hr_real_imag, *this->hR, part);
+        }
         ModuleBase::timer::end("OperatorLRHxc", "grid_calculation");
     }
 

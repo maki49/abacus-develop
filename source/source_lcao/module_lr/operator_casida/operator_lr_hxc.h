@@ -1,6 +1,7 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_HXC_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_HXC_H
 
+#include <map>
 #include "source_cell/klist.h"
 #include "source_hamilt/operator.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -65,8 +66,14 @@ namespace LR
                          const int ngk_ik = 0,
                          const bool is_first_node = false) const override;
 
+        // Valid only while the input density matrices are unchanged. Callers create
+        // one cache per input spin and vector, and share it between output spins.
+        using TransitionDensityCache = std::map<const module_dm::DensityMatrix<T, T>*,
+                                                std::vector<std::vector<double>>>;
+        void act_with_shared_density(const T* psi_in, T* hpsi, TransitionDensityCache& density_cache) const;
+
       private:
-        void grid_calculation(const int& nbands)const;
+        void grid_calculation(TransitionDensityCache& density_cache) const;
 
         //global sizes
         const int& nspin;
@@ -103,6 +110,26 @@ namespace LR
         /// test
         mutable bool first_print = true;
     };
+
+    /// Apply one node, reusing only Hxc grid densities. Other operators retain
+    /// their original action and ordering (including diagonal and EXX terms).
+    template<typename T>
+    void act_with_shared_density(hamilt::Operator<T>* node,
+                                 const int nbasis,
+                                 const T* psi_in,
+                                 T* hpsi,
+                                 typename OperatorLRHxc<T>::TransitionDensityCache& density_cache)
+    {
+        auto* hxc = dynamic_cast<OperatorLRHxc<T>*>(node);
+        if (hxc != nullptr)
+        {
+            hxc->act_with_shared_density(psi_in, hpsi, density_cache);
+        }
+        else
+        {
+            node->act(1, nbasis, 1, psi_in, hpsi);
+        }
+    }
 }
 
 #endif // ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_HXC_H
