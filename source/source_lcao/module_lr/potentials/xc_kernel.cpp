@@ -197,6 +197,8 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         // basis puts no T+D^Z density in the truncated region, which is why the problem only shows
         // up once diffuse/p functions enter.
         //
+        // These thresholds also change the shared second-order XC kernel and excitation energies,
+        // even with cal_force disabled, so excitation-energy references must use the same thresholds.
         // CAVEAT: only LDA has been checked at these thresholds. The 1E-6/1E-10 pair exists because
         // GGA *correlation* can misbehave at very low density; if PBE turns out to need protection,
         // the fix is a separate threshold for the gradient path, not a return to 1E-6 everywhere.
