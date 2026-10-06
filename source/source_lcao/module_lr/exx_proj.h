@@ -2,6 +2,7 @@
 #define ABACUS_LR_EXX_PROJECTION_H
 
 #include <complex>
+#include <memory>
 
 namespace LR
 {
@@ -30,6 +31,24 @@ void project_exx(const std::complex<double>* h,
                  double factor,
                  std::complex<double>* scratch,
                  std::complex<double>* result);
+/// Reusable host/device boundary for a folded AO response. Buffers belong to
+/// one operator instance; prepare() resets accumulation for the next k point.
+/// GPU mode uses CUDA GEMM; host maps and MPI reduction remain on the CPU.
+template<typename T>
+class ExxProjectionWorkspace
+{
+public:
+    ExxProjectionWorkspace(bool use_gpu, int naos, int nleft, int nright);
+    ~ExxProjectionWorkspace();
+    void prepare(const T* h);
+    void accumulate(const T* left, const T* right, double factor);
+    void download(T* result) const;
+
+private:
+    class Storage;
+    std::unique_ptr<Storage> storage_;
+};
+
 }
 
 #endif
