@@ -1,4 +1,10 @@
 AddTest(
+  TARGET MODULE_LR_exx_projection
+  LIBS base parameter ${math_libs} container device
+  SOURCES test_exx_projection.cpp ../exx_projection.cpp
+)
+
+AddTest(
   TARGET MODULE_LR_grad_degen
   LIBS base parameter ${math_libs} container device
   SOURCES test_grad_degen.cpp ../grad_degen.cpp

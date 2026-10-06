@@ -26,21 +26,15 @@ if(ENABLE_LCAO)
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
     lr_force.cpp
+    exx_projection.cpp
     lr_force_test.cpp
     grad_degen.cpp
     cal_edm.cpp
     zeqlin_solv.cpp)
 
-  # BSE-related code and DMBand: only compiled with LibRI (__EXX). Unlike
-  # operator_lr_exx.cpp, dm_band.cpp's own header includes <RI/global/Tensor.h>
-  # unconditionally (not behind an __EXX guard), so it cannot even be
-  # translated without LibRI; its only consumer is operator_lr_exx.cpp, which
-  # is itself __EXX-only.
+  # The RI k-point list reader requires LibRI headers.
   if(ENABLE_LIBRI)
-    list(APPEND objects
-      utils/lr_io_krlist.cpp
-      dm_band.cpp
-    )
+    list(APPEND objects utils/lr_io_krlist.cpp)
   endif()
 
 add_library(
