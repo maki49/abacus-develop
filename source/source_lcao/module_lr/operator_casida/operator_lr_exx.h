@@ -6,6 +6,7 @@
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_ri/exx_lri.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
+#include "source_lcao/module_lr/exx_projection.h"
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
 namespace LR
 {
@@ -75,7 +76,16 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
             }
             if (!this->exx_lri.expired())
             {
-                this->exx_lri.lock()->Hexxs.resize(1);
+                const auto exchange = this->exx_lri.lock();
+                exchange->Hexxs.resize(1);
+#ifdef __GPU_RI
+                if (exchange->get().lri.cal_mode == RI::LRI_Cal_Mode::GPU)
+                {
+                    const bool use_gpu = true;
+                    const int nright = dm_pq_ == MO_TO_AO_TYPE::CC_oo ? nocc : nvirt;
+                    projection_workspace_.reset(new ExxProjectionWorkspace<T>(use_gpu, naos, nocc, nright));
+                }
+#endif
             }
         };
 
@@ -126,6 +136,10 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
 
         /// only for gradient calculation
 
+
+        // Device buffers survive repeated Davidson/z-vector applications.
+        // Geometry refresh constructs a new operator and therefore a new workspace.
+        std::unique_ptr<ExxProjectionWorkspace<T>> projection_workspace_;
 
         /// Build and communicate the exchange response once per input density.
         void cal_Hs() const;

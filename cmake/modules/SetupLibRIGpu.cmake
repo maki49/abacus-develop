@@ -1,4 +1,7 @@
 # LibRI's GPU header backend needs an explicitly installed DDLA library.
+# DDLA public headers use C++17; CPU-only builds retain their existing standard.
+set_if_higher(CMAKE_CXX_STANDARD 17)
+set_if_higher(CMAKE_CUDA_STANDARD 17)
 # Do not fetch an unpinned backend or silently fall back to CPU contractions.
 find_path(DDLA_INCLUDE_DIR ddla/ddla_connector.h
   HINTS ${DDLA_ROOT} ENV DDLA_ROOT PATH_SUFFIXES include)
@@ -16,7 +19,7 @@ add_library(DDLA::DDLA UNKNOWN IMPORTED)
 set_target_properties(DDLA::DDLA PROPERTIES
   IMPORTED_LOCATION "${DDLA_LIBRARY}"
   INTERFACE_INCLUDE_DIRECTORIES "${DDLA_INCLUDE_DIR}"
-  INTERFACE_LINK_LIBRARIES "CUDA::cudart;CUDA::cublas;MPI::MPI_CXX")
+  INTERFACE_LINK_LIBRARIES "CUDA::cudart;CUDA::cublas;CUDA::cusolver;CUDA::curand;MPI::MPI_CXX")
 
 include(CheckCXXSourceCompiles)
 include(CMakePushCheckState)
@@ -34,7 +37,10 @@ check_cxx_source_compiles("
 " ABACUS_LIBRI_DDLA_COMPILES)
 cmake_pop_check_state()
 if(NOT ABACUS_LIBRI_DDLA_COMPILES)
-  message(FATAL_ERROR "LibRI/DDLA CUDA headers or linkage are incompatible; see CMakeError.log")
+  message(FATAL_ERROR
+    "LibRI/DDLA CUDA headers or linkage are incompatible; see CMakeFiles/CMakeConfigureLog.yaml or CMakeError.log. "
+    "The tested LibRI 8a2e936 adapter fixes are supplied in cmake/patches/LibRI-8a2e936-ddla-gpu.patch; "
+    "apply them to a separate dependency checkout. Use API-compatible DDLA (tested: 9c404ac).")
 endif()
 message(STATUS "LibRI GPU backend: DDLA/CUDA (${DDLA_LIBRARY})")
 mark_as_advanced(DDLA_INCLUDE_DIR DDLA_LIBRARY)
