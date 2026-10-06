@@ -93,7 +93,9 @@ ModuleBase::matrix cal_pulay_fs(
     LR_Util::_deallocate_2order_nested_ptr(rho, nspin_gint);
 
     // 3. v(r) -> force
-    const std::vector<const double*> p_vr_hxc(nspin_gint, &vr_hxc(0, 0));
+    // An empty local FFT slab has no (0, 0) element. Pass the storage pointer
+    // directly; the grid integrator has no local points to read on that rank.
+    const std::vector<const double*> p_vr_hxc(nspin_gint, vr_hxc.c);
     ModuleGint::cal_gint_fvl(nspin_gint, p_vr_hxc, dm.get_dmr_vec(), /*isforce=*/true, /*isstress=*/false, &force, &stress_tmp);
     // `cal_gint_fvl` only sums the grid points (and their atom pairs) this rank's share of the
     // real-space FFT box touches; core ABACUS always follows it with this same reduction (see
@@ -142,7 +144,8 @@ ModuleBase::matrix cal_pulay_fs_openshell(
 
     // 3. v(r) -> force, summed over the outer spin by `cal_gint_fvl`
     std::vector<const double*> p_vr_hxc(nspin_dm);
-    for (int is = 0; is < nspin_dm; ++is) { p_vr_hxc[is] = &vr_hxc[is](0, 0); }
+    // Keep empty-grid ranks in the integration and subsequent pool reduction.
+    for (int is = 0; is < nspin_dm; ++is) { p_vr_hxc[is] = vr_hxc[is].c; }
     ModuleGint::cal_gint_fvl(nspin_dm, p_vr_hxc, dm.get_dmr_vec(), /*isforce=*/true, false, &force, &stress_tmp);
     Parallel_Reduce::reduce_pool(force.c, force.nr * force.nc);   // see the closed-shell overload above
     return force;
