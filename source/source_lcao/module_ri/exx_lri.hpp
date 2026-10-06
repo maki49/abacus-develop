@@ -31,6 +31,25 @@
 #endif
 
 template<typename Tdata>
+void Exx_LRI<Tdata>::configure_execution(const bool use_gpu, std::ostream& log)
+{
+    if (use_gpu)
+    {
+#ifdef __GPU_RI
+        this->exx_lri.lri.cal_mode = RI::LRI_Cal_Mode::GPU;
+        log << " LR exact-exchange contractions: DDLA/CUDA GPU" << std::endl;
+#else
+        throw std::runtime_error("LR GPU exchange requires ENABLE_LIBRI_GPU=ON and a GPU-enabled LibRI/DDLA build");
+#endif
+    }
+    else
+    {
+        this->exx_lri.lri.cal_mode = RI::LRI_Cal_Mode::CPU;
+        log << " LR exact-exchange contractions: CPU" << std::endl;
+    }
+}
+
+template<typename Tdata>
 void Exx_LRI<Tdata>::init(const MPI_Comm &mpi_comm_in,
                           const UnitCell &ucell,
                           const K_Vectors &kv_in,

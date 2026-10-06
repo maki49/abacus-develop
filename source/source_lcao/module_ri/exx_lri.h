@@ -17,6 +17,7 @@
 #include <array>
 #include <map>
 #include <deque>
+#include <iosfwd>
 #include <mpi.h>
 
 #include "module_exx_symmetry/symm_rotation.h"
@@ -65,6 +66,9 @@ public:
     RI::Exx<TA, Tcell, Ndim, Tdata>& get() { return this->exx_lri; }
     auto& get_info() const { return this->info; }
     auto& get_mpi_comm() const { return this->mpi_comm; }
+
+    /// Select the contraction backend at the owning solver's initialization boundary.
+    void configure_execution(const bool use_gpu, std::ostream& log);
 
     void init(
         const MPI_Comm &mpi_comm_in,

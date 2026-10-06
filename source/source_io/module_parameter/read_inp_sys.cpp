@@ -920,7 +920,9 @@ Available options are:
 * cpu: for CPUs via Intel, AMD, or Other supported CPU devices
 * gpu: for GPUs via CUDA or ROCm.
 
-[NOTE] ks_solver must also be set to the algorithms supported. lcao_in_pw currently does not support gpu.)";
+[NOTE] ks_solver must also be set to the algorithms supported. lcao_in_pw currently does not support gpu.
+
+[NOTE] For LR-TDDFT (`esolver_type=lr` or `ks-lr`) with exact exchange, `device=gpu` requires a CUDA build with `ENABLE_LIBRI_GPU=ON` and GPU-enabled LibRI/DDLA. The RI contractions use the DDLA backend; other LR operations may still execute on CPU. Use one MPI rank per GPU.)";
         item.default_value = "cpu";
         read_sync_string(input.device);
         item.reset_value = [](const Input_Item& item, Parameter& para) {

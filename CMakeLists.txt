@@ -35,6 +35,7 @@ project(
 option(ENABLE_MPI "Enable MPI" ON)
 option(ENABLE_OPENMP "Enable OpenMP" ON)
 option(USE_CUDA "Enable CUDA" OFF)
+option(ENABLE_LIBRI_GPU "Enable the DDLA/CUDA LibRI contraction backend" OFF)
 cmake_dependent_option(ENABLE_GPU_NEIGHBOR_LIST
                        "Enable the CUDA GPU neighbor-list implementation"
                        OFF "USE_CUDA" OFF)
@@ -609,6 +610,13 @@ if(ENABLE_LIBRI)
   find_package(LibRI REQUIRED)
   find_package(LibComm REQUIRED)
   find_package(cereal REQUIRED CONFIG)
+endif()
+
+if(ENABLE_LIBRI_GPU)
+  if(NOT ENABLE_LIBRI OR NOT ENABLE_MPI OR NOT USE_CUDA)
+    message(FATAL_ERROR "ENABLE_LIBRI_GPU requires ENABLE_LIBRI, ENABLE_MPI and USE_CUDA")
+  endif()
+  include(SetupLibRIGpu)
 endif()
 
 if(ENABLE_LIBXC)

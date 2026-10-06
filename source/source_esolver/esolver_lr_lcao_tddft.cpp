@@ -517,12 +517,17 @@ void ModuleESolver::ESolver_LR<T, TR>::refresh_from_ks_(UnitCell& ucell)
 #ifdef __EXX
     if (exx_kernel_list().count(xc_kernel) || (this->inp_->cal_force && gs_is_hybrid(this->inp_->dft_functional)))
     {
+        if (!this->exx_owned_)
+        {
+            if (ks_sol.exx_nao.exd) { this->share_exx_lri(ks_sol.exx_nao.exd->exx_ptr); }
+            else if (ks_sol.exx_nao.exc) { this->share_exx_lri(ks_sol.exx_nao.exc->exx_ptr); }
+        }
+        const bool use_gpu = this->inp_->device == "gpu";
+        this->exx_lri->configure_execution(use_gpu, this->ofs_running_);
         if (this->exx_owned_)
         {   // Cs/Vs follow the atoms, so they are rebuilt for every geometry
             this->exx_lri->cal_exx_ions(ucell, this->inp_->out_ri_cv);
         }
-        else if (ks_sol.exx_nao.exd) { this->share_exx_lri(ks_sol.exx_nao.exd->exx_ptr); }
-        else if (ks_sol.exx_nao.exc) { this->share_exx_lri(ks_sol.exx_nao.exc->exx_ptr); }
     }
 #endif
     // the grid-integration tables hang off a static pointer that the ground-state solver
@@ -689,6 +694,8 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
         exx_info.info_opt_abfs.files_jles = ucell.jle_orbital_files;
         this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
         this->exx_lri->init(MPI_COMM_WORLD, ucell,this->kv, orb);
+        const bool use_gpu = this->inp_->device == "gpu";
+        this->exx_lri->configure_execution(use_gpu, this->ofs_running_);
         this->exx_lri->cal_exx_ions(ucell,this->inp_->out_ri_cv);
     }
     // else
