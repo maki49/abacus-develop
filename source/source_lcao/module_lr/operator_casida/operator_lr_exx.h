@@ -6,9 +6,7 @@
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_ri/exx_lri.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
-#include "source_io/module_parameter/parameter.h"
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
-#include <cstdlib>
 namespace LR
 {
 
@@ -23,11 +21,6 @@ namespace LR
     template<typename T = double>
     class OperatorLREXX : public hamilt::Operator<T, base_device::DEVICE_CPU>
     {
-        using TA = int;
-        static const size_t Ndim = 3;
-        using TC = std::array<int, Ndim>;
-        using TAC = std::pair<TA, TC>;
-
     public:
         /// @brief type of molecular orbital to atomic orbital transformation:
         /// CC_vo: MO = C_v^* AO  C_o;
@@ -76,11 +69,6 @@ namespace LR
                 this->cvx_full.resize(this->nk, nocc, this->naos);
             }
 
-            // get cells in BvK supercell
-            const TC period = RI_Util::get_Born_vonKarmen_period(kv_in);
-            this->BvK_cells = RI_Util::get_Born_von_Karmen_cells(period);
-
-            this->allocate_Ds_onebase();
             if (!this->exx_lri.expired())
             {
                 this->exx_lri.lock()->Hexxs.resize(1);
@@ -116,21 +104,9 @@ namespace LR
         /// transition density matrix 
         const module_dm::DensityMatrix<T, T>& DM_trans;
 
-        /// density matrix of a certain (i, a, k), with full naos*naos size for each key
-        /// D^{iak}_{\mu\nu}(k): 1/N_k * c_{ak,\mu} c^*_{ik,\nu}
-        /// D^{iak}_{\mu\nu}(R): D^{iak}_{\mu\nu}(k)e^{-ikR}
-        // module_dm::DensityMatrix<T, double>* DM_onebase;
-        mutable std::map<TA, std::map<TAC, RI::Tensor<T>>> Ds_onebase;
-
-        // cells in the Born von Karmen supercell (direct)
-        std::vector<std::array<int, Ndim>> BvK_cells;
-
-        /// transition hamiltonian in AO representation
-        // hamilt::HContainer<double>* hR = nullptr;
-
         /// C, V tensors of RI, and LibRI interfaces
         /// gamma_only: T=double, Tpara of exx (equal to Tpara of Ds(R) ) is also double 
-        ///.multi-k: T=complex<double>, Tpara of exx here must be complex, because Ds_onebase is complex
+        /// multi-k: both the transition density and the exchange response are complex
         /// so TR in DensityMatrix and Tdata in Exx_LRI are all equal to T
         std::weak_ptr<Exx_LRI<T>> exx_lri;
 
@@ -149,10 +125,11 @@ namespace LR
         mutable psi::Psi<T> cvx_full;   // C_v X
 
 
-        // allocate Ds_onebase
-        void allocate_Ds_onebase();
+        /// Build and communicate the exchange response once per input density.
+        void cal_Hs() const;
 
-        void cal_DM_onebase(const int io, const int iv, const int ik) const;
+        /// Gamma and complex Bloch matrix projection, including benchmark indices.
+        void project_k(const T* psi_in, T* hpsi) const;
 
         void cal_coxt_cvx(const T* x_istate) const   // C_o X^T, C_v X (only for gradients)
         {
