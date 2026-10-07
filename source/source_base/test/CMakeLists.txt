@@ -1,6 +1,11 @@
 abacus_disable_feature_definitions(__MPI)
 install(DIRECTORY data DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 AddTest(
+  TARGET MODULE_BASE_blas_connector_matrix
+  LIBS parameter base device container
+  SOURCES test_blas_connector_matrix.cpp
+)
+AddTest(
   TARGET MODULE_BASE_additional_coverage
   LIBS parameter base device container
   SOURCES additional_coverage_test.cpp

@@ -294,8 +294,8 @@ void BlasConnector::gemm_cm(const char transa,
 #ifdef __CUDA
     else if (device_type == base_device::AbacusDevice_t::GpuDevice)
     {
-        cublasOperation_t cutransA = BlasUtils::judge_trans(false, transa, "gemm_op");
-        cublasOperation_t cutransB = BlasUtils::judge_trans(false, transb, "gemm_op");
+        cublasOperation_t cutransA = BlasUtils::judge_trans(true, transa, "gemm_op");
+        cublasOperation_t cutransB = BlasUtils::judge_trans(true, transb, "gemm_op");
         CHECK_CUBLAS(cublasCgemm(BlasUtils::cublas_handle,
                                    cutransA,
                                    cutransB,
@@ -347,8 +347,8 @@ void BlasConnector::gemm_cm(const char transa,
 #ifdef __CUDA
     else if (device_type == base_device::AbacusDevice_t::GpuDevice)
     {
-        cublasOperation_t cutransA = BlasUtils::judge_trans(false, transa, "gemm_op");
-        cublasOperation_t cutransB = BlasUtils::judge_trans(false, transb, "gemm_op");
+        cublasOperation_t cutransA = BlasUtils::judge_trans(true, transa, "gemm_op");
+        cublasOperation_t cutransB = BlasUtils::judge_trans(true, transb, "gemm_op");
         CHECK_CUBLAS(cublasZgemm(BlasUtils::cublas_handle,
                                    cutransA,
                                    cutransB,
