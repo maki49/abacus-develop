@@ -111,7 +111,7 @@ namespace LR
         // cal_W_from_Z only runs on the force-calculation path, so cal_force is always true here.
         OperatorLREXX<T> op_ht_exx(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
             DM_diff_relaxed, exx_lri, kv, p_occ_occ[0], pc, pmat,
-            /*cal_force=*/true, exx_alpha, ATYPE_EXX::CC_oo);
+            /*cal_force=*/true, OperatorLREXX<T>::DensityScreening::input_threshold, exx_alpha, ATYPE_EXX::CC_oo);
 #endif
         // 2. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
         // use pointer here for polymorphism
@@ -266,7 +266,7 @@ namespace LR
             {
                 op_ht_exx[is] = LR_Util::make_unique<OperatorLREXX<T>>(nspin, naos, nocc[is], nvirt[is],
                     ucell, psi_ks_spin[is], DM_diff_relaxed, exx_lri, kv, p_occ_occ[is], pc, pmat,
-                    /*cal_force=*/true, exx_alpha, ATYPE_EXX::CC_oo);
+                    /*cal_force=*/true, OperatorLREXX<T>::DensityScreening::input_threshold, exx_alpha, ATYPE_EXX::CC_oo);
             }
         }
 #endif

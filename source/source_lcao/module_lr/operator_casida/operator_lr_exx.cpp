@@ -182,7 +182,11 @@ namespace LR
         
         // 2. cal_Hs
         auto lri = this->exx_lri.lock();
-        lri->exx_lri.set_Ds(std::move(Ds_trans[0]), lri->info.dm_threshold);
+        // The Z Hessian must be linear even for tiny Krylov search directions.
+        // Screening the input density by amplitude invalidates residual recurrences.
+        const double density_threshold = density_screening_ == DensityScreening::none
+            ? 0.0 : lri->info.dm_threshold;
+        lri->exx_lri.set_Ds(std::move(Ds_trans[0]), density_threshold);
         lri->exx_lri.cal_Hs();
         lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
             lri->mpi_comm, std::move(lri->exx_lri.Hs), std::get<0>(judge[0]), std::get<1>(judge[0]));

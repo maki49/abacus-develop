@@ -5,67 +5,14 @@
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
-#include "source_base/opt_cg.h"
+#include "zeq_cg_solver.h"
+#include "source_hsolver/diag_comm_info.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "zeqlin_solv.h"
 
 namespace LR
 {
-    // inline void solve_Z_CG(double* const Z, const double* const R, const int& ld, const int& nstates,
-    //     std::function<void(const double* const, double* const)> f_LZ)
-    // Opt_CG's interfaces have no const qualifier for the pointer
-    inline void solve_Z_CG(double* const Z, double* R, const int& ld, const int& nstates,
-        std::function<void(const double* const, double* const)> f_LZ)
-    {
-        ModuleBase::TITLE("Z_vector", "solve_Z_CG");
-        ModuleBase::timer::start("Z_vector", "solve_Z_CG");
-        const int maxiter = 100;
-        double tol = 1e-6;
-        double residual = 10.;
-        const int size = nstates * ld;
-        container::Tensor P = LR_Util::newTensor<double>({ nstates, ld });   // step length
-        container::Tensor LP = LR_Util::newTensor<double>({ nstates, ld }); //f_LZ(P)
-        ModuleBase::zeros(Z, size);
-
-        ModuleBase::Opt_CG cg;
-        cg.allocate(size);
-        cg.init_b(R);
-        int final_iter = 0;
-        std::cout << "Start solving Z-vector equaiton with CG method ..." << std::endl;
-        for (int iter = 0; iter < maxiter; ++iter)
-        {
-            if (residual < tol)
-            {
-                final_iter = iter;
-                break;
-            }
-            cg.next_direct(LP.data<double>(), 0, P.data<double>());
-            std::cout << "iter=" << iter << " residual=" << cg.get_residual() << std::endl;
-            // std::cout << "Z=" << std::endl;
-            // LR_Util::print_value(P.data<double>(), nstates, ld);
-            // std::cout << "LZ before=" << std::endl;
-            // LR_Util::print_value(LP.data<double>(), nstates, ld);
-            f_LZ(P.data<double>(), LP.data<double>());  // L: act each operators on P
-            // std::cout << "LZ=" << std::endl;
-            // LR_Util::print_value(LP.data<double>(), nstates, ld);
-            int ifPD = 0;   //???
-            double step = cg.step_length(LP.data<double>(), P.data<double>(), ifPD);
-            // for (int i = 0; i < size; ++i) Z[i] += step * P[i];
-            std::transform(Z, Z + size, P.data<double>(), Z, [step](const double& z, const double& p) { return z + step * p; });
-            residual = cg.get_residual();
-        }
-        std::cout << "Final Z-vector:" << std::endl;
-        LR_Util::print_value(Z, nstates, ld);
-        ModuleBase::timer::end("Z_vector", "solve_Z_CG");
-    }
-
-    inline void solve_Z_CG(std::complex<double>* const Z, std::complex<double>* R, const int& ld, const int& nstates,
-        std::function<void(const std::complex<double>* const, std::complex<double>* const)> f_LZ)
-    {
-        throw std::runtime_error("complex Z-vector solver is not implemented yet");
-    }
-
     /// @brief Global length of one state's Z-vector: $\sum_\sigma n_k n_{occ,\sigma} n_{virt,\sigma}$.
     /// `THam` only has to expose `nk`, `nocc` and `nvirt`.
     template<typename THam>
@@ -314,9 +261,20 @@ namespace LR
         for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
         if (zvec_solver == "cg")
         {
-            solve_Z_CG(Z, R, ld, nstates,
-                [&ops_L, ld, nstates](const T* const in, T* const out)
-                { ops_L.hPsi(in, out, ld, nstates); });
+#ifdef __MPI
+            // Parallel_2D uses a row-major BLACS grid on the pair communicator.
+            const auto& pairs = ops_L.pX[0];
+            const int rank = pairs.get_coord_row() * pairs.get_dim1() + pairs.get_coord_col();
+            const int nproc = pairs.get_dim0() * pairs.get_dim1();
+            const auto pair_comm = pairs.comm();
+            const hsolver::diag_comm_info comm(pair_comm, rank, nproc);
+#else
+            const hsolver::diag_comm_info comm(0, 1);
+#endif
+            const std::function<void(const T*, T*, int, int)> action =
+                [&ops_L](const T* in, T* out, int local_ld, int columns)
+                { ops_L.hPsi(in, out, local_ld, columns); };
+            solve_Z_CG(Z, R, ld, nstates, action, comm);
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }

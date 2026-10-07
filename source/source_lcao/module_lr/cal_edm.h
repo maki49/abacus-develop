@@ -216,7 +216,7 @@ namespace LR
         // this EDM term only runs on the force-calculation path, so cal_force is always true here.
         OperatorLREXX<T> op_K_exx(nspin, naos, nocc[0], nvirt[0], ucell, c,
             dm_trans, exx_lri, kv, px[0], pc, pmat,
-            /*cal_force=*/true, 2.0 * exx_alpha, OperatorLREXX<T>::MO_TO_AO_TYPE::CXC_o);
+            /*cal_force=*/true, OperatorLREXX<T>::DensityScreening::input_threshold, 2.0 * exx_alpha, OperatorLREXX<T>::MO_TO_AO_TYPE::CXC_o);
 #endif
         const int ld_vo = nk * px[0].get_local_size();
         std::vector<T> K_cvcx(ld_vo, 0.0);
@@ -322,7 +322,7 @@ namespace LR
             {
                 op_K_exx[is] = LR_Util::make_unique<OperatorLREXX<T>>(nspin, naos, nocc[is], nvirt[is],
                     ucell, psi_ks_spin[is], DM_trans, exx_lri, kv, px[is], pc, pmat,
-                    /*cal_force=*/true, 2.0 * exx_alpha, ATYPE_EXX::CXC_o);
+                    /*cal_force=*/true, OperatorLREXX<T>::DensityScreening::input_threshold, 2.0 * exx_alpha, ATYPE_EXX::CXC_o);
             }
         }
 #endif

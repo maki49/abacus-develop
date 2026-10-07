@@ -69,7 +69,7 @@ namespace LR
                 // Z_vector_L only exists on the force-calculation path, so cal_force is always true here.
                 hamilt::Operator<T>* op_hz_exx = new OperatorLREXX<T>(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
                     *this->DM_trans, exx_lri, kv, pX[0], pc, pmat,
-                    /*cal_force=*/true,
+                    /*cal_force=*/true, OperatorLREXX<T>::DensityScreening::none,
                     2.0 * exx_alpha, //alpha; H=2K when D is symmetrized
                     ATYPE_EXX::CC_vo);
                 this->ops->add(op_hz_exx);
@@ -169,7 +169,7 @@ namespace LR
                 {
                     this->ops[(is << 1) + is]->add(new OperatorLREXX<T>(nspin, naos, nocc[is], nvirt[is],
                         ucell, this->psi_ks_spin_[is], *this->DM_trans, exx_lri, kv, pX[is], pc, pmat,
-                        /*cal_force=*/true, 2.0 * exx_alpha, ATYPE_EXX::CC_vo));
+                        /*cal_force=*/true, OperatorLREXX<T>::DensityScreening::none, 2.0 * exx_alpha, ATYPE_EXX::CC_vo));
                 }
             }
 #endif

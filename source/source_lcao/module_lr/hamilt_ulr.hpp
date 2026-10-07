@@ -65,7 +65,7 @@ namespace LR
                     // never reads the force-only coxt_full/cvx_full buffers.
                     this->ops[(is << 1) + is]->add(new OperatorLREXX<T>(nspin, naos, nocc[is], nvirt[is], ucell_in, psi_ks_spin[is],
                         *this->DM_trans, exx_lri_in, kv_in, pX_in[is], pc_in, pmat_in,
-                        /*cal_force=*/false,
+                        /*cal_force=*/false, OperatorLREXX<T>::DensityScreening::input_threshold,
                         (xc_kernel == "hf" ? 1.0 : exx_alpha)));
                 }
             }

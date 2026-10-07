@@ -30,7 +30,8 @@ if(ENABLE_LCAO)
     lr_force_test.cpp
     grad_degen.cpp
     cal_edm.cpp
-    zeqlin_solv.cpp)
+    zeqlin_solv.cpp
+    zeq_cg_solver.cpp)
 
   # The RI k-point list reader requires LibRI headers.
   if(ENABLE_LIBRI)

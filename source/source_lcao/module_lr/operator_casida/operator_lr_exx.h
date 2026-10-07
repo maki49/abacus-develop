@@ -30,6 +30,8 @@ namespace LR
         /// CXC_o: MO = C_o^* X^* AO C_o
         enum class MO_TO_AO_TYPE { CC_vo, CC_oo, CXC, CXC_o };
 
+        enum class DensityScreening { input_threshold, none };
+
         OperatorLREXX(const int& nspin,
             const int& naos,
             const int& nocc,
@@ -44,11 +46,12 @@ namespace LR
             const Parallel_2D& pc_in,
             const Parallel_Orbitals& pmat_in,
             const bool cal_force,
+            const DensityScreening density_screening,
             const double& alpha = 1.0,
             const MO_TO_AO_TYPE dm_pq_in = MO_TO_AO_TYPE::CC_vo,
             const std::vector<int>& aims_nbasis = {},
             const hamilt::calculation_type cal_type_in = hamilt::calculation_type::lr_dmtrans_exx)
-            : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
+            : density_screening_(density_screening), nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), exx_lri(exx_lri_in), kv(kv_in),
             pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in), alpha(alpha), dm_pq_(dm_pq_in),
             aims_nbasis(aims_nbasis)
@@ -96,6 +99,7 @@ namespace LR
                          const bool is_first_node = false) const override;
 
     private:
+        const DensityScreening density_screening_;
         //global sizes
         const int nspin = 1;
         const int naos = 1;
