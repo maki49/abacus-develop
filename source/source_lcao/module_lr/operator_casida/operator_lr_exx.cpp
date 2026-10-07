@@ -6,7 +6,7 @@
 #include <type_traits>
 #include "source_lcao/module_lr/dm_trans/dm_trans.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
-#include "source_lcao/module_lr/exx_projection.h"
+#include "source_lcao/module_lr/exx_proj.h"
 #include "source_base/parallel_reduce.h"
 namespace LR
 {

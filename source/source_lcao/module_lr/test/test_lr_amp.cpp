@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../gradient_amplitudes.h"
+#include "../lr_amp.h"
 #include "source_base/parallel_global.h"
 #include <complex>
 #include <sstream>

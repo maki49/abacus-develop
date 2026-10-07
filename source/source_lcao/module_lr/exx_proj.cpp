@@ -1,4 +1,4 @@
-#include "exx_projection.h"
+#include "exx_proj.h"
 
 #include "source_base/module_external/blas_connector.h"
 

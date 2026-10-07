@@ -4,7 +4,7 @@
 #include "source_lcao/module_lr/lr_force.h"
 #include "source_lcao/module_lr/gradient_inputs.h"
 #include "source_lcao/module_lr/gradient_output.h"
-#include "source_lcao/module_lr/gradient_amplitudes.h"
+#include "source_lcao/module_lr/lr_amp.h"
 #include "source_lcao/module_lr/grad_degen.h"
 #include "source_base/parallel_reduce.h"
 #include <algorithm>

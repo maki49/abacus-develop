@@ -26,13 +26,13 @@ if(ENABLE_LCAO)
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
     gradient_output.cpp
-    gradient_closed_shell.cpp
-    gradient_open_shell.cpp
+    lr_grad_cs.cpp
+    lr_grad_os.cpp
     lr_force.cpp
-    exx_projection.cpp
+    exx_proj.cpp
     lr_force_test.cpp
     grad_degen.cpp
-    grad_degen_jt.cpp
+    grad_jt.cpp
     cal_edm.cpp
     zeqlin_solv.cpp)
 

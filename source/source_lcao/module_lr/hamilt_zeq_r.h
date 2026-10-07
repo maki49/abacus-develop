@@ -6,7 +6,7 @@
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
 #include "source_lcao/module_lr/operator_casida/operator_lr_hxc.h"
 #include "hamilt_zequlr.h"
-#include "source_lcao/module_lr/operator_casida/operator_gxc_ulr.h"
+#include "source_lcao/module_lr/operator_casida/op_gxc_ulr.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #ifdef __EXX
 #include "source_lcao/module_lr/operator_casida/operator_lr_exx.h"

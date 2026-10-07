@@ -1,13 +1,13 @@
 AddTest(
   TARGET MODULE_LR_exx_projection
   LIBS base parameter ${math_libs} container device
-  SOURCES test_exx_projection.cpp ../exx_projection.cpp
+  SOURCES test_exx_proj.cpp ../exx_proj.cpp
 )
 
 AddTest(
   TARGET MODULE_LR_grad_degen
   LIBS base parameter ${math_libs} container device
-  SOURCES test_grad_degen.cpp test_grad_degen_jt.cpp ../grad_degen.cpp ../grad_degen_jt.cpp
+  SOURCES test_grad_degen.cpp test_grad_jt.cpp ../grad_degen.cpp ../grad_jt.cpp
 )
 
 if(ENABLE_MPI)
@@ -29,5 +29,5 @@ endif()
 AddTest(
   TARGET MODULE_LR_gradient_amplitudes
   LIBS base parameter ${math_libs} container device
-  SOURCES test_gradient_amplitudes.cpp
+  SOURCES test_lr_amp.cpp
 )

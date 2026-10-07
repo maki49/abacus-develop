@@ -1,4 +1,4 @@
-#include "../exx_projection.h"
+#include "../exx_proj.h"
 
 #include <gtest/gtest.h>
 #include <vector>
