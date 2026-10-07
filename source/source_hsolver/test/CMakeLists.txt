@@ -2,6 +2,20 @@ abacus_disable_feature_definitions(__CUDA)
 abacus_disable_feature_definitions(__ROCM)
 abacus_disable_feature_definitions(__EXX)
 
+AddTest(
+  TARGET MODULE_HSOLVER_linear_pcg
+  LIBS parameter base device container
+  SOURCES test_linear_pcg.cpp ../linear_pcg.cpp
+)
+if(USE_CUDA)
+  AddTest(
+    TARGET MODULE_HSOLVER_linear_pcg_gpu
+    KEEP_FEATURE_DEFINITIONS __CUDA
+    LIBS parameter base device container
+    SOURCES test_linear_pcg.cpp ../linear_pcg.cpp
+  )
+endif()
+
 set(TD_LINEAR_TEST_SOURCES
   ../hsolver_linear.cpp
   ../linear_bicgstab.cpp
