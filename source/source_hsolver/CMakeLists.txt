@@ -17,6 +17,7 @@ list(APPEND objects
     linear_cgs.cpp
     linear_gmres.cpp
     linear_algebra.cpp
+    linear_pcg.cpp
     cn_subspace.cpp
     linear_low_rank.cpp
     linear_workspace.cpp
