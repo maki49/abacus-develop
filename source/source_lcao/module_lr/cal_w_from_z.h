@@ -1,6 +1,7 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_CAL_W_FROM_Z_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_CAL_W_FROM_Z_H
 #include "source_hamilt/hamilt.h"
+#include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_lr/potentials/pot_grad_xc.h"
 #include "source_lcao/module_lr/operator_casida/op_gxc_ulr.h"

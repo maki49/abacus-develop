@@ -2,6 +2,7 @@
 #include "gradient_output.h"
 #include "gradient_checks.h"
 #include "cal_edm.h"
+#include "dm_trans/dm_diff.h"
 #include "grad_degen.h"
 #include "source_base/timer.h"
 #include "source_io/module_output/output_log.h"
