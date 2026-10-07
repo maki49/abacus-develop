@@ -22,6 +22,20 @@ if(ENABLE_MPI)
       $<TARGET_FILE:MODULE_HSOLVER_dav_subspace> --gtest_filter=DavSubspaceTest/0.*:DavSubspace.* ${MPIEXEC_POSTFLAGS})
   set_tests_properties(MODULE_HSOLVER_dav_subspace_parallel PROPERTIES PROCESSORS 2 TIMEOUT 120)
 endif()
+AddTest(
+  TARGET MODULE_HSOLVER_linear_pcg
+  LIBS parameter base device container
+  SOURCES test_linear_pcg.cpp ../linear_pcg.cpp
+)
+if(USE_CUDA)
+  AddTest(
+    TARGET MODULE_HSOLVER_linear_pcg_gpu
+    KEEP_FEATURE_DEFINITIONS __CUDA
+    LIBS parameter base device container
+    SOURCES test_linear_pcg.cpp ../linear_pcg.cpp
+  )
+endif()
+
 
 if(USE_CUDA OR USE_ROCM)
   AddTest(
