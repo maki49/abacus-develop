@@ -20,3 +20,8 @@ addtest(
   TARGET MODULE_BASE_net_force
   LIBS parameter base device
   SOURCES test_mathzone.cpp)
+
+addtest(
+  TARGET MODULE_BASE_blas_connector_matrix
+  LIBS parameter base device container
+  SOURCES test_blas_connector_matrix.cpp)
