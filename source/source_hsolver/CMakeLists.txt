@@ -12,6 +12,7 @@ list(APPEND objects
     diago_pxxxgvx.cpp
     diag_hs_para.cpp
     diago_params.cpp
+    linear_pcg.cpp
 )
 
 if(ENABLE_LCAO)
