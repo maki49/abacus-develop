@@ -63,12 +63,6 @@ namespace LR
             {
                 LR_Util::gather_2d_to_full(this->pc, &this->psi_ks(ik, 0, 0), &this->psi_ks_full(ik, 0, 0), false, this->naos, nocc + nvirt);
             }
-            if (cal_force)
-            {
-                this->coxt_full.resize(this->nk, nvirt, this->naos);
-                this->cvx_full.resize(this->nk, nocc, this->naos);
-            }
-
             if (!this->exx_lri.expired())
             {
                 this->exx_lri.lock()->Hexxs.resize(1);
@@ -121,8 +115,6 @@ namespace LR
         const std::vector<int> aims_nbasis;
 
         /// only for gradient calculation
-        mutable psi::Psi<T> coxt_full;  // C_o X^T
-        mutable psi::Psi<T> cvx_full;   // C_v X
 
 
         /// Build and communicate the exchange response once per input density.
@@ -131,7 +123,7 @@ namespace LR
         /// Gamma and complex Bloch matrix projection, including benchmark indices.
         void project_k(const T* psi_in, T* hpsi) const;
 
-        void cal_coxt_cvx(const T* x_istate) const   // C_o X^T, C_v X (only for gradients)
+        void cal_coxt_cvx(const T* x_istate, psi::Psi<T>& coxt_full, psi::Psi<T>& cvx_full) const   // C_o X^T, C_v X (only for gradients)
         {
             ModuleBase::TITLE("OperatorLREXX", "cal_coxt_cvx");
             const auto& c = this->psi_ks;
@@ -146,16 +138,16 @@ namespace LR
             ct::Tensor coxt(ct::DataTypeToEnum<T>::value, DEV::CpuDevice, { pcxt.get_col_size(), pcxt.get_row_size() });
 
             // calculate global coxt_full, cvx_full
-            this->cvx_full.zero_out();
-            this->coxt_full.zero_out();
+            cvx_full.zero_out();
+            coxt_full.zero_out();
             for (int ik = 0;ik < nk;++ik)
             {
                 c.fix_k(ik);
                 const int start = ik * pX.get_local_size();
                 CvX(c.get_pointer(), pc, x_istate + start, pX, naos, nocc, nvirt, cvx.data<T>(), pcx);
-                LR_Util::gather_2d_to_full(pcx, cvx.data<T>(), &this->cvx_full(ik, 0, 0), false, naos, nocc);
+                LR_Util::gather_2d_to_full(pcx, cvx.data<T>(), &cvx_full(ik, 0, 0), false, naos, nocc);
                 CoXT(c.get_pointer(), pc, x_istate + start, pX, naos, nocc, nvirt, coxt.data<T>(), pcxt);
-                LR_Util::gather_2d_to_full(pcxt, coxt.data<T>(), &this->coxt_full(ik, 0, 0), false, naos, nvirt);
+                LR_Util::gather_2d_to_full(pcxt, coxt.data<T>(), &coxt_full(ik, 0, 0), false, naos, nvirt);
             }
         }
 

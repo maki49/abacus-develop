@@ -176,7 +176,7 @@ namespace LR
         }
 
     protected:
-        void set_dm(const int is, const T* const X) const override
+        void set_dm(const int is, const T* const X) override
         {
             const auto psi_ks_is = LR_Util::get_psi_spin(this->psi_ks_, is, this->nk);
 #ifdef __MPI
@@ -201,7 +201,7 @@ namespace LR
         std::vector<psi::Psi<T>> psi_ks_spin_;
         std::unique_ptr<module_dm::DensityMatrix<T, T>> DM_trans;
         /// the tensors `DM_trans` points into; kept alive for the whole `act` chain
-        mutable std::vector<ct::Tensor> dm_buf_;
+        std::vector<ct::Tensor> dm_buf_;
     };
 }
 

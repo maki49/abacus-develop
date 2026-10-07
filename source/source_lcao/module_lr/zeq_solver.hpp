@@ -69,7 +69,7 @@ namespace LR
     /// @brief Global length of one state's Z-vector: $\sum_\sigma n_k n_{occ,\sigma} n_{virt,\sigma}$.
     /// `THam` only has to expose `nk`, `nocc` and `nvirt`.
     template<typename THam>
-    inline int zvec_global_dim(const THam& hm, const int nspin_x)
+    inline int zvec_global_dim(THam& hm, const int nspin_x)
     {
         int n_global = 0;
         for (int is = 0;is < nspin_x;++is) { n_global += hm.nk * hm.nocc[is] * hm.nvirt[is]; }
@@ -80,7 +80,7 @@ namespace LR
     /// @brief Gather one state's Z-vector from the `hm.pX` layout (`local`, length `ld`) into the
     /// global vector `full` (length `zvec_global_dim`), replicated on every rank. Collective.
     template<typename T, typename THam>
-    inline void zvec_local_to_full(const THam& hm, const int nspin_x, const T* const local, T* const full)
+    inline void zvec_local_to_full(THam& hm, const int nspin_x, const T* const local, T* const full)
     {
         const int n_global = zvec_global_dim(hm, nspin_x);
         // `gather_2d_to_full` sums over the ranks, so the entries a rank does not own must be zero
@@ -104,7 +104,7 @@ namespace LR
     /// @brief Inverse of `zvec_local_to_full`: pick this rank's entries of the global vector
     /// `full` into the `hm.pX` layout `local`. No communication.
     template<typename T, typename THam>
-    inline void zvec_full_to_local(const THam& hm, const int nspin_x, const T* const full, T* const local)
+    inline void zvec_full_to_local(THam& hm, const int nspin_x, const T* const full, T* const local)
     {
         int loffset = 0;
         int goffset = 0;
@@ -133,7 +133,7 @@ namespace LR
     /// see `solve_Z_scalapack` / `solve_Z_elpa` for the distributed solves.
     template<typename T, typename THam>
     inline void solve_Z_lapack(T* const Z, const T* const R, const int& ld, const int& nstates,
-        const THam& hm, const int nspin_x = 1)
+        THam& hm, const int nspin_x = 1)
     {
         ModuleBase::TITLE("Z_vector", "solve_Z_lapack");
         const int n_global = zvec_global_dim(hm, nspin_x);
@@ -188,7 +188,7 @@ namespace LR
     /// (one column in flight), instead of the O(n_global^2) of `hm.matrix()`.
     /// Collective: every rank walks every column, since `hPsi` and the gather communicate.
     template<typename T, typename THam>
-    std::vector<T> zvec_hessian_2d(const THam& hm, const int nspin_x, const int ld, const Parallel_2D& ph)
+    std::vector<T> zvec_hessian_2d(THam& hm, const int nspin_x, const int ld, const Parallel_2D& ph)
     {
         ModuleBase::TITLE("Z_vector", "zvec_hessian_2d");
         ModuleBase::timer::start("Z_vector", "zvec_hessian_2d");
@@ -220,7 +220,7 @@ namespace LR
     /// `elpa_linear_solver`) solves them in place.
     template<typename T, typename THam>
     void solve_Z_2d(T* const Z, const T* const R, const int ld, const int nstates,
-        const THam& hm, const int nspin_x,
+        THam& hm, const int nspin_x,
         void (*linear_solver)(T*, T*, const Parallel_2D&, const Parallel_2D&))
     {
         ModuleBase::TITLE("Z_vector", "solve_Z_2d");
@@ -266,7 +266,7 @@ namespace LR
     /// `solve_Z_lapack`, but neither the Hessian nor the factorization is replicated.
     template<typename T, typename THam>
     inline void solve_Z_scalapack(T* const Z, const T* const R, const int ld, const int nstates,
-        const THam& hm, const int nspin_x)
+        THam& hm, const int nspin_x)
     {
 #ifdef __MPI
         solve_Z_2d(Z, R, ld, nstates, hm, nspin_x, &scalapack_linear_solver<T>);
@@ -280,7 +280,7 @@ namespace LR
     /// orbital Hessian to be positive definite, but a failure is an error on every rank, not a hang.
     template<typename T, typename THam>
     inline void solve_Z_scalapack_chol(T* const Z, const T* const R, const int ld, const int nstates,
-        const THam& hm, const int nspin_x)
+        THam& hm, const int nspin_x)
     {
 #ifdef __MPI
         solve_Z_2d(Z, R, ld, nstates, hm, nspin_x, &scalapack_cholesky_linear_solver<T>);
@@ -295,7 +295,7 @@ namespace LR
     /// definite (an unstable ground state).
     template<typename T, typename THam>
     inline void solve_Z_elpa(T* const Z, const T* const R, const int ld, const int nstates,
-        const THam& hm, const int nspin_x)
+        THam& hm, const int nspin_x)
     {
 #ifdef __MPI
         solve_Z_2d(Z, R, ld, nstates, hm, nspin_x, &elpa_linear_solver<T>);
@@ -309,7 +309,7 @@ namespace LR
     /// `solve_Z_lapack` reads.
     template<typename T, typename THamL>
     inline void solve_zeq_with(T* const Z, T* const R, const int ld, const int nstates,
-        const THamL& ops_L, const int nspin_x, const std::string& zvec_solver)
+        THamL& ops_L, const int nspin_x, const std::string& zvec_solver)
     {
         for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
         if (zvec_solver == "cg")

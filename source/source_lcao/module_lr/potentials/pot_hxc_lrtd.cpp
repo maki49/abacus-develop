@@ -33,6 +33,8 @@ namespace LR
         xc_type_(XCType(XC_Functional::get_func_type()))
     {
         if (LR_Util::has_local_xc(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
+        const bool gga = (this->xc_type_ == XCType::GGA || this->xc_type_ == XCType::HYB_GGA);
+        this->build_spin_combos(gga);
     }
 
     PotHxcLR::PotHxcLR(std::shared_ptr<const KernelXC> kernel, const std::string& xc_kernel,
@@ -45,6 +47,8 @@ namespace LR
     {
         assert(this->xc_kernel_components_ != nullptr);
         if (LR_Util::has_local_xc(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
+        const bool gga = (this->xc_type_ == XCType::GGA || this->xc_type_ == XCType::HYB_GGA);
+        this->build_spin_combos(gga);
     }
 
 
@@ -67,7 +71,7 @@ namespace LR
         }
     }
 
-    void PotHxcLR::build_spin_combos(const bool gga) const
+    void PotHxcLR::build_spin_combos(const bool gga)
     {
         if (this->nspin != 2) { return; }   // nspin=1 kernels have a single component already
         double sign = 0.;
@@ -155,7 +159,6 @@ namespace LR
             return;
         }
 #ifdef __LIBXC
-        this->build_spin_combos(gga);
         this->kernel_to_potential_.at(spin_type_)(rho[0], v_eff, ispin_op);
 #else
         throw std::domain_error("GlobalV::XC_Functional::get_func_type() =" + std::to_string(XC_Functional::get_func_type())

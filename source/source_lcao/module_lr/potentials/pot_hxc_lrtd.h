@@ -112,9 +112,9 @@ namespace LR
         // Only the combination this potential's own `spin_type_` needs is built (one scalar
         // array each, so 8 B/point, and nothing at all for nspin=1 or the open-shell branch),
         // which is why they live here rather than in the shared `KernelXC`.
-        mutable std::vector<double> v2rho2_comb_;
-        mutable std::vector<double> vsigma_comb_;   ///< GGA only
-        void build_spin_combos(const bool gga) const;
+        std::vector<double> v2rho2_comb_;
+        std::vector<double> vsigma_comb_;   ///< GGA only
+        void build_spin_combos(const bool gga);
     };
 
 } // namespace LR

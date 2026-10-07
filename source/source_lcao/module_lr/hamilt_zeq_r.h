@@ -300,7 +300,7 @@ namespace LR
         /// Rebuild BOTH density matrices from the `is` block of X: the CXC operators read
         /// $D^X$ (transposed, un-symmetrized -- see the closed-shell `Z_vector_R` for why),
         /// the CC_vo operators read the difference density matrix $T$ (symmetrized).
-        void set_dm(const int is, const T* const X) const override
+        void set_dm(const int is, const T* const X) override
         {
             const auto psi_ks_is = LR_Util::get_psi_spin(this->psi_ks_, is, this->nk);
 #ifdef __MPI
@@ -338,8 +338,8 @@ namespace LR
         std::vector<psi::Psi<T>> psi_ks_spin_;
         std::unique_ptr<module_dm::DensityMatrix<T, T>> DM_trans;
         std::unique_ptr<module_dm::DensityMatrix<T, T>> DM_diff;
-        mutable std::vector<ct::Tensor> dmx_buf_;
-        mutable std::vector<ct::Tensor> dmd_buf_;
+        std::vector<ct::Tensor> dmx_buf_;
+        std::vector<ct::Tensor> dmd_buf_;
         std::unique_ptr<OperatorGxcULR<T>> gxc_;
     };
 }

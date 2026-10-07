@@ -42,7 +42,7 @@ namespace LR
         }
         virtual ~ZeqULR() { for (auto& op : this->ops) { delete op; } }
 
-        void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband) const
+        void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband)
         {
             assert(ld_psi == this->ldim);
             const std::vector<int> ldim_is = { static_cast<int>(nk * pX[0].get_local_size()), static_cast<int>(nk * pX[1].get_local_size()) };
@@ -86,7 +86,7 @@ namespace LR
         }
 
         /// @brief The full (replicated) matrix, column by column. Only used by the LAPACK solver.
-        std::vector<T> matrix() const
+        std::vector<T> matrix()
         {
             ModuleBase::TITLE("ZeqULR", "matrix");
             const std::vector<int> npairs = { nocc[0] * nvirt[0], nocc[1] * nvirt[1] };
@@ -156,7 +156,7 @@ namespace LR
 
     protected:
         /// @brief rebuild the density matrices the operators read, from the `is` block of X
-        virtual void set_dm(const int is, const T* const X) const = 0;
+        virtual void set_dm(const int is, const T* const X) = 0;
         /// @brief optional per-band contribution that does not fit the 2x2 block structure.
         /// NOTE `matrix()` deliberately does NOT call this: it exists for the right-hand side,
         /// which is not a linear operator, while `matrix()` is only ever used for the LHS.

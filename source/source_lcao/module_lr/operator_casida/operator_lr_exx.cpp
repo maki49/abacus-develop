@@ -68,9 +68,13 @@ namespace LR
         std::vector<T> scratch(static_cast<std::size_t>(naos) * nocc);
         const double factor = 2.0 * alpha;
         const auto lri = this->exx_lri.lock();
+        psi::Psi<T> coxt_full;
+        psi::Psi<T> cvx_full;
         if (dm_pq_ == MO_TO_AO_TYPE::CXC || dm_pq_ == MO_TO_AO_TYPE::CXC_o)
         {
-            this->cal_coxt_cvx(psi_in);
+            coxt_full.resize(this->nk, nvirt, this->naos);
+            cvx_full.resize(this->nk, nocc, this->naos);
+            this->cal_coxt_cvx(psi_in, coxt_full, cvx_full);
         }
         for (int ik = 0; ik < nk; ++ik)
         {
