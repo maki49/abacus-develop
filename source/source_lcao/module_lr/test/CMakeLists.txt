@@ -25,3 +25,9 @@ if(ENABLE_MPI)
     )
   endif()
 endif()
+
+AddTest(
+  TARGET MODULE_LR_gradient_amplitudes
+  LIBS base parameter ${math_libs} container device
+  SOURCES test_gradient_amplitudes.cpp
+)

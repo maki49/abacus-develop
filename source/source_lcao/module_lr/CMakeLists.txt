@@ -25,6 +25,9 @@ if(ENABLE_LCAO)
     lr_spectrum_velocity.cpp
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
+    gradient_output.cpp
+    gradient_closed_shell.cpp
+    gradient_open_shell.cpp
     lr_force.cpp
     exx_projection.cpp
     lr_force_test.cpp

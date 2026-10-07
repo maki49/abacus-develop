@@ -24,6 +24,7 @@
 #include "source_lcao/module_ri/exx_lri.h"
 #include "source_hamilt/module_xc/exx_info.h" // for Exx_Info value member
 #endif
+namespace LR { template <typename T> struct GradientInputs; }
 namespace ModuleESolver
 {
     ///Excited State Solver: Linear Response TDDFT (Tamm Dancoff Approximation) 
@@ -315,6 +316,7 @@ namespace ModuleESolver
         /// @param diag  the multiplet's per-state forces, already computed
         ModuleBase::matrix cal_jt_force_(const std::vector<ModuleBase::matrix>& diag,
             std::ofstream& ofs);
+        LR::GradientInputs<T> gradient_inputs_() const;
         /// Widen a multiplet's eigenvectors into the Z window, one block each. Members need not be
         /// contiguous, so they are padded one at a time.
         ct::Tensor pad_group_to_z_(const int ispin, const std::vector<int>& group) const;
