@@ -13,7 +13,8 @@ list(
   hsolver.cpp
   diago_pxxxgvx.cpp
   diag_hs_para.cpp
-  diago_params.cpp)
+  diago_params.cpp
+  linear_pcg.cpp)
 
 if(ENABLE_LCAO)
   if(ENABLE_MPI)
