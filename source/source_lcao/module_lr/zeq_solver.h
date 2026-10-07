@@ -246,7 +246,7 @@ namespace LR
     /// `solve_Z_lapack` reads.
     template<typename T, typename THamL>
     inline void solve_zeq_with(T* const Z, T* const R, const int ld, const int nstates,
-        THamL& ops_L, const int nspin_x, const std::string& zvec_solver, const bool test_force)
+        THamL& ops_L, const int nspin_x, const std::string& zvec_solver, const bool test_force, const bool use_gpu)
     {
         for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
         if (zvec_solver == "cg")
@@ -264,7 +264,7 @@ namespace LR
             const std::function<void(const T*, T*, int, int)> action =
                 [&ops_L](const T* in, T* out, int local_ld, int columns)
                 { ops_L.hPsi(in, out, local_ld, columns); };
-            solve_Z_CG(Z, R, ld, nstates, action, comm);
+            solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu);
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x, test_force); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
@@ -279,13 +279,13 @@ namespace LR
     template<typename T, typename TOpsR, typename TOpsL>
     void build_and_solve_zeq(TOpsR& ops_R, TOpsL& ops_L, const int nspin_x,
         const T* const X, container::Tensor& R, T* const Z,
-        const int nloc_per_band, const int nstates, const std::string& zvec_solver, const bool test_force)
+        const int nloc_per_band, const int nstates, const std::string& zvec_solver, const bool test_force, const bool use_gpu)
     {
         ModuleBase::timer::start("Z_vector", "build_and_solve_zeq");
         ops_R.hPsi(X, R.template data<T>(), nloc_per_band, nstates);  // act each operator on X
         // std::cout << "The right side of the Z-vector equation:" << std::endl;
         // LR_Util::print_value(R.template data<T>(), nstates, nloc_per_band);
-        solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver, test_force);
+        solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver, test_force, use_gpu);
         ModuleBase::timer::end("Z_vector", "build_and_solve_zeq");
     }
 
@@ -298,6 +298,6 @@ namespace LR
         const std::string& spin_type,
         const std::string& in_dir,
         const bool openshell,
-        const std::string& zvec_solver);
+        const std::string& zvec_solver, const bool use_gpu);
 }
 #endif

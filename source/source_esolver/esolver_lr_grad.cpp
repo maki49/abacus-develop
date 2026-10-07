@@ -91,8 +91,9 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
     const T* const x_data = Xz.template data<T>();
     T* const z_data = Z.template data<T>();
     std::weak_ptr<PotHxcLR> pot_weak = inputs.pot[ispin];
+    const bool use_gpu = this->inp_->device == "gpu";
     Z_vector_equation(inputs, x_data, z_data, nst, pot_weak,
-        this->spin_types[ispin], this->in_dir, this->openshell, this->inp_->lr_grad_solver);
+        this->spin_types[ispin], this->in_dir, this->openshell, this->inp_->lr_grad_solver, use_gpu);
     ModuleBase::timer::end("ESolver_LR", "solve_zvector_eqation");
     return Z;
 }
