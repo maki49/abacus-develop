@@ -50,6 +50,10 @@ namespace LR
                 pot_hxc_gs, kv, pX, pc, pmat, spin_type, in_dir, out_dir)
         {
             ModuleBase::TITLE("Z_vector_L", "Z_vector_L");
+            // Replace the Casida chain created by HamiltLR before replacing its density.
+            // Its EXX operators own device workspaces even though this chain is never applied.
+            delete this->ops;
+            this->ops = nullptr;
             this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             // Hessian (A+B) with GS XC kernel 
