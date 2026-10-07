@@ -88,3 +88,13 @@ AddTest(
   SOURCES test_state_track.cpp ../state_track.cpp ../state_group.cpp ../grad_degen.cpp
           ../../../source_base/test/mpi_test_main.cpp ${root_overlap_test_sources}
 )
+if(ENABLE_MPI AND ENABLE_LIBRI)
+  AddTest(
+    TARGET MODULE_LR_exx_force_dm
+    LIBS base parameter ${math_libs} container device MPI::MPI_CXX
+    SOURCES test_exx_force_dm.cpp ../../../source_base/test/mpi_test_main.cpp
+  )
+  if(ENABLE_LIBRI_GPU)
+    target_link_libraries(MODULE_LR_exx_force_dm PRIVATE DDLA::DDLA)
+  endif()
+endif()
