@@ -17,7 +17,8 @@ list(
   hsolver.cpp
   diago_pxxxgvx.cpp
   diag_hs_para.cpp
-  diago_params.cpp)
+  diago_params.cpp
+  linear_pcg.cpp)
 
 if(ENABLE_LCAO)
   list(APPEND objects hsolver_lcao.cpp diag_lcao.cpp diag_sk_cut.cpp
