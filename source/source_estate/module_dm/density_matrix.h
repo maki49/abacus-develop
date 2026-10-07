@@ -342,13 +342,6 @@ class DensityMatrix
     void set_dmk_ptr(const int ik, TK* DMK_in);
     void set_DMK_vector(const int ik, const std::vector<TK>& v) { this->dmk[ik] = v; }
 
-    /**
-     * @brief get pointer of paraV
-     */
-    const Parallel_Orbitals* get_paraV_pointer() const {return this->pv;}
-
-    const std::vector<ModuleBase::Vector3<double>>& get_kvec_d() const { return this->_kvec_d; }
-
     /// number of k-slots stored in `dmk` (spin_mult * _nk, flattened)
     int get_DMK_nks() const { return static_cast<int>(this->dmk.size()); }
 

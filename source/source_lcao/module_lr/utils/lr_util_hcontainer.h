@@ -230,16 +230,15 @@ namespace LR_Util
     }
 
     template<typename TK>
-    void transpose_DMR(module_dm::DensityMatrix<TK, double>& dm, const int nat)
+    void transpose_DMR(module_dm::DensityMatrix<TK, double>& dm, const Parallel_Orbitals& pv, const int nat)
     {
-        auto pv = dm.get_paraV_pointer();
         // 1. transpose dm(k)
         for (auto& dk : dm.get_dmk_vec())
         {
 #ifdef __MPI
             // dm(k) is 2D-block-cyclic distributed, so the transpose needs the PBLAS routine
             // `mattrans` (pdtran_/pztranc_) rather than a plain serial swap.
-            LR_Util::mattrans(dk.data(), pv->get_global_row_size(), *pv);
+            LR_Util::mattrans(dk.data(), pv.get_global_row_size(), pv);
 #else
             throw std::runtime_error("transpose_DMR requires MPI (PBLAS mattrans) for the 2D-block-cyclic dm(k) transpose.");
 #endif
@@ -251,15 +250,14 @@ namespace LR_Util
         swap_atompair_in_DMR(dm, nat);
     }
     template<typename TK>
-    void transpose_DMR(module_dm::DensityMatrix<TK, std::complex<double>>& dm, const int nat)
+    void transpose_DMR(module_dm::DensityMatrix<TK, std::complex<double>>& dm, const Parallel_Orbitals& pv, const int nat)
     {
         throw std::runtime_error("transpose_DMR is not implemented for complex DMR, due to the lack of minus-sign FT.");
-        auto pv = dm.get_paraV_pointer();
         // 1. dm(k) dagger
         for (auto& dk : dm.get_dmk_vec())
         {
 #ifdef __MPI
-            LR_Util::mattrans(dk.data(), pv->get_global_row_size(), *pv);
+            LR_Util::mattrans(dk.data(), pv.get_global_row_size(), pv);
 #else
             throw std::runtime_error("transpose_DMR requires MPI (PBLAS mattrans) for the 2D-block-cyclic dm(k) transpose.");
 #endif

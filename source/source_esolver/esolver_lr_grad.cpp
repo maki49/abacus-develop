@@ -526,7 +526,7 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_Xz(c
         auto dm_trans =   // D(X) complex
             LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, (*this->ucell_), this->gd(), this->orb_cutoff_);
-        LR_Util::transpose_DMR(dm_trans, (*this->ucell_).nat);
+        LR_Util::transpose_DMR(dm_trans, this->paraMat_, (*this->ucell_).nat);
         // D(X) real, for the grid Hxc force. The Coulomb kernel (mu nu | kappa lambda) is
         // symmetric within each index pair, so it only ever sees the symmetric part of D^X.
         // In `PulayForceStress::cal_pulay_fs`, `cal_gint_rho` (which builds v) symmetrizes
@@ -537,7 +537,7 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_Xz(c
             LR_Util::build_dm_from_dmk<T, double>(dm_trans_k,
                 this->paraMat_, this->nk, this->kv.kvec_d, (*this->ucell_), this->gd(), this->orb_cutoff_,
                 /*symmetrize=*/true);
-        LR_Util::transpose_DMR(dm_trans_real, (*this->ucell_).nat);
+        LR_Util::transpose_DMR(dm_trans_real, this->paraMat_, (*this->ucell_).nat);
         // LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
         // difference density matrix 
 #ifdef __MPI
@@ -1099,11 +1099,11 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_open
         //    `build_dm_from_dmk_spin` symmetrizes IN PLACE, hence the ordering.
         auto dm_trans = LR_Util::build_dm_from_dmk_spin<T, T>(dmx_k,
             this->paraMat_, this->nk, this->kv.kvec_d, (*this->ucell_), this->gd(), this->orb_cutoff_);
-        LR_Util::transpose_DMR(dm_trans, (*this->ucell_).nat);
+        LR_Util::transpose_DMR(dm_trans, this->paraMat_, (*this->ucell_).nat);
         auto dm_trans_real = LR_Util::build_dm_from_dmk_spin<T, double>(dmx_k,
             this->paraMat_, this->nk, this->kv.kvec_d, (*this->ucell_), this->gd(), this->orb_cutoff_,
             /*symmetrize=*/true);
-        LR_Util::transpose_DMR(dm_trans_real, (*this->ucell_).nat);
+        LR_Util::transpose_DMR(dm_trans_real, this->paraMat_, (*this->ucell_).nat);
 
         // 3. the relaxed difference density matrix $T+D^Z$
         const module_dm::DensityMatrix<T, T>& relaxed_diff_dm =
