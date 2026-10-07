@@ -575,8 +575,8 @@
     - [nvirt](#nvirt)
     - [lr\_nstates](#lr_nstates)
     - [lr\_target\_state](#lr_target_state)
-    - [lr\_grad\_degen\_thr](#lr_grad_degen_thr)
-    - [lr\_relax\_degen\_mode](#lr_relax_degen_mode)
+    - [lr\_degen\_thr](#lr_degen_thr)
+    - [lr\_degen\_mode](#lr_degen_mode)
     - [lr\_grad\_solver](#lr_grad_solver)
     - [lr\_target\_spin](#lr_target_spin)
     - [lr\_unrestricted](#lr_unrestricted)
@@ -5195,7 +5195,7 @@
   > Note: The state is followed by index, not by character. If it crosses another state during the relaxation, the optimizer will silently continue on the other surface.
 - **Default**: 0
 
-### lr_grad_degen_thr
+### lr_degen_thr
 
 - **Type**: Real
 - **Description**: Excited states whose excitation energies lie within this threshold of each other are treated as one degenerate multiplet, and the full gradient matrix $G^{(A\alpha)}_{kl}=\langle X_k|\partial A/\partial R_{A\alpha}|X_l\rangle$ is computed for it in addition to the per-state gradients. Zero (the default) disables this and leaves the per-state gradients as the only output.
@@ -5208,10 +5208,10 @@
 - **Default**: 0
 - **Unit**: Ry
 
-### lr_relax_degen_mode
+### lr_degen_mode
 
 - **Type**: String
-- **Description**: What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_grad_degen_thr`. It has no effect when the target state is non-degenerate.
+- **Description**: What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_degen_thr`. It has no effect when the target state is non-degenerate.
 
   - state: follow the gradient of that one state, as returned by the eigensolver. This is the historical behaviour and is what reproduces earlier results, but inside a multiplet it is not a well-defined quantity: the per-state gradients are the diagonal of the subspace gradient matrix in whichever basis the eigensolver happened to return, so they depend on numerical details of the diagonalisation rather than on physics.
   - average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. Unlike the individual states this is a smooth, basis-independent surface, and by symmetry its gradient is totally symmetric, so following it keeps the geometry on the symmetric configuration. Both the reported energy and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.

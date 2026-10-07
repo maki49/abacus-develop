@@ -1129,7 +1129,7 @@ Ignored outside `calculation = relax`: a single-point run solves and reports the
         this->add_item(item);
     }
     {
-        Input_Item item("lr_grad_degen_thr");
+        Input_Item item("lr_degen_thr");
         item.annotation = "max excitation-energy spread of a degenerate multiplet whose gradient matrix is computed (Ry); 0 disables";
         item.category = "Linear Response TDDFT";
         item.type = "Real";
@@ -1143,20 +1143,20 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.default_value = "0";
         item.unit = "Ry";
         item.check_value = [](const Input_Item& item, const Parameter& para) {
-            if (para.input.lr_grad_degen_thr < 0.0)
+            if (para.input.lr_degen_thr < 0.0)
             {
-                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_degen_thr must be >= 0");
+                ModuleBase::WARNING_QUIT("ReadInput", "lr_degen_thr must be >= 0");
             }
         };
-        read_sync_double(input.lr_grad_degen_thr);
+        read_sync_double(input.lr_degen_thr);
         this->add_item(item);
     }
     {
-        Input_Item item("lr_relax_degen_mode");
+        Input_Item item("lr_degen_mode");
         item.annotation = "what a relaxation follows when the target state is degenerate: state or average";
         item.category = "Linear Response TDDFT";
         item.type = "String";
-        item.description = R"(What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_grad_degen_thr`. It has no effect when the target state is non-degenerate.
+        item.description = R"(What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_degen_thr`. It has no effect when the target state is non-degenerate.
 
 * state: follow the gradient of that one state, as returned by the eigensolver. This is the historical behaviour and is what reproduces earlier results, but inside a multiplet it is not a well-defined quantity: the per-state gradients are the diagonal of the subspace gradient matrix in whichever basis the eigensolver happened to return, so they depend on numerical details of the diagonalisation rather than on physics.
 * average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. Unlike the individual states this is a smooth, basis-independent surface, and by symmetry its gradient is totally symmetric, so following it keeps the geometry on the symmetric configuration. Both the reported energy and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.
@@ -1169,21 +1169,21 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.unit = "";
         item.check_value = [](const Input_Item& item, const Parameter& para) {
             const std::vector<std::string> modes = { "state", "average", "jt" };
-            if (std::find(modes.begin(), modes.end(), para.input.lr_relax_degen_mode) == modes.end())
+            if (std::find(modes.begin(), modes.end(), para.input.lr_degen_mode) == modes.end())
             {
                 ModuleBase::WARNING_QUIT("ReadInput",
-                    "lr_relax_degen_mode must be state, average or jt");
+                    "lr_degen_mode must be state, average or jt");
             }
             // Both non-default modes need to know which states form the multiplet, and that
-            // grouping is what lr_grad_degen_thr defines; without it there is nothing to act on.
-            if (para.input.lr_relax_degen_mode != "state" && para.input.lr_grad_degen_thr <= 0.0)
+            // grouping is what lr_degen_thr defines; without it there is nothing to act on.
+            if (para.input.lr_degen_mode != "state" && para.input.lr_degen_thr <= 0.0)
             {
                 ModuleBase::WARNING_QUIT("ReadInput",
-                    "lr_relax_degen_mode=" + para.input.lr_relax_degen_mode
-                    + " requires lr_grad_degen_thr > 0 to define the multiplet");
+                    "lr_degen_mode=" + para.input.lr_degen_mode
+                    + " requires lr_degen_thr > 0 to define the multiplet");
             }
         };
-        read_sync_string(input.lr_relax_degen_mode);
+        read_sync_string(input.lr_degen_mode);
         this->add_item(item);
     }
     {

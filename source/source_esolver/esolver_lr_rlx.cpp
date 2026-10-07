@@ -110,7 +110,7 @@ double ModuleESolver::ESolver_LR<T, TR>::cal_energy()
     // Outside a relaxation nothing consumes this, and returning a non-zero value would change
     // what the existing single-point outputs report.
     if (!this->excited_relax_) { return 0.0; }
-    // `target_omega_()` is the multiplet average under `lr_relax_degen_mode = average` and the
+    // `target_omega_()` is the multiplet average under `lr_degen_mode = average` and the
     // single state otherwise, matching whatever `cal_lr_force_relax_` produced the gradient of.
     // The energy-based optimisers line-search on this, so the two must not describe different
     // surfaces.
@@ -176,12 +176,12 @@ void ModuleESolver::ESolver_LR<T, TR>::resolve_target_multiplet_()
     // followed root at every ionic step, and the multiplet has to be the one containing the root
     // actually being followed. They differ as soon as two surfaces have crossed.
     this->target_group_.clear();
-    if (LR_Util::tolower(this->inp_->lr_relax_degen_mode) == "state") { return; }
+    if (LR_Util::tolower(this->inp_->lr_degen_mode) == "state") { return; }
     const int ekb_off = this->openshell ? 0 : this->target_is_ * this->nstates;
     std::vector<double> omega(this->nstates);
     for (int ist = 0; ist < this->nstates; ++ist) { omega[ist] = this->pelec->ekb.c[ekb_off + ist]; }
     const std::vector<std::vector<int>> groups
-        = LR::group_degenerate_states(omega, this->inp_->lr_grad_degen_thr);
+        = LR::group_degenerate_states(omega, this->inp_->lr_degen_thr);
     for (const std::vector<int>& g : groups)
     {
         if (std::find(g.begin(), g.end(), this->target_state_) == g.end()) { continue; }
@@ -210,7 +210,7 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_lr_force_relax_(std::of
     {
         return this->cal_force(this->target_is_, this->target_state_)[0];
     }
-    const bool jt_mode = (LR_Util::tolower(this->inp_->lr_relax_degen_mode) == "jt");
+    const bool jt_mode = (LR_Util::tolower(this->inp_->lr_degen_mode) == "jt");
     // `average` needs only the DIAGONAL of the gradient matrix: the average is basis-independent by
     // construction, so the off-diagonal part (and the extra d(d-1)/2 solves it costs) is not
     // involved. The Jahn-Teller direction is orthogonal to the average and does need them.
@@ -230,7 +230,7 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_lr_force_relax_(std::of
     ofs << " (Omega_bar = " << this->target_omega_() << " Ry)." << std::endl;
     if (!jt_mode)
     {
-        ofs << " lr_relax_degen_mode=average: following the multiplet average, which keeps the"
+        ofs << " lr_degen_mode=average: following the multiplet average, which keeps the"
             " geometry on the symmetric configuration." << std::endl;
         return average_forces(forces);
     }
@@ -271,7 +271,7 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_jt_force_(
     const std::vector<double> sym = LR::split_symmetric_part(gflat, ncoord, d, jt.mixing, jt_part);
 
     const double fac = ModuleBase::Ry_to_eV / ModuleBase::BOHR_TO_A;
-    ofs << " lr_relax_degen_mode=jt: descending the steepest branch of the multiplet." << std::endl
+    ofs << " lr_degen_mode=jt: descending the steepest branch of the multiplet." << std::endl
         << "   |F| of that branch  = " << jt.slope * fac << " eV/Angstrom" << std::endl
         << "   mixing v            =";
     for (int k = 0; k < d; ++k) { ofs << " " << jt.mixing[k]; }

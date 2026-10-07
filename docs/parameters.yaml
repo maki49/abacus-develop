@@ -3014,7 +3014,7 @@ parameters:
     default_value: "0"
     unit: ""
     availability: ""
-  - name: lr_grad_degen_thr
+  - name: lr_degen_thr
     category: Linear Response TDDFT
     type: Real
     description: |
@@ -3028,11 +3028,11 @@ parameters:
     default_value: "0"
     unit: Ry
     availability: ""
-  - name: lr_relax_degen_mode
+  - name: lr_degen_mode
     category: Linear Response TDDFT
     type: String
     description: |
-      What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_grad_degen_thr`. It has no effect when the target state is non-degenerate.
+      What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_degen_thr`. It has no effect when the target state is non-degenerate.
 
       * state: follow the gradient of that one state, as returned by the eigensolver. This is the historical behaviour and is what reproduces earlier results, but inside a multiplet it is not a well-defined quantity: the per-state gradients are the diagonal of the subspace gradient matrix in whichever basis the eigensolver happened to return, so they depend on numerical details of the diagonalisation rather than on physics.
       * average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. Unlike the individual states this is a smooth, basis-independent surface, and by symmetry its gradient is totally symmetric, so following it keeps the geometry on the symmetric configuration. Both the reported energy and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.

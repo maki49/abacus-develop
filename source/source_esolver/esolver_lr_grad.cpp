@@ -163,7 +163,7 @@ template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::cal_force_and_grad_matrix_(const int ispin, std::ofstream& ofs)
 {
     const std::vector<ModuleBase::matrix> forces = this->cal_force(ispin);
-    if (this->inp_->lr_grad_degen_thr <= 0.0) { return; }
+    if (this->inp_->lr_degen_thr <= 0.0) { return; }
     // Rebuilt from scratch for this channel: a relaxation calls this once per ionic step, and a
     // stale multiplet from the previous geometry must not survive into the next one.
     this->multiplet_lvc_.erase(
@@ -172,13 +172,13 @@ void ModuleESolver::ESolver_LR<T, TR>::cal_force_and_grad_matrix_(const int ispi
         this->multiplet_lvc_.end());
     // The per-state gradients above are the diagonal of the degenerate-subspace gradient matrix in
     // whatever basis the eigensolver returned, so inside a multiplet only their trace means
-    // anything. `lr_grad_degen_thr` asks for the off-diagonal part too, which is the rest of the
+    // anything. `lr_degen_thr` asks for the off-diagonal part too, which is the rest of the
     // first-order information.
     const int ekb_off = this->openshell ? 0 : ispin * this->nstates;
     std::vector<double> omega(this->nstates);
     for (int ist = 0; ist < this->nstates; ++ist) { omega[ist] = this->pelec->ekb.c[ekb_off + ist]; }
     const std::vector<std::vector<int>> groups
-        = LR::group_degenerate_states(omega, this->inp_->lr_grad_degen_thr);
+        = LR::group_degenerate_states(omega, this->inp_->lr_degen_thr);
     for (const std::vector<int>& group : groups)
     {
         if (group.size() < 2) { continue; }

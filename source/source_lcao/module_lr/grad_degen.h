@@ -175,7 +175,7 @@ namespace LR
     /// is the multiplet average: totally symmetric, common to every branch, and it only relaxes the
     /// geometry without splitting anything. The second is the Jahn-Teller part. The distinction
     /// matters when reading the result -- at a stationary point of the average surface, which is
-    /// where an `lr_relax_degen_mode = average` relaxation ends up, the first term vanishes and the
+    /// where an `lr_degen_mode = average` relaxation ends up, the first term vanishes and the
     /// whole direction is Jahn-Teller.
     ///
     /// @return the symmetric part $\bar q$; `jt_part` receives $q(v)-\bar q$

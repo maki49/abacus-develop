@@ -290,10 +290,10 @@ namespace ModuleESolver
             ModuleBase::matrix average_force() const;
         };
         /// LVC data of every multiplet found at this geometry, rebuilt on each call of
-        /// `cal_force_and_grad_matrix_`. Empty unless `lr_grad_degen_thr > 0`.
+        /// `cal_force_and_grad_matrix_`. Empty unless `lr_degen_thr > 0`.
         std::vector<MultipletLVC> multiplet_lvc_;
         /// The multiplet `lr_target_state` belongs to, or empty when the target is non-degenerate
-        /// or `lr_relax_degen_mode = state`. Refreshed every ionic step by
+        /// or `lr_degen_mode = state`. Refreshed every ionic step by
         /// `resolve_target_multiplet_`, and it is what makes `cal_energy` and the reported gradient
         /// describe the same surface.
         std::vector<int> target_group_;
@@ -303,10 +303,10 @@ namespace ModuleESolver
         /// multiplet average when `target_group_` is set.
         double target_omega_() const;
         /// The LR half of the force for the current geometry, following whichever surface
-        /// `lr_relax_degen_mode` selects. `ofs` receives the note when that is not a single state.
+        /// `lr_degen_mode` selects. `ofs` receives the note when that is not a single state.
         ModuleBase::matrix cal_lr_force_relax_(std::ofstream& ofs);
         /// @brief The force of the steepest-descending branch of the target multiplet, i.e.
-        ///        `lr_relax_degen_mode = jt`.
+        ///        `lr_degen_mode = jt`.
         ///
         /// Assembles the off-diagonal part of the gradient matrix (which `average` does not need),
         /// solves the joint direction/mixing optimization in `LR::find_jt_direction`, and returns
@@ -321,7 +321,7 @@ namespace ModuleESolver
         /// contiguous, so they are padded one at a time.
         ct::Tensor pad_group_to_z_(const int ispin, const std::vector<int>& group) const;
         /// @brief Per-state gradients of every state, plus the gradient matrix of each degenerate
-        ///        multiplet when `lr_grad_degen_thr` asks for it. The single-point entry point.
+        ///        multiplet when `lr_degen_thr` asks for it. The single-point entry point.
         ///
         /// Fills `multiplet_lvc_`.
         void cal_force_and_grad_matrix_(const int ispin, std::ofstream& ofs);
