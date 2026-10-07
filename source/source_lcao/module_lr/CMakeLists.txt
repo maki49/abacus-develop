@@ -25,7 +25,6 @@ if(ENABLE_LCAO)
     init_helpers.cpp
     hsolver_lrtd.cpp
     zeq_solver.cpp
-    zeq_cg.cpp
     hamilt_ulr.cpp
     lr_density.cpp
     utils/spectrum_mo.cpp
@@ -49,7 +48,8 @@ if(ENABLE_LCAO)
     state_ovlp.cpp
     grad_jt.cpp
     cal_edm.cpp
-    zeqlin_solv.cpp)
+    zeqlin_solv.cpp
+    zeq_cg_solver.cpp)
 
   # The RI k-point list reader requires LibRI headers.
   if(ENABLE_LIBRI)
