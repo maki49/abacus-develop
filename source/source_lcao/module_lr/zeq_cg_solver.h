@@ -19,11 +19,11 @@ using ZHessianAction = std::function<void(const double*, double*, int, int)>;
 /// Solve the real Gamma-only Z equation and reject unconverged forces.
 hsolver::LinearSolveResult solve_Z_CG(double* z, const double* rhs, int ld, int states,
                                      const ZHessianAction& action,
-                                     const hsolver::diag_comm_info& comm);
+                                     const hsolver::diag_comm_info& comm, bool use_gpu);
 
 void solve_Z_CG(std::complex<double>* z, const std::complex<double>* rhs, int ld, int states,
                const std::function<void(const std::complex<double>*, std::complex<double>*, int, int)>& action,
-               const hsolver::diag_comm_info& comm);
+               const hsolver::diag_comm_info& comm, bool use_gpu);
 }
 
 #endif
