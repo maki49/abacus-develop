@@ -21,6 +21,12 @@ if(ENABLE_LIBXC)
     SOURCES test_xc_kxc.cpp ../potentials/xc_kxc.cpp)
 endif()
 
+AddTest(
+  TARGET MODULE_LR_zeq_cg_solver
+  LIBS base parameter ${math_libs} container device
+  SOURCES test_zeq_cg_solver.cpp ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
+)
+
 addtest(
   TARGET MODULE_LR_exx_projection
   LIBS base parameter ${math_libs} container device
