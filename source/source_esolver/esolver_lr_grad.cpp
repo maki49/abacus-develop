@@ -435,6 +435,7 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
     // solved in grows. Both the closed- and the open-shell path go through here.
     ct::Tensor Z = LR_Util::newTensor<T>({ nst, this->nloc_per_state_z_ });
     // construct and solve the Z-vector equation
+    const bool use_gpu = this->inp_->device == "gpu";
     Z_vector_equation(Xz.template data<T>(), Z.template data<T>(),
         this->xc_kernel, nst, this->nspin, this->nbasis, this->nocc, this->nvirt_z_,
         (*this->ucell_), orb_cutoff_, this->gd(), *this->psi_ks_z_, this->eig_ks_z_,
@@ -444,7 +445,7 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
         std::weak_ptr<PotHxcLR>(this->pot[ispin]), std::weak_ptr<PotHxcLR>(this->pot_hxc_gs),
         this->kv, this->paraX_z_, this->paraC_z_,
         this->paraMat_, this->spin_types[ispin], this->in_dir, this->out_dir, this->inp_->ks_solver,
-        this->inp_->dft_functional, this->openshell, this->inp_->lr_grad_solver);
+        this->inp_->dft_functional, this->openshell, this->inp_->lr_grad_solver, use_gpu);
     ModuleBase::timer::end("ESolver_LR", "solve_zvector_eqation");
     return Z;
 }

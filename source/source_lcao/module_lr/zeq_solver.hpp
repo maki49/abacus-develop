@@ -256,7 +256,7 @@ namespace LR
     /// `solve_Z_lapack` reads.
     template<typename T, typename THamL>
     inline void solve_zeq_with(T* const Z, T* const R, const int ld, const int nstates,
-        const THamL& ops_L, const int nspin_x, const std::string& zvec_solver)
+        const THamL& ops_L, const int nspin_x, const std::string& zvec_solver, const bool use_gpu)
     {
         for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
         if (zvec_solver == "cg")
@@ -274,7 +274,7 @@ namespace LR
             const std::function<void(const T*, T*, int, int)> action =
                 [&ops_L](const T* in, T* out, int local_ld, int columns)
                 { ops_L.hPsi(in, out, local_ld, columns); };
-            solve_Z_CG(Z, R, ld, nstates, action, comm);
+            solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu);
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
@@ -290,14 +290,14 @@ namespace LR
     template<typename T, typename TOpsR, typename TOpsL>
     void build_and_solve_zeq(TOpsR& ops_R, TOpsL& ops_L, const int nspin_x,
         const T* const X, container::Tensor& R, T* const Z,
-        const int nloc_per_band, const int nstates, const std::string& zvec_solver)
+        const int nloc_per_band, const int nstates, const std::string& zvec_solver, const bool use_gpu)
     {
         ModuleBase::timer::start("Z_vector", "Z_vector_R");
         ops_R.hPsi(X, R.template data<T>(), nloc_per_band, nstates);  // act each operator on X
         ModuleBase::timer::end("Z_vector", "Z_vector_R");
         // std::cout << "The right side of the Z-vector equation:" << std::endl;
         // LR_Util::print_value(R.template data<T>(), nstates, nloc_per_band);
-        solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver);
+        solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver, use_gpu);
     }
 
     template<typename T>
@@ -330,7 +330,8 @@ namespace LR
         const std::string& ks_solver,
         const std::string& dft_functional,
         const bool openshell,
-        const std::string& zvec_solver)
+        const std::string& zvec_solver,
+        const bool use_gpu)
     {
         ModuleBase::TITLE("Z_vector", "Z_vector");
         const int nk = kv.get_nks() / nspin;
@@ -354,7 +355,7 @@ namespace LR
                 exx_lri, exx_alpha,
 #endif
                 pot_hxc_gs, kv, px, pc, pmat, dft_functional);
-            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/2, X, R, Z, nloc_per_band, nstates, zvec_solver);
+            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/2, X, R, Z, nloc_per_band, nstates, zvec_solver, use_gpu);
         }
         else
         {
@@ -370,7 +371,7 @@ namespace LR
                 exx_lri, exx_alpha,
 #endif
                 pot_hxc_gs, kv, px, pc, pmat, spin_type, in_dir, out_dir, dft_functional);
-            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/1, X, R, Z, nloc_per_band, nstates, zvec_solver);
+            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/1, X, R, Z, nloc_per_band, nstates, zvec_solver, use_gpu);
         }
     }
 }
