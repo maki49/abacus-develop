@@ -274,7 +274,8 @@ namespace LR
             const std::function<void(const T*, T*, int, int)> action =
                 [&ops_L](const T* in, T* out, int local_ld, int columns)
                 { ops_L.hPsi(in, out, local_ld, columns); };
-            solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu);
+            const auto diagonal = ops_L.orbital_diagonal();
+            solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu, diagonal);
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }

@@ -1,4 +1,10 @@
 AddTest(
+  TARGET MODULE_LR_operator_lr_diag
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_operator_lr_diag.cpp ../../../source_hamilt/operator.cpp
+)
+
+AddTest(
   TARGET MODULE_LR_zeq_cg_solver
   LIBS base parameter ${math_libs} container device
   SOURCES test_zeq_cg_solver.cpp ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp

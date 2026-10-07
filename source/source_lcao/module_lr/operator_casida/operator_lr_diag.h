@@ -1,10 +1,12 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_DIAG_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_DIAG_H
 
+#include "source_base/matrix.h"
+#include "source_base/parallel_2d.h"
+#include "source_base/timer.h"
+#include "source_base/tool_title.h"
 #include "source_base/kernels/math_kernel_op.h"
 #include "source_hamilt/operator.h"
-#ifdef __MPI
-#endif
 namespace LR
 {
     /// @brief  Diag part of A operator: [AX]_iak = (e_ak - e_ik) X_iak
@@ -34,6 +36,9 @@ namespace LR
                 }
             }
         };
+        /// Local [k][occupied][virtual] orbital-energy differences, owned by this operator.
+        const ModuleBase::matrix& energy_differences() const { return eig_ks_diff; }
+
         void init(const int ik_in) override {};
 
         /// By default this ASSIGNS to `hpsi`, so it has to be the head of its operator list.

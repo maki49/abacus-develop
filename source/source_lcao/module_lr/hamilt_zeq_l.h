@@ -20,6 +20,22 @@ namespace LR
         using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
 #endif
     public:
+        /// Reuse the diagonal head; no extra Hessian application or density construction.
+        std::vector<double> orbital_diagonal() const
+        {
+            const OperatorLRDiag<T>* diagonal = static_cast<const OperatorLRDiag<T>*>(this->ops);
+            const ModuleBase::matrix& gaps = diagonal->energy_differences();
+            const int size = this->nk * this->pX[0].get_local_size();
+            std::vector<double> result(size);
+            if (size > 0)
+            {
+                const double* begin = gaps.c;
+                const double* end = begin + size;
+                std::copy(begin, end, result.begin());
+            }
+            return result;
+        }
+
         Z_vector_L(const std::string& xc_kernel,
             const int& nspin,
             const int& naos,
@@ -115,6 +131,26 @@ namespace LR
         using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
 #endif
     public:
+        /// Concatenate the two diagonal spin blocks in the same layout as hPsi.
+        std::vector<double> orbital_diagonal() const
+        {
+            std::vector<double> result;
+            for (int spin = 0; spin < 2; ++spin)
+            {
+                const int block = 3 * spin;
+                const OperatorLRDiag<T>* diagonal = static_cast<const OperatorLRDiag<T>*>(this->ops[block]);
+                const ModuleBase::matrix& gaps = diagonal->energy_differences();
+                const int size = this->nk * this->pX[spin].get_local_size();
+                if (size > 0)
+                {
+                    const double* begin = gaps.c;
+                    const double* end = begin + size;
+                    result.insert(result.end(), begin, end);
+                }
+            }
+            return result;
+        }
+
         Z_vector_UL(const std::string& xc_kernel,
             const int& nspin,
             const int& naos,
