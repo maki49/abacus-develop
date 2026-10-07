@@ -3,12 +3,12 @@
 #include "source_base/timer.h"
 #include "source_base/module_device/memory_op.h"
 #include "source_hsolver/linear_pcg.h"
-#if defined(__CUDA) || defined(__ROCM)
 #include "source_base/kernels/math_kernel_op.h"
+#include "source_base/parallel_device.h"
 #include "source_hsolver/linear_algebra.h"
-#endif
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -30,19 +30,61 @@ private:
     const ZHessianAction& action_;
 };
 
-template<typename Device>
-class Identity final : public hsolver::LinearOperator<double, Device>
+// A small positive gap floor limits the inverse without changing the Hessian.
+const double orbital_gap_floor = 1e-8; // Ry
+
+std::vector<double> inverse_gaps(const std::vector<double>& diagonal, int ld,
+                                 const hsolver::diag_comm_info& comm)
 {
-public:
-    void apply(const double* x, double* y, int ld, int columns) const override
+    double invalid = 0.0;
+    const bool identity = diagonal.empty();
+    if (!identity && diagonal.size() != static_cast<std::size_t>(ld)) { invalid = 1.0; }
+    std::vector<double> inverse(ld, 1.0);
+    if (!identity && invalid == 0.0)
     {
-        const std::size_t size = static_cast<std::size_t>(ld) * columns;
-        if (size > 0)
+        for (int row = 0; row < ld; ++row)
         {
-            base_device::memory::synchronize_memory_op<double, Device, Device>()(y, x, size);
+            const double gap = diagonal[row];
+            if (!std::isfinite(gap) || gap <= 0.0) { invalid = 1.0; }
+            else { inverse[row] = 1.0 / std::max(gap, orbital_gap_floor); }
         }
     }
-    bool is_identity() const override { return true; }
+#ifdef __MPI
+    // Every rank must reject invalid gaps before entering Krylov collectives.
+    if (comm.nproc > 1) { Parallel_Common::reduce_data(&invalid, 1, comm.comm); }
+#endif
+    if (invalid > 0.0) { throw std::invalid_argument("Z-vector orbital gaps must be finite, positive and match local ld"); }
+    return inverse;
+}
+
+template<typename Device>
+class OrbitalInverse final : public hsolver::LinearOperator<double, Device>
+{
+public:
+    explicit OrbitalInverse(const std::vector<double>& inverse)
+    {
+        const std::int64_t size = inverse.size();
+        hsolver::linear_buffer<double, Device>(&inverse_, size);
+        if (size > 0)
+        {
+            base_device::memory::synchronize_memory_op<double, Device, base_device::DEVICE_CPU>()(
+                inverse_.data<double>(), inverse.data(), size);
+        }
+    }
+    void apply(const double* x, double* y, int ld, int columns) const override
+    {
+        const bool add = false;
+        for (int column = 0; column < columns; ++column)
+        {
+            const int offset = column * ld;
+            const double* input = x + offset;
+            double* output = y + offset;
+            ModuleBase::vector_mul_vector_op<double, Device, double>()(
+                ld, output, input, inverse_.data<double>(), add);
+        }
+    }
+private:
+    ct::Tensor inverse_;
 };
 
 #if defined(__CUDA) || defined(__ROCM)
@@ -82,7 +124,8 @@ private:
 hsolver::LinearSolveResult solve_on_gpu(double* z, const double* rhs, int ld, int states,
                                       const ZHessianAction& action,
                                       const hsolver::diag_comm_info& comm,
-                                      double tolerance, int max_iterations)
+                                      double tolerance, int max_iterations,
+                                      const std::vector<double>& inverse_gaps)
 {
     ModuleBase::createGpuBlasHandle();
     const std::int64_t size = static_cast<std::int64_t>(ld) * states;
@@ -97,7 +140,7 @@ hsolver::LinearSolveResult solve_on_gpu(double* z, const double* rhs, int ld, in
             b.data<double>(), rhs, size);
     }
     const DeviceZHessian hessian(action, size);
-    const Identity<base_device::DEVICE_GPU> inverse;
+    const OrbitalInverse<base_device::DEVICE_GPU> inverse(inverse_gaps);
     const auto result = hsolver::linear_pcg<base_device::DEVICE_GPU>(
         hessian, inverse, x.data<double>(), b.data<double>(), ld, ld, states, tolerance, max_iterations, comm);
     if (result.status == hsolver::LinearSolveStatus::converged && size > 0)
@@ -115,7 +158,8 @@ hsolver::LinearSolveResult solve_on_gpu(double* z, const double* rhs, int ld, in
 
 hsolver::LinearSolveResult solve_Z_CG(double* z, const double* rhs, int ld, int states,
                                      const ZHessianAction& action,
-                                     const hsolver::diag_comm_info& comm, bool use_gpu)
+                                     const hsolver::diag_comm_info& comm, bool use_gpu,
+                                     const std::vector<double>& orbital_diagonal)
 {
     ModuleBase::timer::start("Z_vector", "solve_Z_CG");
     if (ld < 0 || states < 0)
@@ -127,11 +171,21 @@ hsolver::LinearSolveResult solve_Z_CG(double* z, const double* rhs, int ld, int 
     if (size > 0) { std::fill(z, z + size, 0.0); }
     const double tolerance = 1e-6;
     const int max_iterations = 100;
+    std::vector<double> gaps;
+    try
+    {
+        gaps = inverse_gaps(orbital_diagonal, ld, comm);
+    }
+    catch (...)
+    {
+        ModuleBase::timer::end("Z_vector", "solve_Z_CG");
+        throw;
+    }
     hsolver::LinearSolveResult result;
     if (use_gpu)
     {
 #if defined(__CUDA) || defined(__ROCM)
-        result = solve_on_gpu(z, rhs, ld, states, action, comm, tolerance, max_iterations);
+        result = solve_on_gpu(z, rhs, ld, states, action, comm, tolerance, max_iterations, gaps);
 #else
         ModuleBase::timer::end("Z_vector", "solve_Z_CG");
         throw std::runtime_error("GPU Z-vector PCG requires a GPU-enabled build");
@@ -140,10 +194,13 @@ hsolver::LinearSolveResult solve_Z_CG(double* z, const double* rhs, int ld, int 
     else
     {
         const HostZHessian hessian(action);
-        const Identity<base_device::DEVICE_CPU> inverse;
+        const OrbitalInverse<base_device::DEVICE_CPU> inverse(gaps);
         result = hsolver::linear_pcg<base_device::DEVICE_CPU>(
             hessian, inverse, z, rhs, ld, ld, states, tolerance, max_iterations, comm);
     }
+    const char* preconditioner = orbital_diagonal.empty() ? "identity" : "orbital-energy-gap";
+    std::cout << "Z-vector PCG preconditioner=" << preconditioner
+              << " gap floor (Ry)=" << orbital_gap_floor << std::endl;
     const char* backend = use_gpu ? "GPU" : "CPU";
     std::cout << "Z-vector PCG backend=" << backend << ": iterations=" << result.iterations
               << " true residual=" << result.max_residual
@@ -163,7 +220,7 @@ hsolver::LinearSolveResult solve_Z_CG(double* z, const double* rhs, int ld, int 
 
 void solve_Z_CG(std::complex<double>*, const std::complex<double>*, int, int,
                const std::function<void(const std::complex<double>*, std::complex<double>*, int, int)>&,
-               const hsolver::diag_comm_info&, bool)
+               const hsolver::diag_comm_info&, bool, const std::vector<double>&)
 {
     throw std::runtime_error("complex Z-vector solver is not implemented yet");
 }
