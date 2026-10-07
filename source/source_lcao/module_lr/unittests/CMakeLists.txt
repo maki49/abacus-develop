@@ -212,3 +212,10 @@ endif()
 
 addtest(TARGET MODULE_LR_window_response SOURCES test_window_response_math.cpp
                                                  ../window_response_math.cpp)
+
+if(ENABLE_MPI AND ENABLE_LIBRI)
+  AddTest(
+    TARGET MODULE_LR_exx_force_dm
+    LIBS base parameter container device LibRI::LibRI
+    SOURCES test_exx_force_dm.cpp ../../../source_base/test/mpi_test_main.cpp)
+endif()
