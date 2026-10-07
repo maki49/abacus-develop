@@ -1,6 +1,8 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_H
 #include "gradient_inputs.h"
+#include "zeq_cg_solver.h"
+#include "source_hsolver/diag_comm_info.h"
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
@@ -10,10 +12,6 @@
 
 namespace LR
 {
-    void solve_Z_CG(double* const Z, double* R, const int& ld, const int& nstates,
-        std::function<void(const double* const, double* const)> f_LZ, const bool test_force);
-    void solve_Z_CG(std::complex<double>* const Z, std::complex<double>* R, const int& ld, const int& nstates,
-        std::function<void(const std::complex<double>* const, std::complex<double>* const)> f_LZ, const bool test_force);
     /// @brief Global length of one state's Z-vector: $\sum_\sigma n_k n_{occ,\sigma} n_{virt,\sigma}$.
     /// `THam` only has to expose `nk`, `nocc` and `nvirt`.
     template<typename THam>
@@ -280,15 +278,19 @@ namespace LR
         } // clear Z
         if (zvec_solver == "cg")
         {
-            solve_Z_CG(
-                Z,
-                R,
-                ld,
-                nstates,
-                [&ops_L, ld, nstates](const T* const in, T* const out) {
-                    ops_L.hPsi(in, out, ld, nstates);
-                },
-                test_force);
+#ifdef __MPI
+            const auto& pairs = ops_L.pX[0];
+            const int rank = pairs.get_coord_row() * pairs.get_dim1() + pairs.get_coord_col();
+            const int nproc = pairs.get_dim0() * pairs.get_dim1();
+            const auto pair_comm = pairs.comm();
+            const hsolver::diag_comm_info comm(pair_comm, rank, nproc);
+#else
+            const hsolver::diag_comm_info comm(0, 1);
+#endif
+            const std::function<void(const T*, T*, int, int)> action =
+                [&ops_L](const T* in, T* out, int local_ld, int columns)
+                { ops_L.hPsi(in, out, local_ld, columns); };
+            solve_Z_CG(Z, R, ld, nstates, action, comm);
         }
         else if (zvec_solver == "lapack")
         {
