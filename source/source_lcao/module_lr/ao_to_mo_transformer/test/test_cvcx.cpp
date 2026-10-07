@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "mpi.h"
-#include "../CVCX.h"
+#include "../cvcx.h"
 
 #include "source_lcao/module_lr/utils/lr_util.h"
 

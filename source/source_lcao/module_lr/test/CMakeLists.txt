@@ -7,7 +7,7 @@ AddTest(
 AddTest(
   TARGET MODULE_LR_grad_degen
   LIBS base parameter ${math_libs} container device
-  SOURCES test_grad_degen.cpp ../grad_degen.cpp
+  SOURCES test_grad_degen.cpp test_grad_degen_jt.cpp ../grad_degen.cpp ../grad_degen_jt.cpp
 )
 
 if(ENABLE_MPI)

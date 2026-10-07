@@ -22,6 +22,7 @@ if(ENABLE_LCAO)
       esolver_ks_lcao_tddft.cpp
       esolver_lr_lcao_tddft.cpp
       esolver_lr_grad.cpp
+      esolver_lr_relax.cpp
       esolver_gets.cpp
       lcao_others.cpp
       esolver_dm2rho.cpp

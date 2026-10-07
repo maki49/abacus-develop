@@ -1,4 +1,4 @@
-#include "CVCX.h"
+#include "cvcx.h"
 #include "source_base/module_external/blas_connector.h"
 #include "source_base/tool_title.h"
 #include "source_lcao/module_lr/utils/lr_util.h"

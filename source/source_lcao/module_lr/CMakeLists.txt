@@ -13,8 +13,8 @@ if(ENABLE_LCAO)
     utils/exciton_plotter.cpp
     ao_to_mo_transformer/ao_to_mo_parallel.cpp
     ao_to_mo_transformer/ao_to_mo_serial.cpp
-    ao_to_mo_transformer/CVCX_par.cpp
-    ao_to_mo_transformer/CVCX_serial.cpp
+    ao_to_mo_transformer/cvcx_par.cpp
+    ao_to_mo_transformer/cvcx_serial.cpp
     dm_trans/dm_trans_parallel.cpp
     dm_trans/dm_trans_serial.cpp
     operator_casida/operator_lr_hxc.cpp
@@ -32,6 +32,7 @@ if(ENABLE_LCAO)
     exx_projection.cpp
     lr_force_test.cpp
     grad_degen.cpp
+    grad_degen_jt.cpp
     cal_edm.cpp
     zeqlin_solv.cpp)
 

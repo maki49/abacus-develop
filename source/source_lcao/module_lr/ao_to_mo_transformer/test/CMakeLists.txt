@@ -8,5 +8,5 @@ AddTest(
 AddTest(
   TARGET MODULE_LR_CVCX_test
   LIBS base parameter ${math_libs} container device psi
-  SOURCES CVCX_test.cpp ../../utils/lr_util.cpp ../CVCX_par.cpp ../CVCX_serial.cpp
+  SOURCES test_cvcx.cpp ../../utils/lr_util.cpp ../cvcx_par.cpp ../cvcx_serial.cpp
 )
