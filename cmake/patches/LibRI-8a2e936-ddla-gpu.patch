@@ -79,13 +79,61 @@
      magma_queue_sync(queue);
 --- a/include/RI/ri/LRI-cal_loop3_GPU.hpp
 +++ b/include/RI/ri/LRI-cal_loop3_GPU.hpp
-@@ -2690,7 +2690,8 @@
- 		LRI_Cal_Aux::add_Ds_omp_wait_map(Ds_result_thread, Ds_result, lock_Ds_result_add_map, fac_add_Ds);
- 	} // end #pragma omp parallel
- 
+@@ -205 +205 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -341 +341 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -483 +483 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -623 +623 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -763 +763 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -903 +903 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1045 +1045 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1185 +1185 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1325 +1325 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1465 +1465 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1606 +1606 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1745 +1745 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -1884 +1884 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -2023 +2023 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -2189 +2189 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -2353 +2353 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -2517 +2517 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -2681 +2681 @@
+-					rDs_output.download(Ds_result, queue);
++					rDs_output.download(Ds_result_thread, queue);
+@@ -2693 +2693,2 @@
 -	LRI_Cal_Aux::destroy_lock_result(lock_Ds_result_add_map, Ds_result);
 +	LRI_Cal_Aux::destroy_lock(lock_Ds_result_add_map);
 +	LRI_Cal_Aux::destroy_Ds_result(Ds_result);
- 	#ifdef __MKL_RI
- 	mkl_set_num_threads(mkl_threads);
- 	#endif
