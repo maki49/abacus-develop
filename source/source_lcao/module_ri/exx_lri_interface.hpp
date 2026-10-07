@@ -120,6 +120,18 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const int istep,
             XC_Functional::set_xc_first_loop(ucell);
         }
 
+        // Spencer's cutoff depends on the current cell volume. Rebuild the
+        // convolved orbitals and their integral tables when its parameters
+        // change; init also discards caches belonging to the old kernel.
+        const auto coulomb_settings = RI_Util::update_coulomb_settings(
+            this->exx_ptr->get_info_ri().coulomb_param, ucell, &kv);
+        if (coulomb_settings != this->exx_ptr->coulomb_settings)
+        {
+            const auto abfs = this->exx_ptr->abfs;
+            const MPI_Comm& mpi_comm = this->exx_ptr->get_mpi_comm();
+            this->exx_ptr->init(mpi_comm, ucell, kv, orb, abfs);
+        }
+
         this->cal_exx_ions(ucell,PARAM.inp.out_ri_cv);
     }
 
@@ -162,10 +174,10 @@ void Exx_LRI_Interface<T, Tdata>::exx_eachiterinit(const int istep,
                 || istep > 0
                 || PARAM.inp.init_wfc == "file") // non separate loop case
             || (this->info_global.separate_loop
-                && PARAM.inp.init_wfc == "file"
+                && (istep > 0 || PARAM.inp.init_wfc == "file")
                 && this->two_level_step == 0
                 && iter == 1)
-           )  // the first iter in separate loop case
+           )  // refresh the initial hybrid Hamiltonian for the current geometry
         {
             bool flag_restart = (iter == 1) ? true : false;
 
@@ -346,7 +358,9 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
     auto restart_reset = [this]()
     { // avoid calling restart related procedure in the subsequent ion steps
         GlobalC::restart.info_load.restart_exx = true;
-        this->exx_ptr->Eexx = 0;
+        // Keep the energy paired with Hexxs until cal_exx_elec replaces both.
+        // Clearing only Eexx makes the next ionic step use an exchange
+        // Hamiltonian without its corresponding energy contribution.
     };
 
     // no separate_loop case
