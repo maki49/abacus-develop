@@ -101,20 +101,21 @@ void cal_dmr(
 
     const std::map<ModuleBase::Vector3<int>, std::complex<double>> no_hybrid_phase;
     accumulate_dmr(dm, dmR_out, no_hybrid_phase, ik_in, "module_dm::cal_dmr");
-    dm._dmr_ready = true;
     ModuleBase::timer::end("DensityMatrix", "cal_dmr");
 }
 
 template <>
-void DensityMatrix<std::complex<double>, double>::cal_dmr(const int ik_in) const
+void DensityMatrix<std::complex<double>, double>::cal_dmr(const int ik_in)
 {
     module_dm::cal_dmr(*this, this->dmr, ik_in);
+    this->_dmr_ready = true;
 }
 
 template <>
-void DensityMatrix<std::complex<double>, std::complex<double>>::cal_dmr(const int ik_in) const
+void DensityMatrix<std::complex<double>, std::complex<double>>::cal_dmr(const int ik_in)
 {
     module_dm::cal_dmr(*this, this->dmr, ik_in);
+    this->_dmr_ready = true;
 }
 
 // explicit instantiations for accumulate_dmr (used by both cal_dmr here and

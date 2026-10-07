@@ -205,7 +205,9 @@ TEST_F(DMTest, cal_DMR_blas_double)
     }
     // calculate this->dmr
     std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+    EXPECT_FALSE(DM.is_dmr_ready());
     DM.cal_dmr(-1);
+    EXPECT_TRUE(DM.is_dmr_ready());
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time
         = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
@@ -271,7 +273,9 @@ TEST_F(DMTest, cal_DMR_blas_complex)
     DM.init_dmr(&gd, &ucell);
     // calculate this->dmr
     std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+    EXPECT_FALSE(DM.is_dmr_ready());
     DM.cal_dmr(-1);
+    EXPECT_TRUE(DM.is_dmr_ready());
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time
         = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
@@ -411,7 +415,9 @@ TEST_F(DMTest, cal_DMR_soc_pauli_branch)
     DM.init_dmr(&gd, &ucell);
     // Gamma-only: reduce R vectors to (0, 0, 0), as cal_DMR_blas_double does
     DM.get_dmr_ptr(1)->fix_gamma();
+    EXPECT_FALSE(DM.is_dmr_ready());
     DM.cal_dmr(-1);
+    EXPECT_TRUE(DM.is_dmr_ready());
 
     // check the Gamma (R = 0) block: rho_0 must be 2a (Pauli), NOT a (real projection);
     // rho_x = rho_y = rho_z = 0 for uu == dd and zero spin off-diagonals.

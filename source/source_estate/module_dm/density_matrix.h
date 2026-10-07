@@ -358,7 +358,7 @@ class DensityMatrix
      * if ik_in < 0, calculate all k-points
      * if ik_in >= 0, calculate only one k-point without summing over k-points
      */
-    void cal_dmr(const int ik_in) const;
+    void cal_dmr(const int ik_in);
 
     /**
      * @brief calculate density matrix DMR with additional vector potential phase, used for hybrid gauge tddft
@@ -412,13 +412,11 @@ class DensityMatrix
      * vector.size() = 1 for non-polarization and SOC
      * vector.size() = 2 for spin-polarization
      */
-    mutable std::vector<hamilt::HContainer<TR>*> dmr;    // mutable for const function `cal_dmr`, which logically does not change the object
-    mutable std::vector<std::vector<TR>> dmr_save;
+    std::vector<hamilt::HContainer<TR>*> dmr;
+    std::vector<std::vector<TR>> dmr_save;
 
     /// @brief whether dmr holds a density matrix calculated from DMK (reset by init_dmr, set by cal_dmr)
-    /// mutable for the same reason as `dmr` above: `cal_dmr` is const, and recording that the
-    /// cache is now populated does not change the object logically.
-    mutable bool _dmr_ready = false;
+    bool _dmr_ready = false;
 
     /**
      * @brief HContainer for density matrix in real space for grid parallelization

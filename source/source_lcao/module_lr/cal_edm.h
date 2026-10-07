@@ -161,7 +161,7 @@ namespace LR
         const T* const Z,   //lvirt*locc
         const double eig_ext_istate,    //1, the excitation energy of one state
         const double* const eig_ks,     // gocc+gvirt
-        const module_dm::DensityMatrix<T, T>& dm_trans, // D_X
+        module_dm::DensityMatrix<T, T>& dm_trans, // D_X
         const psi::Psi<T>& c,
         const int& nspin,
         const bool test_force,

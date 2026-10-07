@@ -9,7 +9,7 @@ namespace module_dm
 
 // calculate DMR from DMK using blas for gamma-only calculation
 template <>
-void DensityMatrix<double, double>::cal_dmr(const int ik_in) const
+void DensityMatrix<double, double>::cal_dmr(const int ik_in)
 {
     ModuleBase::TITLE("DensityMatrix", "cal_dmr");
     using TK = double;
