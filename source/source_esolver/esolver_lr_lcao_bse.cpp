@@ -715,7 +715,9 @@ void ESolver_BSE<T, TR>::init_pot(const Charge& chg_gs)
         using ST = LR::PotHxcLR::SpinType;
     case 1: case 2:
         this->pot[0] = std::make_shared<LR::PotHxcLR>(this->xc_kernel, *this->pw_rho, *this->ucell_, chg_gs, this->pgrid(),
-            ST::S1, this->inp_->lr_init_xc_kernel);
+            // BSE multiplies its bare Coulomb matrix by the singlet factor in HamiltBSE.
+            // S1_gs has weight one; S1 would apply that factor a second time on the grid path.
+            ST::S1_gs, this->inp_->lr_init_xc_kernel);
         break;
     // case 2:
     //     this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, *this->pw_rho, ucell, chg_gs, pgrid(), openshell ? ST::S2_updown : ST::S2_singlet, this->inp_->lr_init_xc_kernel);

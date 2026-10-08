@@ -22,6 +22,14 @@ namespace LR
             xc_kernel, lr_init_xc_kernel, openshell, gxc_spin);
     }
 
+    PotHxcLR::PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis,
+        const UnitCell& ucell, const Charge& chg_gs, const Parallel_Grid& pgrid,
+        const SpinType& st, const std::vector<std::string>& lr_init_xc_kernel)
+        : PotHxcLR(xc_kernel, rho_basis, ucell, chg_gs, pgrid, st,
+                   lr_init_xc_kernel, KernelXC::GxcSpin::NoGxc)
+    {
+    }
+
     // constructor for exchange-correlation kernel
     PotHxcLR::PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell,
         const Charge& chg_gs/*ground state*/, const Parallel_Grid& pgrid,

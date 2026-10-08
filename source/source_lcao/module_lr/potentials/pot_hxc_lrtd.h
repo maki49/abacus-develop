@@ -33,8 +33,12 @@ namespace LR
         /// constructor building exchange-correlation kernel
         PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis,
             const UnitCell& ucell, const Charge& chg_gs/*ground state*/, const Parallel_Grid& pgrid,
-            const SpinType& st = SpinType::S1, const std::vector<std::string>& lr_init_xc_kernel = { "default" },
-            const int gxc_spin = KernelXC::GxcSpin::NoGxc);
+            const SpinType& st = SpinType::S1, const std::vector<std::string>& lr_init_xc_kernel = { "default" });
+        // Explicit extension: existing callers keep the original constructor without new defaults.
+        PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis,
+            const UnitCell& ucell, const Charge& chg_gs, const Parallel_Grid& pgrid,
+            const SpinType& st, const std::vector<std::string>& lr_init_xc_kernel,
+            const int gxc_spin);
         /// Constructor taking an already-built kernel. Several `PotHxcLR` can share the same* $f^{xc}$ arrays.
         /// The caller is responsible for the ordering: `KernelXC` calls `XC_Functional::set_xc_type`,
         /// and this constructor reads the resulting global `get_func_type()`, so build the kernel

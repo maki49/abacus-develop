@@ -36,10 +36,10 @@ namespace LR
         };
 
         template<typename T>
-        inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0, const double precision = 8)
+        inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0)
         {
             std::streamsize old = std::cout.precision();
-            std::cout << label << std::setprecision(precision) << std::endl;
+            std::cout << label << std::setprecision(8) << std::endl;
             for (auto& e : eigs) { std::cout << e * factor << " "; }
             std::cout << std::endl;
             std::cout.precision(old);
