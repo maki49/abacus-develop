@@ -244,3 +244,43 @@ TEST(SymmetryDensityRestoration, RebuildAfterCellSymmetryAnalysis)
         }
     }
 }
+
+TEST(SymmetryDensityRestoration, ReturnLatticePreservesBoundaryRepresentatives)
+{
+    ModuleSymmetry::Symmetry symmetry;
+    symmetry.epsilon = 3.2e-5;
+    ModuleSymmetry::Irreducible_Sector sector;
+    const ModuleBase::Matrix3 reflection(-1, 0, 0, 0, 1, 0, 0, 0, 1);
+    const ModuleBase::Vector3<double> translation(0.0, 0.0, 0.0);
+    const ModuleBase::Vector3<double> source(0.99999, 0.25, 0.5);
+    const ModuleBase::Vector3<double> mapped(0.00001, 0.25, 0.5);
+    const auto lattice = sector.get_return_lattice(symmetry, reflection, translation, source, mapped);
+    EXPECT_DOUBLE_EQ(lattice.x, -1.0);
+    EXPECT_DOUBLE_EQ(lattice.y, 0.0);
+    EXPECT_DOUBLE_EQ(lattice.z, 0.0);
+
+    // Changing either atom's representative must change its integer lattice shift.
+    const ModuleBase::Vector3<double> shifted_source(1.99999, 0.25, 0.5);
+    const ModuleBase::Vector3<double> shifted_mapped(1.00001, 0.25, 0.5);
+    const auto source_lattice = sector.get_return_lattice(
+        symmetry, reflection, translation, shifted_source, mapped);
+    const auto mapped_lattice = sector.get_return_lattice(
+        symmetry, reflection, translation, source, shifted_mapped);
+    EXPECT_DOUBLE_EQ(source_lattice.x, -2.0);
+    EXPECT_DOUBLE_EQ(mapped_lattice.x, -2.0);
+}
+
+TEST(SymmetryDensityRestoration, ReturnLatticePreservesTranslationRepresentative)
+{
+    ModuleSymmetry::Symmetry symmetry;
+    symmetry.epsilon = 3.2e-5;
+    ModuleSymmetry::Irreducible_Sector sector;
+    const ModuleBase::Matrix3 identity(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    const ModuleBase::Vector3<double> source(0.25, 0.5, 0.75);
+    const ModuleBase::Vector3<double> translation(0.99999, 0.0, 0.0);
+    const ModuleBase::Vector3<double> mapped(0.24999, 0.5, 0.75);
+    const auto lattice = sector.get_return_lattice(symmetry, identity, translation, source, mapped);
+    EXPECT_DOUBLE_EQ(lattice.x, 1.0);
+    EXPECT_DOUBLE_EQ(lattice.y, 0.0);
+    EXPECT_DOUBLE_EQ(lattice.z, 0.0);
+}
