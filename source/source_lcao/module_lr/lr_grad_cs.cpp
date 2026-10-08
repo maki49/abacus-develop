@@ -126,23 +126,12 @@ std::vector<ModuleBase::matrix> evaluate_closed_shell_force(
         // seems because those two are classes having constructors
         // but `cal_edm_from_XZ_istate` here is a functions
         std::weak_ptr<PotHxcLR> pot_weak = inputs.pot[ispin];
-        std::weak_ptr<PotHxcLR> pot_hxc_gs_weak = inputs.pot_hxc_gs;
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri_weak = inputs.exx_lri;
-#endif
-        const std::vector<ct::Tensor>& edm_k =
-            cal_edm_from_XZ_istate(Xz.data<T>() + offset,
-                Z.template data<T>() + zoffset,
-                omega[istate - ist_begin],
-                // pack the following as a struct or use parameter package
-                inputs.eig_ks.c, dm_trans,
-                c, inputs.nspin, inputs.test_force, inputs.nbasis, inputs.nocc, nvirt_g, inputs.ucell, inputs.orb_cutoff,
-#ifdef __EXX
-                exx_lri_weak, inputs.hybrid_alpha,
-#endif
-                pot_weak, pot_hxc_gs_weak,
-                inputs.kv, inputs.gd, paraX_g, inputs.pc, inputs.pmat,
-                inputs.xc_kernel, inputs.dft_functional, inputs.spin_types[ispin]);
+        const T* const x_istate = Xz.data<T>() + offset;
+        const T* const z_istate = Z.template data<T>() + zoffset;
+        const double omega_istate = omega[istate - ist_begin];
+        const std::vector<ct::Tensor>& edm_k = cal_edm_from_XZ_istate(
+            inputs, x_istate, z_istate, omega_istate, inputs.eig_ks.c,
+            dm_trans, c, pot_weak, inputs.spin_types[ispin]);
         if (inputs.test_force && inputs.nocc[0] == 1 && nvirt_g[0] == 1)
         {
 #ifdef __MPI

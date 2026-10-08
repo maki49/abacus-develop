@@ -5,6 +5,7 @@
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "cal_w_from_z.h"
+#include "gradient_inputs.h"
 #include <ATen/ops/linalg_op.h>
 #ifdef __EXX
 #include "source_lcao/module_lr/operator_casida/operator_lr_exx.h"
@@ -158,35 +159,34 @@ namespace LR
     }
 
     template<typename T>
-    std::vector<ct::Tensor> cal_edm_from_XZ_istate( //for one excited state
-        const T* const X,   //lvirt*locc
-        const T* const Z,   //lvirt*locc
-        const double eig_ext_istate,    //1, the excitation energy of one state
-        const double* const eig_ks,     // gocc+gvirt
-        module_dm::DensityMatrix<T, T>& dm_trans, // D_X
-        const psi::Psi<T>& c,
-        const int& nspin,
-        const bool test_force,
-        const int& naos,
-        const std::vector<int>& nocc,
-        const std::vector<int>& nvirt,
-        const UnitCell& ucell,
-        const std::vector<double>& orb_cutoff,
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri,
-        const double& exx_alpha,
-#endif 
+    std::vector<ct::Tensor> cal_edm_from_XZ_istate( // for one excited state
+        const GradientInputs<T>& inputs,
+        const T* const X,
+        const T* const Z,
+        const double eig_ext_istate,
+        const double* const eig_ks,
+        module_dm::DensityMatrix<T, T>& dm_trans,
+        const psi::Psi<T>& c, // preserve the caller's single-spin view
         std::weak_ptr<PotHxcLR> pot,
-        std::weak_ptr<PotHxcLR> pot_hxc_gs,
-        const K_Vectors& kv,
-        const Grid_Driver& gd,
-        const std::vector<Parallel_2D>& px,
-        const Parallel_2D& pc,
-        const Parallel_Orbitals& pmat,
-        const std::string xc_kernel,
-        const std::string& dft_functional,
         const std::string& spin_type = "singlet")
     {
+        const int& nspin = inputs.nspin;
+        const int& naos = inputs.nbasis;
+        const std::vector<int>& nocc = inputs.nocc;
+        const std::vector<int>& nvirt = inputs.nvirt;
+        const UnitCell& ucell = inputs.ucell;
+        const std::vector<double>& orb_cutoff = inputs.orb_cutoff;
+        const Grid_Driver& gd = inputs.gd;
+        const K_Vectors& kv = inputs.kv;
+        const std::vector<Parallel_2D>& px = inputs.px;
+        const Parallel_2D& pc = inputs.pc;
+        const Parallel_Orbitals& pmat = inputs.pmat;
+#ifdef __EXX
+        std::weak_ptr<Exx_LRI<T>> exx_lri = inputs.exx_lri;
+        const double& exx_alpha = inputs.hybrid_alpha;
+#endif
+        const bool test_force = inputs.test_force;
+        const std::string xc_kernel = inputs.xc_kernel;
         const int nk = kv.get_nks() / nspin;
         // 1. calculate W multiplier 
         std::vector<Parallel_2D> p_occ_occ(nspin);
@@ -200,12 +200,7 @@ namespace LR
             );
         }
         std::vector<T> W(p_occ_occ[0].get_local_size() * nk, 0.0);
-        cal_W_from_Z(W.data(), Z, X, eig_ext_istate, eig_ks, nspin, naos, nocc, nvirt,
-            ucell, orb_cutoff, gd, c,
-#ifdef __EXX
-            exx_lri, exx_alpha,
-#endif
-            pot_hxc_gs, kv, px, pc, p_occ_occ, pmat, xc_kernel, dft_functional, spin_type);
+        cal_W_from_Z(inputs, W.data(), Z, X, eig_ext_istate, eig_ks, c, p_occ_occ, spin_type);
         // std::cout << "W: " << std::endl;
         // LR_Util::print_value(W.data(), nk, p_occ_occ[0].get_col_size(), p_occ_occ[0].get_row_size());
 
@@ -239,34 +234,32 @@ namespace LR
     /// $W^X_{ki\sigma}=2K_{ki\sigma}[D^X]$ (the `op_K_cvcx` blocks below).
     template<typename T>
     std::vector<std::vector<ct::Tensor>> cal_edm_from_XZ_istate_openshell(
+        const GradientInputs<T>& inputs,
         const T* const X,
         const T* const Z,
         const double eig_ext_istate,
         const double* const eig_ks,
-        const module_dm::DensityMatrix<T, T>& dm_trans,   // unused, kept for signature symmetry
-        const psi::Psi<T>& psi_ks,
-        const int& nspin,
-        const bool test_force,
-        const int& naos,
-        const std::vector<int>& nocc,
-        const std::vector<int>& nvirt,
-        const UnitCell& ucell,
-        const std::vector<double>& orb_cutoff,
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri,
-        const double& exx_alpha,
-#endif
-        std::weak_ptr<PotHxcLR> pot,
-        std::weak_ptr<PotHxcLR> pot_hxc_gs,
-        const K_Vectors& kv,
-        const Grid_Driver& gd,
-        const std::vector<Parallel_2D>& px,
-        const Parallel_2D& pc,
-        const Parallel_Orbitals& pmat,
-        const std::string xc_kernel,
-        const std::string& ks_solver,
-        const std::string& dft_functional)
+        const module_dm::DensityMatrix<T, T>& dm_trans, // retained for signature symmetry
+        std::weak_ptr<PotHxcLR> pot)
     {
+        const int& nspin = inputs.nspin;
+        const int& naos = inputs.nbasis;
+        const std::vector<int>& nocc = inputs.nocc;
+        const std::vector<int>& nvirt = inputs.nvirt;
+        const UnitCell& ucell = inputs.ucell;
+        const std::vector<double>& orb_cutoff = inputs.orb_cutoff;
+        const Grid_Driver& gd = inputs.gd;
+        const K_Vectors& kv = inputs.kv;
+        const std::vector<Parallel_2D>& px = inputs.px;
+        const Parallel_2D& pc = inputs.pc;
+        const Parallel_Orbitals& pmat = inputs.pmat;
+#ifdef __EXX
+        std::weak_ptr<Exx_LRI<T>> exx_lri = inputs.exx_lri;
+        const double& exx_alpha = inputs.hybrid_alpha;
+#endif
+        const psi::Psi<T>& psi_ks = inputs.psi_ks;
+        const bool test_force = inputs.test_force;
+        const std::string xc_kernel = inputs.xc_kernel;
         using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
 #ifdef __EXX
         using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
@@ -288,12 +281,7 @@ namespace LR
             );
         }
         std::vector<std::vector<T>> W;
-        cal_W_from_Z_openshell(W, Z, X, eig_ext_istate, eig_ks, nspin, naos, nocc, nvirt,
-            ucell, orb_cutoff, gd, psi_ks,
-#ifdef __EXX
-            exx_lri, exx_alpha,
-#endif
-            pot_hxc_gs, kv, px, pc, p_occ_occ, pmat, xc_kernel, ks_solver, dft_functional);
+        cal_W_from_Z_openshell(inputs, W, Z, X, eig_ext_istate, eig_ks, p_occ_occ);
 
         // 2. $W^X_{ai\sigma}=2\sum_j X_{aj\sigma}K_{ji\sigma}[D^X]$.
         //    The free spin sits on X (hence `psi_in = X + off_x[sl]`, laid out over `px[sl]`),

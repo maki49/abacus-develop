@@ -1,5 +1,6 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_HPP
 #define ABACUS_SOURCE_LCAO_MODULE_LR_ZEQ_SOLVER_HPP
+#include "gradient_inputs.h"
 #include <fstream>
 #include "zeq_solver.h"
 #include <algorithm>
@@ -373,37 +374,39 @@ namespace LR
     }
 
     template<typename T>
-    void Z_vector_equation(const T* const X,
+    void Z_vector_equation(const GradientInputs<T>& inputs,
+        const T* const X,
         T* const Z,
-        const std::string& xc_kernel,
         const int& nstates,
-        const int& nspin,
-        const int& naos,
-        const std::vector<int>& nocc,
-        const std::vector<int>& nvirt,
-        const UnitCell& ucell,
-        const std::vector<double>& orb_cutoff,
-        const Grid_Driver& gd,
-        const psi::Psi<T>& psi_ks,
-        const ModuleBase::matrix& eig_ks,
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri,
-        const double& exx_alpha,
-#endif 
         std::weak_ptr<PotHxcLR> pot,
-        std::weak_ptr<PotHxcLR> pot_hxc_gs,
-        const K_Vectors& kv,
-        const std::vector<Parallel_2D>& px,
-        const Parallel_2D& pc,
-        const Parallel_Orbitals& pmat,
         const std::string& spin_type,
         const std::string& in_dir,
-        const std::string& out_dir,
-        const std::string& ks_solver,
-        const std::string& dft_functional,
         const bool openshell,
-        const std::string& zvec_solver, const bool test_force)
+        const std::string& zvec_solver)
     {
+        const int& nspin = inputs.nspin;
+        const int& naos = inputs.nbasis;
+        const std::vector<int>& nocc = inputs.nocc;
+        const std::vector<int>& nvirt = inputs.nvirt;
+        const UnitCell& ucell = inputs.ucell;
+        const std::vector<double>& orb_cutoff = inputs.orb_cutoff;
+        const Grid_Driver& gd = inputs.gd;
+        const K_Vectors& kv = inputs.kv;
+        const std::vector<Parallel_2D>& px = inputs.px;
+        const Parallel_2D& pc = inputs.pc;
+        const Parallel_Orbitals& pmat = inputs.pmat;
+        const std::string& dft_functional = inputs.dft_functional;
+        std::weak_ptr<PotHxcLR> pot_hxc_gs = inputs.pot_hxc_gs;
+#ifdef __EXX
+        std::weak_ptr<Exx_LRI<T>> exx_lri = inputs.exx_lri;
+        const double& exx_alpha = inputs.hybrid_alpha;
+#endif
+        const std::string& xc_kernel = inputs.xc_kernel;
+        const psi::Psi<T>& psi_ks = inputs.psi_ks;
+        const ModuleBase::matrix& eig_ks = inputs.eig_ks;
+        const std::string& out_dir = inputs.out_dir;
+        const std::string& ks_solver = inputs.ks_solver;
+        const bool test_force = inputs.test_force;
         ModuleBase::TITLE("Z_vector", "Z_vector");
         const int nk = kv.get_nks() / nspin;
         const int nloc_per_band = openshell

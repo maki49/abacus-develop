@@ -84,21 +84,9 @@ std::vector<ModuleBase::matrix> evaluate_open_shell_force(
 
         // 4. the energy-weighted density matrix
         std::weak_ptr<PotHxcLR> pot_weak = inputs.pot[0];
-        std::weak_ptr<PotHxcLR> pot_hxc_gs_weak = inputs.pot_hxc_gs;
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri_weak = inputs.exx_lri;
-#endif
-        const std::vector<std::vector<ct::Tensor>>& edm_k =
-            cal_edm_from_XZ_istate_openshell(X_istate, Z_istate,
-                omega[istate - ist_begin], inputs.eig_ks.c, dm_trans,
-                inputs.psi_ks, inputs.nspin, inputs.test_force, inputs.nbasis, inputs.nocc, nvirt_g,
-                inputs.ucell, inputs.orb_cutoff,
-#ifdef __EXX
-                exx_lri_weak, inputs.hybrid_alpha,
-#endif
-                pot_weak, pot_hxc_gs_weak,
-                inputs.kv, inputs.gd, paraX_g, inputs.pc, inputs.pmat, inputs.xc_kernel,
-                inputs.ks_solver, inputs.dft_functional);
+        const double omega_istate = omega[istate - ist_begin];
+        const std::vector<std::vector<ct::Tensor>>& edm_k = cal_edm_from_XZ_istate_openshell(
+            inputs, X_istate, Z_istate, omega_istate, inputs.eig_ks.c, dm_trans, pot_weak);
         module_dm::DensityMatrix<T, double> edm_real = LR_Util::build_dm_from_dmk_spin<T, double>(edm_k,
             inputs.pmat, inputs.nk, inputs.kv.kvec_d, inputs.ucell, inputs.gd, inputs.orb_cutoff,
             /*symmetrize=*/true);

@@ -87,16 +87,12 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
     // solved in grows. Both the closed- and the open-shell path go through here.
     ct::Tensor Z = LR_Util::newTensor<T>({ nst, this->nloc_per_state_z_ });
     // construct and solve the Z-vector equation
-    Z_vector_equation(Xz.template data<T>(), Z.template data<T>(),
-        this->xc_kernel, nst, this->nspin, this->nbasis, this->nocc, this->nvirt_z_,
-        (*this->ucell_), orb_cutoff_, this->gd(), *this->psi_ks_z_, this->eig_ks_z_,
-#ifdef __EXX    
-        std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha,
-#endif
-        std::weak_ptr<PotHxcLR>(this->pot[ispin]), std::weak_ptr<PotHxcLR>(this->pot_hxc_gs),
-        this->kv, this->paraX_z_, this->paraC_z_,
-        this->paraMat_, this->spin_types[ispin], this->in_dir, this->out_dir, this->inp_->ks_solver,
-        this->inp_->dft_functional, this->openshell, this->inp_->lr_grad_solver, this->inp_->test_force);
+    const LR::GradientInputs<T> inputs = this->gradient_inputs_();
+    const T* const x_data = Xz.template data<T>();
+    T* const z_data = Z.template data<T>();
+    std::weak_ptr<PotHxcLR> pot_weak = inputs.pot[ispin];
+    Z_vector_equation(inputs, x_data, z_data, nst, pot_weak,
+        this->spin_types[ispin], this->in_dir, this->openshell, this->inp_->lr_grad_solver);
     ModuleBase::timer::end("ESolver_LR", "solve_zvector_eqation");
     return Z;
 }

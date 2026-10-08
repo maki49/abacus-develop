@@ -1,5 +1,6 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_CAL_W_FROM_Z_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_CAL_W_FROM_Z_H
+#include "gradient_inputs.h"
 #include "source_hamilt/hamilt.h"
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -63,34 +64,34 @@ namespace LR
     }
 
     template<typename T>
-    void cal_W_from_Z(T* const W,
+    void cal_W_from_Z(const GradientInputs<T>& inputs,
+        T* const W,
         const T* const Z,
         const T* const X,
         const double eig,
         const double* const eig_ks,
-        const int& nspin,
-        const int& naos,
-        const std::vector<int>& nocc,
-        const std::vector<int>& nvirt,
-        const UnitCell& ucell,
-        const std::vector<double>& orb_cutoff,
-        const Grid_Driver& gd,
-        const psi::Psi<T>& psi_ks,
-
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri,
-        const double& exx_alpha,
-#endif 
-        std::weak_ptr<PotHxcLR> pot_hxc_gs,
-        const K_Vectors& kv,
-        const std::vector<Parallel_2D>& px,
-        const Parallel_2D& pc,
-        const std::vector<Parallel_2D>& p_occ_occ,   // < for W
-        const Parallel_Orbitals& pmat,
-        const std::string xc_kernel,
-        const std::string& dft_functional,
+        const psi::Psi<T>& psi_ks, // the closed-shell caller supplies a single-spin view
+        const std::vector<Parallel_2D>& p_occ_occ,
         const std::string& spin_type = "singlet")
     {
+        const int& nspin = inputs.nspin;
+        const int& naos = inputs.nbasis;
+        const std::vector<int>& nocc = inputs.nocc;
+        const std::vector<int>& nvirt = inputs.nvirt;
+        const UnitCell& ucell = inputs.ucell;
+        const std::vector<double>& orb_cutoff = inputs.orb_cutoff;
+        const Grid_Driver& gd = inputs.gd;
+        const K_Vectors& kv = inputs.kv;
+        const std::vector<Parallel_2D>& px = inputs.px;
+        const Parallel_2D& pc = inputs.pc;
+        const Parallel_Orbitals& pmat = inputs.pmat;
+        const std::string& dft_functional = inputs.dft_functional;
+        std::weak_ptr<PotHxcLR> pot_hxc_gs = inputs.pot_hxc_gs;
+#ifdef __EXX
+        std::weak_ptr<Exx_LRI<T>> exx_lri = inputs.exx_lri;
+        const double& exx_alpha = inputs.hybrid_alpha;
+#endif
+        const std::string xc_kernel = inputs.xc_kernel;
         ModuleBase::TITLE("cal_W_from_Z", "cal_W_from_Z");
         using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
 #ifdef __EXX
@@ -201,33 +202,34 @@ namespace LR
     /// here it is `S2_updown`, one $K_{\sigma\sigma'}$ component, and the $\sum_{\sigma'}$
     /// is done by the block loop below.
     template<typename T>
-    void cal_W_from_Z_openshell(std::vector<std::vector<T>>& W,
+    void cal_W_from_Z_openshell(const GradientInputs<T>& inputs,
+        std::vector<std::vector<T>>& W,
         const T* const Z,
         const T* const X,
         const double eig,
         const double* const eig_ks,
-        const int& nspin,
-        const int& naos,
-        const std::vector<int>& nocc,
-        const std::vector<int>& nvirt,
-        const UnitCell& ucell,
-        const std::vector<double>& orb_cutoff,
-        const Grid_Driver& gd,
-        const psi::Psi<T>& psi_ks,
-#ifdef __EXX
-        std::weak_ptr<Exx_LRI<T>> exx_lri,
-        const double& exx_alpha,
-#endif
-        std::weak_ptr<PotHxcLR> pot_hxc_gs,
-        const K_Vectors& kv,
-        const std::vector<Parallel_2D>& px,
-        const Parallel_2D& pc,
-        const std::vector<Parallel_2D>& p_occ_occ,
-        const Parallel_Orbitals& pmat,
-        const std::string xc_kernel,
-        const std::string& ks_solver,
-        const std::string& dft_functional)
+        const std::vector<Parallel_2D>& p_occ_occ)
     {
+        const int& nspin = inputs.nspin;
+        const int& naos = inputs.nbasis;
+        const std::vector<int>& nocc = inputs.nocc;
+        const std::vector<int>& nvirt = inputs.nvirt;
+        const UnitCell& ucell = inputs.ucell;
+        const std::vector<double>& orb_cutoff = inputs.orb_cutoff;
+        const Grid_Driver& gd = inputs.gd;
+        const K_Vectors& kv = inputs.kv;
+        const std::vector<Parallel_2D>& px = inputs.px;
+        const Parallel_2D& pc = inputs.pc;
+        const Parallel_Orbitals& pmat = inputs.pmat;
+        const std::string& dft_functional = inputs.dft_functional;
+        std::weak_ptr<PotHxcLR> pot_hxc_gs = inputs.pot_hxc_gs;
+#ifdef __EXX
+        std::weak_ptr<Exx_LRI<T>> exx_lri = inputs.exx_lri;
+        const double& exx_alpha = inputs.hybrid_alpha;
+#endif
+        const psi::Psi<T>& psi_ks = inputs.psi_ks;
+        const std::string xc_kernel = inputs.xc_kernel;
+        const std::string& ks_solver = inputs.ks_solver;
         ModuleBase::TITLE("cal_W_from_Z_openshell", "cal_W_from_Z_openshell");
         using ATYPE = typename OperatorLRHxc<T>::MO_TO_AO_TYPE;
 #ifdef __EXX
