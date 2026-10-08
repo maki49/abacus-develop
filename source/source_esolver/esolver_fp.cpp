@@ -214,6 +214,10 @@ void ESolver_FP::before_scf(UnitCell& ucell, const int istep)
             const int cal_symm_repr[2] = {this->inp_->cal_symm_repr[0], this->inp_->cal_symm_repr[1]};
             ucell.symm.analy_sys(ucell.lat, ucell.st, ucell.atoms, GlobalV::ofs_running,
                                  this->inp_->symmetry_prec, this->inp_->nspin, this->inp_->calculation, cal_symm_repr);
+            if (this->inp_->calculation == "cell-relax")
+            {
+                this->on_cell_symmetry_updated(ucell);
+            }
             ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "SYMMETRY");
         }
 

@@ -42,6 +42,9 @@ class ESolver_FP : public ESolver
     virtual void after_all_runners(BaseCell& basecell) override;
 
   protected:
+    //! Refresh solver-owned caches after cell-relax symmetry analysis.
+    virtual void on_cell_symmetry_updated(const UnitCell&) {}
+
     virtual void before_scf(UnitCell& ucell, const int istep);
 
     virtual void after_scf(UnitCell& ucell, const int istep, const bool conv_esolver);

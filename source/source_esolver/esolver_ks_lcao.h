@@ -42,6 +42,8 @@ class ESolver_KS_LCAO : public ESolver_KS
     void after_all_runners(BaseCell& basecell) override;
 
   protected:
+    void on_cell_symmetry_updated(const UnitCell& ucell) override;
+
     virtual void before_scf(UnitCell& ucell, const int istep) override;
 
     virtual void iter_init(UnitCell& ucell, const int istep, const int iter) override;

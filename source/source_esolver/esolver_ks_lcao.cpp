@@ -119,6 +119,12 @@ void ESolver_KS_LCAO<TK, TR>::before_all_runners(BaseCell& basecell, const Input
 
 
 template <typename TK, typename TR>
+void ESolver_KS_LCAO<TK, TR>::on_cell_symmetry_updated(const UnitCell& ucell)
+{
+    this->exx_nao.refresh_symmetry(ucell, this->kv, this->pv, this->exx_info_);
+}
+
+template <typename TK, typename TR>
 void ESolver_KS_LCAO<TK, TR>::before_scf(UnitCell& ucell, const int istep)
 {
     ModuleBase::TITLE("ESolver_KS_LCAO", "before_scf");

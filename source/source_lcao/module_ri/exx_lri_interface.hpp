@@ -85,6 +85,7 @@ void Exx_LRI_Interface<T, Tdata>::exx_before_all_runners(
     const Parallel_2D& pv)
 {
     ModuleBase::TITLE("Exx_LRI_Interface","exx_before_all_runners");
+    this->symrot_.reset_symmetry();
     // initialize the rotation matrix in AO representation
     this->exx_spacegroup_symmetry = (ModuleSymmetry::Symmetry::symm_flag == 1);
     if (this->exx_spacegroup_symmetry)
@@ -122,7 +123,8 @@ void Exx_LRI_Interface<T, Tdata>::exx_beforescf(const int istep,
 
         // Spencer's cutoff depends on the current cell volume. Rebuild the
         // convolved orbitals and their integral tables when its parameters
-        // change; init also discards caches belonging to the old kernel.
+        // change: the tables depend on abfs_ccp, not just on the unchanged
+        // atomic basis. init also discards caches belonging to the old kernel.
         const auto coulomb_settings = RI_Util::update_coulomb_settings(
             this->exx_ptr->get_info_ri().coulomb_param, ucell, &kv);
         if (coulomb_settings != this->exx_ptr->coulomb_settings)

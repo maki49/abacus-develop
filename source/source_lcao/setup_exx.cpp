@@ -122,5 +122,26 @@ void Exx_NAO<TK>::before_scf(
 }
 
 
+template <typename TK>
+void Exx_NAO<TK>::refresh_symmetry(const UnitCell& ucell,
+                                   const K_Vectors& kv,
+                                   const Parallel_Orbitals& pv,
+                                   const Exx_Info& exx_info)
+{
+#ifdef __EXX
+    if (exx_info.info_global.cal_exx)
+    {
+        if (exx_info.info_ri.real_number)
+        {
+            this->exd->exx_before_all_runners(kv, ucell, pv);
+        }
+        else
+        {
+            this->exc->exx_before_all_runners(kv, ucell, pv);
+        }
+    }
+#endif
+}
+
 template class Exx_NAO<double>;
 template class Exx_NAO<std::complex<double>>;

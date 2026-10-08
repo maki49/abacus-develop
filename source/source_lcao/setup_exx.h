@@ -48,6 +48,11 @@ class Exx_NAO
             const Input_para& inp,
             Exx_Info& exx_info);
 
+    void refresh_symmetry(const UnitCell& ucell,
+                          const K_Vectors& kv,
+                          const Parallel_Orbitals& pv,
+                          const Exx_Info& exx_info);
+
 };
 
 
