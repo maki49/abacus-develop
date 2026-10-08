@@ -93,7 +93,7 @@ namespace LR
             for (auto&& j : { 0, 1 })
             {
                 module_dm::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j);
-                elecstate::Potential pot_hij = dm_to_hxc_potential(dm_ij);
+                std::unique_ptr<elecstate::Potential> pot_hij = dm_to_hxc_potential(dm_ij);
                 // 1. dtau(S_ij)
                 {
                     std::vector<hamilt::HContainer<double>>  dS = cal_hs_grad('S', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);   // (dr i|j)
@@ -118,9 +118,9 @@ namespace LR
                         ModuleBase::matrix(this->ucell_.nat, 3);
                     // local pp Pulay term
                     ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
-                    elecstate::Potential pot_loc = this->local_potential();
+                    std::unique_ptr<elecstate::Potential> pot_loc = this->local_potential();
                     PulayForceStress::cal_pulay_fs(dm_ij.get_dmr_vec().size()/*nspin*/, fvl_dphi, stress_tmp,
-                        dm_ij, this->ucell_, &pot_loc, true, false);
+                        dm_ij, this->ucell_, pot_loc.get(), true, false);
                     Parallel_Reduce::reduce_pool(fvl_dphi.c, fvl_dphi.nr * fvl_dphi.nc);   // see lr_force.cpp's `fvl_dphi`
 
                     // nonlocal pp term (Hellmann-Feynman + Pulay)
@@ -160,7 +160,7 @@ namespace LR
             for (auto&& j : { 0, 1 })
             {
                 module_dm::DensityMatrix<TK, double> dm_ij = init_dm_eff(i, j, false);
-                elecstate::Potential pot_hxc_ij = dm_to_hxc_potential(dm_ij);
+                std::unique_ptr<elecstate::Potential> pot_hxc_ij = dm_to_hxc_potential(dm_ij);
                 module_dm::DensityMatrix<TK, double> dm_ij_sym = init_dm_eff(i, j, true);
                 for (auto&& k : { 0, 1 })
                     for (auto&& l : { 0, 1 })
@@ -170,12 +170,12 @@ namespace LR
                         if (is_grad)
                         {
                             // 2. pulay term + Hellmann-Feynman term
-                            elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
+                            std::unique_ptr<elecstate::Potential> pot_hxc_kl = dm_to_hxc_potential(dm_kl);
                             module_dm::DensityMatrix<TK, double> dm_kl_sym = init_dm_eff(k, l, true);
                             ModuleBase::matrix fhartree_pulay(this->ucell_.nat, 3), fhartree_h_f(this->ucell_.nat, 3);
                             ModuleBase::matrix stress_tmp;  // dummy
-                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_pulay, stress_tmp, dm_ij_sym, this->ucell_, &pot_hxc_kl, true, false);  // Pulay term
-                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_h_f, stress_tmp, dm_kl_sym, this->ucell_, &pot_hxc_ij, true, false);  // Hellmann-Feynman term
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_pulay, stress_tmp, dm_ij_sym, this->ucell_, pot_hxc_kl.get(), true, false);  // Pulay term
+                            PulayForceStress::cal_pulay_fs(1/*nspin*/, fhartree_h_f, stress_tmp, dm_kl_sym, this->ucell_, pot_hxc_ij.get(), true, false);  // Hellmann-Feynman term
                             Parallel_Reduce::reduce_pool(fhartree_pulay.c, fhartree_pulay.nr * fhartree_pulay.nc);
                             Parallel_Reduce::reduce_pool(fhartree_h_f.c, fhartree_h_f.nr * fhartree_h_f.nc);
                             ModuleIO::print_force(this->ofs_running_, this->ucell_,
@@ -205,13 +205,13 @@ namespace LR
                         else
                         {
                             //2. build charge & potential
-                            elecstate::Potential pot_hxc_kl = dm_to_hxc_potential(dm_kl);
+                            std::unique_ptr<elecstate::Potential> pot_hxc_kl = dm_to_hxc_potential(dm_kl);
                             Charge charge_ij;
                             this->dm_to_charge(dm_ij, charge_ij);
                             // 3. cal energy
                             double e_hxc = std::inner_product(charge_ij.rho[0],
                                 charge_ij.rho[0] + this->rhopw_.nrxx,
-                                pot_hxc_kl.get_eff_v(0), 0.0) * 0.5 * this->ucell_.omega / static_cast<double>(this->rhopw_.nrxx);
+                                pot_hxc_kl->get_eff_v(0), 0.0) * 0.5 * this->ucell_.omega / static_cast<double>(this->rhopw_.nrxx);
                             this->ofs_running_ << "  H2_SZ_CENTER4_COULOMB ("
                                 << std::to_string(i) + std::to_string(j) + "|" + std::to_string(k) + std::to_string(l)
                                 << ") by Gint: " << std::setprecision(15) << e_hxc * 2 << std::endl; // 2 for testing (ij|kl) instead of real Coulomb energy 0.5*(ij|kl)

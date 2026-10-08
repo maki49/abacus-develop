@@ -53,6 +53,9 @@ namespace LR
         {
             ModuleBase::TITLE("Z_vector_R", "Z_vector_R");
 
+            // Destroy the base chain while its borrowed density matrix is still alive.
+            delete this->ops;
+            this->ops = nullptr;
             this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             this->DM_diff = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);

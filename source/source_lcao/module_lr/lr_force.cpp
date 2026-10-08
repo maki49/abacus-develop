@@ -31,27 +31,27 @@ namespace LR
     }
 
     template<typename TK>
-    elecstate::Potential LR_Force<TK>::dm_to_hxc_potential(const module_dm::DensityMatrix<TK, double>& dm)
+    std::unique_ptr<elecstate::Potential> LR_Force<TK>::dm_to_hxc_potential(const module_dm::DensityMatrix<TK, double>& dm)
     {
-        double etxc = 0.0, vtxc = 0.0;
-        elecstate::Potential pot(&this->rhodpw_, &this->rhopw_, &this->ucell_,
+        std::unique_ptr<elecstate::Potential> pot(new elecstate::Potential(&this->rhodpw_, &this->rhopw_, &this->ucell_,
             &this->locpp_.vloc, const_cast<Structure_Factor*>(&this->sf_),
-            nullptr/*surchem*/, &etxc, &vtxc);
-        this->vh_in_h_ ? pot.pot_register({ "hartree", "xc" }) : pot.pot_register({ "xc" });
+            nullptr/*surchem*/, &this->etxc_, &this->vtxc_));
+        if (this->vh_in_h_) { pot->pot_register({ "hartree", "xc" }); }
+        else { pot->pot_register({ "xc" }); }
         Charge charge;
         this->dm_to_charge(dm, charge);
-        pot.init_pot(&charge); // call update_from_charge inside
+        pot->init_pot(&charge); // call update_from_charge inside
         return pot;
     }
 
     template<typename TK>
-    elecstate::Potential LR_Force<TK>::local_potential()
+    std::unique_ptr<elecstate::Potential> LR_Force<TK>::local_potential()
     {
-        elecstate::Potential pot(&this->rhodpw_, &this->rhopw_, &this->ucell_,
+        std::unique_ptr<elecstate::Potential> pot(new elecstate::Potential(&this->rhodpw_, &this->rhopw_, &this->ucell_,
             &this->locpp_.vloc, const_cast<Structure_Factor*>(&this->sf_),
-            nullptr/*surchem*/, nullptr/*etxc*/, nullptr/*vtxc*/);
-        pot.pot_register({ "local" });
-        pot.init_pot(nullptr);
+            nullptr/*surchem*/, nullptr/*etxc*/, nullptr/*vtxc*/));
+        pot->pot_register({ "local" });
+        pot->init_pot(nullptr);
         return pot;
     }
 
@@ -87,9 +87,9 @@ namespace LR
         // 3.1. local pp (Pulay)
         ModuleBase::matrix fvl_dphi(this->ucell_.nat, 3);
         ModuleBase::matrix stress_tmp;  // no use now, only for passing into interfaces
-        elecstate::Potential pot_loc = this->local_potential();
+        std::unique_ptr<elecstate::Potential> pot_loc = this->local_potential();
         PulayForceStress::cal_pulay_fs(relax_diff_dm.get_dmr_vec().size()/*nspin*/, fvl_dphi, stress_tmp,
-            relax_diff_dm, this->ucell_, &pot_loc, true, false);
+            relax_diff_dm, this->ucell_, pot_loc.get(), true, false);
         // the grid-based `cal_pulay_fs` only sums this rank's share of the real-space grid;
         // core ABACUS always reduces right after it (see force_stress_lcao.cpp).
         Parallel_Reduce::reduce_pool(fvl_dphi.c, fvl_dphi.nr * fvl_dphi.nc);
@@ -102,11 +102,11 @@ namespace LR
         // ModuleBase::matrix fhxc_dphi = (fgs_dphi - fvl_dphi) * 0.5; // avoid double count of hxc Pulay term
         // method 2 
         ModuleBase::matrix fhxc_dphi(this->ucell_.nat, 3);
-        elecstate::Potential pot_hxc = this->dm_to_hxc_potential(dm_gs);
+        std::unique_ptr<elecstate::Potential> pot_hxc = this->dm_to_hxc_potential(dm_gs);
         // `cal_pulay_fs` calculates 1*Pulay-term. 
         // For ground-state DFT, Pulay term = Hellmann-Feynman term, F = 1/2(Pulay + H-F) = Pulay, so directly call it once gives correct result.
         PulayForceStress::cal_pulay_fs(relax_diff_dm.get_dmr_vec().size()/*nspin*/, fhxc_dphi, stress_tmp,
-            relax_diff_dm, this->ucell_, &pot_hxc, true, false);
+            relax_diff_dm, this->ucell_, pot_hxc.get(), true, false);
         Parallel_Reduce::reduce_pool(fhxc_dphi.c, fhxc_dphi.nr * fhxc_dphi.nc);   // see `fvl_dphi` above
         if (reproduce_gs) {fhxc_dphi *= 0.5;} // avoid double count
 
@@ -132,10 +132,10 @@ namespace LR
         // $v_\text{Hxc}[\rho^\text{gs}]$ is the correct potential.
         if (reproduce_gs || pot_hxc_gs == nullptr)
         {
-            elecstate::Potential pot_hxc_relaxed_diff = this->dm_to_hxc_potential(relax_diff_dm);
+            std::unique_ptr<elecstate::Potential> pot_hxc_relaxed_diff = this->dm_to_hxc_potential(relax_diff_dm);
             //`cal_pulay_fs` calculates only one spin channel because `relax_diff_dm` has only one.
             PulayForceStress::cal_pulay_fs(1/*nspin*/, fhxc_dvhxc, stress_tmp,
-                dm_gs, this->ucell_, &pot_hxc_relaxed_diff, true, false);
+                dm_gs, this->ucell_, pot_hxc_relaxed_diff.get(), true, false);
             fhxc_dvhxc *= gs_dm_channel_factor(this->nspin_);
         }
         else if (openshell)

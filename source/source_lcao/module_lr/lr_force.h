@@ -1,5 +1,6 @@
 #ifndef ABACUS_LR_FORCE_H
 #define ABACUS_LR_FORCE_H
+#include <memory>
 #include "force_funcs.h"
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
 #include "source_lcao/module_lr/potentials/pot_grad_xc.h"
@@ -118,9 +119,13 @@ namespace LR
         const bool vh_in_h_ = PARAM.inp.vh_in_h;
         const std::string dft_functional_ = PARAM.inp.dft_functional;
 
+        // PotXC borrows these buffers; they outlive every local potential created here.
+        double etxc_ = 0.0;
+        double vtxc_ = 0.0;
+
         void dm_to_charge(const module_dm::DensityMatrix<TK, double>& dm, Charge& chr_out);
-        elecstate::Potential dm_to_hxc_potential(const module_dm::DensityMatrix<TK, double>& dm);
-        elecstate::Potential local_potential();
+        std::unique_ptr<elecstate::Potential> dm_to_hxc_potential(const module_dm::DensityMatrix<TK, double>& dm);
+        std::unique_ptr<elecstate::Potential> local_potential();
     };
 }
 

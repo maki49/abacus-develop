@@ -96,7 +96,7 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
         std::weak_ptr<PotHxcLR>(this->pot[ispin]), std::weak_ptr<PotHxcLR>(this->pot_hxc_gs),
         this->kv, this->paraX_z_, this->paraC_z_,
         this->paraMat_, this->spin_types[ispin], this->in_dir, this->out_dir, this->inp_->ks_solver,
-        this->inp_->dft_functional, this->openshell, this->inp_->lr_grad_solver);
+        this->inp_->dft_functional, this->openshell, this->inp_->lr_grad_solver, this->inp_->test_force);
     ModuleBase::timer::end("ESolver_LR", "solve_zvector_eqation");
     return Z;
 }
@@ -234,10 +234,10 @@ ModuleESolver::ESolver_LR<T, TR>::cal_grad_matrix_degenerate(const int ispin,
             const T* const xk = Xz.template data<T>() + static_cast<size_t>(k) * nloc_g;
             const T* const xl = Xz.template data<T>() + static_cast<size_t>(l) * nloc_g;
             T loc = static_cast<T>(0);
-            for (int i = 0; i < nloc_g; ++i) { loc += xk[i] * xl[i]; }
+            for (int i = 0; i < nloc_g; ++i) { loc += LR_Util::get_conj(xk[i]) * xl[i]; }
             Parallel_Reduce::reduce_all(loc);
             const double ref = (k == l) ? 1.0 : 0.0;
-            max_ovlp_err = std::max(max_ovlp_err, std::abs(std::real(loc) - ref));
+            max_ovlp_err = std::max(max_ovlp_err, std::abs(loc - ref));
         }
     }
     const double omega_spread = *std::max_element(omega_member.begin(), omega_member.end())

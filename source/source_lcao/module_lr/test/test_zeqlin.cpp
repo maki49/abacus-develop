@@ -1,4 +1,7 @@
 #include <gtest/gtest.h>
+#include "../zeq_solver.hpp"
+#include "../cal_edm.h"
+#include "../cal_edm.h"
 #include "mpi.h"
 #include "../zeqlin_solv.h"
 
@@ -261,6 +264,41 @@ TEST_F(ZeqLinearSolverTest, ElpaRejectsIndefinite)
     EXPECT_THROW(LR::elpa_linear_solver<double>(a_loc.data(), b_loc.data(), pa, pb), std::runtime_error);
 }
 #endif
+
+
+TEST(ZeqCGReview, SolvesIdentityWithoutDumpingProductionVector)
+{
+    double rhs[] = {2.0, -3.0};
+    double z[] = {0.0, 0.0};
+    const std::function<void(const double*, double*)> identity =
+        [](const double* x, double* y) { y[0] = x[0]; y[1] = x[1]; };
+    testing::internal::CaptureStdout();
+    LR::solve_Z_CG(z, rhs, 2, 1, identity, false);
+    const std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_NEAR(z[0], rhs[0], 1e-12);
+    EXPECT_NEAR(z[1], rhs[1], 1e-12);
+    EXPECT_EQ(output.find("Final Z-vector:"), std::string::npos);
+}
+
+TEST(ZeqCGReview, ZeroRhsIsConverged)
+{
+    double rhs[] = {0.0, 0.0};
+    double z[] = {9.0, -1.0};
+    const std::function<void(const double*, double*)> identity =
+        [](const double* x, double* y) { y[0] = x[0]; y[1] = x[1]; };
+    LR::solve_Z_CG(z, rhs, 2, 1, identity, false);
+    EXPECT_DOUBLE_EQ(z[0], 0.0);
+    EXPECT_DOUBLE_EQ(z[1], 0.0);
+}
+
+TEST(ZeqCGReview, RejectsAnUnsolvableSystem)
+{
+    double rhs[] = {1.0, 2.0};
+    double z[] = {0.0, 0.0};
+    const std::function<void(const double*, double*)> zero =
+        [](const double*, double* y) { y[0] = 0.0; y[1] = 0.0; };
+    EXPECT_THROW(LR::solve_Z_CG(z, rhs, 2, 1, zero, false), std::runtime_error);
+}
 
 int main(int argc, char** argv)
 {

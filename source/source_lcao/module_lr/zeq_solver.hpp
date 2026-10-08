@@ -4,6 +4,8 @@
 #include "zeq_solver.h"
 #include <algorithm>
 #include <stdexcept>
+#include <sstream>
+#include <cmath>
 #include <vector>
 #include "source_base/opt_cg.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
@@ -13,10 +15,10 @@
 namespace LR
 {
     // inline void solve_Z_CG(double* const Z, const double* const R, const int& ld, const int& nstates,
-    //     std::function<void(const double* const, double* const)> f_LZ)
+    //     std::function<void(const double* const, double* const)> f_LZ, const bool test_force)
     // Opt_CG's interfaces have no const qualifier for the pointer
     inline void solve_Z_CG(double* const Z, double* R, const int& ld, const int& nstates,
-        std::function<void(const double* const, double* const)> f_LZ)
+        std::function<void(const double* const, double* const)> f_LZ, const bool test_force)
     {
         ModuleBase::TITLE("Z_vector", "solve_Z_CG");
         ModuleBase::timer::start("Z_vector", "solve_Z_CG");
@@ -31,13 +33,11 @@ namespace LR
         ModuleBase::Opt_CG cg;
         cg.allocate(size);
         cg.init_b(R);
-        int final_iter = 0;
         std::cout << "Start solving Z-vector equaiton with CG method ..." << std::endl;
         for (int iter = 0; iter < maxiter; ++iter)
         {
             if (residual < tol)
             {
-                final_iter = iter;
                 break;
             }
             cg.next_direct(LP.data<double>(), 0, P.data<double>());
@@ -55,13 +55,37 @@ namespace LR
             std::transform(Z, Z + size, P.data<double>(), Z, [step](const double& z, const double& p) { return z + step * p; });
             residual = cg.get_residual();
         }
-        std::cout << "Final Z-vector:" << std::endl;
-        LR_Util::print_value(Z, nstates, ld);
+        if (!(residual < tol))
+        {
+            // Opt_CG's residual precedes its last step; check the returned vector itself.
+            f_LZ(Z, LP.data<double>());
+            double residual_squared = 0.0;
+            for (int i = 0; i < size; ++i)
+            {
+                const double difference = LP.data<double>()[i] - R[i];
+                residual_squared += difference * difference;
+            }
+            Parallel_Reduce::reduce_all(residual_squared);
+            residual = std::sqrt(residual_squared);
+            if (!(residual < tol))
+            {
+                std::ostringstream message;
+                message << "Z-vector CG did not converge after " << maxiter
+                        << " iterations (residual=" << residual << ", tolerance=" << tol
+                        << "). Excited-state forces are not valid.";
+                throw std::runtime_error(message.str());
+            }
+        }
+        if (test_force)
+        {
+            std::cout << "Final Z-vector:" << std::endl;
+            LR_Util::print_value(Z, nstates, ld);
+        }
         ModuleBase::timer::end("Z_vector", "solve_Z_CG");
     }
 
     inline void solve_Z_CG(std::complex<double>* const Z, std::complex<double>* R, const int& ld, const int& nstates,
-        std::function<void(const std::complex<double>* const, std::complex<double>* const)> f_LZ)
+        std::function<void(const std::complex<double>* const, std::complex<double>* const)> f_LZ, const bool test_force)
     {
         throw std::runtime_error("complex Z-vector solver is not implemented yet");
     }
@@ -133,7 +157,7 @@ namespace LR
     /// see `solve_Z_scalapack` / `solve_Z_elpa` for the distributed solves.
     template<typename T, typename THam>
     inline void solve_Z_lapack(T* const Z, const T* const R, const int& ld, const int& nstates,
-        THam& hm, const int nspin_x = 1)
+        THam& hm, const int nspin_x, const bool test_force)
     {
         ModuleBase::TITLE("Z_vector", "solve_Z_lapack");
         const int n_global = zvec_global_dim(hm, nspin_x);
@@ -165,8 +189,11 @@ namespace LR
         ModuleBase::timer::end("Z_vector", "lapack_solver");
 
         // test: print full Z
-        std::cout << "The full Z-vector solved by LAPACK:" << std::endl;
-        LR_Util::print_value(Z_full.data(), nstates, n_global);
+        if (test_force)
+        {
+            std::cout << "The full Z-vector solved by LAPACK:" << std::endl;
+            LR_Util::print_value(Z_full.data(), nstates, n_global);
+        }
 
         // copy the local part of Z_full to Z
 #ifdef __MPI
@@ -177,8 +204,11 @@ namespace LR
 #else
         std::copy(Z_full.begin(), Z_full.end(), Z);
 #endif
-        std::cout << "The local Z-vector solved by LAPACK:" << std::endl;
-        LR_Util::print_value(Z, nstates, ld);
+        if (test_force)
+        {
+            std::cout << "The local Z-vector solved by LAPACK:" << std::endl;
+            LR_Util::print_value(Z, nstates, ld);
+        }
     }
 
 #ifdef __MPI
@@ -309,16 +339,16 @@ namespace LR
     /// `solve_Z_lapack` reads.
     template<typename T, typename THamL>
     inline void solve_zeq_with(T* const Z, T* const R, const int ld, const int nstates,
-        THamL& ops_L, const int nspin_x, const std::string& zvec_solver)
+        THamL& ops_L, const int nspin_x, const std::string& zvec_solver, const bool test_force)
     {
         for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
         if (zvec_solver == "cg")
         {
             solve_Z_CG(Z, R, ld, nstates,
                 [&ops_L, ld, nstates](const T* const in, T* const out)
-                { ops_L.hPsi(in, out, ld, nstates); });
+                { ops_L.hPsi(in, out, ld, nstates); }, test_force);
         }
-        else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x); }
+        else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x, test_force); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "scalapack_chol") { solve_Z_scalapack_chol(Z, R, ld, nstates, ops_L, nspin_x); }
         else if (zvec_solver == "elpa") { solve_Z_elpa(Z, R, ld, nstates, ops_L, nspin_x); }
@@ -332,14 +362,14 @@ namespace LR
     template<typename T, typename TOpsR, typename TOpsL>
     void build_and_solve_zeq(TOpsR& ops_R, TOpsL& ops_L, const int nspin_x,
         const T* const X, container::Tensor& R, T* const Z,
-        const int nloc_per_band, const int nstates, const std::string& zvec_solver)
+        const int nloc_per_band, const int nstates, const std::string& zvec_solver, const bool test_force)
     {
         ModuleBase::timer::start("Z_vector", "Z_vector_R");
         ops_R.hPsi(X, R.template data<T>(), nloc_per_band, nstates);  // act each operator on X
         ModuleBase::timer::end("Z_vector", "Z_vector_R");
         // std::cout << "The right side of the Z-vector equation:" << std::endl;
         // LR_Util::print_value(R.template data<T>(), nstates, nloc_per_band);
-        solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver);
+        solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver, test_force);
     }
 
     template<typename T>
@@ -372,7 +402,7 @@ namespace LR
         const std::string& ks_solver,
         const std::string& dft_functional,
         const bool openshell,
-        const std::string& zvec_solver)
+        const std::string& zvec_solver, const bool test_force)
     {
         ModuleBase::TITLE("Z_vector", "Z_vector");
         const int nk = kv.get_nks() / nspin;
@@ -396,7 +426,7 @@ namespace LR
                 exx_lri, exx_alpha,
 #endif
                 pot_hxc_gs, kv, px, pc, pmat, dft_functional);
-            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/2, X, R, Z, nloc_per_band, nstates, zvec_solver);
+            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/2, X, R, Z, nloc_per_band, nstates, zvec_solver, test_force);
         }
         else
         {
@@ -412,7 +442,7 @@ namespace LR
                 exx_lri, exx_alpha,
 #endif
                 pot_hxc_gs, kv, px, pc, pmat, spin_type, in_dir, out_dir, dft_functional);
-            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/1, X, R, Z, nloc_per_band, nstates, zvec_solver);
+            build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/1, X, R, Z, nloc_per_band, nstates, zvec_solver, test_force);
         }
     }
 }

@@ -1,3 +1,5 @@
+#ifndef ABACUS_LR_CAL_EDM_H
+#define ABACUS_LR_CAL_EDM_H
 #include "source_basis/module_ao/parallel_orbitals.h"
 #include "source_lcao/module_lr/dm_trans/dm_trans.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
@@ -377,3 +379,5 @@ namespace LR
         return edm;
     }
 }
+
+#endif // ABACUS_LR_CAL_EDM_H
