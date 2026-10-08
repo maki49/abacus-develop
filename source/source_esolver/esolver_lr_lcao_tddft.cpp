@@ -108,7 +108,8 @@ int ModuleESolver::ESolver_LR<T, TR>::cal_nupdown_form_occ(const ModuleBase::mat
     // smears its odd electron as 0.5/0.5 over the two pi_down orbitals) otherwise makes the answer
     // a coin flip: the stored values are 0.5000000052 and 0.4999999947, so one rounds up and one
     // down, and which way they land is pure noise.
-    double up = 0.0, dn = 0.0;
+    double up = 0.0;
+    double dn = 0.0;
     for (int ib = 0;ib < wg.nc;++ib) { up += occ_sum_k(0, ib); dn += occ_sum_k(1, ib); }
     // wg is replicated within a pool, but each pool holds different k points.
     if (this->kv.para_k.kpar > 1)

@@ -614,7 +614,11 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
 #endif
     for (int i = 0;i < nrxx;++i)
     {
-        const int o4 = i * 4, o6 = i * 6, o9 = i * 9, o10 = i * 10, o12 = i * 12;
+        const int o4 = i * 4;
+        const int o6 = i * 6;
+        const int o9 = i * 9;
+        const int o10 = i * 10;
+        const int o12 = i * 12;
 
         // $a_{s^2}=\sum_{\sigma\sigma'}\eta_\sigma\eta_{\sigma'}g^{\rho_u\rho_\sigma\rho_{\sigma'}}$
         // v3rho3 = (uuu, uud, udd, ddd); with the first index pinned to u the component index is
@@ -647,10 +651,16 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
         // ---- the divergence part $\boldsymbol{E}$ ----
         // $P=\sum_{\alpha\beta}\theta_{\alpha\beta}\sum_{\sigma\sigma'}\eta\eta\,g^{\rho_\sigma\rho_{\sigma'}\sigma_{\alpha\beta}}$
         // rho-pair block index = number of d's in (sigma, sigma'), with multiplicity 2 for ud.
-        double P = 0., Q = 0., R = 0., S = 0., T = 0., St = 0.;
+        double P = 0.;
+        double Q = 0.;
+        double R = 0.;
+        double S = 0.;
+        double T = 0.;
+        double St = 0.;
         for (int a = 0;a < 3;++a)
         {
-            const double w = th[a], wt = tht[a];
+            const double w = th[a];
+            const double wt = tht[a];
             if (w != 0.)
             {
                 P += w * (eta[0] * eta[0] * v3r2s[o9 + 0 + a]

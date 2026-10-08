@@ -12,10 +12,12 @@ namespace LR
         const int nocc = px.get_global_col_size();
         const int nvirt = px.get_global_row_size();
         const int naos = pc.get_global_row_size();
-        const double alpha = 1.0, beta = 0.0;
+        const double alpha = 1.0;
+        const double beta = 0.0;
         const char transa = 'N', transb = 'N';
 #ifdef __MPI
-        const int i1 = 1, ivirt = nocc + 1;
+        const int i1 = 1;
+        const int ivirt = nocc + 1;
         pdgemm_(&transa, &transb, &naos, &nocc, &nvirt,
             &alpha, c, &i1, &ivirt, pc.desc,
             X, &i1, &i1, px.desc,
@@ -38,7 +40,8 @@ namespace LR
         const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
         const char transa = 'N', transb = 'N';
 #ifdef __MPI
-        const int i1 = 1, ivirt = nocc + 1;
+        const int i1 = 1;
+        const int ivirt = nocc + 1;
         pzgemm_(&transa, &transb, &naos, &nocc, &nvirt,
             &alpha, c, &i1, &ivirt, pc.desc,
             X, &i1, &i1, px.desc,
@@ -58,7 +61,8 @@ namespace LR
     {
         const int nocc = pvec.get_global_col_size();
         const int naos = pvec.get_global_row_size();
-        const double alpha = 1.0, beta = 0.0;
+        const double alpha = 1.0;
+        const double beta = 0.0;
         const char transa = 'N', transb = 'T';
 #ifdef __MPI
         const int i1 = 1;

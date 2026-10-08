@@ -127,7 +127,8 @@ namespace LR_Util
     void mattrans<double>(const double* in, const int n, const Parallel_2D& pmat, double* out)
     {
         std::copy(in, in + pmat.get_local_size(), out);
-        const double alpha = 1.0, beta = 0.0;
+        const double alpha = 1.0;
+        const double beta = 0.0;
         const int i1 = 1;
         pdtran_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
     }
@@ -136,7 +137,8 @@ namespace LR_Util
     {
         std::vector<double> tmp(pmat.get_local_size());
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
-        const double alpha = 1.0, beta = 0.0;
+        const double alpha = 1.0;
+        const double beta = 0.0;
         const int i1 = 1;
         pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
     }
@@ -164,7 +166,8 @@ namespace LR_Util
     {
         std::vector<double> tmp(pmat.get_local_size());
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
-        const double alpha = -0.5, beta = 0.5;
+        const double alpha = -0.5;
+        const double beta = 0.5;
         const int i1 = 1;
         pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
     }

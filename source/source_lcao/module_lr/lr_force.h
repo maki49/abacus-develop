@@ -91,12 +91,6 @@ namespace LR
         ModuleBase::matrix reproduce_force_gs_loc(const module_dm::DensityMatrix<TK, double>& dm_gs,
             const elecstate::Potential& pot_gs);
 
-        /// derivatives of 2-center integrates: dtau(S_ij) and dtau(h_{ij}) (set vh_in_h=0)
-        void cal_H2_sz_center2_deriv(const std::vector<double>& orb_cutoffs, const K_Vectors& kv);
-        /// 4-center integrates or their derivatives: (ij | kl) or dtau(ij | kl) (set vl_in_h=0)
-        void cal_H2_sz_center4(const std::vector<double>& orb_cutoffs,
-            const K_Vectors& kv, const bool is_grad = false);
-
     protected:
         const UnitCell& ucell_;
         const std::vector<ModuleBase::Vector3<double>>& kvec_d_;

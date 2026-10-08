@@ -30,7 +30,7 @@ if(ENABLE_LCAO)
     lr_grad_os.cpp
     lr_force.cpp
     exx_proj.cpp
-    lr_force_test.cpp
+    lr_force_aux.cpp
     grad_degen.cpp
     grad_jt.cpp
     cal_edm.cpp

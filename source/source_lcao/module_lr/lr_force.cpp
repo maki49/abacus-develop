@@ -7,6 +7,22 @@
 // #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 namespace LR
 {
+    template<typename TK>
+    ModuleBase::matrix LR_Force<TK>::cal_force_overlap_edm(const module_dm::DensityMatrix<TK, double>& edm)
+    {
+        // const double* dS[3] = { dSloc_x,  dSloc_y,  dSloc_z };
+        std::vector<hamilt::HContainer<double>>  dS = cal_hs_grad('S', this->ucell_, this->pv_, this->gd_, this->two_center_bundle_);
+        // test: output dS
+        // std::cout << "dS in 3 directions:\n";
+        // for (int i = 0;i < 3;++i) { LR_Util::print_HR(dS.at(i), this->ucell_.nat, "dS" + std::to_string(i)); }
+        ModuleBase::matrix foverlap = PulayForceStress::cal_pulay_fs(edm, this->ucell_, dS, -1.);
+        if (this->test_force_)
+        {
+            ModuleIO::print_force(this->ofs_running_, this->ucell_, "OVERLAP     FORCE (eV/Angstrom)", foverlap, false);
+        }
+        return foverlap;
+    }
+
     /// The LR density matrices ($D^X$, $T+D^Z$, EDM) carry one channel in the closed-shell
     /// singlet/triplet algorithm and two independent channels in the open-shell one.
     template<typename TK>

@@ -377,14 +377,7 @@ void ModuleESolver::ESolver_LR<T, TR>::test_force()
     // `cal_force_hxc_dmtrans` now includes the Pulay -> Pulay+Hellmann-Feynman factor 2 itself,
     // so this must match the ground-state Hartree force directly (dm_gs is already symmetric).
     /// ======================================= END test 2 =========================================
-    ///========================== test 3: H2 SZ 4-center gradients =========================
-    if (this->nbasis == 2 && (*this->ucell_).nat == 2)
-    {
-        // lr_force.cal_H2_sz_center2_deriv(orb_cutoff_, kv);  // for gradient
-        // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/false);  // for 4-center integrals
-        // lr_force.cal_H2_sz_center4(orb_cutoff_, kv, /*is_grad=*/true);   // for gradient
-        // exit(0);
-    }
+
 }
 
 template class ModuleESolver::ESolver_LR<double, double>;

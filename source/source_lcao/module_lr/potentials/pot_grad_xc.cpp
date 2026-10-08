@@ -198,14 +198,20 @@ namespace LR
 #endif
         for (int ir = 0;ir < nrxx_;++ir)
         {
-            const int o4 = ir * 4, o6 = ir * 6, o9 = ir * 9, o10 = ir * 10, o12 = ir * 12;
+            const int o4 = ir * 4;
+            const int o6 = ir * 6;
+            const int o9 = ir * 9;
+            const int o10 = ir * 10;
+            const int o12 = ir * 12;
             const ModuleBase::Vector3<double> drho[2] = { kxc.drho_gs[0][ir], kxc.drho_gs[1][ir] };
             const ModuleBase::Vector3<double> dr1[2] = { drho1[0][ir], drho1[1][ir] };
             const double s[2] = { rho1[0][ir], rho1[1][ir] };
 
             // $t_{ab}=\nabla\rho_a\cdot\nabla\rho^1_b$, then $S_a=\mathrm{d}\sigma_a/\mathrm{d}\lambda$
-            const double t00 = drho[0] * dr1[0], t01 = drho[0] * dr1[1];
-            const double t10 = drho[1] * dr1[0], t11 = drho[1] * dr1[1];
+            const double t00 = drho[0] * dr1[0];
+            const double t01 = drho[0] * dr1[1];
+            const double t10 = drho[1] * dr1[0];
+            const double t11 = drho[1] * dr1[1];
             const double S[3] = { 2. * t00, t01 + t10, 2. * t11 };
             // $Q_a=\mathrm{d}^2\sigma_a/\mathrm{d}\lambda^2$
             const double Q[3] = { 2. * (dr1[0] * dr1[0]), 2. * (dr1[0] * dr1[1]), 2. * (dr1[1] * dr1[1]) };
@@ -230,7 +236,8 @@ namespace LR
                 const double th = theta[tau][a];
                 if (th == 0.) { continue; }
                 const int c = chan[tau][a];
-                double up = 0., upp = 0.;
+                double up = 0.;
+                double upp = 0.;
                 for (int s0 = 0;s0 < 2;++s0) { up += s[s0] * v2rs[o6 + rs(s0, a)]; }
                 for (int b = 0;b < 3;++b) { up += S[b] * v2s2[o6 + p2[a][b]]; }
 
