@@ -1048,12 +1048,6 @@ OBJS_TENSOR=tensor.o\
     hamilt_casida.o\
     esolver_lr_lcao_tddft.o\
 
-ifdef LIBRI_DIR
-# BSE-related code and DMBand: only compiled with LibRI (__EXX), see module_lr/CMakeLists.txt
-OBJS_LR+=utils/lr_io_krlist.o
-OBJS_LR+=dm_band.o
-endif
-
 OBJS_LR_GRAD=lr_force.o\
     lr_force_test.o\
     grad_degen.o\

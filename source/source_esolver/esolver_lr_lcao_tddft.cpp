@@ -1164,8 +1164,9 @@ void ModuleESolver::ESolver_LR<T, TR>::read_ks_wfc()
                 this->inp_->init_wfc_file_format == "binary",
                 /*skip_bands=*/0))
         {
-            this->ofs_running_ << " Read in all the KS wavefunctions for force calculation. " << std::endl;
+            ModuleBase::WARNING_QUIT("ESolver_LR", "read all ground-state wavefunctions for force calculation failed.");
         }
+        this->ofs_running_ << " Read in all the KS wavefunctions for force calculation. " << std::endl;
     }
 }
 

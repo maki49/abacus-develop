@@ -37,9 +37,7 @@ namespace LR
         if (density_cache.count(&this->DM_trans) == 0)
         {
             this->DM_trans.cal_dmr(-1);  // DM_trans.get_dmr_vec() is 2D-block parallelized.
-            // Make D(R) consistent with the definition:
-            // D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1)).
-            LR_Util::swap_atompair_in_DMR(this->DM_trans, ucell.nat);
+            // cal_dmr preserves AO indices while converting DMK's storage layout to DMR.
         }
         // ========================= begin grid calculation =========================
         this->grid_calculation(density_cache);   // DM(R) -> rho(r) -> V_Hxc(r) -> H(R)

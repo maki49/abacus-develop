@@ -184,30 +184,26 @@ namespace LR_Util
     template<typename TR1, typename TR2>
     TR1 dot_R_matrix(const hamilt::HContainer<TR1>& h1, const hamilt::HContainer<TR2>& h2)
     {
-        const auto& pmat = *h1.get_paraV();
         TR1 sum = 0;
-        // in case of the different order of atom pair and R-index in h1 and h2, we search by value instead of index
+        // Match by atom/R values: containers may store pairs and images in different orders.
         for (int iap = 0; iap < h1.size_atom_pairs(); ++iap)
         {
-            auto ap1 = &h1.get_atom_pair(iap);
-            const int iat1 = ap1->get_atom_i();
-            const int iat2 = ap1->get_atom_j();
-            auto ap2 = h2.find_pair(iat1, iat2);
+            const auto& ap1 = h1.get_atom_pair(iap);
+            const int iat1 = ap1.get_atom_i();
+            const int iat2 = ap1.get_atom_j();
+            const auto* ap2 = h2.find_pair(iat1, iat2);
             assert(ap2);
-            for (int iR = 0;iR < ap1->get_R_size();++iR)
+            for (int iR = 0; iR < ap1.get_R_size(); ++iR)
             {
-                auto ap1 = h1.find_pair(iat1, iat2);
-                if (!ap1) { continue; }
-                auto ap2 = h2.find_pair(iat1, iat2);
-                assert(ap2);
-                for (int iR = 0;iR < ap1->get_R_size();++iR)
-                {
-                    const ModuleBase::Vector3<int>& R = ap1->get_R_index(iR);
-                    // std::cout<< "dot_R_matrix: iat1=" << iat1 << ", iat2=" << iat2 << ", R=(" << R.x << ", " << R.y << ", " << R.z << ")"<<std::endl;
-                    auto mat1 = ap1->get_HR_values(R.x, R.y, R.z);
-                    auto mat2 = ap2->get_HR_values(R.x, R.y, R.z);
-                    sum += std::inner_product(mat1.get_pointer(), mat1.get_pointer() + mat1.get_col_size()*mat1.get_row_size(), mat2.get_pointer(), (TR1)0.0);
-                }
+                const auto& R = ap1.get_R_index(iR);
+                const auto& mat1 = ap1.get_HR_values(R.x, R.y, R.z);
+                const auto& mat2 = ap2->get_HR_values(R.x, R.y, R.z);
+                const int size = mat1.get_col_size() * mat1.get_row_size();
+                const TR1* begin = mat1.get_pointer();
+                const TR1* end = begin + size;
+                const TR2* values = mat2.get_pointer();
+                const TR1 zero = 0;
+                sum += std::inner_product(begin, end, values, zero);
             }
         }
         // Parallel_Reduce::reduce_all(sum);  // not needed, since it will be reduced outside
@@ -215,22 +211,11 @@ namespace LR_Util
     }
 
 
-    template<typename TK, typename TR>
-    void swap_atompair_in_DMR(const module_dm::DensityMatrix<TK, TR>& dm, const int nat)
-    {
-        for (int iat1 = 0; iat1 < nat; ++iat1)
-            for (int iat2 = iat1 + 1; iat2 < nat; ++iat2)
-                for (auto& dr : dm.get_dmr_vec())
-                {
-                    auto ap1 = dr->find_pair(iat1, iat2);
-                    auto ap2 = dr->find_pair(iat2, iat1);
-                    if (ap1 && ap2)
-                        std::swap(ap1, ap2);
-                }
-    }
-
+    // cal_dmr converts column-major DMK into row-major DMR without changing AO indices.
+    // It already uses the ground-state DMR convention, including exp(+ik.R) for multi-k.
+    // A physical transpose must therefore be applied to DMK, never by swapping atom pairs.
     template<typename TK>
-    void transpose_DMR(module_dm::DensityMatrix<TK, double>& dm, const Parallel_Orbitals& pv, const int nat)
+    void transpose_DMR(module_dm::DensityMatrix<TK, double>& dm, const Parallel_Orbitals& pv)
     {
         // 1. transpose dm(k)
         for (auto& dk : dm.get_dmk_vec())
@@ -246,11 +231,9 @@ namespace LR_Util
 
         // 2. FT
         dm.cal_dmr(-1);
-        // 3. swap atom pair (iat1, iat2) to (iat2, iat1)
-        swap_atompair_in_DMR(dm, nat);
     }
     template<typename TK>
-    void transpose_DMR(module_dm::DensityMatrix<TK, std::complex<double>>& dm, const Parallel_Orbitals& pv, const int nat)
+    void transpose_DMR(module_dm::DensityMatrix<TK, std::complex<double>>& dm, const Parallel_Orbitals& pv)
     {
         throw std::runtime_error("transpose_DMR is not implemented for complex DMR, due to the lack of minus-sign FT.");
         // 1. dm(k) dagger
@@ -265,8 +248,6 @@ namespace LR_Util
 
         // 2. FT with the minus sign in the exponent (TO DO)
         dm.cal_dmr(-1);
-        // 3. swap atom pair (iat1, iat2) to (iat2, iat1)
-        swap_atompair_in_DMR(dm, nat);
     }
 
     template<typename TK, typename TR>
@@ -298,7 +279,6 @@ namespace LR_Util
         if (cal_dmr)
         {
             dm.cal_dmr(-1);
-            LR_Util::swap_atompair_in_DMR(dm, ucell.nat);   // make D(R) consistent with the defination: D(R)[iat1][iat2] = \sum_k c1(k)c2^*(k)exp(-ik(R2-R1))
         }
         return dm;
     }
@@ -341,7 +321,6 @@ namespace LR_Util
         if (cal_dmr)
         {
             dm.cal_dmr(-1);
-            LR_Util::swap_atompair_in_DMR(dm, ucell.nat);
         }
         return dm;
     }
@@ -484,8 +463,8 @@ namespace LR_Util
         -> std::vector<std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<TK>>>>
     {
         const int& nspin = dm.get_dmr_vec().size();
-        const int& nk = dm.get_DMK_nks() / nspin;   // nks/nspin
-        std::vector<const std::vector<TK>*> DMk_trans_pointer(nk);
+        const int nks = dm.get_DMK_nks();
+        std::vector<const std::vector<TK>*> DMk_trans_pointer(nks);
         for (int iks = 0;iks < dm.get_DMK_nks();++iks)
             DMk_trans_pointer[iks] = &dm.get_dmk_vec()[iks];
         return RI_2D_Comm::split_m2D_ktoR<TK>(ucell, kv, DMk_trans_pointer, pmat, nspin);

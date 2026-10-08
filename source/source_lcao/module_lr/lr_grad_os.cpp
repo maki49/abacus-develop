@@ -68,11 +68,11 @@ std::vector<ModuleBase::matrix> evaluate_open_shell_force(
         //    `build_dm_from_dmk_spin` symmetrizes IN PLACE, hence the ordering.
         auto dm_trans = LR_Util::build_dm_from_dmk_spin<T, T>(dmx_k,
             inputs.pmat, inputs.nk, inputs.kv.kvec_d, inputs.ucell, inputs.gd, inputs.orb_cutoff);
-        LR_Util::transpose_DMR(dm_trans, inputs.pmat, inputs.ucell.nat);
+        LR_Util::transpose_DMR(dm_trans, inputs.pmat);
         auto dm_trans_real = LR_Util::build_dm_from_dmk_spin<T, double>(dmx_k,
             inputs.pmat, inputs.nk, inputs.kv.kvec_d, inputs.ucell, inputs.gd, inputs.orb_cutoff,
             /*symmetrize=*/true);
-        LR_Util::transpose_DMR(dm_trans_real, inputs.pmat, inputs.ucell.nat);
+        LR_Util::transpose_DMR(dm_trans_real, inputs.pmat);
 
         // 3. the relaxed difference density matrix $T+D^Z$
         const module_dm::DensityMatrix<T, T>& relaxed_diff_dm =

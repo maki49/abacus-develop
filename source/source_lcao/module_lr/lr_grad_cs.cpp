@@ -59,7 +59,7 @@ std::vector<ModuleBase::matrix> evaluate_closed_shell_force(
         auto dm_trans =   // D(X) complex
             LR_Util::build_dm_from_dmk<T, T>(dm_trans_k,
                 inputs.pmat, inputs.nk, inputs.kv.kvec_d, inputs.ucell, inputs.gd, inputs.orb_cutoff);
-        LR_Util::transpose_DMR(dm_trans, inputs.pmat, inputs.ucell.nat);
+        LR_Util::transpose_DMR(dm_trans, inputs.pmat);
         // D(X) real, for the grid Hxc force. The Coulomb kernel (mu nu | kappa lambda) is
         // symmetric within each index pair, so it only ever sees the symmetric part of D^X.
         // In `PulayForceStress::cal_pulay_fs`, `cal_gint_rho` (which builds v) symmetrizes
@@ -70,7 +70,7 @@ std::vector<ModuleBase::matrix> evaluate_closed_shell_force(
             LR_Util::build_dm_from_dmk<T, double>(dm_trans_k,
                 inputs.pmat, inputs.nk, inputs.kv.kvec_d, inputs.ucell, inputs.gd, inputs.orb_cutoff,
                 /*symmetrize=*/true);
-        LR_Util::transpose_DMR(dm_trans_real, inputs.pmat, inputs.ucell.nat);
+        LR_Util::transpose_DMR(dm_trans_real, inputs.pmat);
         // LR_Util::print_DMR(dm_trans, "dm_trans of istate " + std::to_string(istate));
         // difference density matrix
 #ifdef __MPI
