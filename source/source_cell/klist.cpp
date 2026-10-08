@@ -565,9 +565,65 @@ void K_Vectors::reduce_by_symmetry(const UnitCell& ucell,
     return;
 }
 
-void K_Vectors::set_after_vc(const ModuleBase::Matrix3& G, std::ofstream& ofs_running)
+void K_Vectors::set_after_vc(const ModuleBase::Matrix3& G,
+                             const ModuleSymmetry::Symmetry& symm,
+                             const bool update_symmetry,
+                             std::ofstream& ofs_running)
 {
     ofs_running << "\n SETUP K-POINTS" << std::endl;
+
+    // Every pool holds the complete stars. Their identity entries retain the
+    // global IBZ representatives even when kvec_d contains only local points.
+    // Reassign operation indices without changing the density-matrix ordering.
+    if (update_symmetry && !this->kstars.empty())
+    {
+        const int operation_capacity = 2 * symm.nrotk + symm.nrotk_anti;
+        std::vector<ModuleBase::Matrix3> operations(operation_capacity);
+        for (int operation = 0; operation < symm.nrotk; ++operation)
+        {
+            operations[operation] = symm.kgmatrix[operation];
+        }
+        const int operation_count = KListIO::append_time_reversal_ops(symm, operations, symm.nrotk);
+        typedef std::map<int, ModuleBase::Vector3<double>> KStar;
+        std::vector<KStar> updated_stars(this->kstars.size());
+        for (std::size_t ik = 0; ik < this->kstars.size(); ++ik)
+        {
+            const KStar& star = this->kstars[ik];
+            const KStar::const_iterator identity = star.find(0);
+            if (identity == star.end())
+            {
+                ModuleBase::WARNING_QUIT("K_Vectors::set_after_vc", "Missing k-star IBZ representative.");
+            }
+            const ModuleBase::Vector3<double>& representative = identity->second;
+            for (const KStar::value_type& member : star)
+            {
+                bool matched = false;
+                for (int operation = 0; operation < operation_count; ++operation)
+                {
+                    ModuleBase::Vector3<double> rotated = member.second * operations[operation];
+                    ModuleCell::restrict_kpt(rotated, symm.epsilon);
+                    if (symm.equal(rotated.x, representative.x)
+                        && symm.equal(rotated.y, representative.y)
+                        && symm.equal(rotated.z, representative.z))
+                    {
+                        updated_stars[ik].emplace(operation, member.second);
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched)
+                {
+                    ModuleBase::WARNING_QUIT("K_Vectors::set_after_vc",
+                                            "New cell symmetry cannot preserve the existing k-star.");
+                }
+            }
+            if (updated_stars[ik].size() != star.size())
+            {
+                ModuleBase::WARNING_QUIT("K_Vectors::set_after_vc", "New cell symmetry changed the k-star size.");
+            }
+        }
+        this->kstars.swap(updated_stars);
+    }
 
     // set cartesian k vectors.
     this->kvec_d2c(G);
