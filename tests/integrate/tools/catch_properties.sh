@@ -137,6 +137,17 @@ if [ ! -z $esolver_type ] && ([ $esolver_type == "lr" ] || [ $esolver_type == "k
 	is_lr=1
 fi
 
+# Dedicated gauge-independent checks for LR relaxation fixtures. Individual degenerate
+# force components and excitation-vector indices are deliberately not reference values.
+if [ "$is_lr" == 1 ] && [ -f root_tracking.ref ]; then
+    if python3 ../../integrate/tools/root_check.py "$running_path" root_tracking.ref; then
+        echo "CompareRootTracking_pass 0" >> "$1"
+    else
+        echo "CompareRootTracking_pass 1" >> "$1"
+    fi
+    exit 0
+fi
+
 #----------------------------
 # total energy information
 #----------------------------

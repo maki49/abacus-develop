@@ -7,6 +7,7 @@
 #include "source_lcao/module_lr/lr_amp.h"
 #include "source_lcao/module_lr/grad_degen.h"
 #include "source_base/parallel_reduce.h"
+#include "source_base/timer.h"
 #include <algorithm>
 #include <complex>
 #include <numeric>
@@ -85,7 +86,12 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_relax_target_()
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::follow_target_state_(std::ofstream& ofs)
 {
-    if (!this->excited_relax_) { return; }
+    ModuleBase::timer::start("ESolver_LR", "follow_target_state_");
+    if (!this->excited_relax_)
+    {
+        ModuleBase::timer::end("ESolver_LR", "follow_target_state_");
+        return;
+    }
     const int channel = this->openshell ? 0 : this->target_is_;
     const T* const amplitudes = this->X[channel].template data<T>();
     const TwoCenterIntegrator& overlap_integrator = *this->tcb().overlap_orb;
@@ -99,6 +105,7 @@ void ModuleESolver::ESolver_LR<T, TR>::follow_target_state_(std::ofstream& ofs)
     const double group_threshold = single_state ? 0.0 : this->inp_->lr_degen_thr;
     LR::follow_cross_root(inputs, amplitudes, this->nloc_per_state, this->nstates,
         this->inp_->lr_target_state, energies, group_threshold, this->target_state_, this->target_X_prev_, this->target_basis_prev_, ofs);
+    ModuleBase::timer::end("ESolver_LR", "follow_target_state_");
 }
 
 template<typename T, typename TR>

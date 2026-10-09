@@ -37,5 +37,4 @@ esolver_type      ks-lr
 nvirt             2
 abs_wavelen_range  40 180
 abs_broadening    0.01
-# CI uses distribution libxc without kxc; gradient coverage is kept in HF cases.
-cal_force         0
+cal_force         1

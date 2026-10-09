@@ -23,3 +23,6 @@ rpa_scf_shrink_multik
 rt_tddft_pbe0_gamma
 bse_lr_multik
 nscf_hse_multik
+
+lr_relax_lda_beh2
+lr_relax_lda_ch4
