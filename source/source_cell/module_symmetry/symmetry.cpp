@@ -11,12 +11,11 @@ bool Symmetry::pricell_loop = true;
 void Symmetry::set_atom_map(const Atom* atoms)
 {
     ModuleBase::TITLE("Symmetry", "set_atom_map");
-    if (this->isym_rotiat_.size() == this->nrotk) {
-        return;
-    }
+    // A new analysis can reorder operations without changing their number.
+    // Rebuild their atom mappings from the current geometry every time.
     this->isym_rotiat_.resize(this->nrotk);
     for (int i = 0; i < this->nrotk; ++i) {
-        this->isym_rotiat_[i].resize(this->nat, -1);
+        this->isym_rotiat_[i].assign(this->nat, -1);
     }
 
     double* pos = this->newpos;
