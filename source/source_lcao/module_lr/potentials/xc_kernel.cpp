@@ -248,11 +248,10 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             // libxc just loses precision evaluating the closed form at that point. Clamping sigma
             // from below before the libxc call evaluates the same closed form at a point just off
             // the instability, borrowing smoothness instead of removing the cancellation
-            // algebraically. Plain GGA functionals (e.g. PBE) have a clean rational enhancement
-            // factor with no such cancellation, so sigma_cut=-1 below is a true no-op for them
-            // (sigma = |grad rho|^2 >= 0 always, so max(sigma, -1) == sigma); xc_kernel=rpa never
-            // reaches this switch at all (no GGA kernel is evaluated for the Z-vector/Casida
-            // equations), so it needs no guard either.
+            // algebraically. This existing HSE06 stabilization is retained here; it is not
+            // a derivative-consistent regularization and needs a separate numerical fix.
+            // Other functionals receive the original sigma, including the signed mixed-spin
+            // invariant grad(rho_up).grad(rho_down), which can be smaller than -1.
             //
             // `cal_sgn` returns all-ones for exchange functionals, so `cutoff_grid_data_spin2`
             // below is a no-op for wpbeh; vsigma (1st order, read by the LR GGA kernel formula in
@@ -282,11 +281,11 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             // MAE/|F| dropped to 0.015%-0.556%, Max/|F| to 0.029%-1.279%, matching the error level
             // of functionals that were never broken; also confirmed to resolve 08_BeH2/hse (both
             // its DZP and TZDP bases, all excited states).
-            double sigma_cut = (func.info->number == XC_HYB_GGA_XC_HSE06) ? 1e-6 : -1.;
-            std::vector<double> sigma_clamped(sigma.size());
-            for (size_t i = 0; i < sigma.size(); ++i) { sigma_clamped[i] = std::max(sigma[i], sigma_cut); }
-            xc_gga_vxc(&func, nrxx, rho.data(), sigma_clamped.data(), vrho_tmp.data(), vsigma_tmp.data());
-            xc_gga_fxc(&func, nrxx, rho.data(), sigma_clamped.data(), v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
+            const bool is_hse06 = func.info->number == XC_HYB_GGA_XC_HSE06;
+            std::vector<double> hse_sigma;
+            const std::vector<double>& sigma_input = LR_Util::prepare_xc_sigma(sigma, is_hse06, hse_sigma);
+            xc_gga_vxc(&func, nrxx, rho.data(), sigma_input.data(), vrho_tmp.data(), vsigma_tmp.data());
+            xc_gga_fxc(&func, nrxx, rho.data(), sigma_input.data(), v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
             // std::cout << "max element of v2sigma2_tmp: " << *std::max_element(v2sigma2_tmp.begin(), v2sigma2_tmp.end()) << std::endl;
             // std::cout << "rho corresponding to max element of v2sigma2_tmp: " << rho[(std::max_element(v2sigma2_tmp.begin(), v2sigma2_tmp.end()) - v2sigma2_tmp.begin()) / 6] << std::endl;
             // cut off by sgn. nspin=2 only: `cutoff_grid_data_spin2` assumes >1 component per
@@ -302,8 +301,8 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             }
             if (need_kxc)
             {
-                // Same sigma_clamped as the xc_gga_vxc/fxc calls above -- see the threshold-choice note there.
-                xc_gga_kxc(&func, nrxx, rho.data(), sigma_clamped.data(),
+                // Use the same functional-specific input as vxc and fxc.
+                xc_gga_kxc(&func, nrxx, rho.data(), sigma_input.data(),
                     v3rho3_tmp.data(),
                     v3rho2sigma_tmp.data(),
                     v3rhosigma2_tmp.data(),

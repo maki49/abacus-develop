@@ -26,6 +26,19 @@ namespace LR_Util
         }
     }
 
+    const std::vector<double>& prepare_xc_sigma(const std::vector<double>& sigma,
+                                               const bool is_hse06,
+                                               std::vector<double>& hse_buffer)
+    {
+        if (!is_hse06) { return sigma; }
+        hse_buffer.resize(sigma.size());
+        for (std::size_t index = 0; index < sigma.size(); ++index)
+        {
+            hse_buffer[index] = std::max(sigma[index], 1e-6);
+        }
+        return hse_buffer;
+    }
+
     /// =================PHYSICS====================
     int cal_nocc(int nelec) { return nelec / ModuleBase::DEGSPIN + nelec % static_cast<int>(ModuleBase::DEGSPIN); }
 

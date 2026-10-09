@@ -59,3 +59,28 @@ TEST(LRForcePP, RejectsNLCCRelaxationEvenWithoutExplicitForceFlag)
     EXPECT_THROW(LR_Util::check_force_pp(cell, false, "relax"), std::invalid_argument);
     EXPECT_THROW(LR_Util::check_force_pp(cell, true, "relax"), std::invalid_argument);
 }
+
+TEST(LR_XCSigma, PreservesAntiparallelSpinGradientsWithoutHSE)
+{
+    // grad(up)=(2,0,0), grad(down)=(-1,0,0): a valid Gram matrix with sigma_ud < -1.
+    const std::vector<double> sigma{4.0, -2.0, 1.0};
+    std::vector<double> hse_buffer;
+    const bool is_hse06 = false;
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, is_hse06, hse_buffer);
+    EXPECT_EQ(input.data(), sigma.data());
+    EXPECT_EQ(input[1], -2.0);
+    EXPECT_TRUE(hse_buffer.empty());
+}
+
+TEST(LR_XCSigma, RetainsExistingHSEStabilizationWithoutMutatingTheDensity)
+{
+    const std::vector<double> sigma{0.01, -0.008, 0.0064};
+    std::vector<double> hse_buffer;
+    const bool is_hse06 = true;
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, is_hse06, hse_buffer);
+    EXPECT_NE(input.data(), sigma.data());
+    EXPECT_EQ(sigma[1], -0.008);
+    EXPECT_EQ(input[0], sigma[0]);
+    EXPECT_EQ(input[1], 1e-6);
+    EXPECT_EQ(input[2], sigma[2]);
+}
