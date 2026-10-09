@@ -248,7 +248,7 @@ Socket mode always computes energy. Force and stress extraction follows cal_forc
 * lr: LR-TDDFT with given KS orbitals (Under Development Feature)
 * dfpt: density functional perturbation theory (Under Development Feature)
 
-[NOTE] Excited-state forces (`cal_force = 1`) and atomic relaxation with `ks-lr` or `lr` currently require `gamma_only = 1`. Multi-k spectra remain supported with `cal_force = 0`.)";
+[NOTE] Excited-state forces (`cal_force = 1`) and atomic relaxation with `ks-lr` or `lr` currently require `gamma_only = 1` and pseudopotentials without nonlinear core correction (NLCC). NLCC core-density response-force and XC-kernel derivative terms are not implemented; these force requests are rejected after reading the pseudopotentials, before force evaluation. Multi-k spectra and spectra with NLCC pseudopotentials remain available with `cal_force = 0`. Ground-state forces are unaffected by this LR restriction.)";
         item.default_value = "ksdft";
         read_sync_string(input.esolver_type);
         item.check_value = [](const Input_Item& item, const Parameter& para) {

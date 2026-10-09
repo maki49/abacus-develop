@@ -1,5 +1,6 @@
 #include "source_base/constants.h"
 #include "lr_util.h"
+#include "source_cell/unitcell.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -8,6 +9,23 @@
 #include "source_base/module_container/base/third_party/lapack.h"
 namespace LR_Util
 {
+    void check_force_pp(const UnitCell& cell, const bool cal_force, const std::string& calculation)
+    {
+        const bool relaxation = calculation == "relax" || calculation == "cell-relax";
+        if (!cal_force && !relaxation) { return; }
+        for (int type = 0; type < cell.ntype; ++type)
+        {
+            if (cell.atoms[type].ncpp.nlcc)
+            {
+                throw std::invalid_argument(
+                    "LR excited-state forces and relaxation do not support NLCC pseudopotentials: element "
+                    + cell.atoms[type].label + ", file " + cell.pseudo_fn.at(type)
+                    + ". Core-density response-force and XC-kernel derivative terms are not implemented."
+                      " LR spectra remain available with cal_force=0.");
+            }
+        }
+    }
+
     /// =================PHYSICS====================
     int cal_nocc(int nelec) { return nelec / ModuleBase::DEGSPIN + nelec % static_cast<int>(ModuleBase::DEGSPIN); }
 

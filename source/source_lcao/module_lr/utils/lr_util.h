@@ -13,6 +13,8 @@
 #include <ATen/ops/linalg_op.h>
 #include <set>
 
+class UnitCell;
+
 using DAT = container::DataType;
 using DEV = container::DeviceType;
 
@@ -27,6 +29,9 @@ template <> struct ToComplex<std::complex<float>> { using type = std::complex<fl
 
 namespace LR_Util
 {
+    /// Reject unsupported NLCC force requests after pseudopotentials have been loaded.
+    void check_force_pp(const UnitCell& cell, bool cal_force, const std::string& calculation);
+
     /// =====================PHYSICS====================
     /// @brief the xc kernels that carry an exact-exchange (EXX) term
     ///
