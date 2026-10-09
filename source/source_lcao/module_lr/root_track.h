@@ -26,6 +26,8 @@ struct RootBasis
     // Local column-major AO-by-band blocks; layout must stay fixed between steps.
     std::vector<int> layout;
     std::vector<std::vector<T>> coefficients;
+    // All roots in the last selected group, each stored as a local amplitude block.
+    std::vector<std::vector<T>> group_amplitudes;
 };
 
 // Borrow current geometry, orbitals and AO/MO/electron-hole distributions for one tracking step.
@@ -44,14 +46,17 @@ struct RootInputs
     const std::vector<int>& nvirt;
     bool openshell;
     int channel;
+    bool reference_first;
 };
 
 // Form old-new AO/MO overlaps and project the old reference into the current basis,
-// then select the current root with largest overlap. Update target, previous and basis;
+// then match energy groups by total overlap (average) or actual mixed-state projection (JT).
+// Store every selected-group root in basis; previous remains the single/JT reference. Update target;
 // current amplitudes stay unchanged. Requires Gamma, fixed cell/window and local layout.
 template <typename T>
 void follow_cross_root(const RootInputs<T>& inputs, const T* amplitudes,
-    int nlocal, int nstates, int initial_state, int& target,
+    int nlocal, int nstates, int initial_state, const std::vector<double>& energies,
+    double group_threshold, int& target,
     std::vector<T>& previous, RootBasis<T>& basis, std::ostream& log);
 }
 #endif

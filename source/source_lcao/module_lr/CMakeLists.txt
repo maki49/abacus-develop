@@ -32,6 +32,7 @@ if(ENABLE_LCAO)
     exx_proj.cpp
     lr_force_aux.cpp
     grad_degen.cpp
+    root_group.cpp
     root_track.cpp
     root_ovlp.cpp
     grad_jt.cpp

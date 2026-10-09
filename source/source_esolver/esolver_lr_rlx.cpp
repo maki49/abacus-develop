@@ -89,10 +89,16 @@ void ModuleESolver::ESolver_LR<T, TR>::follow_target_state_(std::ofstream& ofs)
     const int channel = this->openshell ? 0 : this->target_is_;
     const T* const amplitudes = this->X[channel].template data<T>();
     const TwoCenterIntegrator& overlap_integrator = *this->tcb().overlap_orb;
+    const bool reference_first = LR_Util::tolower(this->inp_->lr_degen_mode) == "jt";
     const LR::RootInputs<T> inputs{*this->ucell_, this->orb_cutoff_, overlap_integrator,
-        *this->psi_ks, this->paraC_, this->paraMat_, this->paraX_, this->nocc, this->nvirt, this->openshell, this->target_is_};
+        *this->psi_ks, this->paraC_, this->paraMat_, this->paraX_, this->nocc, this->nvirt, this->openshell, this->target_is_, reference_first};
+    const int energy_offset = channel * this->nstates;
+    std::vector<double> energies(this->nstates);
+    std::copy_n(this->pelec->ekb.c + energy_offset, this->nstates, energies.begin());
+    const bool single_state = LR_Util::tolower(this->inp_->lr_degen_mode) == "state";
+    const double group_threshold = single_state ? 0.0 : this->inp_->lr_degen_thr;
     LR::follow_cross_root(inputs, amplitudes, this->nloc_per_state, this->nstates,
-        this->inp_->lr_target_state, this->target_state_, this->target_X_prev_, this->target_basis_prev_, ofs);
+        this->inp_->lr_target_state, energies, group_threshold, this->target_state_, this->target_X_prev_, this->target_basis_prev_, ofs);
 }
 
 template<typename T, typename TR>
@@ -178,7 +184,13 @@ void ModuleESolver::ESolver_LR<T, TR>::resolve_target_multiplet_()
         if (std::find(g.begin(), g.end(), this->target_state_) == g.end()) { continue; }
         // a one-member group means the target is not degenerate here, and averaging over it would
         // be the single-state path with extra steps
-        if (g.size() > 1) { this->target_group_ = g; }
+        const bool average = LR_Util::tolower(this->inp_->lr_degen_mode) == "average";
+        if (average && g.size() > 3)
+        {
+            this->ofs_running_ << " WARNING: tracked group has " << g.size()
+                << " roots; average supports at most three. Following the selected single root." << std::endl;
+        }
+        else if (g.size() > 1) { this->target_group_ = g; }
         break;
     }
 }
@@ -222,7 +234,7 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_lr_force_relax_(std::of
     if (!jt_mode)
     {
         ofs << " lr_degen_mode=average: following the multiplet average, which keeps the"
-            " geometry on the symmetric configuration." << std::endl;
+            " geometry on the current average surface; split groups are not recombined." << std::endl;
         return average_forces(forces);
     }
     return this->cal_jt_force_(forces, ofs);

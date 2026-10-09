@@ -51,3 +51,9 @@ AddTest(
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_root_ovlp.cpp ${root_overlap_test_sources}
 )
+
+AddTest(
+  TARGET MODULE_LR_root_group
+  LIBS base parameter ${math_libs} container device
+  SOURCES test_root_group.cpp ../root_group.cpp
+)

@@ -160,7 +160,7 @@ namespace ModuleESolver
         ModuleBase::matrix lr_force_;
         /// The state currently being followed, as an index into `X` / `pelec->ekb`.
         /// Seeded from `lr_target_state` on the first ionic step, then re-chosen at every
-        /// later step by maximum overlap with the previous step's amplitude (below).
+        /// later step by cross-geometry group overlap, then the single/JT reference.
         /// Following a fixed INDEX instead is what makes a relaxation fail near a
         /// degeneracy: the index always names the n-th lowest root, so as soon as two
         /// surfaces cross, "the target" jumps to a different diabatic state and the force
@@ -170,7 +170,7 @@ namespace ModuleESolver
         /// reference the overlap is taken against. Empty on the first step.
         std::vector<T> target_X_prev_;
         LR::RootBasis<T> target_basis_prev_;
-        /// Re-select `target_state_` as argmax_j |<X_prev | X_j>| and refresh the reference.
+        /// Match the old subspace to current energy groups and refresh the single/group references.
         /// `ofs` receives the note when the followed root changes index, and the warning when
         /// no current root resembles the previous one.
         void follow_target_state_(std::ofstream& ofs);
