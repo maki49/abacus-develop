@@ -451,7 +451,7 @@ bool Exx_LRI_Interface<T, Tdata>::exx_after_converge(
 
             timeval t_end;       gettimeofday(&t_end, nullptr);
             std::cout << "and rerun SCF\t"
-                << std::setprecision(3) << std::setiosflags(std::ios::scientific)
+                << std::setprecision(3) << std::scientific
                 << (double)(t_end.tv_sec-t_start.tv_sec) + (double)(t_end.tv_usec-t_start.tv_usec)/1000000.0
                 << std::defaultfloat << " (s)" << std::endl;
             return false;
