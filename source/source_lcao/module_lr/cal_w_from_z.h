@@ -121,9 +121,13 @@ namespace LR
         // correct way is to use `shared_ptr = make_shared()` and then assign it to weak_ptr
         // `weak_ptr=shared_ptr` is automatically called in the constructor of OperatorLRHxc, so we don't need to do it manually
         // if `pot_grad` is passed into a function rather than a class, we need to write `weak_ptr=shared_ptr` explicitly
+        // This quadratic term differentiates the LR kernel K, unlike H[T+DZ] above.
+        const bool triplet = spin_type == "triplet";
+        const int ispin = triplet ? 1 : 0;
+        const std::shared_ptr<PotHxcLR>& pot_lr = inputs.pot[ispin];
         std::shared_ptr<PotGradXCLR> pot_grad =
-            std::make_shared<PotGradXCLR>(pot_hxc_gs.lock()->xc_kernel_components(), pot_hxc_gs.lock()->get_rho_basis(), 
-            ucell, pot_hxc_gs.lock()->nrxx, spin_type == "triplet");
+            std::make_shared<PotGradXCLR>(pot_lr->xc_kernel_components(), pot_lr->get_rho_basis(),
+                ucell, pot_lr->nrxx, triplet);
         OperatorLRHxc<T> op_gxc(nspin, naos, nocc, nvirt, psi_ks,
             DM_trans, pot_grad, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             // Factor 1.0 according to the $W^c$ formula (`pot_grad` carries $2*g^{xc}$: uu+ud or uu-ud).
@@ -315,12 +319,12 @@ namespace LR
 
         // $\sum_{\sigma'\sigma''}D^X_{\sigma'}D^X_{\sigma''}g^{xc}_{\dots,ij\tau}$, coefficient 1
         // in the spin-orbital formula. Quadratic in $D^X$, so it does not fit the block loop above.
-        // The kernel comes from `pot_hxc_gs`, mirroring the closed-shell `cal_W_from_Z`; it only
-        // differs from the LR kernel used on the Z-vector right-hand side when
-        // `xc_kernel != dft_functional`, in which case both branches share the same ambiguity.
+        // Use the LR kernel's density derivative, consistently with the Z-vector RHS.
+        // The separate H[T+DZ] operators above retain the GS kernel.
         if (LR_Util::has_local_xc(xc_kernel))
         {
-            OperatorGxcULR<T> gxc(pot_hxc_gs.lock()->xc_kernel_components(), pot_hxc_gs.lock()->get_rho_basis(),
+            const std::shared_ptr<PotHxcLR>& pot_lr = inputs.pot[0];
+            OperatorGxcULR<T> gxc(pot_lr->xc_kernel_components(), pot_lr->get_rho_basis(),
                 ucell, orb_cutoff, gd, kv, pmat, pc, psi_ks, nocc, nvirt, naos,
                 px, p_occ_occ, LR_Util::MO_TYPE::OO, T(1.0), nspin, ks_solver);
             std::vector<T> w_flat(ld_oo[0] + ld_oo[1], T(0.0));

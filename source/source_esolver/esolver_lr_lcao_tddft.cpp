@@ -1092,10 +1092,9 @@ void ModuleESolver::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         // `dft_functional == "default"` leaves the raw INPUT string unresolved (it never gets
         // overwritten to the actual functional in use); the functional actually read from the
         // pseudopotential lives in `ucell.atoms[i].ncpp.xc_func` instead. Comparing against the
-        // literal "default" string here would always disagree with `xc_kernel`, forcing a
-        // separate `kernel_gs` with no g^xc even when the ground state and the LR kernel are the
-        // same functional -- and `pot_hxc_gs` (built from that `kernel_gs`) throws the first time
-        // `cal_W_from_Z` asks it for g^xc.
+        // literal "default" string here would always disagree with `xc_kernel`, even when the
+        // ground state and LR use the same functional. Resolve it before comparing the names
+        // or constructing a separate GS kernel.
         const std::string xc_kernel_gs = (this->inp_->dft_functional == "default")
             ? LR_Util::tolower(this->ucell_->atoms[0].ncpp.xc_func)
             : LR_Util::tolower(this->inp_->dft_functional);
@@ -1105,9 +1104,8 @@ void ModuleESolver::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         // consistent spin combination. Use `ST::S2_gs` there, which is exactly half of S2_singlet,
         // matching the `K_Hxc(singlet) = 2 * pot_hxc_gs` convention of the gradient operators.
         const ST st_gs = (nspin == 1) ? ST::S1_gs : (oshell ? ST::S2_updown : ST::S2_gs);
-        // `pot_hxc_gs` supplies the $g^{xc}$ of both $W^c$ and the force term, for either spin.
-        // Those two call sites are guarded by `has_local_xc(xc_kernel)` -- the *LR* kernel name --
-        // so an `xc_kernel rpa` run never touches them however local `dft_functional` is.
+        // GS response terms retain this kernel. The g^xc terms originating from the LR K
+        // contribution to W and the force use the corresponding LR potential instead.
         const int gxc_gs = (!LR_Util::has_local_xc(xc_kernel) || !LR_Util::has_local_xc(xc_kernel_gs)) ? GX::NoGxc
             : ((nspin == 1) ? GX::Singlet : GX::BothSpins);
         // When the LR kernel *is* the ground-state functional -- the usual TDDFT case -- the two
