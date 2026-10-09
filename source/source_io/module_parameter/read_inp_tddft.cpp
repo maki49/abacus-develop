@@ -1097,7 +1097,7 @@ The gradient of the followed state (or its degenerate multiplet selected by `lr_
 
 Ignored outside `calculation = relax`: a single-point run solves and reports the gradients of every state.
 
-[NOTE] This index seeds the first ionic step. Subsequent steps select the root with the largest absolute excitation-amplitude overlap with the previous reference and report index changes and low overlaps. In JT mode the selected normalized multiplet mixture becomes that reference. This amplitude comparison assumes compatible occupied/virtual orbital bases between steps; orbital sign changes or rotations can affect it, so it does not guarantee physical state tracking. If the state leaves the solved window, increase `lr_nstates` or reduce the ionic step.)";
+[NOTE] This index seeds the first ionic step. Subsequent steps compute cross-geometry AO overlaps and transform them with the saved and current KS orbitals to compare excitation amplitudes in a common occupied/virtual basis. Orbital sign changes and rotations within those subspaces do not change the overlap criterion. Index changes and low overlaps are reported. In JT mode the selected normalized multiplet mixture and its orbital basis become the reference. The projection is not renormalized, so window leakage remains visible. Tracking currently requires a fixed cell and unchanged orbital windows; degeneracy and a state leaving the solved window still limit state identification. Increase `lr_nstates` or reduce the ionic step when the overlap is low.)";
         item.default_value = "0";
         item.unit = "";
         item.check_value = [](const Input_Item& item, const Parameter& para) {

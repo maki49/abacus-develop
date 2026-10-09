@@ -4,6 +4,8 @@
 #include <complex>
 #include <sstream>
 
+namespace { int test_rank = 0; }
+
 TEST(GradientAmplitudes, InitialRootSeedsTheReference)
 {
     const double roots[] = {1.0, 0.0, 0.0, 1.0};
@@ -88,12 +90,44 @@ TEST(GradientAmplitudes, MixedReferenceHasGlobalUnitNorm)
     EXPECT_NEAR(previous[0].imag() / previous[1].real(), 0.75, 1e-14);
 }
 
+TEST(GradientAmplitudes, KeepsJTMixtureAfterIndividualOrbitalSignChange)
+{
+    const double old_roots[] = {1, 0, 0, 1};
+    const std::vector<int> group{0, 1};
+    const std::vector<double> mixing{0.6, 0.8};
+    std::vector<double> previous;
+    LR::save_mixed_root(old_roots, 2, group, mixing, previous);
+    // The sign-flipped second virtual orbital changes that reference component.
+    // The full projection is tested against its formula in test_root_ovlp.cpp.
+    previous[1] = -previous[1];
+    const double current_roots[] = {0.6, -0.8, 0.8, 0.6};
+    int target = 0;
+    std::ostringstream log;
+    LR::follow_root(current_roots, 2, 2, 0, target, previous, log);
+    EXPECT_EQ(target, 0);
+}
+
+TEST(GradientAmplitudes, EmptyLocalRanksParticipateInRootSelection)
+{
+    const int local_size = test_rank == 0 ? 2 : 0;
+    const double first[] = {1, 0, 0, 1};
+    const double second[] = {0, 1, 1, 0};
+    int target = 0;
+    std::vector<double> previous;
+    std::ostringstream log;
+    LR::follow_root(first, local_size, 2, 0, target, previous, log);
+    LR::follow_root(second, local_size, 2, 0, target, previous, log);
+    EXPECT_EQ(target, 1);
+    EXPECT_EQ(previous.size(), static_cast<std::size_t>(local_size));
+}
+
 int main(int argc, char** argv)
 {
     int processes = 1;
     int threads = 1;
     int rank = 0;
     Parallel_Global::read_pal_param(argc, argv, processes, threads, rank);
+    test_rank = rank;
 #ifdef __MPI
     // This focused test has no pool/grid setup; the cleanup wrapper needs null handles.
     POOL_WORLD = MPI_COMM_NULL;

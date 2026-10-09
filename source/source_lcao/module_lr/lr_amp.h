@@ -43,7 +43,10 @@ void follow_root(const T* Xall, const int n, const int nstates, const int initia
 
     if (target_state < 0) { target_state = initial_state; }
 
-    if (!previous.empty())
+    // Ranks with no local pairs still participate in the global overlap collective.
+    int reference_size = previous.size();
+    Parallel_Reduce::reduce_all(reference_size);
+    if (reference_size > 0)
     {
         std::vector<T> ov(nstates, T(0));
         for (int j = 0; j < nstates; ++j)
@@ -86,7 +89,8 @@ void follow_root(const T* Xall, const int n, const int nstates, const int initia
         target_state = best;
     }
 
-    previous.assign(Xall + target_state * n, Xall + (target_state + 1) * n);
+    if (n > 0) { previous.assign(Xall + target_state * n, Xall + (target_state + 1) * n); }
+    else { previous.clear(); }
 }
 
 template <typename T>

@@ -78,30 +78,21 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_relax_target_()
     this->target_state_ = this->inp_->lr_target_state;   // seed; overlap takes over from step 2
     this->ofs_running_ << " Excited-state relaxation follows state " << this->inp_->lr_target_state
         << " of the " << (this->openshell ? "updown" : (this->target_is_ == 1 ? "triplet" : "singlet"))
-        << " channel, tracked by amplitude overlap between ionic steps." << std::endl;
+        << " channel, tracked by cross-geometry orbital and amplitude overlap." << std::endl;
 }
 
-/// Choose which root to follow at this geometry by maximum overlap with the previous step's
-/// amplitude, and refresh that reference.
-///
-/// Why this is needed rather than just using `lr_target_state` every step: the index names the
-/// n-th lowest root, which is a property of the ordering, not of the state. Where surfaces are
-/// close -- and near-degenerate excitons are the normal case in a symmetric crystal -- the
-/// ordering swaps as the geometry moves, so a fixed index silently hops between diabatic states.
-/// The energy along the path then is not a single smooth surface and its "gradient" is not
-/// conservative, which is exactly what makes a CG relaxation stall with large, erratic forces.
-///
-/// The overlap is a plain inner product: the Casida eigenvectors returned by the solver are
-/// orthonormal in that metric, and only |<.|.>| is used, so the arbitrary phase (and sign) the
-/// diagonalizer hands back does not matter.
+/// Compare roots in a common electron-hole basis using exact cross-geometry AO overlap.
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::follow_target_state_(std::ofstream& ofs)
 {
     if (!this->excited_relax_) { return; }
     const int channel = this->openshell ? 0 : this->target_is_;
     const T* const amplitudes = this->X[channel].template data<T>();
-    LR::follow_root(amplitudes, this->nloc_per_state, this->nstates,
-        this->inp_->lr_target_state, this->target_state_, this->target_X_prev_, ofs);
+    const TwoCenterIntegrator& overlap_integrator = *this->tcb().overlap_orb;
+    const LR::RootInputs<T> inputs{*this->ucell_, this->orb_cutoff_, overlap_integrator,
+        *this->psi_ks, this->paraC_, this->paraMat_, this->paraX_, this->nocc, this->nvirt, this->openshell, this->target_is_};
+    LR::follow_cross_root(inputs, amplitudes, this->nloc_per_state, this->nstates,
+        this->inp_->lr_target_state, this->target_state_, this->target_X_prev_, this->target_basis_prev_, ofs);
 }
 
 template<typename T, typename TR>

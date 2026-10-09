@@ -17,6 +17,7 @@
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
 #include "source_lcao/module_lr/hamilt_casida.h"
+#include "source_lcao/module_lr/root_track.h"
 #include "source_hamilt/module_gint/gint_info.h"
 #include "source_estate/module_pot/potential_new.h"
 #ifdef __EXX
@@ -168,6 +169,7 @@ namespace ModuleESolver
         /// Previous ionic step's amplitude for the followed state (local part), the
         /// reference the overlap is taken against. Empty on the first step.
         std::vector<T> target_X_prev_;
+        LR::RootBasis<T> target_basis_prev_;
         /// Re-select `target_state_` as argmax_j |<X_prev | X_j>| and refresh the reference.
         /// `ofs` receives the note when the followed root changes index, and the warning when
         /// no current root resembles the previous one.

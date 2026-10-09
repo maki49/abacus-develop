@@ -438,6 +438,7 @@ OBJS_HAMILT_LCAO=hamilt_lcao.o\
     nonlocal_dh.o\
     nonlocal_fs.o\
     overlap.o\
+    ovlp_block.o\
     overlap_fs.o\
     td_ekinetic_lcao.o\
     td_nonlocal_lcao.o\
@@ -1052,6 +1053,8 @@ OBJS_TENSOR=tensor.o\
 OBJS_LR_GRAD=lr_force.o\
     lr_force_aux.o\
     grad_degen.o\
+    root_track.o\
+    root_ovlp.o\
     grad_jt.o\
     gradient_output.o\
     lr_grad_cs.o\
