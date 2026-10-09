@@ -228,3 +228,26 @@ TEST(JTDirection, SymmetricSplitReconstructs)
     const std::vector<double> sym2 = LR::split_symmetric_part(g, ncoord, d, other, jt2);
     for (int a = 0; a < ncoord; ++a) { EXPECT_NEAR(sym2[a], sym[a], 1e-14); }
 }
+
+TEST(JTDirection, ZeroGradientReturnsAValidStationaryBranch)
+{
+    for (const int d : {2, 3})
+    {
+        const int ncoord = 3;
+        const size_t size = static_cast<size_t>(ncoord) * d * d;
+        const std::vector<double> zero(size, 0.0);
+        const LR::JTDirection jt = LR::find_jt_direction(zero, ncoord, d);
+        ASSERT_EQ(jt.mixing.size(), d);
+        ASSERT_EQ(jt.displacement.size(), ncoord);
+        EXPECT_DOUBLE_EQ(jt.slope, 0.0);
+        EXPECT_DOUBLE_EQ(jt.mixing[0], 1.0);
+        double norm_squared = 0.0;
+        for (const double value : jt.mixing) { norm_squared += value * value; }
+        EXPECT_DOUBLE_EQ(norm_squared, 1.0);
+        std::vector<double> jt_part;
+        const std::vector<double> sym = LR::split_symmetric_part(zero, ncoord, d, jt.mixing, jt_part);
+        EXPECT_EQ(sym, (std::vector<double>(ncoord, 0.0)));
+        EXPECT_EQ(jt_part, sym);
+        EXPECT_EQ(jt.displacement, sym);
+    }
+}

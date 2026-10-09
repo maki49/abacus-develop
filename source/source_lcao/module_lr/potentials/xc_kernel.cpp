@@ -281,8 +281,7 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             // finite-difference references for 06_N2/hse, 09_CH4/hse and 08_BeH2/rpa_at_hse:
             // MAE/|F| dropped to 0.015%-0.556%, Max/|F| to 0.029%-1.279%, matching the error level
             // of functionals that were never broken; also confirmed to resolve 08_BeH2/hse (both
-            // its DZP and TZDP bases, all excited states) -- see
-            // LR-Grad-formulas/log/2026-08-最新解析&差分结果.md §3.8.6 for the full scan table.
+            // its DZP and TZDP bases, all excited states).
             double sigma_cut = (func.info->number == XC_HYB_GGA_XC_HSE06) ? 1e-6 : -1.;
             std::vector<double> sigma_clamped(sigma.size());
             for (size_t i = 0; i < sigma.size(); ++i) { sigma_clamped[i] = std::max(sigma[i], sigma_cut); }

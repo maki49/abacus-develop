@@ -246,7 +246,9 @@ Socket mode always computes energy. Force and stress extraction follows cal_forc
 * nep: Neuroevolution Potential
 * ks-lr: Kohn-Sham density functional theory + LR-TDDFT (Under Development Feature)
 * lr: LR-TDDFT with given KS orbitals (Under Development Feature)
-* dfpt: density functional perturbation theory (Under Development Feature))";
+* dfpt: density functional perturbation theory (Under Development Feature)
+
+[NOTE] Excited-state forces (`cal_force = 1`) and atomic relaxation with `ks-lr` or `lr` currently require `gamma_only = 1`. Multi-k spectra remain supported with `cal_force = 0`.)";
         item.default_value = "ksdft";
         read_sync_string(input.esolver_type);
         item.check_value = [](const Input_Item& item, const Parameter& para) {
@@ -272,6 +274,13 @@ Socket mode always computes energy. Force and stress extraction follows cal_forc
                     "wave function computed by a separate SCF run); please set calculation=nscf.");
             }
             const bool is_lr = (para.input.esolver_type == "lr" || para.input.esolver_type == "ks-lr");
+            const bool requests_lr_force = para.input.cal_force || para.input.calculation == "relax";
+            if (is_lr && requests_lr_force && !para.input.gamma_only)
+            {
+                ModuleBase::WARNING_QUIT("ReadInput",
+                    "LR-TDDFT excited-state forces and relaxation currently require gamma_only=1; "
+                    "complex/multi-k gradients are not implemented. Use cal_force=0 for multi-k spectra.");
+            }
             if (is_lr && para.input.calculation == "cell-relax")
             {
                 ModuleBase::WARNING_QUIT("ReadInput",

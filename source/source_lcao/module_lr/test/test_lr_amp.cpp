@@ -39,6 +39,55 @@ TEST(GradientAmplitudes, ComplexPhaseDoesNotChangeTheFollowedRoot)
     EXPECT_EQ(previous[0], Complex(0.0, 1.0));
 }
 
+TEST(GradientAmplitudes, OpenShellDensitiesReadTheEntireDownSpinKBlock)
+{
+    // Two roots, two k points; up has two pairs per k and down has one.
+    const double roots[] = {10, 11, 12, 13, 20, 21, 30, 31, 32, 33, 40, 41};
+    const int first_down = LR::electron_hole_offset(0, 2, 2, 1, 1, true);
+    const int second_down = LR::electron_hole_offset(1, 2, 2, 1, 1, true);
+    const int second_up = LR::electron_hole_offset(1, 2, 2, 1, 0, true);
+    EXPECT_DOUBLE_EQ(roots[first_down], 20);
+    EXPECT_DOUBLE_EQ(roots[first_down + 1], 21);
+    EXPECT_DOUBLE_EQ(roots[second_down], 40);
+    EXPECT_DOUBLE_EQ(roots[second_down + 1], 41);
+    EXPECT_DOUBLE_EQ(roots[second_up], 30);
+    const int closed = LR::electron_hole_offset(1, 2, 2, 1, 1, false);
+    EXPECT_EQ(closed, 2);
+    const int gamma = LR::electron_hole_offset(1, 1, 2, 1, 1, true);
+    EXPECT_EQ(gamma, 5);
+}
+
+TEST(GradientAmplitudes, FollowsTheSelectedJTBranchAfterSplitting)
+{
+    const double degenerate_roots[] = {1.0, 0.0, 0.0, 1.0};
+    const std::vector<int> group{0, 1};
+    const std::vector<double> mixing{0.0, 1.0};
+    std::vector<double> previous{1.0, 0.0};
+    LR::save_mixed_root(degenerate_roots, 2, group, mixing, previous);
+    // The selected second component becomes the first root at the next geometry.
+    const double split_roots[] = {0.0, 1.0, 1.0, 0.0};
+    int target = 0;
+    std::ostringstream log;
+    LR::follow_root(split_roots, 2, 2, 0, target, previous, log);
+    EXPECT_EQ(target, 0);
+    EXPECT_EQ(previous, (std::vector<double>{0.0, 1.0}));
+}
+
+TEST(GradientAmplitudes, MixedReferenceHasGlobalUnitNorm)
+{
+    using Complex = std::complex<double>;
+    const Complex roots[] = {Complex(0, 1), Complex(0), Complex(0), Complex(1)};
+    const std::vector<int> group{0, 1};
+    const std::vector<double> mixing{0.6, 0.8};
+    std::vector<Complex> previous;
+    LR::save_mixed_root(roots, 2, group, mixing, previous);
+    ASSERT_EQ(previous.size(), 2);
+    double norm_squared = std::norm(previous[0]) + std::norm(previous[1]);
+    Parallel_Reduce::reduce_all(norm_squared);
+    EXPECT_NEAR(norm_squared, 1.0, 1e-14);
+    EXPECT_NEAR(previous[0].imag() / previous[1].real(), 0.75, 1e-14);
+}
+
 int main(int argc, char** argv)
 {
     int processes = 1;

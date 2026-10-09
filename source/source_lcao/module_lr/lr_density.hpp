@@ -5,6 +5,7 @@
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 #include "source_io/module_output/cube_io.h"
+#include "lr_amp.h"
 namespace LR
 {
     template<typename T>
@@ -101,17 +102,16 @@ namespace LR
         void output_eh_density_all_states(const T* const X, const int ispin, const int nstate)
         {
             ModuleBase::TITLE("LR_Density", "cal_eh_density_all_states");
-            const int offset_per_state = openshell_ ?
-                this->nk_ * (this->pX_[0].get_local_size() + this->pX_[1].get_local_size())
-                : this->nk_ * this->pX_[ispin].get_local_size();
+            const int up_size = this->pX_[0].get_local_size();
+            const int down_channel = openshell_ ? 1 : ispin;
+            const int down_size = this->pX_[down_channel].get_local_size();
             double** density;
             LR_Util::_allocate_2order_nested_ptr(density, 1, pgrid_.get_nrxx());
             for (int istate = 0;istate < nstate;++istate)
             {
-                int offset = istate * offset_per_state;
-                if (openshell_)
-                    offset += ispin * this->pX_[0].get_local_size();
-                this->cal_eh_density_single_state(X + offset, ispin, density);
+                const int offset = LR::electron_hole_offset(istate, nk_, up_size, down_size, ispin, openshell_);
+                const T* const amplitudes = X + offset;
+                this->cal_eh_density_single_state(amplitudes, ispin, density);
                 const std::string filepath = this->global_out_dir_ + "LR_e-h_density_" + spintype_[ispin] + "_" + std::to_string(istate + 1) + ".cube";
                 this->write_density_single_state(density, filepath);
             }

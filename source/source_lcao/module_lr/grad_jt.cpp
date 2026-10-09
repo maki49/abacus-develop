@@ -141,6 +141,11 @@ namespace LR
         assert(d >= 2);
         assert(gflat.size() == static_cast<size_t>(ncoord) * d * d);
         JTDirection best;
+        // A stationary multiplet still needs a valid branch for the force decomposition and
+        // next-step tracking. No displacement is selected when every branch gradient vanishes.
+        best.mixing.assign(d, 0.0);
+        best.mixing[0] = 1.0;
+        best.displacement.assign(ncoord, 0.0);
         const std::vector<std::vector<double>> starts = jt_start_points(d);
         for (size_t is = 0; is < starts.size(); ++is)
         {

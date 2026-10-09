@@ -225,7 +225,17 @@ namespace LR_Util
             // `mattrans` (pdtran_/pztranc_) rather than a plain serial swap.
             LR_Util::mattrans(dk.data(), pv.get_global_row_size(), pv);
 #else
-            throw std::runtime_error("transpose_DMR requires MPI (PBLAS mattrans) for the 2D-block-cyclic dm(k) transpose.");
+            // In a serial build the entire square AO matrix is local, in column-major order.
+            const int n = pv.get_global_row_size();
+            std::vector<TK> transposed(dk.size());
+            for (int j = 0; j < n; ++j)
+            {
+                for (int i = 0; i < n; ++i)
+                {
+                    transposed[j * n + i] = LR_Util::get_conj(dk[i * n + j]);
+                }
+            }
+            dk.swap(transposed);
 #endif
         }
 

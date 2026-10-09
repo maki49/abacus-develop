@@ -1088,16 +1088,16 @@ void ReadInput::item_lr_tddft()
     }
     {
         Input_Item item("lr_target_state");
-        item.annotation = "the excited state that geometry relaxation follows (0-based)";
+        item.annotation = "the initial excited state for geometry relaxation (0-based)";
         item.category = "Linear Response TDDFT";
         item.type = "Integer";
-        item.description = R"(Index of the excited state whose potential energy surface `calculation = relax` follows, counted from 0 within the spin channel selected by `lr_target_spin`.
+        item.description = R"(Initial excited-state index for `calculation = relax`, counted from 0 within the spin channel selected by `lr_target_spin`.
 
-Only the gradient of this one state is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy, which is the quantity the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
+The gradient of the followed state (or its degenerate multiplet selected by `lr_degen_mode`) is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy, which is the quantity the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
 
 Ignored outside `calculation = relax`: a single-point run solves and reports the gradients of every state.
 
-[NOTE] The state is followed by index, not by character. If it crosses another state during the relaxation, the optimizer will silently continue on the other surface.)";
+[NOTE] This index seeds the first ionic step. Subsequent steps select the root with the largest absolute excitation-amplitude overlap with the previous reference and report index changes and low overlaps. In JT mode the selected normalized multiplet mixture becomes that reference. This amplitude comparison assumes compatible occupied/virtual orbital bases between steps; orbital sign changes or rotations can affect it, so it does not guarantee physical state tracking. If the state leaves the solved window, increase `lr_nstates` or reduce the ionic step.)";
         item.default_value = "0";
         item.unit = "";
         item.check_value = [](const Input_Item& item, const Parameter& para) {

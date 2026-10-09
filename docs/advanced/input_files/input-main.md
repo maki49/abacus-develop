@@ -684,6 +684,8 @@
   - ks-lr: Kohn-Sham density functional theory + LR-TDDFT (Under Development Feature)
   - lr: LR-TDDFT with given KS orbitals (Under Development Feature)
   - dfpt: density functional perturbation theory (Under Development Feature)
+
+  > Note: Excited-state forces (`cal_force = 1`) and atomic relaxation with `ks-lr` or `lr` currently require `gamma_only = 1`. Multi-k spectra remain supported with `cal_force = 0`.
 - **Default**: ksdft
 
 ### symmetry
@@ -5186,13 +5188,13 @@
 ### lr_target_state
 
 - **Type**: Integer
-- **Description**: Index of the excited state whose potential energy surface `calculation = relax` follows, counted from 0 within the spin channel selected by `lr_target_spin`.
+- **Description**: Initial excited-state index for `calculation = relax`, counted from 0 within the spin channel selected by `lr_target_spin`.
 
-  Only the gradient of this one state is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy, which is the quantity the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
+  The gradient of the followed state (or its degenerate multiplet selected by `lr_degen_mode`) is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy, which is the quantity the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
 
   Ignored outside `calculation = relax`: a single-point run solves and reports the gradients of every state.
 
-  > Note: The state is followed by index, not by character. If it crosses another state during the relaxation, the optimizer will silently continue on the other surface.
+  > Note: This index seeds the first ionic step. Subsequent steps select the root with the largest absolute excitation-amplitude overlap with the previous reference and report index changes and low overlaps. In JT mode the selected normalized multiplet mixture becomes that reference. This amplitude comparison assumes compatible occupied/virtual orbital bases between steps; orbital sign changes or rotations can affect it, so it does not guarantee physical state tracking. If the state leaves the solved window, increase `lr_nstates` or reduce the ionic step.
 - **Default**: 0
 
 ### lr_degen_thr

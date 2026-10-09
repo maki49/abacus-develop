@@ -3,8 +3,39 @@
 #include "utils/lr_util.h"
 #include "source_base/parallel_reduce.h"
 #include <ostream>
+#include <stdexcept>
 namespace LR
 {
+// Open-shell eigenvectors store all up-spin k blocks before all down-spin k blocks.
+inline int electron_hole_offset(const int state, const int nk, const int up_size,
+    const int down_size, const int ispin, const bool openshell)
+{
+    if (openshell) { return state * nk * (up_size + down_size) + ispin * nk * up_size; }
+    const int channel_size = ispin == 0 ? up_size : down_size;
+    return state * nk * channel_size;
+}
+
+template <typename T>
+void save_mixed_root(const T* Xall, const int n, const std::vector<int>& group,
+    const std::vector<double>& mixing, std::vector<T>& previous)
+{
+    if (group.size() != mixing.size())
+    {
+        throw std::invalid_argument("JT mixing must contain one coefficient per root");
+    }
+    previous.assign(n, T(0));
+    for (size_t k = 0; k < group.size(); ++k)
+    {
+        for (int i = 0; i < n; ++i) { previous[i] += mixing[k] * Xall[group[k] * n + i]; }
+    }
+    double norm_squared = 0.0;
+    for (const T& value : previous) { norm_squared += std::real(LR_Util::get_conj(value) * value); }
+    Parallel_Reduce::reduce_all(norm_squared);
+    if (norm_squared <= 0.0) { throw std::runtime_error("JT reference has zero norm"); }
+    const double scale = 1.0 / std::sqrt(norm_squared);
+    for (T& value : previous) { value *= scale; }
+}
+
 template <typename T>
 void follow_root(const T* Xall, const int n, const int nstates, const int initial_state,
     int& target_state, std::vector<T>& previous, std::ostream& ofs)

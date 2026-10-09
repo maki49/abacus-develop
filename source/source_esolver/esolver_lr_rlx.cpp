@@ -267,6 +267,9 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_jt_force_(
         }
     }
     const LR::JTDirection jt = LR::find_jt_direction(gflat, ncoord, d);
+    const int channel = this->openshell ? 0 : this->target_is_;
+    const T* const amplitudes = this->X[channel].template data<T>();
+    LR::save_mixed_root(amplitudes, this->nloc_per_state, this->target_group_, jt.mixing, this->target_X_prev_);
     std::vector<double> jt_part;
     const std::vector<double> sym = LR::split_symmetric_part(gflat, ncoord, d, jt.mixing, jt_part);
 

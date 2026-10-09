@@ -62,7 +62,6 @@ class DMTest : public testing::Test
             ucell.atoms[0].iw2n[iw] = 0;
         }
         ucell.set_iat2iwt(1);
-        init_parav();
 
         // set paraV
         init_parav();
@@ -88,6 +87,10 @@ class DMTest : public testing::Test
 #else
     void init_parav()
     {
+        const int n = test_size * test_nw;
+        paraV = new Parallel_Orbitals();
+        paraV->set_serial(n, n);
+        paraV->set_atomic_trace(ucell.get_iat2iwt(), test_size, n);
     }
 #endif
 };
@@ -531,9 +534,7 @@ TEST_F(DMTest, LRTransposePreservesAtomIndices)
                 }
             }
         }
-#ifdef __MPI
         if (pass == 0) { LR_Util::transpose_DMR(dm, *paraV); }
-#endif
     }
 }
 
