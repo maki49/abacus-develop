@@ -473,6 +473,8 @@ OBJS_HSOLVER=diago_cg.o\
     hsolver.o\
     hsolver_pw.o\
     hsolver_pw_tddft.o\
+    orthonormal.o\
+    orthonormal_small.o\
     hsolver_lcaopw.o\
     diago_iter_assist.o\
     hegvd_op.o\
@@ -849,6 +851,7 @@ OBJS_MODULE_RI=conv_coulomb_pot_k.o\
       gaussian_abfs.o\
       exx_lri_detail.o\
       exx_lr_ws.o\
+      ri_util.o\
       singular_value.o\
 
 OBJS_BSE=esolver_lr_lcao_bse.o\

@@ -23,6 +23,7 @@ if (ENABLE_LIBRI)
         singular_value.cpp
         exx_lri_detail.cpp
         exx_lr_ws.cpp
+        ri_util.cpp
     )
   endif()
   add_library(
