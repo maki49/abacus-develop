@@ -76,13 +76,13 @@ template<>
 void ModuleESolver::ESolver_LR<double>::share_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
 {
     ModuleBase::TITLE("ESolver_LR<double>", "share_exx_lri");
-    this->exx_lri = exx_ks;
+    this->exx_lri = exx_ks->make_lr_workspace(*this->ucell_, this->kv);
 }
 template<>
 void ModuleESolver::ESolver_LR<std::complex<double>>::share_exx_lri(std::shared_ptr<Exx_LRI<std::complex<double>>>& exx_ks)
 {
     ModuleBase::TITLE("ESolver_LR<complex>", "share_exx_lri");
-    this->exx_lri = exx_ks;
+    this->exx_lri = exx_ks->make_lr_workspace(*this->ucell_, this->kv);
 }
 template<>
 void ModuleESolver::ESolver_LR<std::complex<double>>::share_exx_lri(std::shared_ptr<Exx_LRI<double>>& exx_ks)
@@ -437,12 +437,12 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_ks_(UnitCell& ucell, cons
         std::string dft_functional = LR_Util::tolower(this->inp_->dft_functional);
         // Either object would be built from the same `info_ri.coulomb_param`, which `input_conv`
         // derives from dft_functional alone -- so whenever the ground-state solver has one of the
-        // right type it is the same object we would construct, already up to date for this
-        // geometry. Sharing it also skips a `cal_exx_ions` per ionic step.
+        // right type its geometry tensors are already up to date. Share those tensors in a
+        // separate LR electronic workspace, skipping a `cal_exx_ions` per ionic step.
         const bool share = (ks_sol.exx_nao.exd && std::is_same<T, double>::value)
                         || (ks_sol.exx_nao.exc && std::is_same<T, std::complex<double>>::value);
         warn_if_kernel_differs_from_gs(xc_kernel, dft_functional, this->ofs_running_);
-        if (share) { this->exx_owned_ = false; }   // `refresh_from_ks_` re-binds it every step
+        if (share) { this->exx_owned_ = false; }   // `refresh_from_ks_` refreshes the geometry snapshot
         else    // construct C, V from scratch
         {
             // `input_conv` already filled `info_ri.coulomb_param` from INPUT.

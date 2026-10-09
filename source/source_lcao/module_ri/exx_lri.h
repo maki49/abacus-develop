@@ -66,6 +66,10 @@ public:
     auto& get_info() const { return this->info; }
     auto& get_mpi_comm() const { return this->mpi_comm; }
 
+    // Share read-only geometry tensors, but keep all electronic work buffers independent.
+    std::shared_ptr<Exx_LRI<Tdata>> make_lr_workspace(const UnitCell& ucell,
+                                                   const K_Vectors& kv) const;
+
     void init(
         const MPI_Comm &mpi_comm_in,
         const UnitCell &ucell,
