@@ -6,7 +6,7 @@
 #include "source_estate/module_dm/density_matrix.h"
 #include "source_lcao/module_ri/exx_lri.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
-#include "source_lcao/module_lr/exx_projection.h"
+#include "source_lcao/module_lr/exx_proj.h"
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
 namespace LR
 {
