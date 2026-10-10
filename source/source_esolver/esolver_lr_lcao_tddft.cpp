@@ -252,7 +252,9 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     this->ofs_running_ << "number of occupied bands: " << nocc_in << std::endl;
     this->ofs_running_ << "number of virtual bands: " << nvirt_in << std::endl;
     this->ofs_running_ << "number of Atom orbitals (LCAO-basis size): " << this->nbasis << std::endl;
-    this->ofs_running_ << "number of KS bands: " << this->eig_ks.nc << std::endl;
+    // eig_ks is allocated after set_dimension; report the resolved counts here.
+    this->ofs_running_ << "number of KS bands: " << ks_nbands << std::endl;
+    this->ofs_running_ << "number of KS bands in LR window: " << this->nbands << std::endl;
     this->ofs_running_ << "number of excited states to be solved: " << this->nstates << std::endl;
 }
 
