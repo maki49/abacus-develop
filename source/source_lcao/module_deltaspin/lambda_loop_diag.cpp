@@ -85,7 +85,7 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_linear_scan(
 
     // Save initial lambda to restore after scan
     std::vector<ModuleBase::Vector3<double>> initial_lambda(nat, 0.0);
-    where_fill_scalar_else_2d(this->state_.constrain_, 0, 0.0, this->state_.lambda_, initial_lambda);
+    where_fill_scalar_else_2d(this->state_.constrain_, 0, 0.0, this->state_.get_sc_lambda(), initial_lambda);
 
     // Open output file
     std::ofstream ofs_scan;
@@ -126,9 +126,9 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_linear_scan(
         for (int ia = 0; ia < nat; ia++) {
             for (int ic = 0; ic < 3; ic++) {
                 if (this->state_.constrain_[ia][ic] != 0) {
-                    this->state_.lambda_[ia][ic] = lambda_val_ry;
+                    this->state_.get_lambda()[ia][ic] = lambda_val_ry;
                 } else {
-                    this->state_.lambda_[ia][ic] = 0.0;
+                    this->state_.get_lambda()[ia][ic] = 0.0;
                 }
             }
         }
@@ -141,25 +141,25 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_linear_scan(
 
         // Save step 0 Mi for consistency verification
         if (istep == 0) {
-            mi_step0 = this->state_.Mi_;
+            mi_step0 = this->state_.get_mi();
         }
 
         // Write results
         ofs_scan << std::scientific << std::setprecision(6);
         ofs_scan << istep << "  " << lambda_val_ev;
         for (int ia = 0; ia < nat; ia++) {
-            ofs_scan << "  " << this->state_.Mi_[ia].x
-                     << "  " << this->state_.Mi_[ia].y
-                     << "  " << this->state_.Mi_[ia].z;
+            ofs_scan << "  " << this->state_.get_mi()[ia].x
+                     << "  " << this->state_.get_mi()[ia].y
+                     << "  " << this->state_.get_mi()[ia].z;
         }
         ofs_scan << std::endl;
 
         ofs_running << " [DS-DIAG]   lambda = " << lambda_val_ev << " eV/uB" << std::endl;
         for (int ia = 0; ia < nat; ia++) {
             ofs_running << " [DS-DIAG]   Atom " << ia << " Mi = ("
-                                 << this->state_.Mi_[ia].x << ", "
-                                 << this->state_.Mi_[ia].y << ", "
-                                 << this->state_.Mi_[ia].z << ") uB" << std::endl;
+                                 << this->state_.get_mi()[ia].x << ", "
+                                 << this->state_.get_mi()[ia].y << ", "
+                                 << this->state_.get_mi()[ia].z << ") uB" << std::endl;
         }
         ofs_running << std::endl;
     }
@@ -170,34 +170,34 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_linear_scan(
     // after multiple lambda updates in the scan loop
     // =============================================================
     ofs_running << " [DS-DIAG] === Consistency check: restoring initial lambda ===" << std::endl;
-    this->state_.lambda_ = initial_lambda;
+    this->state_.get_lambda() = initial_lambda;
     this->cal_mw_from_lambda(nsteps);
 
     // Write consistency check result
     ofs_scan << std::scientific << std::setprecision(6);
     ofs_scan << "init_recheck  " << lambda_start;
     for (int ia = 0; ia < nat; ia++) {
-        ofs_scan << "  " << this->state_.Mi_[ia].x
-                 << "  " << this->state_.Mi_[ia].y
-                 << "  " << this->state_.Mi_[ia].z;
+        ofs_scan << "  " << this->state_.get_mi()[ia].x
+                 << "  " << this->state_.get_mi()[ia].y
+                 << "  " << this->state_.get_mi()[ia].z;
     }
     ofs_scan << std::endl;
 
     ofs_running << " [DS-DIAG]   lambda = " << lambda_start << " eV/uB (restored)" << std::endl;
     for (int ia = 0; ia < nat; ia++) {
         ofs_running << " [DS-DIAG]   Atom " << ia << " Mi = ("
-                             << this->state_.Mi_[ia].x << ", "
-                             << this->state_.Mi_[ia].y << ", "
-                             << this->state_.Mi_[ia].z << ") uB" << std::endl;
+                             << this->state_.get_mi()[ia].x << ", "
+                             << this->state_.get_mi()[ia].y << ", "
+                             << this->state_.get_mi()[ia].z << ") uB" << std::endl;
     }
 
     // Compare restored Mi with step 0 Mi to check consistency
     ofs_scan << "# [consistency] step 0 vs init_recheck Mi difference:" << std::endl;
     double max_mi_diff = 0.0;
     for (int ia = 0; ia < nat; ia++) {
-        double dx = std::abs(this->state_.Mi_[ia].x - mi_step0[ia].x);
-        double dy = std::abs(this->state_.Mi_[ia].y - mi_step0[ia].y);
-        double dz = std::abs(this->state_.Mi_[ia].z - mi_step0[ia].z);
+        double dx = std::abs(this->state_.get_mi()[ia].x - mi_step0[ia].x);
+        double dy = std::abs(this->state_.get_mi()[ia].y - mi_step0[ia].y);
+        double dz = std::abs(this->state_.get_mi()[ia].z - mi_step0[ia].z);
         double diff = std::max({dx, dy, dz});
         if (diff > max_mi_diff) max_mi_diff = diff;
         ofs_scan << "#   Atom " << ia << " dM = (" << dx << ", " << dy << ", " << dz << ") uB" << std::endl;
@@ -213,7 +213,7 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_linear_scan(
     ofs_scan.close();
 
     // Restore original lambda values (already restored above, but explicit for clarity)
-    this->state_.lambda_ = initial_lambda;
+    this->state_.get_lambda() = initial_lambda;
 
     ofs_running << std::string(80, '=') << std::endl;
     ofs_running << " [DS-DIAG] === LINEAR LAMBDA SCAN COMPLETE ===" << std::endl;

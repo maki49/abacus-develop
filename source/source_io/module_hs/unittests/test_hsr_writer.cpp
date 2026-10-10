@@ -421,7 +421,7 @@ TEST(HsrWriterIo, HContainerBinaryMpiGatherWritesCompleteFiles)
     ucell.set_atom_flag = true;
     ucell.atoms[0].na = 1;
     ucell.atoms[0].nw = 2;
-    ucell.iat2it = new int[1];
+    ucell.iat2it.resize(1);
     ucell.iat2it[0] = 0;
     ucell.set_iat2iwt(1);
     const int* iat2iwt = ucell.get_iat2iwt();
@@ -506,8 +506,8 @@ TEST(HsrWriterIo, WriteHsrTextCsrCarriesPerSpinFermiFromEfermi)
     init_unitcell(ucell);
     // The __MPI path in write_hsr calls set_atomic_trace and gatherParallels,
     // which require a real atom-to-orbital map; nullptr with nat=0 throws on
-    // that path. iat2it is released by UnitCell's Statistics member.
-    ucell.iat2it = new int[1];
+    // that path.
+    ucell.iat2it.resize(1);
     ucell.iat2it[0] = 0;
     ucell.set_iat2iwt(1);
     const int* iat2iwt_ptr = ucell.get_iat2iwt();

@@ -122,10 +122,10 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_loop(int out
             // Compute initial magnetic moments and save starting state
             // =============================================================
             this->cal_mw_from_lambda(i_step);
-            spin = this->state_.Mi_;
+            spin = this->state_.get_mi();
 
             // Save initial lambda: for unconstrained components (constrain==0), set to 0
-            where_fill_scalar_else_2d(this->state_.constrain_, 0, zero, this->state_.lambda_, initial_lambda);
+            where_fill_scalar_else_2d(this->state_.constrain_, 0, zero, this->state_.get_sc_lambda(), initial_lambda);
 
             print_2d(" initial lambda (eV/uB): ", initial_lambda, this->state_.nspin_, ModuleBase::Ry_to_eV, ofs_running);
             print_2d(" initial spin (uB): ", spin, this->state_.nspin_, 1.0, ofs_running);
@@ -143,7 +143,7 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_loop(int out
             where_fill_scalar_2d(this->state_.constrain_, 0, zero, delta_lambda);
 
             // lambda = initial_lambda + delta_lambda
-            add_scalar_multiply_2d(initial_lambda, delta_lambda, one, this->state_.lambda_);
+            add_scalar_multiply_2d(initial_lambda, delta_lambda, one, this->state_.get_lambda());
 
             // [direction_only mode] Project out parallel component of lambda
             // This keeps |lambda| -> 0, only constraining spin direction
@@ -155,18 +155,18 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_loop(int out
 
                 if (norm > 1e-8) {
                     const ModuleBase::Vector3<double> dir = target / norm;
-                    double parallel = this->state_.lambda_[ia].x*dir.x +
-                                    this->state_.lambda_[ia].y*dir.y +
-                                    this->state_.lambda_[ia].z*dir.z;
-                    this->state_.lambda_[ia].x -= parallel * dir.x;
-                    this->state_.lambda_[ia].y -= parallel * dir.y;
-                    this->state_.lambda_[ia].z -= parallel * dir.z;
+                    double parallel = this->state_.get_lambda()[ia].x*dir.x +
+                                    this->state_.get_lambda()[ia].y*dir.y +
+                                    this->state_.get_lambda()[ia].z*dir.z;
+                    this->state_.get_lambda()[ia].x -= parallel * dir.x;
+                    this->state_.get_lambda()[ia].y -= parallel * dir.y;
+                    this->state_.get_lambda()[ia].z -= parallel * dir.z;
                 }
             }
 
             // Apply lambda and compute new magnetic moments
             this->cal_mw_from_lambda(i_step, delta_lambda.data());
-            new_spin = this->state_.Mi_;
+            new_spin = this->state_.get_mi();
 
             // Check if gradient dM/dlambda has decayed below threshold
             bool GradLessThanBound = check_gradient_decay(*this, new_spin, spin, delta_lambda, dnu_last_step, false, ofs_running);
@@ -174,7 +174,7 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_loop(int out
             {
                 // Gradient has decayed: further optimization yields diminishing returns
                 // Apply the last successful step and exit
-                add_scalar_multiply_2d(initial_lambda, dnu_last_step, one, this->state_.lambda_);
+                add_scalar_multiply_2d(initial_lambda, dnu_last_step, one, this->state_.get_lambda());
                 this->update_psi_charge(dnu_last_step.data(), true, true);
 #ifdef __MPI
                 duration = (double)(MPI_Wtime() - iterstart);
@@ -269,7 +269,7 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_loop(int out
             if(PARAM.inp.basis_type == "pw")
             {
                 pw::cal_mi_pw(this->state_, this->psi, this->pelec);
-                subtract_2d(this->state_.Mi_, this->state_.target_mag_, delta_spin);
+                subtract_2d(this->state_.get_mi(), this->state_.target_mag_, delta_spin);
                 where_fill_scalar_2d(this->state_.constrain_, 0, zero, delta_spin);
                 search = delta_spin;
                 for (int ia = 0; ia < nat; ia++)
@@ -344,13 +344,13 @@ void spinconstrain::SpinConstrain<std::complex<double>>::run_lambda_loop(int out
         // Mask unconstrained components
         where_fill_scalar_else_2d(this->state_.constrain_, 0, zero, delta_lambda, delta_lambda);
         // Update lambda
-        add_scalar_multiply_2d(initial_lambda, delta_lambda, one, this->state_.lambda_);
+        add_scalar_multiply_2d(initial_lambda, delta_lambda, one, this->state_.get_lambda());
 
         // =============================================================
         // TRIAL STEP: compute Mi at trial position
         // =============================================================
         this->cal_mw_from_lambda(i_step, delta_lambda.data());
-        spin_plus = this->state_.Mi_;
+        spin_plus = this->state_.get_mi();
 
         // Find optimal step size via linear interpolation
         alpha_opt = cal_alpha_opt(*this, spin, spin_plus, alpha_trial);

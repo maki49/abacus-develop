@@ -69,8 +69,12 @@ void ESolver_GetS::before_all_runners(BaseCell& basecell, const Input_para& inp)
     {
         const int cal_symm_repr[2] = {this->inp_->cal_symm_repr[0], this->inp_->cal_symm_repr[1]};
         ucell.symm.analy_sys(ucell.lat,
-                             ucell.st,
                              ucell.atoms,
+                             ucell.nat,
+                             ucell.ntype,
+                             ucell.iat2it,
+                             ucell.iat2ia,
+                             ucell.itia2iat,
                              GlobalV::ofs_running,
                              this->inp_->symmetry_prec,
                              inp.nspin,
