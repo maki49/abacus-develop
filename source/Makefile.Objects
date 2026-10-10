@@ -1055,6 +1055,9 @@ OBJS_TENSOR=tensor.o\
     lr_spectrum.o\
     lr_spectrum_velocity.o\
     hamilt_casida.o\
+    esolver_lr_orb.o\
+    esolver_lr_init.o\
+    esolver_lr_cfg.o\
     esolver_lr_lcao_tddft.o\
 
 OBJS_LR_GRAD=lr_force.o\
