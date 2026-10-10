@@ -57,6 +57,11 @@ private:
     using TatomR = std::array<double,Ndim>;		// tmp
 
 public:
+    using CoulombSettings = std::map<Conv_Coulomb_Pot_K::Coulomb_Method,
+                                    std::pair<bool,
+                                              std::map<Conv_Coulomb_Pot_K::Coulomb_Type,
+                                                       std::vector<std::map<std::string, std::string>>>>>;
+
     Exx_LRI(const Exx_Info_RI& info_in) :info(info_in) {}
     Exx_LRI operator=(const Exx_LRI&) = delete;
     Exx_LRI operator=(Exx_LRI&&);
@@ -76,6 +81,10 @@ public:
         const K_Vectors &kv_in,
         const LCAO_Orbitals& orb,
         const std::vector<std::vector<std::vector<Numerical_Orbital_Lm>>>& abfs_in = {});
+    /// Refresh changed Coulomb kernels while retaining the initialized basis and Gaunt table.
+    void refresh_coulomb(const UnitCell& ucell,
+                         const LCAO_Orbitals& orb,
+                         const CoulombSettings& settings);
     void init_spencer(const MPI_Comm& mpi_comm_in,
                       const UnitCell& ucell,
                       const K_Vectors& kv_in,
@@ -140,10 +149,7 @@ private:
     std::map<Conv_Coulomb_Pot_K::Coulomb_Method, Exx_Obj<Tdata>> exx_objs;
     //LRI_CV<Tdata> cv;
     RI::Exx<TA,Tcell,Ndim,Tdata> exx_lri;
-    std::map<Conv_Coulomb_Pot_K::Coulomb_Method,
-        std::pair<bool,
-            std::map<Conv_Coulomb_Pot_K::Coulomb_Type,
-                std::vector<std::map<std::string,std::string>>>>> coulomb_settings;
+    CoulombSettings coulomb_settings;
 
     friend class RPA_LRI<double, Tdata>;
     friend class RPA_LRI<std::complex<double>, Tdata>;
