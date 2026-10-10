@@ -168,10 +168,6 @@ void ModuleESolver::ESolver_LR<T, TR>::parameter_check()const
     if (abs_gauge.find(this->inp_->abs_gauge) == abs_gauge.end()) {
         throw std::invalid_argument("ESolver_LR: unknown type of abs_gauge");
     }
-    if (this->inp_->cal_force && LR_Util::has_local_xc(this->xc_kernel))
-    {
-        std::cout << "To calculate LR-TDDFT gradients, Libxc should be compiled with kxc, i.e. `-DDISABLE_KXC=OFF` with cmake." << std::endl;
-    }
 }
 
 template<typename T, typename TR>

@@ -25,6 +25,7 @@ if(ENABLE_LCAO)
     lr_spectrum_velocity.cpp
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
+    potentials/xc_kxc.cpp
     gradient_output.cpp
     lr_grad_cs.cpp
     lr_grad_os.cpp

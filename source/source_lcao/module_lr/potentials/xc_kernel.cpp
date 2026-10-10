@@ -1,4 +1,5 @@
 #include "xc_kernel.h"
+#include "xc_kxc.h"
 #include "source_hamilt/module_xc/xc_functional.h"
 #include "source_io/module_parameter/parameter.h"
 #include "source_base/timer.h"
@@ -11,6 +12,7 @@
 #include <algorithm>
 #include <iostream>
 #include <cmath>
+#include <exception>
 #include "source_io/module_output/cube_io.h"
 #ifdef __LIBXC
 #include <xc.h>
@@ -152,6 +154,16 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
     // gradient. If none was requested, skip it. Open shell needs the RAW arrays (see below) --
     // `build_gxc_coef` is a closed-shell-only pre-contraction.
     const bool need_kxc = (this->gxc_spin_ != GxcSpin::NoGxc);
+    try
+    {
+        for (const auto& functional : funcs) { require_xc_kxc(functional, need_kxc); }
+    }
+    catch (const std::exception& error)
+    {
+        XC_Functional_Libxc::finish_func(funcs);
+        const std::string message = error.what();
+        ModuleBase::WARNING_QUIT("LR::KernelXC::f_xc_libxc", message);
+    }
 
     std::vector<double> rho(nspin * nrxx);    // r major / spin contigous
     // for GGA

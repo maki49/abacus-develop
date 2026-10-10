@@ -1,3 +1,11 @@
+if(ENABLE_LIBXC)
+  AddTest(
+    TARGET MODULE_LR_xc_kxc
+    LIBS Libxc::xc
+    SOURCES test_xc_kxc.cpp ../potentials/xc_kxc.cpp
+  )
+endif()
+
 AddTest(
   TARGET MODULE_LR_exx_projection
   LIBS base parameter ${math_libs} container device
