@@ -116,7 +116,7 @@ jobs:
         run: echo "LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/toolchain/install/libxc-kxc/lib:${LD_LIBRARY_PATH:-}" >> "${GITHUB_ENV}"
 
       - name: Test LR root-tracking checker
-        run: python3 tests/integrate/tools/test_root_check.py
+        run: python3 tests/integrate/validation_tools/test_root_check.py
 
       - name: Configure
         run: |
