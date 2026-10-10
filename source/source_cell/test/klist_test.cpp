@@ -1092,6 +1092,38 @@ TEST_F(KlistTest, SetAfterVCReindexesStarsWithoutChangingIBZ)
     EXPECT_EQ(kv->kstars, refreshed);
 }
 
+TEST_F(KlistTest, SetAfterVCMatchesPeriodicBoundaryWhenToleranceChanges)
+{
+    kv->set_spin_mult(1);
+    kv->set_nkstot(1);
+    kv->set_nks(1);
+    kv->renew_for_testing(1);
+    kv->kvec_d = {{-0.499999, 0.125, -0.499999}};
+    kv->wk = {1.0};
+    kv->ik2iktot = {0};
+    kv->kstars = {{{0, {-0.499999, 0.125, -0.499999}},
+                   {1, {-0.499999, -0.125, -0.499999}}}};
+    ucell.symm.nrotk = 2;
+    ucell.symm.nrotk_anti = 0;
+    ucell.symm.magnetic_nspin4 = true;
+    ucell.symm.kgmatrix[0] = ModuleBase::Matrix3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    ucell.symm.kgmatrix[1] = ModuleBase::Matrix3(1, 0, 0, 0, -1, 0, 0, 0, 1);
+    ucell.symm.epsilon = 1e-6;
+    kv->set_after_vc(ucell.G, ucell.symm, true, ofs_running);
+    const auto stars = kv->kstars;
+    const auto points = kv->kvec_d;
+    const auto weights = kv->wk;
+
+    // The new tolerance folds -0.499999 to 0.500001. Both are the same k point.
+    ucell.symm.epsilon = 3.2e-5;
+    kv->set_after_vc(ucell.G, ucell.symm, true, ofs_running);
+    EXPECT_EQ(kv->kstars, stars);
+    EXPECT_EQ(kv->kvec_d, points);
+    EXPECT_EQ(kv->wk, weights);
+    kv->set_after_vc(ucell.G, ucell.symm, true, ofs_running);
+    EXPECT_EQ(kv->kstars, stars);
+}
+
 TEST_F(KlistTest, SetAfterVCRejectsIncompatibleStars)
 {
     kv->kstars = {{{0, {0.125, 0, 0}}, {1, {-0.125, 0, 0}}}};

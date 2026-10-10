@@ -7,6 +7,7 @@
 #include "source_base/parallel_reduce.h"
 #include "source_cell/module_symmetry/symmetry.h"
 
+
 void K_Vectors::set(const UnitCell& ucell,
                     const ModuleSymmetry::Symmetry& symm,
                     const std::string& k_file_name,
@@ -546,7 +547,6 @@ void K_Vectors::reduce_by_symmetry(const UnitCell& ucell,
                               nrotkm,
                               kvec_d_ibz,
                               symm.epsilon,
-                              [&symm](double a, double b) { return symm.equal(a, b); },
                               this->kstars);
     }
 
@@ -600,11 +600,9 @@ void K_Vectors::set_after_vc(const ModuleBase::Matrix3& G,
                 bool matched = false;
                 for (int operation = 0; operation < operation_count; ++operation)
                 {
-                    ModuleBase::Vector3<double> rotated = member.second * operations[operation];
-                    ModuleCell::restrict_kpt(rotated, symm.epsilon);
-                    if (symm.equal(rotated.x, representative.x)
-                        && symm.equal(rotated.y, representative.y)
-                        && symm.equal(rotated.z, representative.z))
+                    const ModuleBase::Vector3<double> rotated = member.second * operations[operation];
+                    // Representatives may retain the boundary convention of an older tolerance.
+                    if (ModuleCell::kpoints_equivalent(rotated, representative, symm.epsilon))
                     {
                         updated_stars[ik].emplace(operation, member.second);
                         matched = true;
