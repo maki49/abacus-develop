@@ -6,6 +6,7 @@
 #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 #include "source_io/module_output/cube_io.h"
 #include "lr_amp.h"
+#include <iosfwd>
 namespace LR
 {
     template<typename T>
@@ -94,12 +95,16 @@ namespace LR
             this->dm_to_density(dm_diff, density);
         }
 
-        void write_density_single_state(const double* const* const density, const std::string& filepath)
+        void write_density_single_state(const double* const* const density, const std::string& filepath,
+                                        std::ofstream& ofs_running)
         {
-            ModuleIO::write_vdata_palgrid(pgrid_, density[0], 0, 1, 0, filepath, 0.0, &ucell_, this->out_chg_precision_, 0, false, true);
+            const std::string data_desc = "LR-TDDFT electron-hole density difference (electrons/Bohr^3)";
+            ModuleIO::write_vdata_palgrid(pgrid_, density[0], 0, 1, 0, filepath, 0.0, &ucell_,
+                                        this->out_chg_precision_, 0, false, true, ofs_running, data_desc);
         }
 
-        void output_eh_density_all_states(const T* const X, const int ispin, const int nstate)
+        void output_eh_density_all_states(const T* const X, const int ispin, const int nstate,
+                                          std::ofstream& ofs_running)
         {
             ModuleBase::TITLE("LR_Density", "cal_eh_density_all_states");
             const int up_size = this->pX_[0].get_local_size();
@@ -113,7 +118,7 @@ namespace LR
                 const T* const amplitudes = X + offset;
                 this->cal_eh_density_single_state(amplitudes, ispin, density);
                 const std::string filepath = this->global_out_dir_ + "LR_e-h_density_" + spintype_[ispin] + "_" + std::to_string(istate + 1) + ".cube";
-                this->write_density_single_state(density, filepath);
+                this->write_density_single_state(density, filepath, ofs_running);
             }
             LR_Util::_deallocate_2order_nested_ptr(density, 1);
         }

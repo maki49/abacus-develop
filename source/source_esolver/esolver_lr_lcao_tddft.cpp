@@ -908,11 +908,21 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
             paraX_, paraC_, paraMat_, openshell);
 
         if (openshell)
+        {
             for (int is = 0;is < this->nspin;++is)
-                lr_density.output_eh_density_all_states(this->X[0].template data<T>(), is, nstates);
+            {
+                const T* const amplitudes = this->X[0].template data<T>();
+                lr_density.output_eh_density_all_states(amplitudes, is, nstates, this->ofs_running_);
+            }
+        }
         else
+        {
             for (int is = 0;is < this->X.size();++is)
-                lr_density.output_eh_density_all_states(this->X[is].template data<T>(), is, nstates);
+            {
+                const T* const amplitudes = this->X[is].template data<T>();
+                lr_density.output_eh_density_all_states(amplitudes, is, nstates, this->ofs_running_);
+            }
+        }
     }
 
     //cal spectrum
