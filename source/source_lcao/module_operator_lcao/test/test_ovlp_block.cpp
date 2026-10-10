@@ -15,9 +15,9 @@ class OverlapBlockTest : public ::testing::Test
         cell.ntype = 1;
         cell.nat = 1;
         cell.atoms = atom.get();
-        // Statistics owns these maps and releases them with UnitCell.
-        cell.iat2it = new int[1]{0};
-        cell.iat2ia = new int[1]{0};
+        // UnitCell owns the atom-index maps as vectors.
+        cell.iat2it = {0};
+        cell.iat2ia = {0};
         atom->nw = 2;
         atom->iw2l = {0, 0};
         atom->iw2n = {0, 0};

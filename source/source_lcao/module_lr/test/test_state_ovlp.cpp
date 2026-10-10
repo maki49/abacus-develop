@@ -394,8 +394,8 @@ TEST(RootOverlap, CrossGeometryAOOverlapIsOrderedAndNonsymmetric)
     cell.nat = 2;
     cell.lat0 = 1.0;
     cell.latvec = ModuleBase::Matrix3(10, 0, 0, 0, 10, 0, 0, 0, 10);
-    cell.iat2it = new int[2]{0, 0};
-    cell.iat2ia = new int[2]{0, 1};
+    cell.iat2it = {0, 0};
+    cell.iat2ia = {0, 1};
     atoms->nw = 1;
     atoms->na = 2;
     atoms->iw2l = {0};
