@@ -1,6 +1,6 @@
-#include "root_track.h"
-#include "root_ovlp.h"
-#include "root_group.h"
+#include "state_track.h"
+#include "state_ovlp.h"
+#include "state_group.h"
 #include "grad_degen.h"
 #include "source_psi/psi.h"
 #include "lr_amp.h"
@@ -122,7 +122,7 @@ int follow_subspace(const RootInputs<T>& inputs, const T* amplitudes,
     const std::vector<std::complex<double>> complex_overlap(overlaps.begin(), overlaps.end());
     std::vector<double> reference_size(nstates);
     for (int root = 0; root < nstates; ++root) { reference_size[root] = std::abs(reference[root]); }
-    const auto match = match_root_group(complex_overlap, old_dimension, nstates, groups, reference_size, inputs.reference_first);
+    const auto match = match_state_group(complex_overlap, old_dimension, nstates, groups, reference_size, inputs.reference_first);
     for (size_t ig = 0; ig < groups.size(); ++ig)
     {
         log << " EXCITED-STATE RELAX: candidate roots";

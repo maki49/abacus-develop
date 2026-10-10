@@ -245,11 +245,16 @@ ModuleESolver::ESolver_LR<T, TR>::cal_grad_matrix_degenerate(const int ispin,
     ofs << " Degenerate multiplet of " << d << " states, Omega = " << omega_mean
         << " Ry, spread = " << omega_spread << " Ry, max |<X_k|X_l> - delta_kl| = " << max_ovlp_err
         << std::endl;
-    if (max_ovlp_err > 1e-6)
+    // Dimensionless diagnostic tolerance for the orthonormality needed by X_plus.
+    // This warning does not change the multiplet or the computed gradient.
+    const double orthonormality_warn_tol = 1e-6;
+    if (max_ovlp_err > orthonormality_warn_tol)
     {
         ofs << " WARNING: this multiplet's eigenvectors are not orthonormal to"
-            " 1e-6, so (X_k+X_l)/sqrt(2) is not normalized and the assembled gradient matrix is"
-            " wrong by that much." << std::endl;
+            << " tolerance " << orthonormality_warn_tol
+            << " (dimensionless overlap error); (X_k+X_l)/sqrt(2) may not be normalized"
+            << " and the assembled gradient matrix may consequently be inaccurate."
+            << std::endl;
     }
 
     // 3. the $d(d-1)/2$ combinations $X_+=(X_k+X_l)/\sqrt2$, all in one Z-vector solve

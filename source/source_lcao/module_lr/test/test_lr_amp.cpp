@@ -98,7 +98,7 @@ TEST(GradientAmplitudes, KeepsJTMixtureAfterIndividualOrbitalSignChange)
     std::vector<double> previous;
     LR::save_mixed_root(old_roots, 2, group, mixing, previous);
     // The sign-flipped second virtual orbital changes that reference component.
-    // The full projection is tested against its formula in test_root_ovlp.cpp.
+    // The full projection is tested against its formula in test_state_ovlp.cpp.
     previous[1] = -previous[1];
     const double current_roots[] = {0.6, -0.8, 0.8, 0.6};
     int target = 0;

@@ -33,9 +33,9 @@ if(ENABLE_LCAO)
     exx_proj.cpp
     lr_force_aux.cpp
     grad_degen.cpp
-    root_group.cpp
-    root_track.cpp
-    root_ovlp.cpp
+    state_group.cpp
+    state_track.cpp
+    state_ovlp.cpp
     grad_jt.cpp
     cal_edm.cpp
     zeqlin_solv.cpp)

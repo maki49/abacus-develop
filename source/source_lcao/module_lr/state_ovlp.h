@@ -1,5 +1,5 @@
-#ifndef ABACUS_LR_ROOT_OVERLAP_H
-#define ABACUS_LR_ROOT_OVERLAP_H
+#ifndef ABACUS_LR_STATE_OVERLAP_H
+#define ABACUS_LR_STATE_OVERLAP_H
 #include "source_base/vector3.h"
 #include <vector>
 

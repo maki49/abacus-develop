@@ -1061,9 +1061,9 @@ OBJS_LR_GRAD=lr_force.o\
     xc_kxc.o\
     lr_force_aux.o\
     grad_degen.o\
-    root_group.o\
-    root_track.o\
-    root_ovlp.o\
+    state_group.o\
+    state_track.o\
+    state_ovlp.o\
     grad_jt.o\
     gradient_output.o\
     lr_grad_cs.o\

@@ -1,11 +1,11 @@
-#include "root_group.h"
+#include "state_group.h"
 #include "source_base/module_external/lapack_connector.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 namespace LR
 {
-GroupMatch match_root_group(const std::vector<std::complex<double>>& overlap,
+GroupMatch match_state_group(const std::vector<std::complex<double>>& overlap,
     const int old_dimension, const int nstates, const std::vector<std::vector<int>>& groups,
     const std::vector<double>& reference_overlap, const bool reference_first)
 {

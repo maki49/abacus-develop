@@ -7,7 +7,7 @@
 #include "source_base/parallel_reduce.h"
 #include <gtest/gtest.h>
 #include <complex>
-#include "source_lcao/module_lr/root_ovlp.h"
+#include "source_lcao/module_lr/state_ovlp.h"
 #include "source_base/matrix3.h"
 #include <algorithm>
 #include <cmath>

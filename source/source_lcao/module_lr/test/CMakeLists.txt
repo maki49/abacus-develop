@@ -42,7 +42,7 @@ AddTest(
 
 # AO construction shares the existing two-center mock fixture with operator tests.
 set(root_overlap_test_sources
-  ../root_ovlp.cpp
+  ../state_ovlp.cpp
   ../../module_operator_lcao/ovlp_block.cpp
   ../../module_operator_lcao/test/tmp_mocks.cpp
   ../../../source_basis/module_ao/parallel_orbitals.cpp
@@ -55,13 +55,13 @@ set(root_overlap_test_sources
 )
 
 AddTest(
-  TARGET MODULE_LR_root_ovlp
+  TARGET MODULE_LR_state_ovlp
   LIBS base parameter ${math_libs} container device psi
-  SOURCES test_root_ovlp.cpp ${root_overlap_test_sources}
+  SOURCES test_state_ovlp.cpp ${root_overlap_test_sources}
 )
 
 AddTest(
-  TARGET MODULE_LR_root_group
+  TARGET MODULE_LR_state_group
   LIBS base parameter ${math_libs} container device
-  SOURCES test_root_group.cpp ../root_group.cpp
+  SOURCES test_state_grp.cpp ../state_group.cpp
 )

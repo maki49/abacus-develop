@@ -1,5 +1,5 @@
 import unittest
-from root_check import check
+from state_check import check
 
 SUMMARY = ('EXCITED-STATE RELAX step {step}: E_gs = -10 eV, Omega = 1 eV, '
            'E_exc = -9 eV | |F_gs|max = 0.1, |F_Omega|max = 0.2 eV/Angstrom\n')
