@@ -62,12 +62,6 @@ void project_local_references(const RootInputs<T>& inputs, const RootBasis<T>& o
     const RootBasis<T>& current, const std::vector<double>& ao, std::vector<T>& previous,
     std::vector<std::vector<T>>& group)
 {
-    Parallel_2D po;
-#ifdef __MPI
-    po.set(current.nbands, current.nbands, inputs.pc.get_block_size(), inputs.pc.blacs_ctxt);
-#else
-    po.set_serial(current.nbands, current.nbands);
-#endif
     const std::vector<T> typed_ao(ao.begin(), ao.end());
     std::vector<std::vector<T>*> references{&previous};
     for (auto& root : group) { references.push_back(&root); }
@@ -79,14 +73,27 @@ void project_local_references(const RootInputs<T>& inputs, const RootBasis<T>& o
         const int no = inputs.nocc[spin];
         const int nv = inputs.nvirt[spin];
         const int local_count = px.get_local_size();
-        // Build each spin's MO overlap once, then reuse it for the single and group references.
-        const auto local_mo = mo_overlap_dist(old.coefficients[spin], typed_ao,
-            current.coefficients[spin], inputs.pc, inputs.pmat, po);
+        Parallel_2D pi;
+        Parallel_2D pv;
+#ifdef __MPI
+        const int block_size = px.get_block_size();
+        pi.set(no, no, block_size, px.blacs_ctxt);
+        pv.set(nv, nv, block_size, px.blacs_ctxt);
+#else
+        pi.set_serial(no, no);
+        pv.set_serial(nv, nv);
+#endif
+        // Only oo/vv are needed; construct each once and reuse across references.
+        const int occupied_start = 0;
+        const auto occupied = mo_overlap_dist(old.coefficients[spin], typed_ao,
+            current.coefficients[spin], inputs.pc, inputs.pmat, pi, occupied_start);
+        const auto virtuals = mo_overlap_dist(old.coefficients[spin], typed_ao,
+            current.coefficients[spin], inputs.pc, inputs.pmat, pv, no);
         for (auto* reference : references)
         {
             std::vector<T> local_reference(local_count);
             std::copy_n(reference->begin() + offset, local_count, local_reference.begin());
-            const auto projected = project_reference_dist(local_reference, local_mo, po, px, no, nv);
+            const auto projected = project_reference_dist(local_reference, occupied, virtuals, pi, pv, px);
             std::copy(projected.begin(), projected.end(), reference->begin() + offset);
         }
         offset += px.get_local_size();

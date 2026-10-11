@@ -140,14 +140,15 @@ void check_grid(const Parallel_2D& a, const Parallel_2D& b)
 template <typename T>
 std::vector<T> mo_overlap_dist(const std::vector<T>& old_coefficients,
     const std::vector<T>& ao, const std::vector<T>& current_coefficients,
-    const Parallel_2D& pc, const Parallel_2D& ps, const Parallel_2D& po)
+    const Parallel_2D& pc, const Parallel_2D& ps, const Parallel_2D& po, const int first_band)
 {
     check_grid(pc, ps);
     check_grid(pc, po);
     const int naos = pc.get_global_row_size();
-    const int bands = pc.get_global_col_size();
+    const int bands = po.get_global_row_size();
     if (ps.get_global_row_size() != naos || ps.get_global_col_size() != naos
-        || po.get_global_row_size() != bands || po.get_global_col_size() != bands
+        || bands <= 0 || first_band < 0 || first_band + bands > pc.get_global_col_size()
+        || po.get_global_col_size() != bands
         || old_coefficients.size() < pc.get_local_size()
         || current_coefficients.size() < pc.get_local_size() || ao.size() < ps.get_local_size())
     {
@@ -155,8 +156,18 @@ std::vector<T> mo_overlap_dist(const std::vector<T>& old_coefficients,
     }
     const T zero = T(0);
     const T one = T(1);
-    const int coefficient_count = std::max<int>(1, pc.get_local_size());
+    // Align the selected old/new coefficient columns before either GEMM.
+    // Only this occupied or virtual block is formed, never the full MO overlap.
+    Parallel_2D coefficients;
+#ifdef __MPI
+    const int block_size = pc.get_block_size();
+    coefficients.set(naos, bands, block_size, pc.blacs_ctxt);
+#else
+    coefficients.set_serial(naos, bands);
+#endif
+    const int coefficient_count = std::max<int>(1, coefficients.get_local_size());
     const int overlap_count = std::max<int>(1, po.get_local_size());
+    std::vector<T> coefficient_block(coefficient_count, zero);
     std::vector<T> intermediate(coefficient_count, zero);
     std::vector<T> overlap(overlap_count, zero);
     const T* const old_data = old_coefficients.empty() ? &zero : old_coefficients.data();
@@ -165,18 +176,33 @@ std::vector<T> mo_overlap_dist(const std::vector<T>& old_coefficients,
     const char adjoint = std::is_same<T, double>::value ? 'T' : 'C';
 #ifdef __MPI
     const int first = 1;
-    // Even ranks with empty local blocks join both collective PBLAS calls.
+    const int source_column = first_band + 1;
+    // GEMR2D's legacy wrapper is non-const but only reads these sources.
+    T* const old_source = const_cast<T*>(old_data);
+    T* const new_source = const_cast<T*>(new_data);
+    int* const source_desc = const_cast<int*>(pc.desc);
+    Cpxgemr2d(naos, bands, new_source, first, source_column, source_desc,
+        coefficient_block.data(), first, first, coefficients.desc, pc.blacs_ctxt);
+    // Empty local blocks join all redistribution and PBLAS calls.
     ScalapackConnector::gemm('N', 'N', naos, bands, naos, one,
-        ao_data, first, first, ps.desc, new_data, first, first, pc.desc,
-        zero, intermediate.data(), first, first, pc.desc);
+        ao_data, first, first, ps.desc, coefficient_block.data(), first, first, coefficients.desc,
+        zero, intermediate.data(), first, first, coefficients.desc);
+    // Reuse the coefficient buffer once S*C_current has been evaluated.
+    Cpxgemr2d(naos, bands, old_source, first, source_column, source_desc,
+        coefficient_block.data(), first, first, coefficients.desc, pc.blacs_ctxt);
     ScalapackConnector::gemm(adjoint, 'N', bands, bands, naos, one,
-        old_data, first, first, pc.desc, intermediate.data(), first, first, pc.desc,
+        coefficient_block.data(), first, first, coefficients.desc,
+        intermediate.data(), first, first, coefficients.desc,
         zero, overlap.data(), first, first, po.desc);
 #else
+    const int source_offset = first_band * naos;
+    const int selected_count = naos * bands;
+    std::copy_n(new_data + source_offset, selected_count, coefficient_block.data());
     BlasConnector::gemm_cm('N', 'N', naos, bands, naos, one,
-        ao_data, naos, new_data, naos, zero, intermediate.data(), naos);
+        ao_data, naos, coefficient_block.data(), naos, zero, intermediate.data(), naos);
+    std::copy_n(old_data + source_offset, selected_count, coefficient_block.data());
     BlasConnector::gemm_cm(adjoint, 'N', bands, bands, naos, one,
-        old_data, naos, intermediate.data(), naos, zero, overlap.data(), bands);
+        coefficient_block.data(), naos, intermediate.data(), naos, zero, overlap.data(), bands);
 #endif
     overlap.resize(po.get_local_size());
     return overlap;
@@ -184,14 +210,18 @@ std::vector<T> mo_overlap_dist(const std::vector<T>& old_coefficients,
 
 template <typename T>
 std::vector<T> project_reference_dist(const std::vector<T>& previous,
-    const std::vector<T>& overlap, const Parallel_2D& po,
-    const Parallel_2D& px, const int nocc, const int nvirt)
+    const std::vector<T>& occupied_overlap, const std::vector<T>& virtual_overlap,
+    const Parallel_2D& pi, const Parallel_2D& pv, const Parallel_2D& px)
 {
-    check_grid(po, px);
-    const int bands = nocc + nvirt;
-    if (po.get_global_row_size() != bands || po.get_global_col_size() != bands
-        || px.get_global_row_size() != nvirt || px.get_global_col_size() != nocc
-        || previous.size() != px.get_local_size() || overlap.size() != po.get_local_size())
+    check_grid(pi, px);
+    check_grid(pv, px);
+    const int nocc = px.get_global_col_size();
+    const int nvirt = px.get_global_row_size();
+    if (pi.get_global_row_size() != nocc || pi.get_global_col_size() != nocc
+        || pv.get_global_row_size() != nvirt || pv.get_global_col_size() != nvirt
+        || previous.size() != px.get_local_size()
+        || occupied_overlap.size() != pi.get_local_size()
+        || virtual_overlap.size() != pv.get_local_size())
     {
         throw std::invalid_argument("Root projection requires matching windows and local matrix sizes");
     }
@@ -201,47 +231,24 @@ std::vector<T> project_reference_dist(const std::vector<T>& previous,
     std::vector<T> intermediate(local_count, zero);
     std::vector<T> projected(local_count, zero);
     const T* const old_data = previous.empty() ? &zero : previous.data();
-    const T* const mo_data = overlap.empty() ? &zero : overlap.data();
+    const T* const occupied_data = occupied_overlap.empty() ? &zero : occupied_overlap.data();
+    const T* const virtual_data = virtual_overlap.empty() ? &zero : virtual_overlap.data();
     const char adjoint = std::is_same<T, double>::value ? 'T' : 'C';
 #ifdef __MPI
     const int first = 1;
-    const int virtual_start = nocc + 1;
-    // Extract both MO subblocks onto px's grid with origin (1,1). A virtual
-    // block starting at nocc+1 need not align with px when block_size > 1.
-    // Redistribution preserves block size and avoids gathering any matrix.
-    const int block_size = px.get_block_size();
-    Parallel_2D pv;
-    Parallel_2D pi;
-    pv.set(nvirt, nvirt, block_size, px.blacs_ctxt);
-    pi.set(nocc, nocc, block_size, px.blacs_ctxt);
-    const int virtual_count = std::max<int>(1, pv.get_local_size());
-    const int occupied_count = std::max<int>(1, pi.get_local_size());
-    std::vector<T> virtual_overlap(virtual_count, zero);
-    std::vector<T> occupied_overlap(occupied_count, zero);
-    // The legacy redistribution wrapper takes non-const source arguments;
-    // GEMR2D reads the source matrix and descriptor without modifying them.
-    T* const source = const_cast<T*>(mo_data);
-    int* const source_desc = const_cast<int*>(po.desc);
-    Cpxgemr2d(nvirt, nvirt, source, virtual_start, virtual_start, source_desc,
-        virtual_overlap.data(), first, first, pv.desc, px.blacs_ctxt);
-    Cpxgemr2d(nocc, nocc, source, first, first, source_desc,
-        occupied_overlap.data(), first, first, pi.desc, px.blacs_ctxt);
-    // Empty local blocks still join the collective redistribution and GEMMs.
     ScalapackConnector::gemm(adjoint, 'N', nvirt, nocc, nvirt, one,
-        virtual_overlap.data(), first, first, pv.desc,
+        virtual_data, first, first, pv.desc,
         old_data, first, first, px.desc, zero,
         intermediate.data(), first, first, px.desc);
     ScalapackConnector::gemm('N', 'N', nvirt, nocc, nocc, one,
         intermediate.data(), first, first, px.desc,
-        occupied_overlap.data(), first, first, pi.desc, zero,
+        occupied_data, first, first, pi.desc, zero,
         projected.data(), first, first, px.desc);
 #else
-    const int virtual_offset = nocc * bands + nocc;
-    const T* const virtual_data = mo_data + virtual_offset;
     BlasConnector::gemm_cm(adjoint, 'N', nvirt, nocc, nvirt, one,
-        virtual_data, bands, old_data, nvirt, zero, intermediate.data(), nvirt);
+        virtual_data, nvirt, old_data, nvirt, zero, intermediate.data(), nvirt);
     BlasConnector::gemm_cm('N', 'N', nvirt, nocc, nocc, one,
-        intermediate.data(), nvirt, mo_data, bands, zero, projected.data(), nvirt);
+        intermediate.data(), nvirt, occupied_data, nocc, zero, projected.data(), nvirt);
 #endif
     projected.resize(px.get_local_size());
     return projected;
@@ -249,14 +256,14 @@ std::vector<T> project_reference_dist(const std::vector<T>& previous,
 
 template std::vector<double> mo_overlap_dist(const std::vector<double>&,
     const std::vector<double>&, const std::vector<double>&,
-    const Parallel_2D&, const Parallel_2D&, const Parallel_2D&);
+    const Parallel_2D&, const Parallel_2D&, const Parallel_2D&, int);
 template std::vector<std::complex<double>> mo_overlap_dist(
     const std::vector<std::complex<double>>&, const std::vector<std::complex<double>>&,
-    const std::vector<std::complex<double>>&, const Parallel_2D&, const Parallel_2D&, const Parallel_2D&);
+    const std::vector<std::complex<double>>&, const Parallel_2D&, const Parallel_2D&, const Parallel_2D&, int);
 template std::vector<double> project_reference_dist(const std::vector<double>&,
-    const std::vector<double>&, const Parallel_2D&, const Parallel_2D&, int, int);
+    const std::vector<double>&, const std::vector<double>&, const Parallel_2D&, const Parallel_2D&, const Parallel_2D&);
 template std::vector<std::complex<double>> project_reference_dist(
     const std::vector<std::complex<double>>&, const std::vector<std::complex<double>>&,
-    const Parallel_2D&, const Parallel_2D&, int, int);
+    const std::vector<std::complex<double>>&, const Parallel_2D&, const Parallel_2D&, const Parallel_2D&);
 
 }

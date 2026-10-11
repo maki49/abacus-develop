@@ -16,7 +16,17 @@ namespace
 {
 template <typename T>
 std::vector<T> transform_for_test(const std::vector<T>& old, const std::vector<double>& ao,
-    const std::vector<T>& current, int naos, int bands);
+    const std::vector<T>& current, int naos, int bands, int start, int count, int block_size);
+template <typename T>
+std::vector<T> overlap_block(const std::vector<T>& full, int bands, int start, int count)
+{
+    std::vector<T> block(count * count);
+    for (int i = 0; i < count; ++i)
+        for (int j = 0; j < count; ++j)
+            block[i * count + j] = full[(start + i) * bands + start + j];
+    return block;
+}
+
 template <typename T>
 std::vector<T> project(const std::vector<T>& previous, const std::vector<T>& overlap, int no, int nv);
 }
@@ -123,7 +133,7 @@ TEST(RootOverlap, UsesOrderedNonsymmetricAOOverlap)
 {
     const std::vector<double> coefficients{1, 0, 0, 1};
     const std::vector<double> ao{1, 0.2, -0.4, 0.9};
-    const auto mo = transform_for_test(coefficients, ao, coefficients, 2, 2);
+    const auto mo = transform_for_test(coefficients, ao, coefficients, 2, 2, 0, 2, 1);
     EXPECT_EQ(mo, ao);
 }
 
@@ -133,7 +143,7 @@ TEST(RootOverlap, MOTransformConjugatesOldOrbitals)
     const std::vector<C> old{C(0, 1), C(0), C(0), C(1)};
     const std::vector<C> current{C(1), C(0), C(0), C(0, 1)};
     const std::vector<double> ao{1, 0.2, -0.4, 0.9};
-    const auto mo = transform_for_test(old, ao, current, 2, 2);
+    const auto mo = transform_for_test(old, ao, current, 2, 2, 0, 2, 1);
     EXPECT_EQ(mo[0], C(0, -1));
     EXPECT_EQ(mo[1], C(0.2));
     EXPECT_EQ(mo[2], C(-0.4));
@@ -241,18 +251,18 @@ std::vector<T> gather(const std::vector<T>& local, const Parallel_2D& layout)
 
 template <typename T>
 std::vector<T> transform_for_test(const std::vector<T>& old, const std::vector<double>& ao,
-    const std::vector<T>& current, int naos, int bands)
+    const std::vector<T>& current, int naos, int bands, int start, int count, int block_size)
 {
     Parallel_2D pc;
 #ifdef __MPI
-    pc.init(naos, bands, 1, MPI_COMM_WORLD);
+    pc.init(naos, bands, block_size, MPI_COMM_WORLD);
 #else
     pc.set_serial(naos, bands);
 #endif
     Parallel_2D ps;
     Parallel_2D po;
     setup(ps, naos, naos, pc);
-    setup(po, bands, bands, pc);
+    setup(po, count, count, pc);
     std::vector<T> old_rows(old.size());
     std::vector<T> current_rows(current.size());
     for (int i = 0; i < naos; ++i)
@@ -267,7 +277,7 @@ std::vector<T> transform_for_test(const std::vector<T>& old, const std::vector<d
     const auto local_old = scatter(old_rows, pc);
     const auto local_current = scatter(current_rows, pc);
     const auto local_ao = scatter(typed_ao, ps);
-    const auto actual = LR::mo_overlap_dist(local_old, local_ao, local_current, pc, ps, po);
+    const auto actual = LR::mo_overlap_dist(local_old, local_ao, local_current, pc, ps, po, start);
     return gather(actual, po);
 }
 
@@ -289,8 +299,15 @@ std::vector<T> project(const std::vector<T>& previous, const std::vector<T>& ove
         for (int a = 0; a < nv; ++a) { previous_rows[a * no + i] = previous[i * nv + a]; }
     }
     const auto local_previous = scatter(previous_rows, px);
-    const auto local_overlap = scatter(overlap, po);
-    const auto actual = LR::project_reference_dist(local_previous, local_overlap, po, px, no, nv);
+    Parallel_2D pi;
+    Parallel_2D pv;
+    setup(pi, no, no, po);
+    setup(pv, nv, nv, po);
+    const auto occupied = overlap_block(overlap, bands, 0, no);
+    const auto virtuals = overlap_block(overlap, bands, no, nv);
+    const auto local_occupied = scatter(occupied, pi);
+    const auto local_virtuals = scatter(virtuals, pv);
+    const auto actual = LR::project_reference_dist(local_previous, local_occupied, local_virtuals, pi, pv, px);
     const auto rows = gather(actual, px);
     std::vector<T> result(previous.size());
     for (int i = 0; i < no; ++i)
@@ -301,7 +318,7 @@ std::vector<T> project(const std::vector<T>& previous, const std::vector<T>& ove
 }
 
 template <typename T>
-void check_mo(int naos, int bands, T phase)
+void check_mo(int naos, int bands, T phase, int start, int count, int block_size)
 {
     std::vector<double> ao(naos * naos);
     std::vector<T> old(naos * bands);
@@ -315,8 +332,9 @@ void check_mo(int naos, int bands, T phase)
             current[band * naos + i] = T((i - 2 * band + 2) / 13.0);
         }
     }
-    const auto actual = transform_for_test(old, ao, current, naos, bands);
-    const auto expected = reference_mo(old, ao, current, naos, bands);
+    const auto actual = transform_for_test(old, ao, current, naos, bands, start, count, block_size);
+    const auto full = reference_mo(old, ao, current, naos, bands);
+    const auto expected = overlap_block(full, bands, start, count);
     ASSERT_EQ(actual.size(), expected.size());
     for (std::size_t i = 0; i < actual.size(); ++i)
     {
@@ -352,8 +370,15 @@ void check_projection(int no, int nv, T phase, int block_size)
         for (int a = 0; a < nv; ++a) { previous_rows[a * no + i] = previous[i * nv + a]; }
     }
     const auto local_previous = scatter(previous_rows, px);
-    const auto local_overlap = scatter(overlap, po);
-    const auto actual = LR::project_reference_dist(local_previous, local_overlap, po, px, no, nv);
+    Parallel_2D pi;
+    Parallel_2D pv;
+    setup(pi, no, no, po);
+    setup(pv, nv, nv, po);
+    const auto occupied = overlap_block(overlap, bands, 0, no);
+    const auto virtuals = overlap_block(overlap, bands, no, nv);
+    const auto local_occupied = scatter(occupied, pi);
+    const auto local_virtuals = scatter(virtuals, pv);
+    const auto actual = LR::project_reference_dist(local_previous, local_occupied, local_virtuals, pi, pv, px);
     const auto expected = reference_projection(previous, overlap, no, nv);
     std::vector<T> expected_rows(expected.size());
     for (int i = 0; i < no; ++i)
@@ -374,13 +399,20 @@ void check_projection(int no, int nv, T phase, int block_size)
 
 }
 
-TEST(RootDistributed, RealNonsymmetricRectangularTransformation) { check_mo(5, 3, 1.0); }
+TEST(RootDistributed, RealNonsymmetricRectangularTransformation) { check_mo(5, 3, 1.0, 0, 3, 1); }
 TEST(RootDistributed, ComplexAdjointTransformation)
 {
     const std::complex<double> phase(0.6, 0.8);
-    check_mo(5, 3, phase);
+    check_mo(5, 3, phase, 0, 3, 1);
 }
-TEST(RootDistributed, EmptyCoefficientBlocksParticipate) { check_mo(2, 1, 1.0); }
+TEST(RootDistributed, EmptyCoefficientBlocksParticipate) { check_mo(2, 1, 1.0, 0, 1, 1); }
+
+TEST(RootDistributed, AlignedOccupiedBlock) { check_mo(9, 8, 1.0, 0, 3, 2); }
+TEST(RootDistributed, MisalignedVirtualBlock)
+{
+    const std::complex<double> phase(0.6, 0.8);
+    check_mo(9, 8, phase, 3, 5, 32);
+}
 
 TEST(RootDistributed, RealProjectionPreservesWindowLoss) { check_projection(2, 3, 0.4, 1); }
 TEST(RootDistributed, ComplexProjectionUsesVirtualAdjoint)
