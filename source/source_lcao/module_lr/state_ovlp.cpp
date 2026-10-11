@@ -191,10 +191,9 @@ std::vector<T> project_reference_dist(const std::vector<T>& previous,
     const int bands = nocc + nvirt;
     if (po.get_global_row_size() != bands || po.get_global_col_size() != bands
         || px.get_global_row_size() != nvirt || px.get_global_col_size() != nocc
-        || previous.size() != px.get_local_size() || overlap.size() != po.get_local_size()
-        || po.get_block_size() != 1)
+        || previous.size() != px.get_local_size() || overlap.size() != po.get_local_size())
     {
-        throw std::invalid_argument("Root projection requires matching windows and unit block size");
+        throw std::invalid_argument("Root projection requires matching windows and local matrix sizes");
     }
     const T zero = T(0);
     const T one = T(1);
@@ -207,15 +206,34 @@ std::vector<T> project_reference_dist(const std::vector<T>& previous,
 #ifdef __MPI
     const int first = 1;
     const int virtual_start = nocc + 1;
-    // O's virtual/occupied blocks are submatrices; unit blocks keep their
-    // origins aligned with px, including ranks that own no electron-hole pairs.
+    // Extract both MO subblocks onto px's grid with origin (1,1). A virtual
+    // block starting at nocc+1 need not align with px when block_size > 1.
+    // Redistribution preserves block size and avoids gathering any matrix.
+    const int block_size = px.get_block_size();
+    Parallel_2D pv;
+    Parallel_2D pi;
+    pv.set(nvirt, nvirt, block_size, px.blacs_ctxt);
+    pi.set(nocc, nocc, block_size, px.blacs_ctxt);
+    const int virtual_count = std::max<int>(1, pv.get_local_size());
+    const int occupied_count = std::max<int>(1, pi.get_local_size());
+    std::vector<T> virtual_overlap(virtual_count, zero);
+    std::vector<T> occupied_overlap(occupied_count, zero);
+    // The legacy redistribution wrapper takes non-const source arguments;
+    // GEMR2D reads the source matrix and descriptor without modifying them.
+    T* const source = const_cast<T*>(mo_data);
+    int* const source_desc = const_cast<int*>(po.desc);
+    Cpxgemr2d(nvirt, nvirt, source, virtual_start, virtual_start, source_desc,
+        virtual_overlap.data(), first, first, pv.desc, px.blacs_ctxt);
+    Cpxgemr2d(nocc, nocc, source, first, first, source_desc,
+        occupied_overlap.data(), first, first, pi.desc, px.blacs_ctxt);
+    // Empty local blocks still join the collective redistribution and GEMMs.
     ScalapackConnector::gemm(adjoint, 'N', nvirt, nocc, nvirt, one,
-        mo_data, virtual_start, virtual_start, po.desc,
+        virtual_overlap.data(), first, first, pv.desc,
         old_data, first, first, px.desc, zero,
         intermediate.data(), first, first, px.desc);
     ScalapackConnector::gemm('N', 'N', nvirt, nocc, nocc, one,
         intermediate.data(), first, first, px.desc,
-        mo_data, first, first, po.desc, zero,
+        occupied_overlap.data(), first, first, pi.desc, zero,
         projected.data(), first, first, px.desc);
 #else
     const int virtual_offset = nocc * bands + nocc;

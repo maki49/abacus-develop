@@ -146,7 +146,8 @@ namespace
 void setup(Parallel_2D& target, int rows, int cols, const Parallel_2D& grid)
 {
 #ifdef __MPI
-    target.set(rows, cols, 1, grid.blacs_ctxt);
+    const int block_size = grid.get_block_size();
+    target.set(rows, cols, block_size, grid.blacs_ctxt);
 #else
     target.set_serial(rows, cols);
 #endif
@@ -323,12 +324,12 @@ void check_mo(int naos, int bands, T phase)
     }
 }
 template <typename T>
-void check_projection(int no, int nv, T phase)
+void check_projection(int no, int nv, T phase, int block_size)
 {
     const int bands = no + nv;
     Parallel_2D po;
 #ifdef __MPI
-    po.init(bands, bands, 1, MPI_COMM_WORLD);
+    po.init(bands, bands, block_size, MPI_COMM_WORLD);
 #else
     po.set_serial(bands, bands);
 #endif
@@ -363,7 +364,11 @@ void check_projection(int no, int nv, T phase)
     ASSERT_EQ(actual.size(), local_expected.size());
     for (std::size_t i = 0; i < actual.size(); ++i)
     {
-        EXPECT_NEAR(std::abs(actual[i] - local_expected[i]), 0.0, 1e-13);
+        // Keep the original unit-block tolerance; larger new oracle contractions
+        // allow roundoff proportional to the independently computed result.
+        const double scaled_tolerance = 1e-12 * std::max(1.0, std::abs(local_expected[i]));
+        const double tolerance = block_size == 1 ? 1e-13 : scaled_tolerance;
+        EXPECT_NEAR(std::abs(actual[i] - local_expected[i]), 0.0, tolerance);
     }
 }
 
@@ -377,13 +382,32 @@ TEST(RootDistributed, ComplexAdjointTransformation)
 }
 TEST(RootDistributed, EmptyCoefficientBlocksParticipate) { check_mo(2, 1, 1.0); }
 
-TEST(RootDistributed, RealProjectionPreservesWindowLoss) { check_projection(2, 3, 0.4); }
+TEST(RootDistributed, RealProjectionPreservesWindowLoss) { check_projection(2, 3, 0.4, 1); }
 TEST(RootDistributed, ComplexProjectionUsesVirtualAdjoint)
 {
     const std::complex<double> phase(0.3, 0.4);
-    check_projection(2, 3, phase);
+    check_projection(2, 3, phase, 1);
 }
-TEST(RootDistributed, EmptyReferenceBlocksParticipate) { check_projection(1, 1, 0.4); }
+TEST(RootDistributed, EmptyReferenceBlocksParticipate) { check_projection(1, 1, 0.4, 1); }
+
+TEST(RootDistributed, RealProjectionWithMisalignedBlockTwo)
+{
+    check_projection(3, 5, 0.4, 2);
+}
+TEST(RootDistributed, ComplexProjectionWithMisalignedBlockFour)
+{
+    const std::complex<double> phase(0.3, 0.4);
+    check_projection(5, 6, phase, 4);
+}
+TEST(RootDistributed, ProjectionWithBlockThirtyTwoAndMultipleBlocks)
+{
+    check_projection(35, 37, 0.4, 32);
+}
+TEST(RootDistributed, ComplexLargeBlocksWithEmptyRanks)
+{
+    const std::complex<double> phase(0.3, 0.4);
+    check_projection(3, 5, phase, 32);
+}
 
 TEST(RootOverlap, CrossGeometryAOOverlapIsOrderedAndNonsymmetric)
 {

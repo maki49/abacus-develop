@@ -32,7 +32,8 @@ std::vector<T> mo_overlap_dist(const std::vector<T>& old_coefficients,
 // A_projected = O_virt^dagger A_previous O_occ, without normalization.
 // po describes the full MO overlap; px describes the electron-hole block.
 // previous is the old-step local reference (possibly a JT mixture), not the current roots.
-// Unit blocks align the occupied/virtual submatrix origins with px.
+// MO subblocks are redistributed to origin (1,1) on px's grid, preserving
+// the shared block size; nocc need not align with a block boundary.
 template <typename T>
 std::vector<T> project_reference_dist(const std::vector<T>& previous,
     const std::vector<T>& overlap, const Parallel_2D& po,
