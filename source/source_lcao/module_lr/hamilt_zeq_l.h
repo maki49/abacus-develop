@@ -122,6 +122,11 @@ namespace LR
         using ATYPE_EXX = typename OperatorLREXX<T>::MO_TO_AO_TYPE;
 #endif
     public:
+        void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband)
+        {
+            this->apply(psi_in, hpsi, ld_psi, nband, true);
+        }
+
         /// Concatenate the two diagonal spin blocks in the same layout as hPsi.
         std::vector<double> orbital_diagonal() const
         {

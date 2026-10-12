@@ -2,6 +2,7 @@
 #define ABACUS_SOURCE_LCAO_MODULE_LR_HAMILT_ZEQULR_H
 #include "source_hamilt/hamilt.h"
 #include "source_lcao/module_lr/operator_casida/operator_lr_hxc.h"
+#include "source_lcao/module_lr/operator_casida/hxc_spin_accumulator.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include <cassert>
@@ -44,11 +45,26 @@ namespace LR
 
         void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband)
         {
+            this->apply(psi_in, hpsi, ld_psi, nband, false);
+        }
+
+    protected:
+        // Only the linear VO Hessian opts into spin fusion. The nonlinear
+        // right-hand side retains its CXC/OO actions and per-band extra terms.
+        void apply(const T* const psi_in, T* const hpsi, const int ld_psi,
+                   const int nband, const bool fuse_spin)
+        {
             assert(ld_psi == this->ldim);
             const std::vector<int> ldim_is = { static_cast<int>(nk * pX[0].get_local_size()), static_cast<int>(nk * pX[1].get_local_size()) };
+            std::array<const OperatorLRHxc<T>*, 2> output_projections{};
+            if (fuse_spin)
+            {
+                output_projections = hxc_spin_projections(this->ops); // Hxc_00 and Hxc_11.
+            }
             for (int ib = 0;ib < nband;++ib)
             {
                 const int offset_band = ib * ld_psi;
+                HxcSpinAccumulator spin_potential[2]; // Fresh grid sums for this vector.
                 // All four spin blocks accumulate into this band's output, and the diagonal
                 // `OperatorLRDiag`s now add rather than assign (see `operator_lr_diag.h`), so the
                 // buffer has to start clean.
@@ -77,13 +93,33 @@ namespace LR
                             // OUT channel's distribution. 
                             const T* input = psi_in + offset_out;
                             T* output = hpsi + offset_out;
-                            act_with_shared_density(node, ldim_is[is_out], input, output, density_cache);
+                            if (fuse_spin)
+                            {
+                                const auto& output_projection = *output_projections[is_out];
+                                act_with_spin_sum(node, ldim_is[is_out], input, output, density_cache,
+                                                  output_projection, spin_potential[is_out]);
+                            }
+                            else
+                            {
+                                act_with_shared_density(node, ldim_is[is_out], input, output, density_cache);
+                            }
                             node = (hamilt::Operator<T>*)(node->next_op);
                         }
                     }
                 }
+                if (fuse_spin)
+                {
+                    for (int is_out = 0; is_out < 2; ++is_out)
+                    {
+                        T* const output = hpsi + offset_band + is_out * ldim_is[0];
+                        const auto& output_projection = *output_projections[is_out];
+                        spin_potential[is_out].integrate_and_project(output_projection, output);
+                    }
+                }
             }
         }
+
+    public:
 
         /// @brief The full (replicated) matrix, column by column. Only used by the LAPACK solver.
         std::vector<T> matrix()

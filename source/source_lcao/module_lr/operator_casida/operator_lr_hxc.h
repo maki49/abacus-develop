@@ -2,6 +2,7 @@
 #define ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_HXC_H
 
 #include <map>
+#include "source_base/matrix.h"
 #include "source_cell/klist.h"
 #include "source_hamilt/operator.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -11,6 +12,8 @@
 #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 namespace LR
 {
+    class HxcSpinAccumulator;
+
     /// @brief  Hxc part of A operator for LR-TDDFT
     template<typename T = double, typename Device = base_device::DEVICE_CPU>
     class OperatorLRHxc : public hamilt::Operator<T, Device>
@@ -72,8 +75,19 @@ namespace LR
                                                 std::vector<std::vector<double>>>;
         void act_with_shared_density(const T* psi_in, T* hpsi, TransitionDensityCache& density_cache) const;
 
+        using GridPotential = std::vector<ModuleBase::matrix>;
+
       private:
-        void grid_calculation(TransitionDensityCache& density_cache) const;
+        friend class HxcSpinAccumulator;
+
+        /// D_mu,nu -> rho(r); reuse this input density between output-spin kernels.
+        void prepare_density(TransitionDensityCache& density_cache) const;
+        /// Add this spin block's f_Hxc * rho to the real/imaginary grid-potential parts.
+        void accumulate_potential(TransitionDensityCache& density_cache, GridPotential& potential) const;
+        /// v(r) -> V_mu,nu(R) by grid integration; overwrite the AO workspace hR.
+        void integrate_potential(const GridPotential& potential) const;
+        /// Fold hR to k space and add the selected MO contraction, including factor_.
+        void project(const T* psi_in, T* hpsi) const;
 
         //global sizes
         const int& nspin;
