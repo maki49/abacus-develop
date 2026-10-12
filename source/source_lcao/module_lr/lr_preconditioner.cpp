@@ -10,6 +10,96 @@
 
 namespace LR
 {
+namespace
+{
+struct Transition
+{
+    double gap;
+    int local_index; // -1 when this global transition belongs to another rank.
+};
+
+std::vector<Transition> ordered_transitions(const OrbitalTransitionSpace& layout)
+{
+    const double* eigenvalues = layout.eigenvalues;
+    const auto& pair_distribution = layout.pair_distribution;
+    const int nk = layout.nk;
+    const auto& nocc = layout.nocc;
+    const auto& nvirt = layout.nvirt;
+    const bool unrestricted = layout.unrestricted;
+    const int spin_count = unrestricted ? 2 : 1;
+    if (nk <= 0 || nocc.size() < spin_count || nvirt.size() < spin_count
+        || pair_distribution.size() < spin_count)
+    {
+        throw std::invalid_argument("Invalid LR orbital-gap initial-vector layout");
+    }
+    const int ks_bands = nocc[0] + nvirt[0];
+    int local_dim = 0;
+    std::vector<Transition> transitions;
+    for (int spin = 0; spin < spin_count; ++spin)
+    {
+        const int spin_offset = local_dim;
+        const auto& pairs = pair_distribution[spin];
+        local_dim += nk * pairs.get_local_size();
+        for (int k = 0; k < nk; ++k)
+        {
+            const double* energies = eigenvalues + (spin * nk + k) * ks_bands;
+            for (int i = 0; i < nocc[spin]; ++i)
+            {
+                for (int a = 0; a < nvirt[spin]; ++a)
+                {
+                    int local_index = -1;
+                    if (pairs.in_this_processor(a, i))
+                    {
+                        local_index = spin_offset + k * pairs.get_local_size()
+                                      + pairs.global2local_col(i) * pairs.get_row_size() + pairs.global2local_row(a);
+                    }
+                    const double gap = energies[nocc[spin] + a] - energies[i];
+                    if (!std::isfinite(gap)) { throw std::invalid_argument("Nonfinite LR orbital gap"); }
+                    transitions.push_back({gap, local_index});
+                }
+            }
+        }
+    }
+    // Stable ordering gives degenerate transitions distinct, reproducible seeds.
+    std::stable_sort(transitions.begin(), transitions.end(),
+                     [](const Transition& left, const Transition& right) { return left.gap < right.gap; });
+    return transitions;
+}
+
+int complete_gap_degeneracy(const std::vector<Transition>& transitions, int minimum, int capacity)
+{
+    int count = minimum;
+    const int limit = std::min<std::size_t>(capacity, transitions.size());
+    if (count > 0)
+    {
+        const double boundary_gap = transitions[count - 1].gap;
+        const double absolute_gap = std::abs(boundary_gap);
+        const double gap_scale = std::max(1.0, absolute_gap);
+        const double tolerance = 1e-10 * gap_scale;
+        while (count < limit)
+        {
+            const double difference = transitions[count].gap - boundary_gap;
+            if (std::abs(difference) > tolerance) { break; }
+            ++count;
+        }
+    }
+    return count;
+}
+} // namespace
+
+std::vector<int> select_low_energy_transitions(const OrbitalTransitionSpace& layout, int requested)
+{
+    if (requested < 0) { throw std::invalid_argument("Negative LR low-energy block size"); }
+    const auto transitions = ordered_transitions(layout);
+    const int total = transitions.size();
+    const int minimum = std::min(requested, total);
+    const int count = complete_gap_degeneracy(transitions, minimum, total);
+    std::vector<int> indices(count);
+    for (int j = 0; j < count; ++j) { indices[j] = transitions[j].local_index; }
+    return indices;
+}
+
+
 template<typename T>
 DavidsonInitialSpace<T> make_davidson_initial_space(const T* guesses, int dim, int roots,
                                                    int capacity, const OrbitalTransitionSpace& layout)
@@ -95,75 +185,21 @@ template<typename T>
 int initialize_orbital_gap_candidates(T* vectors, int minimum_vectors, int capacity,
                                       const OrbitalTransitionSpace& layout)
 {
-    const double* eigenvalues = layout.eigenvalues;
-    const auto& pair_distribution = layout.pair_distribution;
-    const int nk = layout.nk;
-    const auto& nocc = layout.nocc;
-    const auto& nvirt = layout.nvirt;
-    const bool unrestricted = layout.unrestricted;
-    struct Transition
-    {
-        double gap;
-        int spin;
-        int k;
-        int occupied;
-        int virtual_orbital;
-    };
-    const int spin_count = unrestricted ? 2 : 1;
-    if (nk <= 0 || nocc.size() < spin_count || nvirt.size() < spin_count
-        || pair_distribution.size() < spin_count)
-    {
-        throw std::invalid_argument("Invalid LR orbital-gap initial-vector layout");
-    }
-    const int ks_bands = nocc[0] + nvirt[0];
-    int local_dim = 0;
-    std::vector<Transition> transitions;
-    for (int spin = 0; spin < spin_count; ++spin)
-    {
-        local_dim += nk * pair_distribution[spin].get_local_size();
-        for (int k = 0; k < nk; ++k)
-        {
-            const double* energies = eigenvalues + (spin * nk + k) * ks_bands;
-            for (int i = 0; i < nocc[spin]; ++i)
-            {
-                for (int a = 0; a < nvirt[spin]; ++a)
-                {
-                    transitions.push_back({energies[nocc[spin] + a] - energies[i], spin, k, i, a});
-                }
-            }
-        }
-    }
+    const auto transitions = ordered_transitions(layout);
     if (minimum_vectors < 0 || capacity < minimum_vectors
         || static_cast<std::size_t>(minimum_vectors) > transitions.size())
     {
         throw std::invalid_argument("Too many LR orbital-gap initial vectors");
     }
-    // Stable ordering gives degenerate transitions distinct, reproducible seeds.
-    std::stable_sort(transitions.begin(), transitions.end(),
-                     [](const Transition& left, const Transition& right) { return left.gap < right.gap; });
-    int nvec = minimum_vectors;
-    const int limit = std::min<std::size_t>(capacity, transitions.size());
-    if (nvec > 0)
+    const int nvec = complete_gap_degeneracy(transitions, minimum_vectors, capacity);
+    const int spin_count = layout.unrestricted ? 2 : 1;
+    int local_dim = 0;
+    for (int spin = 0; spin < spin_count; ++spin)
     {
-        // Include equal-gap spin/k partners at the selection boundary. This is
-        // a seed-selection tolerance in Ry, not a Davidson stopping threshold.
-        const double boundary_gap = transitions[nvec - 1].gap;
-        const double absolute_gap = std::abs(boundary_gap);
-        const double gap_scale = std::max(1.0, absolute_gap);
-        const double degeneracy_tolerance = 1e-10 * gap_scale;
-        while (nvec < limit && std::abs(transitions[nvec].gap - boundary_gap) <= degeneracy_tolerance) { ++nvec; }
+        local_dim += layout.nk * layout.pair_distribution[spin].get_local_size();
     }
     const std::size_t size = static_cast<std::size_t>(nvec) * local_dim;
     if (size > 0) { std::fill(vectors, vectors + size, T(0)); }
-    const auto local_index = [&](const Transition& transition) -> int
-    {
-        const auto& pairs = pair_distribution[transition.spin];
-        if (!pairs.in_this_processor(transition.virtual_orbital, transition.occupied)) { return -1; }
-        const int spin_offset = transition.spin == 0 ? 0 : nk * pair_distribution[0].get_local_size();
-        const int pair_offset = pairs.global2local_col(transition.occupied) * pairs.get_row_size()
-                                + pairs.global2local_row(transition.virtual_orbital);
-        return spin_offset + transition.k * pairs.get_local_size() + pair_offset;
-    };
     for (int n = 0; n < nvec; ++n)
     {
         // The residual-controlled solver accepts exact initial eigenpairs.
@@ -176,13 +212,13 @@ int initialize_orbital_gap_candidates(T* vectors, int minimum_vectors, int capac
         for (const Transition& candidate : transitions)
         {
             const double noise = perturbation * uniform(generator);
-            const int index = local_index(candidate);
+            const int index = candidate.local_index;
             if (index < 0) { continue; }
             const std::size_t offset = static_cast<std::size_t>(n) * local_dim + index;
             vectors[offset] = T(noise);
         }
         const Transition& transition = transitions[n];
-        const int index = local_index(transition);
+        const int index = transition.local_index;
         if (index < 0) { continue; }
         const std::size_t offset = static_cast<std::size_t>(n) * local_dim + index;
         vectors[offset] += T(1);
