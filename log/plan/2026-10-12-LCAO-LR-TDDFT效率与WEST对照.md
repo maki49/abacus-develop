@@ -199,7 +199,7 @@ ACE 构造中使用有限数量空轨道，也不是对响应虚空间的硬截�
 
 ### 6.1 Hxc：先合并自旋贡献，再做网格积分
 
-当前 HamiltULR 按向量、输入自旋、输出自旋依次调用；已有共享缓存，同一输入自旋的过渡密度不会在两个输出自旋间重复构造。但每个自旋块仍分别完成势到 AO 的积分与投影。
+优化前 HamiltULR 按向量、输入自旋、输出自旋依次调用；已有共享缓存，同一输入自旋的过渡密度不会在两个输出自旋间重复构造。但每个自旋块仍分别完成势到 AO 的积分与投影。2026-10-12 的第一阶段实现已将线性 VO 算符的积分与投影按输出自旋合并，保留原有四块 LDA/GGA 势公式。
 
 在固定基态下，Hxc 对过渡密度是线性的。可先形成两个输出自旋的完整势：
 
@@ -217,7 +217,7 @@ ACE 构造中使用有限数量空轨道，也不是对响应虚空间的硬截�
 
 ### 6.2 过渡密度变换：改变矩阵乘法括号
 
-当前实数 VO 路径先生成 M×v 的中间矩阵，再经 v 维收缩得到 M×M 过渡密度。以 X 为 v×o：
+优化前实数 VO 路径先生成 M×v 的中间矩阵，再经 v 维收缩得到 M×M 过渡密度。以 X 为 v×o：
 
 \[
 D=C_v(C_oX^\mathsf T)^\mathsf T
@@ -441,7 +441,7 @@ MO→AO、过渡密度打包、网格密度、Hxc 势与积分、local RI 筛选
 
 已经确认的是：当前任务有 CPU 绑定异常；PBE 对照被 Hxc 网格计算主导；完整振幅空间存储并不大；代码已有能隙与本征值位移预条件、共享密度缓存、local RI 和矩阵回投影。
 
-由公式支持但尚未实施的是：Hxc 自旋融合、DM 收缩次序调整、平均右端单 Z 求解；这些都有保持现有模型的实现路线。
+DM 收缩次序调整及第一阶段 Hxc 自旋融合已实现；不改变响应窗口、泛函或求解阈值。平均右端单 Z 求解仍未实施。小体系数值等价性验证见下节，NV 规模的实际加速仍需测试。
 
 仍需实验决定的是：哪一项支配当前杂化 LR 的单次作用，密度筛选是否影响收敛，修正绑定后能快多少，local RI 的有效标度，以及低秩或响应轨道重写是否值得。
 
@@ -457,3 +457,76 @@ MO→AO、过渡密度打包、网格密度、Hxc 势与积分、local RI 筛选
 6. Lee、Lin、Head-Gordon，Systematically Improvable Tensor Hypercontraction，[DOI 10.1021/acs.jctc.9b00820](https://doi.org/10.1021/acs.jctc.9b00820)，[预印本](https://arxiv.org/abs/1911.00470)。
 
 代码核对基于 /tmp/abacus-lr-grad-gpu 的 60a0a57b5f1c87ddc9f4025ec96f7bf9a7b27d4c。激发态入口、Davidson 子空间求解器、LR 交换算符三个关键文件已与超算运行工程作 SHA256 对照，结果一致；没有据此声称整个构建环境或所有源码逐项相同。
+
+
+## 13. 第一批实施记录（2026-10-12）
+
+- **DM**：BLAS/PBLAS 均按两个 MO 维度中较小者选择中间矩阵；保留实数与复数路径各自原有的转置/共轭约定。临时分布描述和缓冲区在 k 循环外建立。四项单元测试覆盖实数/复数、VO/OO/VV、大小相反及相等的占据/虚轨道维数、非平凡复数系数；CTest 和直接 4 MPI 运行均通过。
+- **Hxc**：每个向量建立两个输出自旋的势累加器，四块核势计算完成后做两次网格积分和 AO→MO 投影。应用于 HamiltULR 的迭代激发态作用和 Z_vector_UL 的线性 Hessian；保留非线性 CXC/OO 力右端及显式矩阵路线。EXX 在当前输入自旋密度仍有效时立即作用。没有新增 INPUT 参数，因此不需要修改参数文档。
+- **独立对照**：用修改前 `60a0a57b5` 编译出的程序对照 Hxc/DM 优化程序。H₂O⁺/PBE 的占据数为 4/3、虚轨道数为 19/20（完整 23 轨道），求两个根；实数 Γ、复数 Γ、两个 k 点均完成。单进程三个算例的打印激发能一致，Γ 点 18 个力分量最大变化为 1.0e-10 eV/Å，Z-PCG 均 11 次迭代，真实残差 5.36e-7。同样的三个 4 MPI 对照也通过，Γ 点打印的 18 个力分量逐项一致。新集成测试参考由原版 4 MPI 生成；该测试 1/4 MPI 的原版力和相差 6.82e-5，不能跨进程数使用本次参考来判断优化误差。
+- **调用计数**：上述 Γ 点能量加力计算中，原版 Hxc 网格积分为 228 次；融合后为 130 次，其中未融合的非线性右端为 32 次，线性部分由 196 次降至 98 次。四块核势的计算次数未减少；该阶段没有实现 Hartree/GGA 中间量共享。
+- **基线限制**：在 rebase 前，六个既有 LR 集成算例中五个失败。重新构建修改前程序后复现相同失败，五个正常结束算例的非计时结果与 DM 优化版本一致；失败包括旧力参考差异和 HF unrestricted 的 PCG 非正定检查。后续已按用户指示 rebase 到 `LR-Grad-relax`，结果见下节。
+
+本地环境不能访问 GPU，以上运行证据均来自 CPU。小体系的墙钟时间不作为 NV 单卡的加速比。
+
+
+## 14. Rebase 后的验证与既有 PCG 差异
+
+当前分支已无冲突 rebase 到 `LR-Grad-relax` 的 `09691ff737`。DM 与 Hxc 提交分别变为 `68fa41a54`、`821762cd0`。对照统一使用 4 MPI、`OMP_NUM_THREADS=1`、`MKL_NUM_THREADS=1`、`OPENBLAS_NUM_THREADS=1`，运行时加载带 KXC 的 Libxc 5.1.7，与该基线的参考环境一致。此前本地默认 Libxc 为 5.2.3。
+
+为排除本次改动，另外编译了撤去 DM/Hxc 优化的 `e30bfe6fc` 源码对照。该版本保留本分支之前的 GPU/PCG 改动和此次 rebase 引入的 AO 样条修正。新 PBE 算例仅因 AO/依赖基线更新重新生成参考，参考来源为此未优化程序。既有算例的参考值、INPUT 和容差均未改。
+
+最终验证结果：
+
+- 完整 CPU 构建通过；CUDA 配置的 `lr`、`esolver` 两个模块编译通过。本地无可访问的 GPU，因此未做 GPU 运行或 NV 性能测试。
+- 3 个 CTest 目标的 **17 项单元测试全部通过**；DM 单元测试另在 4 MPI 运行通过。
+- **10 个 LR 集成目录中 5 个通过、5 个失败**。通过项为新增两个 PBE unrestricted 算例、既有多 k 算例，以及 BeH₂/CH₄ 两个弛豫测试；五个失败均为下表中的既有测试。不能将当前整分支报告为“测试全绿”。
+- Rebase 后，对同依赖、同 MPI 布局的未优化程序，实数 Γ、复数 Γ、多 k 点的打印激发能一致；Γ 点 18 个力分量逐项一致。新算例全部 5 项集成数值检查通过。
+- 首个自旋势直接写入累加缓冲区，避免未融合路径和首个贡献的额外临时矩阵与拷贝。该收尾改动已包含在最终构建与回归中。
+
+### 14.1 既有五项失败仍能复现
+
+| 算例 | 既有参考的力绝对值和 | 当前结果 | 定位 |
+|---|---:|---:|---|
+| LDA Γ，nspin=2 | 115.07263953 | 115.07264299 | Z 迭代方式变化，力和偏差 3.46e-6 |
+| LDA Γ，nspin=1 | 56.78805786 | 56.78806296 | Z 迭代方式变化，力和偏差 5.10e-6 |
+| PBE Γ | 114.01435876 | 114.01436915 | Z 迭代方式变化，力和偏差 1.04e-5 |
+| HF Γ | 121.61643415 | 121.61868751 | 旧 CG 与新线性 PCG 路径不同，已加独立稠密解对照 |
+| HF unrestricted Γ | 100.20392794 | PCG 首步拒绝 | residual=0.0685146，iterations=0；独立 Cholesky 也因非正定失败（info=1） |
+
+力和单位为 eV/Å。前四个算例在撤去本次优化后，所有非计时检查值仍相同；第五个复现同一异常。它们来自本分支此前引入的 Z-PCG/线性 Hessian 路径，不能通过此次等价运算优化消除。旧 `Opt_CG` 收到负曲率后仍计算步长，新的 `linear_pcg` 按 SPD 算法契约拒绝负曲率。
+
+HF 闭壳层的独立检查尤其重要：`LR-Grad-relax` 和当前版本使用 LAPACK 时，36 个力分量逐项相同，力和为 **121.6186866401**。旧 CG 相对此稠密解的最大分量误差为 **1.50e-3 eV/Å**、力和误差为 **2.25e-3 eV/Å**；当前 PCG 分别为 **8.03e-7 eV/Å** 和 **8.74e-7 eV/Å**。因此“旧参考全部通过”与“Z 解更接近稠密线性解”在此不是同一个标准。旧 CG 路径还按振幅筛选交换输入密度，新 Hessian 已关闭这一筛选；不应为复现旧参考重新引入非线性筛选。
+
+后续应单独处理 Z 求解器的兼容性和精度验收：用独立稠密解建立严格参考，核对真实残差与力误差的关系；对非正定 Hessian 明确使用适用的线性求解器。不能仅删除 PCG 负曲率检查、放宽测试容差或机械刷新既有力参考。
+
+### 14.2 可复现的验证入口
+
+- CPU 构建：`cmake --build build --target abacus_std_para MODULE_LR_dm_trans_test MODULE_LR_zeq_cg_solver MODULE_HSOLVER_linear_pcg -j8`。程序版本 `v3.11.0-beta10`。
+- CUDA 模块编译：`cmake --build build-gpu --target lr esolver -j6`（仅编译检查，不代表 GPU 运行通过）。
+- 单元测试：`ctest --test-dir build -V -R '^(MODULE_LR_(dm_trans_test|zeq_cg_solver)|MODULE_HSOLVER_linear_pcg)$'`；另以 4 MPI 直接运行 `MODULE_LR_dm_trans_test`。
+- 全部 LR 集成测试：在 `tests/08_RI` 运行 `bash ../integrate/Autotest.sh -a /tmp/abacus-lr-grad-gpu/build/abacus_std_para -n 4 -j 1 -r '^lr_'`。
+- 诊断脚本与原始记录保存在 `.diagnostics/lr-opt/`；最终运行日志为 `/tmp/lr-opt-final-tests.log`，撤去优化后的既有回归为 `/tmp/lr-opt-unfused-regression.log`，HF 稠密解对照为 `/tmp/lr-opt-relax-dense.log` 和 `/tmp/lr-opt-rebased-controls.log`。
+
+## 15. Hxc 累加器的职责拆分
+
+将嵌套的 `OperatorLRHxc::SpinAccumulator` 提取为独立的 `HxcSpinAccumulator`，作为 `OperatorLRHxc` 的 friend。唯一成员是格点势数组，不保存算符指针。`HamiltULR::hPsi` 和 `ZeqULR::apply` 对每个输入向量建立两个局部累加器，因此向量之间不会残留势。
+
+计算依赖现在直接体现在调用中：`add(contribution, output_projection, density_cache)` 累加两个输入自旋的核势；之后 `integrate_and_project(output_projection, output)` 完成一次 AO 积分和 MO 投影。调用方明确从 `ops[0]`、`ops[3]` 的链中取出 **Hxc₀₀、Hxc₁₁** 作为输出投影算符，不再由最后一次 `add` 隐式选择执行者。原链序 0、2、1、3 下，执行者为 Hxc₀₁、Hxc₁₁；该变化等价，因为 `CC_vo` 投影只取决于输出自旋。
+
+两处调用共享对角 Hxc 查找和节点分派自由函数。累加时仍检查 VO 模式、输出自旋、系数、轨道对象及输出分布；链查找还拒绝缺失或重复的对角 Hxc。密度缓存仅在当前输入自旋密度有效期间共享，EXX 仍立即作用。缓冲分配策略、数值计算函数、非线性 CXC/OO 右端和显式矩阵路线未变。
+
+新文件 `source/source_lcao/module_lr/operator_casida/hxc_spin_accumulator.h` 通过两个调用方头文件包含；其成员函数及共享函数为模板，无新增编译单元，故不需新增 CMake 源文件项。算符类型使用前向声明，矩阵和标准容器头文件用于实际值成员与返回类型。没有新增全局依赖、INPUT 行为或 `.hpp` 文件。
+
+### 15.1 本次验证
+
+对照基线为重构前 `e1b6a59c0`，仍使用第 14 节的 Libxc 5.1.7、4 MPI 和单线程设置。
+
+- CPU 完整构建 `cmake --build build --target abacus_std_para -j8` 通过；CUDA 模块构建 `cmake --build build-gpu --target lr esolver -j6` 通过。新头文件通过 `g++ -std=c++11 -Isource -fsyntax-only -x c++ source/source_lcao/module_lr/operator_casida/hxc_spin_accumulator.h`。程序版本仍为 `v3.11.0-beta10`，本地没有可访问的 GPU，未做 GPU 运行。
+- 运行 `bash .diagnostics/lr-opt/run-rebased-tests.sh`：17 项单元测试及单独 4 MPI DM 测试通过；11 个 LR 集成目录中 **6 通过、5 个既有失败**，脚本退出码为 1。失败目录与第 14.1 节完全相同，数值差异和 HF unrestricted 的 PCG 异常均复现，没有新增失败。
+- 新增 `lr_tddft_pbe_ulr_complex` 并登记在 `tests/08_RI/CASES_CPU.txt`，覆盖复数 Γ 的单个格点势分量及多向量作用；与既有实数 Γ、多 k 测试互补。仅该新增算例用重构前二进制生成参考，既有参考和容差未调整。
+- `python3 .diagnostics/hxc-refactor/compare.py` 对比重构前后的三个 PBE unrestricted 算例：打印激发能相同，12 个振幅文件逐字节相同；实数 Γ 的 18 个力分量在 1e-10 eV/Å 打印精度下逐项相同。Z-PCG 都为 11 次迭代、真实残差 `5.35908e-7`、13 次算符作用；Hxc 积分调用数均为 130，保留原融合收益。
+- 质量评分中新累加器为 95，两个修改的 `.h` 为 77、83。历史 `hamilt_ulr.hpp` 为 14（重构前 17），主要扣分来自已有 `.hpp` 实现、长参数表和裸指针；新增三处 `auto` 使评分降低 3 分。按本次可读性要求保留明确类型推导，不为静态评分移除语言特性或扩大重构范围。
+- `git diff --cached --check` 和 `agent_governance_check.py --staged` 通过，治理检查无 error。头文件依赖警告的理由见本节前文；文档同步警告源于检查器未将本篇 `log/plan` 记录计作接口文档，此次没有用户输入行为变更。
+
+原始记录位于 `.diagnostics/hxc-refactor/`：`build-cpu.log`、`build-cuda.log`、`reference-complex.log`、`before-4mpi.log`、`after-tests.log` 和 `comparison.txt`。设计经验整理为用户级 `refactor-design` skill 的 Hxc 案例，可读性以物理／数学依赖、对象命名和计算接口注释为准。
