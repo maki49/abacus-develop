@@ -16,6 +16,32 @@
 namespace hsolver
 {
 
+enum class DavidsonStatus
+{
+    converged,
+    iteration_limit,
+    dependent_initial_vectors,
+    no_independent_direction,
+    nonfinite_residual
+};
+
+/// Explicit opt-in to residual-controlled iteration; legacy PW overloads are unchanged.
+struct DavidsonOptions
+{
+    double residual_tolerance = 1e-8; ///< Absolute ||H x - omega S x||_2, with x† S x = 1.
+};
+
+/// A small residual certifies an eigenpair, not its position in the full spectrum.
+struct DavidsonResult
+{
+    DavidsonStatus status = DavidsonStatus::iteration_limit;
+    int iterations = 0;
+    int converged_roots = 0;
+    int rejected_directions = 0;
+    int residual_fallbacks = 0;
+    std::vector<double> residual_norms;
+};
+
 template <typename T = std::complex<double>, typename Device = base_device::DEVICE_CPU>
 class Diago_DavSubspace
 {
@@ -60,6 +86,18 @@ class Diago_DavSubspace
              const std::vector<double>& ethr_band,
              const bool& scf_type,
              const Preconditioner& preconditioner);
+
+    /// Solve H x = omega S x using raw residuals before preconditioning or normalization.
+    /// Both energy changes and residuals must pass; exact initial eigenpairs are accepted.
+    /// Dependent corrections are discarded, with the raw residual as a fallback direction.
+    /// Returns an explicit failure status instead of silently accepting an iteration limit.
+    DavidsonResult diag(const HSOperator<T, Device>& op,
+                         T* psi_in,
+                         int psi_in_dmax,
+                         Real* eigenvalues,
+                         const std::vector<double>& energy_tolerances,
+                         const Preconditioner& preconditioner,
+                         const DavidsonOptions& options);
 
   private:
     /// for MPI communication
