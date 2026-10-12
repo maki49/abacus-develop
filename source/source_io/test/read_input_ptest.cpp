@@ -462,6 +462,7 @@ TEST_F(InputParaTest, ParaRead)
     EXPECT_EQ(param.inp.xc_kernel, "LDA");
     EXPECT_EQ(param.inp.lr_init_xc_kernel[0], "default");
     EXPECT_EQ(param.inp.lr_solver, "dav");
+    EXPECT_EQ(param.inp.lr_preconditioner_block_size, 0);
     EXPECT_DOUBLE_EQ(param.inp.lr_thr, 1e-2);
     EXPECT_EQ(param.inp.lr_grad_solver, "cg");
     EXPECT_FALSE(param.inp.lr_unrestricted);

@@ -178,3 +178,20 @@ if(ENABLE_MPI AND ENABLE_LIBRI)
     target_link_libraries(MODULE_LR_exx_force_dm PRIVATE DDLA::DDLA)
   endif()
 endif()
+
+AddTest(
+  TARGET MODULE_LR_block_preconditioner
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_lr_block_preconditioner.cpp ../lr_block_preconditioner.cpp
+    ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
+)
+if(ENABLE_MPI)
+  add_test(
+    NAME MODULE_LR_block_preconditioner_parallel
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:MODULE_LR_block_preconditioner>
+      --gtest_filter=LRBlockPreconditioner.DistributedBlockIncludingEmptyRanks ${MPIEXEC_POSTFLAGS}
+  )
+  set_tests_properties(MODULE_LR_block_preconditioner_parallel PROPERTIES
+    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+endif()

@@ -156,3 +156,22 @@ TEST(LRPreconditioner, RejectsInvalidLayoutAndFloor)
     const std::vector<double> empty;
     LR::apply_orbital_gap_preconditioner<double>(nullptr, &shift, 0, 1, empty, 1e-4);
 }
+
+TEST(LRPreconditioner, LowEnergyBlockCompletesSpinAndKDegeneracy)
+{
+    const std::vector<double> eigenvalues = {-1.0, 0.0, 2.0, -1.0, 0.0, 2.0,
+                                            -1.0, 0.0, 2.0, -1.0, 0.0, 2.0};
+    std::vector<Parallel_2D> pairs(2);
+    pairs[0].set_serial(2, 1);
+    pairs[1].set_serial(2, 1);
+    const std::vector<int> occupied = {1, 1};
+    const std::vector<int> virtuals = {2, 2};
+    const LR::OrbitalTransitionSpace layout{eigenvalues.data(), pairs, 2, occupied, virtuals, true};
+    const std::vector<int> expected = {0, 2, 4, 6};
+    EXPECT_EQ(LR::select_low_energy_transitions(layout, 1), expected);
+    EXPECT_EQ(LR::select_low_energy_transitions(layout, 4), expected);
+    const auto all = LR::select_low_energy_transitions(layout, 100);
+    EXPECT_EQ(all.size(), 8);
+    EXPECT_TRUE(LR::select_low_energy_transitions(layout, 0).empty());
+    EXPECT_THROW(LR::select_low_energy_transitions(layout, -1), std::invalid_argument);
+}
