@@ -84,6 +84,10 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                 assert(nst * dim == LR_Util::write_value(vfile_out(label), prec, v, nst, dim));
             };
         std::vector<double> precondition;
+        // Both spin branches use the same explicit transition-space view for
+        // candidate selection and full-matrix eigenvector distribution.
+        const LR::OrbitalTransitionSpace transitions{this->eig_ks.c, this->paraX_, this->nk,
+                                                     this->nocc, this->nvirt, this->openshell};
         if (this->inp_->lr_solver != "lapack")
         {
             precondition = orbital_energy_gaps(this->eig_ks.c, this->paraX_, this->nk,
@@ -113,7 +117,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                               this->paraC_,
                               this->paraMat_);
             LR::HSolver::solve(hulr, this->X[0].template data<T>(), nloc_per_state, nstates,
-                               this->nk, this->nocc, this->nvirt, this->paraX_,
+                               transitions,
                                this->pelec->ekb.c, this->inp_->lr_solver,
                                this->inp_->lr_thr, precondition, true);
             if (this->inp_->out_wfc_lr) { write_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_state, nstates); }
@@ -149,7 +153,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                                 this->inp_->ri_hartree_benchmark,
                                 (this->inp_->ri_hartree_benchmark == "aims" ? this->inp_->aims_nbasis : std::vector<int>({})));
                 LR::HSolver::solve(hlr, this->X[is].template data<T>(), nloc_per_state, nstates,
-                                   this->nk, this->nocc, this->nvirt, this->paraX_,
+                                   transitions,
                                    this->pelec->ekb.c + is * nstates,
                                    this->inp_->lr_solver,
                                    this->inp_->lr_thr,

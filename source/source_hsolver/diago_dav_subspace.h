@@ -24,11 +24,14 @@ enum class DavidsonStatus
     no_independent_direction,
     nonfinite_residual
 };
+const char* davidson_status_name(DavidsonStatus status);
 
 /// Explicit opt-in to residual-controlled iteration; legacy PW overloads are unchanged.
 struct DavidsonOptions
 {
     double residual_tolerance = 1e-8; ///< Absolute ||H x - omega S x||_2, with x† S x = 1.
+    int initial_vectors = 0; ///< Input columns in psi_in; zero means the requested root count.
+    int retained_vectors = 0; ///< Lowest Ritz vectors retained at restart; zero means the root count.
 };
 
 /// A small residual certifies an eigenpair, not its position in the full spectrum.
@@ -39,6 +42,7 @@ struct DavidsonResult
     int converged_roots = 0;
     int rejected_directions = 0;
     int residual_fallbacks = 0;
+    int restarts = 0;
     std::vector<double> residual_norms;
 };
 
@@ -91,6 +95,9 @@ class Diago_DavSubspace
     /// Both energy changes and residuals must pass; exact initial eigenpairs are accepted.
     /// Dependent corrections are discarded, with the raw residual as a fallback direction.
     /// Returns an explicit failure status instead of silently accepting an iteration limit.
+    /// psi_in holds options.initial_vectors columns on entry, but only n_band are
+    /// returned. Extra Ritz vectors provide candidate directions across restarts;
+    /// they do not certify that no lower eigenvalue exists outside the subspace.
     DavidsonResult diag(const HSOperator<T, Device>& op,
                          T* psi_in,
                          int psi_in_dmax,
