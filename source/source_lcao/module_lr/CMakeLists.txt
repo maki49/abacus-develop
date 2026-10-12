@@ -34,6 +34,7 @@ if(ENABLE_LCAO)
     lr_spectrum.cpp
     lr_spectrum_velocity.cpp
     lr_preconditioner.cpp
+    lr_block_preconditioner.cpp
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
     potentials/xc_kxc.cpp

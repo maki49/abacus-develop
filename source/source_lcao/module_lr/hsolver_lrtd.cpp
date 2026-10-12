@@ -8,6 +8,7 @@
 #include "source_hsolver/diago_cg.h"
 #include "source_hsolver/diago_iter_assist.h"
 #include "source_lcao/module_lr/lr_preconditioner.h"
+#include "source_lcao/module_lr/lr_block_preconditioner.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "source_base/module_container/ATen/core/tensor_map.h"
@@ -107,6 +108,7 @@ namespace LR
             const std::string method,
             const Real<T>& diag_ethr, ///< threshold for diagonalization
             const std::vector<Real<T>>& precondition,
+            const int preconditioner_block_size,
             const bool hermitian)
         {
             ModuleBase::TITLE("HSolverLR", "solve");
@@ -189,15 +191,38 @@ namespace LR
                     // A - omega I is approximated by the signed orbital gaps.
                     // Cap only near-resonant denominators (1e-4 Ry = 1.36 meV).
                     const double denominator_floor = 1e-4;
-                    const typename hsolver::Diago_DavSubspace<T>::Preconditioner inverse_gaps =
+                    typename hsolver::Diago_DavSubspace<T>::Preconditioner inverse =
                         [&precondition, denominator_floor](T* residuals, const Real<T>* shifts,
                                                            int local_dim, int nvec)
                     {
                         apply_orbital_gap_preconditioner(residuals, shifts, local_dim, nvec,
                                                          precondition, denominator_floor);
                     };
-                    std::cout << "LR Davidson preconditioner=signed-orbital-gap floor="
-                              << denominator_floor << " Ry\n";
+                    LowEnergyPreconditioner<T> low_energy_block;
+                    if (preconditioner_block_size > 0)
+                    {
+                        if (!hermitian) { throw std::invalid_argument("LR block preconditioning requires Hermitian TDA"); }
+                        const auto selected = select_low_energy_transitions(transitions, preconditioner_block_size);
+                        const std::function<void(const T*, T*, int)> apply_operator =
+                            [&op, dim](const T* input, T* image, int columns) { op.hpsi(input, image, dim, columns); };
+                        // Use the same counted full operator for block construction
+                        // and Davidson; total applied vectors includes this setup.
+                        low_energy_block = build_low_energy_preconditioner(selected, dim, apply_operator, comm_info);
+                        inverse = [&precondition, denominator_floor, &low_energy_block, &comm_info](
+                                      T* residuals, const Real<T>* shifts, int local_dim, int nvec)
+                        {
+                            apply_low_energy_preconditioner(residuals, shifts, local_dim, nvec,
+                                                            precondition, denominator_floor, low_energy_block, comm_info);
+                        };
+                        std::cout << "LR Davidson preconditioner=low-energy-kernel-block size=" << selected.size()
+                                  << " setup vectors=" << op.applied_vectors()
+                                  << " block Hermiticity error=" << low_energy_block.hermiticity_error << " Ry\n";
+                    }
+                    else
+                    {
+                        std::cout << "LR Davidson preconditioner=signed-orbital-gap floor="
+                                  << denominator_floor << " Ry\n";
+                    }
                     // Keep lr_thr as an energy-change tolerance. The independent
                     // absolute residual target is 1e-8 Ry (DavidsonOptions), so
                     // an unchanged Ritz value alone can no longer end LR early.
@@ -210,7 +235,7 @@ namespace LR
                               << " Ry; energy-change tolerance=" << diag_ethr
                               << " Ry; initial/retained candidates=" << options.initial_vectors << '\n';
                     const auto result = dav_subspace.diag(op, initial_space.vectors.data(), dim, eigenvalue.data(),
-                                                          ethr_band, inverse_gaps, options);
+                                                          ethr_band, inverse, options);
                     const int returned_size = dim * nband;
                     std::copy_n(initial_space.vectors.data(), returned_size, psi);
                     hsolver::DiagoIterAssist<T>::avg_iter += result.iterations;
