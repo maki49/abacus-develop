@@ -3,6 +3,7 @@ list(APPEND objects
     diago_cg.cpp
     diago_david.cpp
     diago_dav_subspace.cpp
+    diago_dav_subspace_residual.cpp
     diago_bpcg.cpp
     para_lin_tf.cpp
     hsolver_pw.cpp

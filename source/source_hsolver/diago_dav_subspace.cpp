@@ -589,11 +589,16 @@ void Diago_DavSubspace<T, Device>::cal_elem(const int& dim,
     {
 #ifdef __DSP
         // Only on dsp hardware need an extra space to reduce data
-        mtfunc::dsp_dav_subspace_reduce(hcc, scc, nbase, this->nbase_x, this->notconv, this->diag_comm.comm);
+        mtfunc::dsp_dav_subspace_reduce(hcc, scc, nbase, this->nbase_x, notconv, this->diag_comm.comm);
 #else
-        assert(this->diag_comm.comm == POOL_WORLD);
-        Parallel_Reduce::reduce_pool(hcc + nbase * this->nbase_x, notconv * this->nbase_x);
-        Parallel_Reduce::reduce_pool(scc + nbase * this->nbase_x, notconv * this->nbase_x);
+        // Reduce over the vector distribution supplied by the caller, including
+        // non-PW test/response communicators and device-resident reduced matrices.
+        const int offset = nbase * this->nbase_x;
+        const int count = notconv * this->nbase_x;
+        T* h_columns = hcc + offset;
+        T* s_columns = scc + offset;
+        Parallel_Common::reduce_dev<T, Device>(h_columns, count, this->diag_comm.comm);
+        Parallel_Common::reduce_dev<T, Device>(s_columns, count, this->diag_comm.comm);
 #endif
     }
 #endif
@@ -725,7 +730,8 @@ void Diago_DavSubspace<T, Device>::diag_zhegvx(const int& nbase,
         for (int i = 0; i < nband; i++)
         {
             // fix a bug here when vcc is real: bcast according to the true type
-            Parallel_Common::bcast_data(&vcc[i * this->nbase_x], nbase, this->diag_comm.comm, 0);
+            T* coefficients = vcc + i * this->nbase_x;
+            Parallel_Common::bcast_dev<T, Device>(coefficients, nbase, this->diag_comm.comm, 0);
         }
         Parallel_Common::bcast_data((*eigenvalue_iter).data(), nband, this->diag_comm.comm, 0);
     }
