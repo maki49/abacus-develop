@@ -8,7 +8,7 @@
 #include "source_lcao/module_lr/lr_spectrum.h"
 #include "source_lcao/module_lr/lr_density.h"
 #include "source_lcao/module_lr/ri_benchmark/ri_benchmark.h"
-#include "source_lcao/module_lr/operator_casida/operator_lr_diag.h"
+#include "source_lcao/module_lr/lr_preconditioner.h"
 #include "source_lcao/module_lr/zeq_solver.h"
 #include "source_hamilt/module_xc/xc_functional.h"
 #include <algorithm>
@@ -90,29 +90,22 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     else if (this->inp_->lr_solver != "spectrum")
     {
         auto write_states = [this, &efile_out, &vfile_out](const std::string& label,
-                                const Real<T>* e,
-                                const T* v,
-                                const int& dim,
-                                const int& nst,
-                                const int& prec = 8) -> void {
+                                const Real<T>* e, const T* v, const int& dim,
+                                const int& nst, const int& prec = 8) -> void {
             if (this->my_rank_ == 0)
             {
                 assert(nst == LR_Util::write_value(efile_out(label), prec, e, nst));
             }
             assert(nst * dim == LR_Util::write_value(vfile_out(label), prec, v, nst, dim));
         };
-        std::vector<double> precondition(this->inp_->lr_solver == "lapack" ? 0 : nloc_per_state, 1.0);
-        // allocate and initialize A matrix and density matrix
+        std::vector<double> precondition;
+        if (this->inp_->lr_solver != "lapack")
+        {
+            precondition = orbital_energy_gaps(this->eig_ks.c, this->paraX_, this->nk,
+                                               this->nocc, this->nvirt, openshell);
+        }
         if (openshell)
         {
-            for (int is : {0, 1})
-            {
-                if (this->inp_->lr_solver != "lapack") {
-                    const int offset_is = is * this->paraX_[0].get_local_size();
-                    OperatorLRDiag<double> pre_op(this->eig_ks.c + is * nk * (nocc[0] + nvirt[0]), this->paraX_[is], this->nk, this->nocc[is], this->nvirt[is], false);
-                    pre_op.act(1, offset_is, 1, precondition.data() + offset_is, precondition.data() + offset_is);
-                }
-            }
             std::cout << "Solving spin-conserving excitation for open-shell system." << std::endl;
             HamiltULR<T> hulr(xc_kernel,
                               nspin,
@@ -141,10 +134,6 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
         }
         else
         {
-            if (this->inp_->lr_solver != "lapack") {
-                OperatorLRDiag<double> pre_op(this->eig_ks.c, this->paraX_[0], this->nk, this->nocc[0], this->nvirt[0], false);
-                pre_op.act(1, nloc_per_state, 1, precondition.data(), precondition.data()); 
-            }
             const std::vector<std::string>& spin_types = this->spin_types;
             for (int is = 0;is < nspin;++is)
             {
