@@ -95,6 +95,40 @@ TEST(LRPreconditioner, SignedShiftedGapsAndZeroFloor)
     for (int j = 0; j < 6; ++j) { EXPECT_NEAR(residuals[j], input[j] / denominators[j], 1e-10); }
 }
 
+TEST(LRPreconditioner, CandidateBoundaryIncludesDegenerateKPartners)
+{
+    const std::vector<double> eigenvalues = {-1.0, 0.0, 2.0, -1.0, 0.0, 2.0};
+    std::vector<Parallel_2D> pairs(1);
+    pairs[0].set_serial(2, 1);
+    const std::vector<int> occupied = {1};
+    const std::vector<int> virtuals = {2};
+    const LR::OrbitalTransitionSpace layout{eigenvalues.data(), pairs, 2, occupied, virtuals, false};
+    std::vector<double> vectors(12, 0.0);
+    const int selected = LR::initialize_orbital_gap_candidates(vectors.data(), 1, 3, layout);
+    ASSERT_EQ(selected, 2);
+    EXPECT_NEAR(vectors[0], 1.0, 1e-3);
+    EXPECT_NEAR(vectors[6], 1.0, 1e-3);
+    const int limited = LR::initialize_orbital_gap_candidates(vectors.data(), 1, 1, layout);
+    EXPECT_EQ(limited, 1); // Capacity remains a hard memory bound.
+}
+
+TEST(LRPreconditioner, AugmentedGammaSpacePreservesSuppliedGuesses)
+{
+    const std::vector<double> eigenvalues = {-1.0, 0.0, 0.0, 2.0};
+    std::vector<Parallel_2D> pairs(1);
+    pairs[0].set_serial(3, 1);
+    const std::vector<int> occupied = {1};
+    const std::vector<int> virtuals = {3};
+    const LR::OrbitalTransitionSpace layout{eigenvalues.data(), pairs, 1, occupied, virtuals, false};
+    const std::vector<double> guesses = {0.5, 0.5, 0.0};
+    const auto initial = LR::make_davidson_initial_space(guesses.data(), 3, 1, 3, layout);
+    ASSERT_EQ(initial.count, 3); // The one extra nominal seed has a degenerate partner.
+    for (int j = 0; j < 3; ++j) { EXPECT_DOUBLE_EQ(initial.vectors[j], guesses[j]); }
+    EXPECT_NEAR(initial.vectors[3], 1.0, 1e-3);
+    EXPECT_NEAR(initial.vectors[7], 1.0, 1e-3);
+    EXPECT_THROW(LR::make_davidson_initial_space(guesses.data(), 2, 1, 3, layout), std::invalid_argument);
+}
+
 TEST(LRPreconditioner, ComplexResidualsAndNearResonantSigns)
 {
     const std::vector<double> gaps = {1.0 - 1e-8, 1.0 + 1e-8, 1.0};

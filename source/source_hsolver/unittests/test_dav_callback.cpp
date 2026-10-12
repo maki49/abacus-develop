@@ -224,7 +224,11 @@ class DiagonalPencil : public hsolver::HSOperator<T>
 {
   public:
     DiagonalPencil(int local_dim, int offset, bool generalized)
-        : local_dim_(local_dim), offset_(offset), generalized_(generalized) {}
+        : local_dim_(local_dim), offset_(offset), generalized_(generalized)
+    {
+        spectrum.resize(local_dim);
+        for (int j = 0; j < local_dim; ++j) { spectrum[j] = offset + j + 1; }
+    }
     void update_k(int) override {}
     void hpsi(const T* x, T* hx, int ld, int count) const override
     {
@@ -233,7 +237,7 @@ class DiagonalPencil : public hsolver::HSOperator<T>
         {
             for (int j = 0; j < local_dim_; ++j)
             {
-                hx[n * ld + j] = (offset_ + j + 1) * overlap(j) * x[n * ld + j];
+                hx[n * ld + j] = spectrum[j] * overlap(j) * x[n * ld + j];
             }
         }
     }
@@ -246,6 +250,7 @@ class DiagonalPencil : public hsolver::HSOperator<T>
     }
     double overlap(int j) const { return generalized_ ? 1.0 + 0.1 * (offset_ + j) : 1.0; }
     mutable int applied_vectors = 0;
+    std::vector<double> spectrum;
   private:
     int local_dim_;
     int offset_;
@@ -316,7 +321,8 @@ void partially_converged_pencil(const hsolver::diag_comm_info& comm, bool zero_i
     EXPECT_NEAR(eigenvalues[1], 2.0, 1e-12);
     EXPECT_LE(result.residual_norms[0], options.residual_tolerance);
     EXPECT_LE(result.residual_norms[1], options.residual_tolerance);
-    EXPECT_EQ(result.residual_fallbacks, zero_inverse ? 1 : 0);
+    const int expected_fallbacks = zero_inverse ? 1 : 0;
+    EXPECT_EQ(result.residual_fallbacks, expected_fallbacks);
 }
 }
 
@@ -339,7 +345,8 @@ TEST(DavSubspace, DistributedResidualCompaction)
 #else
     const auto comm = serial_comm();
 #endif
-    ASSERT_EQ(dimension % comm.nproc, 0);
+    const int remainder = dimension % comm.nproc;
+    ASSERT_EQ(remainder, 0);
     partially_converged_pencil<std::complex<double>>(comm, true);
 }
 
@@ -398,6 +405,83 @@ TEST(DavSubspace, DuplicateInitialVectorsReturnFailure)
     const auto result = solver.diag(op, vectors.data(), dimension, eigenvalues.data(), energy_tolerances, identity, options);
     EXPECT_EQ(result.status, hsolver::DavidsonStatus::dependent_initial_vectors);
     EXPECT_EQ(op.applied_vectors, 0);
+}
+
+TEST(DavSubspace, ExtraInitialCandidatesRecoverSkippedRoot)
+{
+    const auto comm = serial_comm();
+    const DiagonalPencil<double> op(dimension, 0, false);
+    const std::vector<double> diagonal(dimension, 1.0);
+    const std::vector<double> energy_tolerances(roots, 1e-12);
+    std::vector<double> vectors(dimension * 3, 0.0);
+    vectors[0] = 1;
+    vectors[dimension + 2] = 1;
+    vectors[2 * dimension + 1] = 1; // Independent candidate for the missing second root.
+    std::vector<double> eigenvalues(roots);
+    const hsolver::Diago_DavSubspace<double>::Preconditioner identity = [](double*, const double*, int, int) {};
+    hsolver::DavidsonOptions options;
+    hsolver::Diago_DavSubspace<double> solver(diagonal, roots, dimension, 4, 1e-12, 20, comm, 0, 0);
+    const auto restricted = solver.diag(op, vectors.data(), dimension, eigenvalues.data(), energy_tolerances, identity, options);
+    ASSERT_EQ(restricted.status, hsolver::DavidsonStatus::converged);
+    EXPECT_DOUBLE_EQ(eigenvalues[1], 3.0);
+    EXPECT_DOUBLE_EQ(restricted.residual_norms[1], 0.0); // Residual alone cannot certify the root index.
+    options.initial_vectors = 3;
+    options.retained_vectors = 3;
+    const auto augmented = solver.diag(op, vectors.data(), dimension, eigenvalues.data(), energy_tolerances, identity, options);
+    ASSERT_EQ(augmented.status, hsolver::DavidsonStatus::converged);
+    EXPECT_DOUBLE_EQ(eigenvalues[0], 1.0);
+    EXPECT_DOUBLE_EQ(eigenvalues[1], 2.0);
+}
+
+TEST(DavSubspace, CandidateSpacePreservesDegenerateMultiplicity)
+{
+    const auto comm = serial_comm();
+    DiagonalPencil<double> op(dimension, 0, false);
+    op.spectrum[2] = 2.0;
+    const int requested = 3;
+    const std::vector<double> diagonal(dimension, 1.0);
+    const std::vector<double> energy_tolerances(requested, 1e-12);
+    std::vector<double> vectors(dimension * 4, 0.0);
+    vectors[0] = 1;
+    vectors[dimension + 3] = 1;
+    vectors[2 * dimension + 1] = 1;
+    vectors[3 * dimension + 2] = 1;
+    std::vector<double> eigenvalues(requested);
+    const hsolver::Diago_DavSubspace<double>::Preconditioner identity = [](double*, const double*, int, int) {};
+    hsolver::DavidsonOptions options;
+    options.initial_vectors = 4;
+    options.retained_vectors = 4;
+    hsolver::Diago_DavSubspace<double> solver(diagonal, requested, dimension, 4, 1e-12, 20, comm, 0, 0);
+    const auto result = solver.diag(op, vectors.data(), dimension, eigenvalues.data(), energy_tolerances, identity, options);
+    ASSERT_EQ(result.status, hsolver::DavidsonStatus::converged);
+    EXPECT_DOUBLE_EQ(eigenvalues[0], 1.0);
+    EXPECT_DOUBLE_EQ(eigenvalues[1], 2.0);
+    EXPECT_DOUBLE_EQ(eigenvalues[2], 2.0);
+    double overlap = 0.0;
+    for (int j = 0; j < dimension; ++j) { overlap += vectors[dimension + j] * vectors[2 * dimension + j]; }
+    EXPECT_NEAR(overlap, 0.0, 1e-14);
+}
+
+TEST(DavSubspace, ExtraRitzVectorsSurviveRestart)
+{
+    const auto comm = serial_comm();
+    const std::complex<double> hopping(0.12, 0.09);
+    const ChainHamiltonian<std::complex<double>> op(hopping);
+    const std::vector<double> diagonal(dimension, 2.0);
+    const std::vector<double> energy_tolerances(roots, 1e-12);
+    auto vectors = initial_vectors<std::complex<double>>();
+    std::vector<double> eigenvalues(roots);
+    const hsolver::Diago_DavSubspace<std::complex<double>>::Preconditioner identity =
+        [](std::complex<double>*, const double*, int, int) {};
+    hsolver::DavidsonOptions options;
+    options.retained_vectors = 4;
+    options.residual_tolerance = 1e-9;
+    hsolver::Diago_DavSubspace<std::complex<double>> solver(diagonal, roots, dimension, 6, 1e-12, 300, comm, 0, 0);
+    const auto result = solver.diag(op, vectors.data(), dimension, eigenvalues.data(), energy_tolerances, identity, options);
+    ASSERT_EQ(result.status, hsolver::DavidsonStatus::converged);
+    EXPECT_GT(result.restarts, 0);
+    check_solution(op, vectors, eigenvalues);
+    for (double norm : result.residual_norms) { EXPECT_LE(norm, options.residual_tolerance); }
 }
 
 int main(int argc, char** argv)
