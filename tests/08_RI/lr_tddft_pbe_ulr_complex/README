@@ -1,0 +1,8 @@
+PBE unrestricted LR-TDDFT for H2O+ with unequal spin occupations (4/3).
+All 23 AO-derived orbitals are retained: nvirt=19/20, two Davidson roots.
+Complex Gamma (gamma_only=0, one k point) uses a single real grid-potential
+part, unlike the two-part multi-k path. Multiple trial vectors check that
+Hxc spin accumulators do not carry potential values between vectors.
+Reference: e1b6a59c0, before extracting the independent HxcSpinAccumulator;
+4 MPI ranks, OMP_NUM_THREADS=1, Libxc 5.1.7 with KXC. The companion real
+Gamma case checks the linear Z Hessian and the unfused nonlinear force RHS.

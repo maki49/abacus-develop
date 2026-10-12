@@ -1,0 +1,4 @@
+PBE unrestricted LR-TDDFT for H2O+ with unequal spin occupations (4/3).
+All 23 AO-derived orbitals are retained: nvirt=19/20, two Davidson roots.
+Two k points exercise real/imaginary density and potential parts in the fused spin integration.
+Reference: the LR-Grad-relax (09691ff737) baseline plus the pre-existing GPU/PCG changes (e30bfe6fc), before the DM/Hxc optimizations; 4 MPI ranks, OMP_NUM_THREADS=1, Libxc 5.1.7 with KXC. Refreshed after the AO spline baseline update.
