@@ -7,6 +7,40 @@ class Parallel_2D;
 
 namespace LR
 {
+/// Borrow the KS spectrum and distributed (spin, k, occupied, virtual) basis.
+/// Used for independent seed selection and global/local amplitude mapping;
+/// no amplitudes or operator objects are owned.
+struct OrbitalTransitionSpace
+{
+    const double* eigenvalues;
+    const std::vector<Parallel_2D>& pair_distribution;
+    int nk;
+    const std::vector<int>& nocc;
+    const std::vector<int>& nvirt;
+    bool unrestricted;
+};
+
+template<typename T>
+struct DavidsonInitialSpace
+{
+    std::vector<T> vectors; ///< Local column-major amplitudes, including spare capacity.
+    int count = 0;
+};
+
+/// Preserve the supplied Gamma guesses and append low-gap candidates; for
+/// multiple k points choose independent spin/k seeds throughout. Add up to two
+/// nominal guard vectors and complete the boundary gap degeneracy if capacity allows.
+template<typename T>
+DavidsonInitialSpace<T> make_davidson_initial_space(const T* guesses, int dim, int roots,
+                                                   int capacity, const OrbitalTransitionSpace& layout);
+
+/// Fill at least minimum_vectors lowest-gap seeds, extending a boundary gap
+/// degeneracy up to capacity. Returns the actual column count; allocate capacity
+/// columns. A reproducible dense component covers other symmetry sectors.
+template<typename T>
+int initialize_orbital_gap_candidates(T* vectors, int minimum_vectors, int capacity,
+                                      const OrbitalTransitionSpace& layout);
+
 /// Construct epsilon_a - epsilon_i in local [spin][k][occupied][virtual] order.
 /// KS eigenvalues contain contiguous spin blocks, each with nk * (nocc[0]+nvirt[0]) entries.
 std::vector<double> orbital_energy_gaps(const double* eigenvalues,
