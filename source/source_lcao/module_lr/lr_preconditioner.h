@@ -20,6 +20,12 @@ struct OrbitalTransitionSpace
     bool unrestricted;
 };
 
+/// Select the globally lowest orbital-gap transitions over every spin and k.
+/// Complete the boundary degeneracy (1e-10 relative gap tolerance), so the
+/// returned count can exceed requested. Each rank gets the same ordered list,
+/// with local amplitude indices or -1 for transitions owned by another rank.
+std::vector<int> select_low_energy_transitions(const OrbitalTransitionSpace& layout, int requested);
+
 template<typename T>
 struct DavidsonInitialSpace
 {
