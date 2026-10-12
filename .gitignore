@@ -30,3 +30,6 @@ toolchain/abacus_env.sh
 .codex
 compile_commands.json
 tests/integrate/general_info.local
+
+# Local investigation and test reports are kept outside version control.
+/log/**/*.md
