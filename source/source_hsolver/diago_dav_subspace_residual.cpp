@@ -12,6 +12,19 @@
 
 namespace hsolver
 {
+const char* davidson_status_name(DavidsonStatus status)
+{
+    switch (status)
+    {
+    case DavidsonStatus::converged: return "converged";
+    case DavidsonStatus::iteration_limit: return "iteration limit";
+    case DavidsonStatus::dependent_initial_vectors: return "dependent initial vectors";
+    case DavidsonStatus::no_independent_direction: return "no independent expansion direction";
+    case DavidsonStatus::nonfinite_residual: return "nonfinite residual";
+    }
+    return "unknown";
+}
+
 namespace
 {
 template<typename T, typename Device>
@@ -23,14 +36,13 @@ ct::Tensor device_buffer(int count)
     return ct::Tensor(ct::DataTypeToEnum<T>::value, device, {allocated});
 }
 
-// Borrow the S-orthonormal basis V and its cached images. The caller owns both
+// Borrow the S-orthonormal basis V and SV. The caller owns both
 // storage and the active column count; algebra helpers do not change iteration state.
 template<typename T>
 struct DavidsonBasis
 {
     int dim;
     T* vectors;
-    T* h_images;
     T* s_images;
     const diag_comm_info& comm;
 };
@@ -96,7 +108,8 @@ bool orthonormalize_direction(const DavidsonBasis<T>& basis, int basis_count,
         }
     }
     const double remaining_squared = global_inner_real<T, Device>(direction, s_direction, basis.dim, basis.comm);
-    const double relative_cutoff = std::max(1e-12, 64.0 * std::numeric_limits<Real>::epsilon());
+    const double precision_cutoff = 64.0 * std::numeric_limits<Real>::epsilon();
+    const double relative_cutoff = std::max(1e-12, precision_cutoff);
     const double minimum_squared = original_squared * relative_cutoff * relative_cutoff;
     if (!std::isfinite(remaining_squared) || remaining_squared <= minimum_squared) { return false; }
     const Real norm = std::sqrt(remaining_squared);
@@ -115,9 +128,13 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
                                                 const Preconditioner& preconditioner,
                                                 const DavidsonOptions& options)
 {
-    ModuleBase::timer::start("Diago_DavSubspace", "diag_residual");
+    ModuleBase::timer::start("Diago_DavSubspace", "diag");
+    const int initial_count = options.initial_vectors == 0 ? n_band : options.initial_vectors;
+    const int retained_count = options.retained_vectors == 0 ? n_band : options.retained_vectors;
     if (!preconditioner || !std::isfinite(options.residual_tolerance) || options.residual_tolerance <= 0.0
-        || psi_in_dmax < dim || energy_tolerances.size() != static_cast<std::size_t>(n_band))
+        || psi_in_dmax < dim || energy_tolerances.size() != static_cast<std::size_t>(n_band)
+        || initial_count < n_band || initial_count > nbase_x
+        || retained_count < n_band || retained_count + n_band > nbase_x)
     {
         throw std::invalid_argument("Invalid residual-controlled Davidson arguments");
     }
@@ -131,8 +148,9 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
 
     DavidsonResult result;
     result.residual_norms.assign(n_band, std::numeric_limits<double>::infinity());
-    const DavidsonBasis<T> basis{dim, psi_in_iter, hpsi, spsi, diag_comm};
-    const int block_size = dim * n_band;
+    const DavidsonBasis<T> basis{dim, psi_in_iter, spsi, diag_comm};
+    const int work_columns = std::max(initial_count, retained_count);
+    const int block_size = dim * work_columns;
     const int workspace_size = 6 * block_size + nbase_x;
     ct::Tensor workspace = device_buffer<T, Device>(workspace_size);
     T* ritz_vectors = workspace.template data<T>();
@@ -148,10 +166,10 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
 
     // Accept exact initial eigenvectors, and reject duplicate guesses before a
     // generalized reduced solve could see a singular V† S V.
-    syncmem_complex_2d_op()(corrections, dim, psi_in, psi_in_dmax, dim, n_band);
-    op.spsi(corrections, s_corrections, dim, n_band);
+    syncmem_complex_2d_op()(corrections, dim, psi_in, psi_in_dmax, dim, initial_count);
+    op.spsi(corrections, s_corrections, dim, initial_count);
     int initial_rank = 0;
-    for (int root = 0; root < n_band; ++root)
+    for (int root = 0; root < initial_count; ++root)
     {
         T* direction = corrections + root * dim;
         T* s_direction = s_corrections + root * dim;
@@ -166,7 +184,7 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
     if (initial_rank < n_band)
     {
         result.status = DavidsonStatus::dependent_initial_vectors;
-        ModuleBase::timer::end("Diago_DavSubspace", "diag_residual");
+        ModuleBase::timer::end("Diago_DavSubspace", "diag");
         return result;
     }
     op.hpsi(psi_in_iter, hpsi, dim, initial_rank);
@@ -177,12 +195,13 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
 
     while (true)
     {
+        const int ritz_count = std::min(retained_count, basis_count);
         if (solve_projected)
         {
-            diag_zhegvx(basis_count, n_band, hcc, scc, nbase_x, &ritz_values, vcc);
-            rotate_block<T, Device>(psi_in_iter, dim, basis_count, vcc, nbase_x, n_band, ritz_vectors);
-            rotate_block<T, Device>(hpsi, dim, basis_count, vcc, nbase_x, n_band, ritz_h);
-            rotate_block<T, Device>(spsi, dim, basis_count, vcc, nbase_x, n_band, ritz_s);
+            diag_zhegvx(basis_count, ritz_count, hcc, scc, nbase_x, &ritz_values, vcc);
+            rotate_block<T, Device>(psi_in_iter, dim, basis_count, vcc, nbase_x, ritz_count, ritz_vectors);
+            rotate_block<T, Device>(hpsi, dim, basis_count, vcc, nbase_x, ritz_count, ritz_h);
+            rotate_block<T, Device>(spsi, dim, basis_count, vcc, nbase_x, ritz_count, ritz_s);
         }
         std::vector<int> unconverged;
         std::vector<Real> shifts;
@@ -233,13 +252,17 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
         const int active_roots = unconverged.size();
         if (basis_count + active_roots > nbase_x)
         {
-            // Soft locking: keep every current Ritz vector, including converged
-            // roots. Cached HX/SX rotate with X, so restart needs no new H action.
-            syncmem_complex_op()(psi_in_iter, ritz_vectors, block_size);
-            syncmem_complex_op()(hpsi, ritz_h, block_size);
-            syncmem_complex_op()(spsi, ritz_s, block_size);
+            // Soft locking: keep the requested roots AND extra low Ritz vectors.
+            // A candidate just above the output cutoff can move below it later;
+            // dropping it at every restart makes clustered/low roots easier to miss.
+            // Cached HX/SX rotate with X, so restart needs no new H action.
+            const int retained_size = ritz_count * dim;
+            syncmem_complex_op()(psi_in_iter, ritz_vectors, retained_size);
+            syncmem_complex_op()(hpsi, ritz_h, retained_size);
+            syncmem_complex_op()(spsi, ritz_s, retained_size);
             basis_count = 0;
-            cal_elem(dim, basis_count, n_band, psi_in_iter, spsi, hpsi, hcc, scc);
+            cal_elem(dim, basis_count, ritz_count, psi_in_iter, spsi, hpsi, hcc, scc);
+            ++result.restarts;
         }
         Real* device_shifts = shifts_buffer.template data<Real>();
         syncmem_var_h2d_op()(device_shifts, shifts.data(), active_roots);
@@ -281,7 +304,7 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
         cal_elem(dim, basis_count, added_directions, psi_in_iter, spsi, hpsi, hcc, scc);
         ++result.iterations;
     }
-    ModuleBase::timer::end("Diago_DavSubspace", "diag_residual");
+    ModuleBase::timer::end("Diago_DavSubspace", "diag");
     return result;
 }
 

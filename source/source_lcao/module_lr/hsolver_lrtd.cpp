@@ -47,9 +47,9 @@ namespace LR
         };
 
         /// Recompute ||A X_n - omega_n X_n|| after Davidson, independently of its
-        /// eigenvalue-change stopping test. Counts exclude this one verification block.
+        /// cached subspace residuals. Counts exclude this one verification block.
         template<typename T, typename THamilt>
-        void report_davidson_residuals(const LRHSOperator<T, THamilt>& op, const T* vectors,
+        std::vector<double> report_davidson_residuals(const LRHSOperator<T, THamilt>& op, const T* vectors,
                                        const int dim, const int roots, const Real<T>* eigenvalues,
                                        const int iterations, const hsolver::diag_comm_info& comm)
         {
@@ -78,10 +78,12 @@ namespace LR
             for (int n = 0; n < roots; ++n)
             {
                 const double residual = std::sqrt(squared_norms[n]);
+                squared_norms[n] = residual;
                 std::cout << "LR Davidson root " << n << " true residual=" << residual << " Ry\n";
             }
             std::cout.precision(precision);
             ModuleBase::timer::end("HSolverLR", "report_davidson_residuals");
+            return squared_norms;
         }
 
         template<typename T>
@@ -100,10 +102,7 @@ namespace LR
             T* psi,
             const int& dim, ///< local leading dimension (or nbasis)
             const int& nband,   ///< nstates in LR-TDDFT, not (nocc+nvirt)
-            const int& nk,
-            const std::vector<int>& nocc,
-            const std::vector<int>& nvirt,
-            const std::vector<Parallel_2D>& pX,
+            const OrbitalTransitionSpace& transitions,
             double* eig,
             const std::string method,
             const Real<T>& diag_ethr, ///< threshold for diagonalization
@@ -138,11 +137,11 @@ namespace LR
                     print_eigs(eig_complex, "Right eigenvalues: of the non-Hermitian matrix: (Ry)");
                     for (int i = 0; i < gdim; i++) { eigenvalue[i] = eig_complex[i].real(); }
                 }
-                bool openshell = std::is_same<THamilt, HamiltULR<T>>::value;
                 // copy eigenvectors
 #ifdef __MPI
-                LR_Util::global2local_X(psi, Amat_full.data(), nband, nk,
-                                        nocc, nvirt, pX, openshell);
+                LR_Util::global2local_X(psi, Amat_full.data(), nband, transitions.nk,
+                                        transitions.nocc, transitions.nvirt, transitions.pair_distribution,
+                                        transitions.unrestricted);
 #else
                 std::memcpy(psi, Amat_full.data(), sizeof(T) * nband * gdim);
 #endif
@@ -170,12 +169,17 @@ namespace LR
                 }
                 else if (method == "dav_subspace")
                 {
+                    const int subspace_multiplier = PARAM.inp.pw_diag_ndim;
+                    // The legacy entry point could spend six maxiter passes.
+                    // Keep that total budget, but restart within one continuous
+                    // residual-controlled solve so candidate roots are retained.
+                    const int iteration_budget = 6 * maxiter;
                     hsolver::Diago_DavSubspace<T> dav_subspace(precondition,
                         nband,
                         dim,
-                        davidson_dimension,
+                        subspace_multiplier,
                         diag_ethr,
-                        maxiter,
+                        iteration_budget,
                         comm_info,
                         PARAM.inp.diag_subspace,
                         PARAM.inp.nb2d);
@@ -192,10 +196,46 @@ namespace LR
                     };
                     std::cout << "LR Davidson preconditioner=signed-orbital-gap floor="
                               << denominator_floor << " Ry\n";
-                    const int iterations = dav_subspace.diag(op, psi, dim, eigenvalue.data(), ethr_band, false,
-                                                             inverse_gaps);
-                    hsolver::DiagoIterAssist<T>::avg_iter += iterations;
-                    report_davidson_residuals(op, psi, dim, nband, eigenvalue.data(), iterations, comm_info);
+                    // Keep lr_thr as an energy-change tolerance. The independent
+                    // absolute residual target is 1e-8 Ry (DavidsonOptions), so
+                    // an unchanged Ritz value alone can no longer end LR early.
+                    hsolver::DavidsonOptions options;
+                    const int candidate_capacity = nband * (subspace_multiplier - 1);
+                    auto initial_space = make_davidson_initial_space(psi, dim, nband, candidate_capacity, transitions);
+                    options.initial_vectors = initial_space.count;
+                    options.retained_vectors = options.initial_vectors;
+                    std::cout << "LR Davidson residual tolerance=" << options.residual_tolerance
+                              << " Ry; energy-change tolerance=" << diag_ethr
+                              << " Ry; initial/retained candidates=" << options.initial_vectors << '\n';
+                    const auto result = dav_subspace.diag(op, initial_space.vectors.data(), dim, eigenvalue.data(),
+                                                          ethr_band, inverse_gaps, options);
+                    const int returned_size = dim * nband;
+                    std::copy_n(initial_space.vectors.data(), returned_size, psi);
+                    hsolver::DiagoIterAssist<T>::avg_iter += result.iterations;
+                    std::cout << "LR Davidson status=" << hsolver::davidson_status_name(result.status)
+                              << "; converged roots=" << result.converged_roots << '/' << nband
+                              << "; restarts=" << result.restarts
+                              << "; rejected directions=" << result.rejected_directions
+                              << "; raw-residual fallbacks=" << result.residual_fallbacks << '\n';
+                    if (result.status != hsolver::DavidsonStatus::converged)
+                    {
+                        for (int root = 0; root < nband; ++root)
+                        {
+                            std::cout << "LR Davidson root " << root << " residual=" << result.residual_norms[root] << " Ry\n";
+                        }
+                        ModuleBase::WARNING_QUIT("HSolverLR", "Davidson did not converge; LR states/forces are not valid.");
+                    }
+                    // Reapply the full physical operator once before accepting
+                    // amplitudes for forces: cached HX can hide operator/cache errors.
+                    const auto residual_norms = report_davidson_residuals(
+                        op, psi, dim, nband, eigenvalue.data(), result.iterations, comm_info);
+                    for (double norm : residual_norms)
+                    {
+                        if (!std::isfinite(norm) || norm > options.residual_tolerance)
+                        {
+                            ModuleBase::WARNING_QUIT("HSolverLR", "Davidson full-operator residual exceeds its tolerance.");
+                        }
+                    }
                 }
                 else if (method == "cg")
                 {
