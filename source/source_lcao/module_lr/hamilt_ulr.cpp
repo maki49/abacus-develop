@@ -1,4 +1,5 @@
 #include "hamilt_ulr.h"
+#include "operator_casida/hxc_spin_accumulator.h"
 #include "dm_trans/dm_trans.h"
 #include "source_hamilt/hamilt.h"
 #include "source_estate/module_dm/density_matrix.h"
@@ -110,10 +111,13 @@ void HamiltULR<T>::hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, 
     ModuleBase::TITLE("HamiltULR", "hPsi");
     assert(ld_psi == this->ldim);
     const std::vector<int64_t> xdim_is = { nk * pX[0].get_local_size(), nk * pX[1].get_local_size() };
+    // Hxc_00 and Hxc_11 perform the final AO integration and VO projection.
+    const auto output_projections = hxc_spin_projections(this->ops);
     /// band-wise act (also works for close-shell, but not efficient)
     for (int ib = 0;ib < nband;++ib)
     {
         const int offset_band = ib * ld_psi;
+        HxcSpinAccumulator spin_potential[2]; // Fresh grid sums for this vector.
         // every one of the four spin blocks accumulates into this band's output, and the
         // diagonal `OperatorLRDiag`s now add rather than assign, so clear it first
         std::fill(hpsi + offset_band, hpsi + offset_band + ld_psi, T(0));
@@ -130,10 +134,19 @@ void HamiltULR<T>::hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, 
                 {
                     const T* input = psi_in + offset_bj;
                     T* output = hpsi + offset_ai;
-                    act_with_shared_density(node, xdim_is[is_bj], input, output, density_cache);
+                    // rho_bj -> v_{ai,bj}(r), summed over bj; AO/MO work follows below.
+                    const auto& output_projection = *output_projections[is_ai];
+                    act_with_spin_sum(node, xdim_is[is_bj], input, output, density_cache,
+                                      output_projection, spin_potential[is_ai]);
                     node = (hamilt::Operator<T>*)(node->next_op);
                 }
             }
+        }
+        for (int is_ai = 0; is_ai < 2; ++is_ai)
+        {
+            T* const output = hpsi + offset_band + is_ai * xdim_is[0];
+            const auto& output_projection = *output_projections[is_ai];
+            spin_potential[is_ai].integrate_and_project(output_projection, output);
         }
     }
 }
