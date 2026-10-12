@@ -7,10 +7,12 @@
 #include "source_hsolver/diago_dav_subspace.h"
 #include "source_hsolver/diago_cg.h"
 #include "source_hsolver/diago_iter_assist.h"
+#include "source_lcao/module_lr/lr_preconditioner.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "source_base/module_container/ATen/core/tensor_map.h"
 #include "source_base/parallel_comm.h"
+#include "source_base/parallel_device.h"
 
 namespace LR
 {
@@ -26,14 +28,61 @@ namespace LR
           public:
             explicit LRHSOperator(const THamilt& hm) : hm_(hm) {}
             void update_k(const int ik) override {}
-            void hpsi(const T* x, T* hx, const int ld, const int nvec) const override { hm_.hPsi(x, hx, ld, nvec); }
+            void hpsi(const T* x, T* hx, const int ld, const int nvec) const override
+            {
+                hm_.hPsi(x, hx, ld, nvec);
+                ++operator_calls_;
+                applied_vectors_ += nvec;
+            }
             void spsi(const T* x, T* sx, const int ld, const int nvec) const override
             {
                 std::memcpy(sx, x, sizeof(T) * static_cast<size_t>(ld) * static_cast<size_t>(nvec));
             }
+            int operator_calls() const { return operator_calls_; }
+            int applied_vectors() const { return applied_vectors_; }
           private:
             const THamilt& hm_;
+            mutable int operator_calls_ = 0;
+            mutable int applied_vectors_ = 0;
         };
+
+        /// Recompute ||A X_n - omega_n X_n|| after Davidson, independently of its
+        /// eigenvalue-change stopping test. Counts exclude this one verification block.
+        template<typename T, typename THamilt>
+        void report_davidson_residuals(const LRHSOperator<T, THamilt>& op, const T* vectors,
+                                       const int dim, const int roots, const Real<T>* eigenvalues,
+                                       const int iterations, const hsolver::diag_comm_info& comm)
+        {
+            ModuleBase::timer::start("HSolverLR", "report_davidson_residuals");
+            const int operator_calls = op.operator_calls();
+            const int applied_vectors = op.applied_vectors();
+            const std::size_t size = static_cast<std::size_t>(dim) * roots;
+            std::vector<T> image(size);
+            op.hpsi(vectors, image.data(), dim, roots);
+            std::vector<double> squared_norms(roots, 0.0);
+            for (int n = 0; n < roots; ++n)
+            {
+                for (int j = 0; j < dim; ++j)
+                {
+                    const std::size_t index = static_cast<std::size_t>(n) * dim + j;
+                    const T residual = image[index] - eigenvalues[n] * vectors[index];
+                    squared_norms[n] += std::norm(residual);
+                }
+            }
+#ifdef __MPI
+            if (comm.nproc > 1) { Parallel_Common::reduce_data(squared_norms.data(), roots, comm.comm); }
+#endif
+            const auto precision = std::cout.precision();
+            std::cout << std::setprecision(8) << "LR Davidson: iterations=" << iterations
+                      << " operator calls=" << operator_calls << " applied vectors=" << applied_vectors << '\n';
+            for (int n = 0; n < roots; ++n)
+            {
+                const double residual = std::sqrt(squared_norms[n]);
+                std::cout << "LR Davidson root " << n << " true residual=" << residual << " Ry\n";
+            }
+            std::cout.precision(precision);
+            ModuleBase::timer::end("HSolverLR", "report_davidson_residuals");
+        }
 
         template<typename T>
         inline void print_eigs(const std::vector<T>& eigs, const std::string& label = "", const double factor = 1.0)
@@ -121,7 +170,7 @@ namespace LR
                     hsolver::DiagoIterAssist<T>::avg_iter += static_cast<double>(david.diag(op,
                         dim, psi, eigenvalue.data(), ethr_band, maxiter, ntry_max, 0));
                 }
-                else if (method == "dav_subspace") //need refactor
+                else if (method == "dav_subspace")
                 {
                     hsolver::Diago_DavSubspace<T> dav_subspace(precondition,
                         nband,
@@ -133,8 +182,22 @@ namespace LR
                         PARAM.inp.diag_subspace,
                         PARAM.inp.nb2d);
                     std::vector<double> ethr_band(nband, diag_ethr);
-                    hsolver::DiagoIterAssist<T>::avg_iter += static_cast<double>(
-                        dav_subspace.diag(op, psi, dim, eigenvalue.data(), ethr_band, false /*scf*/));
+                    // A - omega I is approximated by the signed orbital gaps.
+                    // Cap only near-resonant denominators (1e-4 Ry = 1.36 meV).
+                    const double denominator_floor = 1e-4;
+                    const typename hsolver::Diago_DavSubspace<T>::Preconditioner inverse_gaps =
+                        [&precondition, denominator_floor](T* residuals, const Real<T>* shifts,
+                                                           int local_dim, int nvec)
+                    {
+                        apply_orbital_gap_preconditioner(residuals, shifts, local_dim, nvec,
+                                                         precondition, denominator_floor);
+                    };
+                    std::cout << "LR Davidson preconditioner=signed-orbital-gap floor="
+                              << denominator_floor << " Ry\n";
+                    const int iterations = dav_subspace.diag(op, psi, dim, eigenvalue.data(), ethr_band, false,
+                                                             inverse_gaps);
+                    hsolver::DiagoIterAssist<T>::avg_iter += iterations;
+                    report_davidson_residuals(op, psi, dim, nband, eigenvalue.data(), iterations, comm_info);
                 }
                 else if (method == "cg")
                 {

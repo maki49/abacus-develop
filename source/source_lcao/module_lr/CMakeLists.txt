@@ -33,6 +33,7 @@ if(ENABLE_LCAO)
     dm_trans/dm_diff_par.cpp
     lr_spectrum.cpp
     lr_spectrum_velocity.cpp
+    lr_preconditioner.cpp
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
     potentials/xc_kxc.cpp
