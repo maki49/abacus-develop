@@ -2,6 +2,19 @@ abacus_disable_feature_definitions(__CUDA)
 abacus_disable_feature_definitions(__ROCM)
 abacus_disable_feature_definitions(__EXX)
 
+set(dav_subspace_test_sources
+  test_diago_dav_subspace.cpp ../diago_dav_subspace.cpp ../diag_const_nums.cpp
+  ../diag_hs_para.cpp ../diago_pxxxgvx.cpp
+)
+AddTest(
+  TARGET MODULE_HSOLVER_dav_subspace
+  LIBS parameter base psi device container
+  SOURCES ${dav_subspace_test_sources}
+)
+if(TARGET ELPA::ELPA)
+  target_link_libraries(MODULE_HSOLVER_dav_subspace PRIVATE ELPA::ELPA genelpa)
+endif()
+
 AddTest(
   TARGET MODULE_HSOLVER_linear_pcg
   LIBS parameter base device container
