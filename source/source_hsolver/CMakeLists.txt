@@ -5,6 +5,7 @@ list(
   diago_cg.cpp
   diago_david.cpp
   diago_dav_subspace.cpp
+  diago_dav_subspace_residual.cpp
   diago_bpcg.cpp
   diago_lobpcg.cpp
   lobpcg_subspace.cpp
