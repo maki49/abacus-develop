@@ -1161,6 +1161,33 @@ void ReadInput::item_lr_tddft()
         this->add_item(item);
     }
     {
+        Input_Item item("lr_preconditioner_block_size");
+        item.annotation = "minimum number of low-gap transitions in the LR Davidson kernel block";
+        item.category = "Linear Response TDDFT";
+        item.type = "Integer";
+        item.description = R"(Optional low-energy block preconditioner for lr_solver=dav_subspace in LCAO TDA.
+* 0: use the signed orbital-gap inverse (default).
+* Positive: select this many lowest orbital-gap transitions across all spins and k points, completing the boundary degeneracy. Use the full LR kernel within this block and the orbital-gap diagonal outside it. The actual block size is bounded by the total transition count and can exceed the requested size at a degeneracy.
+
+The excitation operator and virtual-orbital window remain unchanged. Building a block of size m costs m full operator vectors per LR solve, plus O(m^3) work and O(m^2) replicated storage for its eigendecomposition. This experimental option may cost more than it saves; compare total applied vectors and wall time. It is not a Z-vector preconditioner.)";
+        item.default_value = "0";
+        item.unit = "";
+        item.set_availability("basis_type==lcao and lr_solver==dav_subspace");
+        read_sync_int(input.lr_preconditioner_block_size);
+        item.check_value = [](const Input_Item&, const Parameter& para) {
+            const int size = para.input.lr_preconditioner_block_size;
+            if (size < 0)
+            {
+                ModuleBase::WARNING_QUIT("ReadInput", "lr_preconditioner_block_size must be nonnegative");
+            }
+            if (size > 0 && (para.input.basis_type != "lcao" || para.input.lr_solver != "dav_subspace"))
+            {
+                ModuleBase::WARNING_QUIT("ReadInput", "lr_preconditioner_block_size requires LCAO and lr_solver=dav_subspace");
+            }
+        };
+        this->add_item(item);
+    }
+    {
         Input_Item item("lr_thr");
         item.annotation = "convergence threshold of the LR-TDDFT eigensolver";
         item.category = "Linear Response TDDFT";
