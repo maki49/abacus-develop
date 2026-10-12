@@ -6,8 +6,17 @@ AddTest(
   TARGET MODULE_HSOLVER_dav_callback
   LIBS parameter base device container psi
   SOURCES test_dav_callback.cpp ../diago_dav_subspace.cpp
+          ../diago_dav_subspace_residual.cpp ../diag_const_nums.cpp
           ../diago_pxxxgvx.cpp ../diag_hs_para.cpp
 )
+if(ENABLE_MPI)
+  add_test(NAME MODULE_HSOLVER_dav_callback_parallel
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4
+      $<TARGET_FILE:MODULE_HSOLVER_dav_callback>
+      --gtest_filter=DavSubspace.DistributedResidualCompaction)
+  set_tests_properties(MODULE_HSOLVER_dav_callback_parallel PROPERTIES
+    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+endif()
 
 set(DAV_SUBSPACE_TEST_SOURCES test_diago_dav_subspace.cpp ../diago_dav_subspace.cpp)
 set(DAV_SUBSPACE_TEST_LIBS parameter base device container psi)
