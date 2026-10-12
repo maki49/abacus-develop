@@ -5,6 +5,7 @@
 #include "source_estate/module_charge/chg_rhog_io.h"
 #include "source_io/module_output/cube_io.h"
 #include "source_io/module_wf/read_wfc_nao.h"
+#include "source_lcao/module_lr/lr_preconditioner.h"
 #include "source_lcao/module_lr/ri_benchmark/ri_benchmark.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include <algorithm>
@@ -78,6 +79,18 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_eigenvectors_X()
 template <typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::set_X_initial_guess()
 {
+    // Multi-k seeds must span independent spin/k transitions; the old combined
+    // spin seeds can miss a low root under an exact orbital-gap inverse.
+    if (this->inp_->lr_solver == "dav_subspace" && this->nk > 1)
+    {
+        for (auto& amplitudes : this->X)
+        {
+            initialize_orbital_gap_vectors(amplitudes.template data<T>(), this->nstates,
+                                           this->eig_ks.c, this->paraX_, this->nk,
+                                           this->nocc, this->nvirt, this->openshell);
+        }
+        return;
+    }
     // set the initial guess of X
     for (int is = 0; is < this->nspin; ++is)
     {
