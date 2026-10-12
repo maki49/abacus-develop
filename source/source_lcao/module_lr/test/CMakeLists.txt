@@ -34,6 +34,12 @@ if(ENABLE_LIBXC)
 endif()
 
 AddTest(
+  TARGET MODULE_LR_preconditioner
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_lr_preconditioner.cpp ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
+)
+
+AddTest(
   TARGET MODULE_LR_operator_lr_diag
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_operator_lr_diag.cpp ../../../source_hamilt/operator.cpp
