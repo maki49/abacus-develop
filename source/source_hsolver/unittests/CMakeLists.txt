@@ -2,6 +2,13 @@ abacus_disable_feature_definitions(__CUDA)
 abacus_disable_feature_definitions(__ROCM)
 abacus_disable_feature_definitions(__EXX)
 
+AddTest(
+  TARGET MODULE_HSOLVER_dav_callback
+  LIBS parameter base device container psi
+  SOURCES test_dav_callback.cpp ../diago_dav_subspace.cpp
+          ../diago_pxxxgvx.cpp ../diag_hs_para.cpp
+)
+
 set(DAV_SUBSPACE_TEST_SOURCES test_diago_dav_subspace.cpp ../diago_dav_subspace.cpp)
 set(DAV_SUBSPACE_TEST_LIBS parameter base device container psi)
 if(ENABLE_MPI)

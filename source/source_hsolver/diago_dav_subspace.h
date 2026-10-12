@@ -11,6 +11,7 @@
 #include "source_hsolver/hs_operator.h"
 
 #include <vector>
+#include <functional>
 
 namespace hsolver
 {
@@ -25,6 +26,7 @@ class Diago_DavSubspace
     using Real = typename GetTypeReal<T>::type;
 
   public:
+    using Preconditioner = std::function<void(T*, const Real*, int, int)>;
     Diago_DavSubspace(const std::vector<Real>& precondition_in,
                       const int& nband_in,
                       const int& nbasis_in,
@@ -54,7 +56,14 @@ class Diago_DavSubspace
              const bool& scf_type,
              const int ik);
 
+    int diag(const HSOperator<T, Device>& op, T* psi_in, const int psi_in_dmax,
+             Real* eigenvalue_in, const std::vector<double>& ethr_band,
+             const bool& scf_type, const Preconditioner& preconditioner);
+
   private:
+    int diag_impl(const HSOperator<T, Device>& op, T* psi_in, const int psi_in_dmax,
+                  Real* eigenvalue_in, const std::vector<double>& ethr_band,
+                  const bool& scf_type, const int ik, const Preconditioner& preconditioner);
     /// for MPI communication
     const diag_comm_info diag_comm;
 
@@ -116,7 +125,7 @@ class Diago_DavSubspace
                   int* unconv,
                   const std::vector<Real>* eigenvalue_iter,
                   const std::vector<double>& ethr_band,
-                  const int ik);
+                  const int ik, const Preconditioner& preconditioner);
 
     void cal_elem(const int& dim,
                   int& nbase,
@@ -159,7 +168,7 @@ class Diago_DavSubspace
                   const int psi_in_dmax,
                   Real* eigenvalue_in,
                   const std::vector<double>& ethr_band,
-                  const int ik);
+                  const int ik, const Preconditioner& preconditioner);
 
     bool test_exit_cond(const int& ntry, const int& notconv, const bool& scf);
 
