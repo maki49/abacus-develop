@@ -11,6 +11,7 @@
 #include "source_hsolver/hs_operator.h"
 
 #include <vector>
+#include <functional>
 
 namespace hsolver
 {
@@ -25,6 +26,12 @@ class Diago_DavSubspace
     using Real = typename GetTypeReal<T>::type;
 
   public:
+    /// Replace each residual column r_n by M(omega_n)^(-1) r_n in place.
+    /// Residuals are contiguous [nvec][dim]; Ritz values have nvec entries.
+    /// Both buffers reside on Device, in the same compacted unconverged-root order.
+    /// A non-diagonal action may use its own scratch buffer; it must preserve the layout.
+    using Preconditioner = std::function<void(T* residuals, const Real* ritz_values, int dim, int nvec)>;
+
     Diago_DavSubspace(const std::vector<Real>& precondition_in,
                       const int& nband_in,
                       const int& nbasis_in,
@@ -43,6 +50,16 @@ class Diago_DavSubspace
              Real* eigenvalue_in,
              const std::vector<double>& ethr_band,
              const bool& scf_type);
+
+    /// Use a caller-supplied inverse action instead of the legacy diagonal formula.
+    /// The constructor's diagonal is used only by the overload without this callback.
+    int diag(const HSOperator<T, Device>& op,
+             T* psi_in,
+             const int psi_in_dmax,
+             Real* eigenvalue_in,
+             const std::vector<double>& ethr_band,
+             const bool& scf_type,
+             const Preconditioner& preconditioner);
 
   private:
     /// for MPI communication
@@ -104,7 +121,8 @@ class Diago_DavSubspace
                   T* spsi,
                   T* vcc,
                   const int* unconv,
-                  std::vector<Real>* eigenvalue_iter);
+                  std::vector<Real>* eigenvalue_iter,
+                  const Preconditioner& preconditioner);
 
     void cal_elem(const int& dim,
                   int& nbase,
@@ -146,7 +164,8 @@ class Diago_DavSubspace
                   T* psi_in,
                   const int psi_in_dmax,
                   Real* eigenvalue_in,
-                  const std::vector<double>& ethr_band);
+                  const std::vector<double>& ethr_band,
+                  const Preconditioner& preconditioner);
 
     bool test_exit_cond(const int& ntry, const int& notconv, const bool& scf);
 

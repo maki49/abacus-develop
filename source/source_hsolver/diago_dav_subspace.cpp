@@ -16,6 +16,7 @@
 #include "source_hsolver/kernels/bpcg_kernel_op.h" // normalize_op, precondition_op, apply_eigenvalues_op
 
 #include <vector>
+#include <stdexcept>
 
 #ifdef __MPI
 #include <mpi.h>
@@ -113,7 +114,8 @@ int Diago_DavSubspace<T, Device>::diag_once(const HSOperator<T, Device>& op,
                                             T* psi_in,
                                             const int psi_in_dmax,
                                             Real* eigenvalue_in_hsolver,
-                                            const std::vector<double>& ethr_band)
+                                            const std::vector<double>& ethr_band,
+                                            const Preconditioner& preconditioner)
 {
     ModuleBase::timer::start("Diago_DavSubspace", "diag_once");
 
@@ -175,7 +177,8 @@ int Diago_DavSubspace<T, Device>::diag_once(const HSOperator<T, Device>& op,
                        this->spsi,
                        this->vcc,
                        unconv.data(),
-                       &eigenvalue_iter);
+                       &eigenvalue_iter,
+                       preconditioner);
 
         this->cal_elem(this->dim,
                        nbase,
@@ -282,7 +285,8 @@ void Diago_DavSubspace<T, Device>::cal_grad(const HSOperator<T, Device>& op,
                                             T* spsi,
                                             T* vcc,
                                             const int* unconv,
-                                            std::vector<Real>* eigenvalue_iter)
+                                            std::vector<Real>* eigenvalue_iter,
+                                            const Preconditioner& preconditioner)
 {
     ModuleBase::timer::start("Diago_DavSubspace", "cal_grad");
 
@@ -390,27 +394,9 @@ void Diago_DavSubspace<T, Device>::cal_grad(const HSOperator<T, Device>& op,
         );
     }
 
-    // Precondition section
-#if defined(__CUDA) || defined(__ROCM)
-    if (this->device == base_device::GpuDevice)
-    {
-        precondition_op<T, Device>()(this->dim,
-                                    psi_iter,
-                                    nbase,
-                                    notconv,
-                                    d_precondition,
-                                    this->d_eigenvalue);
-    }
-    else
-#endif
-    {
-        precondition_op<T, Device>()(this->dim,
-                                    psi_iter,
-                                    nbase,
-                                    notconv,
-                                    this->precondition.data(),
-                                    (*eigenvalue_iter).data());
-    }
+    // r_n = (H - omega_n S) X_n -> M(omega_n)^(-1) r_n.
+    T* residuals = psi_iter + nbase * this->dim;
+    preconditioner(residuals, e_temp_hd, this->dim, notconv);
 
     // Normalize section
 #if defined(__CUDA) || defined(__ROCM)
@@ -821,6 +807,30 @@ int Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& op,
                                        const std::vector<double>& ethr_band,
                                        const bool& scf_type)
 {
+    // Preserve the PW denominator p(|D - omega|), including its Device kernel.
+    const Preconditioner smooth_diagonal = [this](T* residuals, const Real* ritz_values,
+                                                  int dim, int nvec)
+    {
+        const Real* diagonal = this->precondition.data();
+#if defined(__CUDA) || defined(__ROCM)
+        if (this->device == base_device::GpuDevice) { diagonal = this->d_precondition; }
+#endif
+        precondition_op<T, Device>()(dim, residuals, 0, nvec, diagonal, ritz_values);
+    };
+    return this->diag(op, psi_in, psi_in_dmax, eigenvalue_in_hsolver, ethr_band, scf_type,
+                      smooth_diagonal);
+}
+
+template <typename T, typename Device>
+int Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& op,
+                                      T* psi_in,
+                                      const int psi_in_dmax,
+                                      Real* eigenvalue_in_hsolver,
+                                      const std::vector<double>& ethr_band,
+                                      const bool& scf_type,
+                                      const Preconditioner& preconditioner)
+{
+    if (!preconditioner) { throw std::invalid_argument("Davidson preconditioner must be callable"); }
     /// record the times of trying iterative diagonalization
     this->notconv = 0;
 
@@ -830,7 +840,8 @@ int Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& op,
     do
     {
 
-        sum_iter += this->diag_once(op, psi_in, psi_in_dmax, eigenvalue_in_hsolver, ethr_band);
+        sum_iter += this->diag_once(op, psi_in, psi_in_dmax, eigenvalue_in_hsolver, ethr_band,
+                                    preconditioner);
 
         ++ntry;
 
