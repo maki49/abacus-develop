@@ -1,1 +1,14 @@
 LR-TDDFT HF on H2O, gamma_only, nspin=2, lr_unrestricted=1, lr_nstates=3, lr_solver=lapack.
+
+The deliberately short HF SCF (exx_hybrid_step=1) produces an indefinite
+orbital Hessian, with smallest eigenvalue -1.0558643 Ry. Use lr_grad_solver=gmres
+for Z; PCG correctly rejects its negative first-step curvature. The old CG
+caller ignored Opt_CG's ifPD flag and continued with negative step lengths.
+
+The force reference 100.1830939208 eV/Angstrom comes from two independent
+direct solves, lr_grad_solver=lapack and scalapack, with four MPI ranks,
+OMP_NUM_THREADS=1 and all LR density screening disabled. GMRES gives
+100.1830939135, a true Z residual of 5.51e-9, and a largest force-component
+difference below 1e-8 eV/Angstrom. The previous reference 100.2039279390 used
+the amplitude-screened CG path; it is not the solution of the linear equation.
+All excitation-energy references and comparison tolerances are unchanged.

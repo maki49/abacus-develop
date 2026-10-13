@@ -1,1 +1,10 @@
 LR-TDDFT HF on H2O, gamma_only, nspin=2, lr_nstates=2, lr_solver=dav.
+
+The force reference uses lr_grad_solver=lapack (LU), four MPI ranks and
+OMP_NUM_THREADS=1, with no LR density-matrix screening. Both LR-Grad-relax
+(09691ff73) and the current linear Hessian give 121.6186866401 eV/Angstrom.
+The former screened-CG reference, 121.6164341472, had up to 1.50e-3 eV/Angstrom
+error in a force component: the recursively updated CG residual did not check
+the amplitude-dependent screened operator at the returned Z vector.
+This case continues to exercise the default gap-preconditioned PCG; the force
+comparison tolerance and all excitation-energy references are unchanged.

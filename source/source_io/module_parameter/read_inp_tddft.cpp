@@ -1343,7 +1343,8 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.category = "Linear Response TDDFT";
         item.type = "String";
         item.description = R"(The method to solve the Z-vector (relaxed-density) equation $(A+B)Z=R$ in LR-TDDFT force and relaxation calculations, the linear-equation counterpart of `lr_solver`. Its dimension is $n_k n_{occ} n_{virt}$ summed over spin, where $n_{virt}$ counts every virtual band of the ground state, not only the `nvirt` window of the excitation.
-* cg: Solve iteratively with the conjugate-gradient method, applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built.
+* cg: Solve iteratively with orbital-gap-preconditioned conjugate gradients (PCG), applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built. Requires a positive-definite Hessian and stops on non-positive curvature.
+* gmres: Solve iteratively with restarted GMRES and the same orbital-gap preconditioner. Permits an indefinite Hessian without building the matrix. Currently its Krylov vectors reside on the CPU, including in GPU runs. The restart dimension is 20 and the iteration limit is 100; every state's independently evaluated absolute residual must be at most 1e-6, as for cg.
 * lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
 * scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
 * scalapack_chol: Construct the matrix distributed as for scalapack and solve by a ScaLAPACK Cholesky factorization, about half the flops of the LU and in place.
@@ -1355,10 +1356,10 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.unit = "";
         item.check_value = [](const Input_Item& item, const Parameter& para) {
             const std::string& solver = para.input.lr_grad_solver;
-            const std::vector<std::string> solvers = { "cg", "lapack", "scalapack", "scalapack_chol" };
+            const std::vector<std::string> solvers = { "cg", "gmres", "lapack", "scalapack", "scalapack_chol" };
             if (std::find(solvers.begin(), solvers.end(), solver) == solvers.end())
             {
-                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_solver must be cg, lapack, scalapack or scalapack_chol; elpa has been removed");
+                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_solver must be cg, gmres, lapack, scalapack or scalapack_chol; elpa has been removed");
             }
 #ifndef __MPI
             if (solver == "scalapack" || solver == "scalapack_chol")

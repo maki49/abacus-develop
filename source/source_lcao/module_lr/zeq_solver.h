@@ -249,7 +249,7 @@ namespace LR
         THamL& ops_L, const int nspin_x, const std::string& zvec_solver, const bool test_force, const bool use_gpu)
     {
         for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
-        if (zvec_solver == "cg")
+        if (zvec_solver == "cg" || zvec_solver == "gmres")
         {
 #ifdef __MPI
             // Parallel_2D uses a row-major BLACS grid on the pair communicator.
@@ -265,7 +265,14 @@ namespace LR
                 [&ops_L](const T* in, T* out, int local_ld, int columns)
                 { ops_L.hPsi(in, out, local_ld, columns); };
             const auto diagonal = ops_L.orbital_diagonal();
-            solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu, diagonal);
+            if (zvec_solver == "cg")
+            {
+                solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu, diagonal);
+            }
+            else
+            {
+                solve_Z_GMRES(Z, R, ld, nstates, action, comm, diagonal);
+            }
         }
         else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x, test_force); }
         else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
