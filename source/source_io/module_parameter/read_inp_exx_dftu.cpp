@@ -283,10 +283,10 @@ void ReadInput::item_exx()
     }
     {
         Input_Item item("exx_dm_threshold");
-        item.annotation = "threshold to screen density matrix in exx";
+        item.annotation = "EXX density-matrix screening threshold (unused in LR-TDDFT)";
         item.category = "Exact Exchange (LCAO)";
         item.type = "Real";
-        item.description = "The Fock exchange can be expressed as where D is the density matrix. Smaller values of the density matrix can be truncated to accelerate calculation. The larger the threshold is, the faster the calculation and the lower the accuracy. A relatively safe choice of the value is 1e-4. LR-TDDFT exchange operators and excited-state force contractions retain all density blocks to preserve linearity; this threshold still applies to the ground-state SCF.";
+        item.description = "Screens density-matrix blocks in Fock exchange. Larger thresholds reduce cost at the expense of accuracy; a typical value is 1e-4. In ks-lr calculations, the KS ground state uses this value, while LR-TDDFT excitation operators, Z-vector equations and excited-state force contractions always retain all density blocks to preserve the linear response. Fixed Cs/Vs screening is controlled separately.";
         item.default_value = "1E-4";
         item.unit = "";
         read_sync_double(input.exx_dm_threshold);
