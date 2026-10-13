@@ -28,6 +28,19 @@ void solve_Z_CG(std::complex<double>* z, const std::complex<double>* rhs, int ld
                const std::function<void(const std::complex<double>*, std::complex<double>*, int, int)>& action,
                const hsolver::diag_comm_info& comm, bool use_gpu,
                const std::vector<double>& orbital_diagonal);
+
+/// Solve (A+B)Z=R with restarted, right-preconditioned GMRES on the host.
+/// Unlike PCG this permits an indefinite orbital Hessian. The same gap inverse
+/// is used, and every state's true absolute residual must satisfy 1e-6.
+hsolver::LinearSolveResult solve_Z_GMRES(double* z, const double* rhs, int ld, int states,
+                                        const ZHessianAction& action,
+                                        const hsolver::diag_comm_info& comm,
+                                        const std::vector<double>& orbital_diagonal);
+
+void solve_Z_GMRES(std::complex<double>* z, const std::complex<double>* rhs, int ld, int states,
+                  const std::function<void(const std::complex<double>*, std::complex<double>*, int, int)>& action,
+                  const hsolver::diag_comm_info& comm,
+                  const std::vector<double>& orbital_diagonal);
 }
 
 #endif

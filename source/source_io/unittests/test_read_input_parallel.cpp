@@ -610,6 +610,22 @@ TEST_F(InputParaTest, GaussianRIInverseInput)
     }
 }
 
+TEST_F(InputParaTest, ZVectorGmresInput)
+{
+    ModuleIO::ReadInput reader(0);
+    const auto& list = reader.get_input_lists();
+    const std::map<std::string, ModuleIO::Input_Item> items(list.begin(), list.end());
+    auto item = items.at("lr_grad_solver");
+    Parameter parameter;
+    item.str_values = {"gmres"};
+    item.read_value(item, parameter);
+    EXPECT_EQ(parameter.inp.lr_grad_solver, "gmres");
+    EXPECT_NO_THROW(item.check_value(item, parameter));
+    item.str_values = {"unknown"};
+    item.read_value(item, parameter);
+    EXPECT_EXIT(item.check_value(item, parameter), testing::ExitedWithCode(1), "");
+}
+
 TEST_F(InputParaTest, TypedTDFieldLists)
 {
     ModuleIO::ReadInput readinput(GlobalV::MY_RANK);

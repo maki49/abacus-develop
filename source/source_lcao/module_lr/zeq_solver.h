@@ -276,7 +276,7 @@ namespace LR
         {
             Z[i] = T(0.0);
         } // clear Z
-        if (zvec_solver == "cg")
+        if (zvec_solver == "cg" || zvec_solver == "gmres")
         {
 #ifdef __MPI
             const auto& pairs = ops_L.pX[0];
@@ -291,7 +291,14 @@ namespace LR
                 [&ops_L](const T* in, T* out, int local_ld, int columns)
                 { ops_L.hPsi(in, out, local_ld, columns); };
             const auto diagonal = ops_L.orbital_diagonal();
-            solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu, diagonal);
+            if (zvec_solver == "cg")
+            {
+                solve_Z_CG(Z, R, ld, nstates, action, comm, use_gpu, diagonal);
+            }
+            else
+            {
+                solve_Z_GMRES(Z, R, ld, nstates, action, comm, diagonal);
+            }
         }
         else if (zvec_solver == "lapack")
         {

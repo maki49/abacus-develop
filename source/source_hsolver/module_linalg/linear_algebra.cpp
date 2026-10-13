@@ -594,7 +594,8 @@ void LinearAlgebra<T, Device>::expand(int ld, int dim, int nx, int ny, const T* 
     {
         return;
     }
-    std::vector<T> narrow(c.begin(), c.end());
+    std::vector<T> narrow(c.size());
+    std::transform(c.begin(), c.end(), narrow.begin(), linear_coefficient<T>);
     linear_buffer<T, Device>(&coefficients_, narrow.size());
     T* coeff = coefficients_.template data<T>();
     base_device::memory::synchronize_memory_op<T, Device, base_device::DEVICE_CPU>()(coeff, narrow.data(), narrow.size());
@@ -655,6 +656,7 @@ std::size_t LinearAlgebra<T, Device>::storage_bytes(const ct::DeviceType device)
     return bytes;
 }
 
+template class LinearAlgebra<double, base_device::DEVICE_CPU>;
 template class LinearAlgebra<std::complex<float>, base_device::DEVICE_CPU>;
 template class LinearAlgebra<std::complex<double>, base_device::DEVICE_CPU>;
 #if defined(__CUDA) || defined(__ROCM)
