@@ -11,6 +11,11 @@ namespace hsolver
 {
 namespace
 {
+double conjugate(double value) { return value; }
+
+template <typename T>
+std::complex<T> conjugate(const std::complex<T>& value) { return std::conj(value); }
+
 #ifdef _OPENMP
 bool parallel_work(const int dim, const int nvec)
 {
@@ -28,7 +33,7 @@ void linear_op<T, Device>::dot(const int ld, const int dim, const int nvec, cons
         T sum = T(0);
         for (int i = 0; i < dim; ++i)
         {
-            sum += std::conj(x[offset + i]) * y[offset + i];
+            sum += conjugate(x[offset + i]) * y[offset + i];
         }
         out[band] = sum;
     }
@@ -110,10 +115,10 @@ void linear_op<T, Device>::dots(int ld, int dim, int nvec, const T* x, const T* 
             for (int i = begin; i < end; ++i)
             {
                 const int j = band * ld + i;
-                first += std::conj(x[j]) * y[j];
+                first += conjugate(x[j]) * y[j];
                 if (z)
                 {
-                    second += std::conj(z[j]) * w[j];
+                    second += conjugate(z[j]) * w[j];
                 }
             }
             partial[band * tiles + tile] = first;
@@ -285,7 +290,7 @@ void linear_op<T, Device>::native_dots(int ld, int dim, int nvec, int count, int
             T sum(0);
             for (int i = 0; i < dim; ++i)
             {
-                sum += std::conj(basis[basis_offset + i]) * x[band_offset + i];
+                sum += conjugate(basis[basis_offset + i]) * x[band_offset + i];
             }
             out[j * nvec + band] = sum;
         }
@@ -347,6 +352,7 @@ void linear_op<T, Device>::block_gram(int ld, int dim, int nvec, int count, int 
     }
 }
 
+template class linear_op<double, base_device::DEVICE_CPU>;
 template class linear_op<std::complex<float>, base_device::DEVICE_CPU>;
 template class linear_op<std::complex<double>, base_device::DEVICE_CPU>;
 

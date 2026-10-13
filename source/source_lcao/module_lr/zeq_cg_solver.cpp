@@ -3,6 +3,7 @@
 #include "source_base/timer.h"
 #include "source_base/module_device/memory_op.h"
 #include "source_hsolver/linear_pcg.h"
+#include "source_hsolver/linear_gmres.h"
 #include "source_base/kernels/math_kernel_op.h"
 #include "source_base/parallel_device.h"
 #include "source_hsolver/linear_algebra.h"
@@ -212,10 +213,82 @@ hsolver::LinearSolveResult solve_Z_CG(double* z, const double* rhs, int ld, int 
         message << "Z-vector PCG failed for RHS " << result.failed_band
                 << ": residual=" << result.max_residual
                 << ", iterations=" << result.iterations
-                << ". Check convergence and positive definiteness of the orbital Hessian.";
+                << ". PCG requires a positive-definite orbital Hessian; for an indefinite Hessian "
+                   "use lr_grad_solver = gmres or lapack (LU).";
         throw std::runtime_error(message.str());
     }
     return result;
+}
+
+hsolver::LinearSolveResult solve_Z_GMRES(double* z, const double* rhs, int ld, int states,
+                                        const ZHessianAction& action,
+                                        const hsolver::diag_comm_info& comm,
+                                        const std::vector<double>& orbital_diagonal)
+{
+    ModuleBase::timer::start("Z_vector", "solve_Z_GMRES");
+    try
+    {
+        if (ld < 0 || states <= 0) { throw std::invalid_argument("Invalid Z-vector dimensions"); }
+        const std::size_t size = static_cast<std::size_t>(ld) * states;
+        if (size > 0) { std::fill(z, z + size, 0.0); }
+        const auto gaps = inverse_gaps(orbital_diagonal, ld, comm);
+        const HostZHessian hessian(action);
+        const OrbitalInverse<base_device::DEVICE_CPU> inverse(gaps);
+
+        // Generic GMRES uses tol*max(1,||R_s||). Scale tol by the largest RHS norm
+        // so that no state's stopping threshold exceeds the Z solver's absolute tolerance.
+        std::vector<double> rhs_squared(states, 0.0);
+        for (int state = 0; state < states; ++state)
+        {
+            const double* column = rhs + state * ld;
+            for (int row = 0; row < ld; ++row) { rhs_squared[state] += column[row] * column[row]; }
+        }
+#ifdef __MPI
+        if (comm.nproc > 1) { Parallel_Common::reduce_data(rhs_squared.data(), states, comm.comm); }
+#endif
+        double rhs_scale = 1.0;
+        for (const double squared : rhs_squared)
+        {
+            if (!std::isfinite(squared)) { throw std::invalid_argument("Non-finite Z-vector RHS norm"); }
+            const double rhs_norm = std::sqrt(squared);
+            rhs_scale = std::max(rhs_scale, rhs_norm);
+        }
+        const double absolute_tolerance = 1e-6;
+        const double tolerance = absolute_tolerance / rhs_scale;
+        hsolver::LinearSolveOptions options;
+        options.restart = 20;
+        options.max_iterations = 100;
+        const hsolver::LinearSolveControl control{options.max_iterations, false};
+        hsolver::LinearGMRES<double, base_device::DEVICE_CPU> solver(tolerance, options, comm);
+        const auto result = solver.solve(hessian, inverse, ld, states, ld, z, rhs, nullptr, true, control);
+        std::cout << "Z-vector GMRES backend=CPU: iterations=" << result.iterations
+                  << " true residual=" << result.max_residual
+                  << " operator calls=" << result.operator_calls << std::endl;
+        // Re-evaluation of R-(A+B)Z is mandatory; a small projected Arnoldi residual alone
+        // is insufficient for accepting the relaxed density used by the force calculation.
+        if (result.status != hsolver::LinearSolveStatus::converged
+            || !(result.max_residual <= absolute_tolerance))
+        {
+            std::ostringstream message;
+            message << "Z-vector GMRES failed for RHS " << result.failed_band
+                    << ": residual=" << result.max_residual << ", iterations=" << result.iterations;
+            throw std::runtime_error(message.str());
+        }
+        ModuleBase::timer::end("Z_vector", "solve_Z_GMRES");
+        return result;
+    }
+    catch (...)
+    {
+        ModuleBase::timer::end("Z_vector", "solve_Z_GMRES");
+        throw;
+    }
+}
+
+void solve_Z_GMRES(std::complex<double>*, const std::complex<double>*, int, int,
+                  const std::function<void(const std::complex<double>*, std::complex<double>*, int, int)>&,
+                  const hsolver::diag_comm_info&, const std::vector<double>&)
+{
+    throw std::runtime_error("complex Z-vector solver is not implemented yet");
 }
 
 void solve_Z_CG(std::complex<double>*, const std::complex<double>*, int, int,
