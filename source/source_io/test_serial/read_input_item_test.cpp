@@ -2496,16 +2496,16 @@ TEST_F(InputTest, Item_test2)
     // after SCF (see esolver_lr_lcao_tddft.cpp), not at INPUT-parse time.
     { // lr_grad_solver
         auto it = find_label("lr_grad_solver", readinput.input_lists);
-        for (const std::string solver : { "cg", "lapack" })
+        for (const std::string solver : { "cg", "gmres", "lapack" })
         {
             TestParameters::input(param).lr_grad_solver = solver;
             check_item(it->second, param);   // accepted in every build
         }
-        TestParameters::input(param).lr_grad_solver = "gmres";
+        TestParameters::input(param).lr_grad_solver = "unknown";
         testing::internal::CaptureStdout();
         EXPECT_EXIT(check_item(it->second, param), ::testing::ExitedWithCode(1), "");
         output = testing::internal::GetCapturedStdout();
-        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, lapack, scalapack or scalapack_chol"));
+        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, gmres, lapack, scalapack or scalapack_chol; elpa has been removed"));
         for (const std::string solver : { "scalapack", "scalapack_chol" })
         {
             TestParameters::input(param).lr_grad_solver = solver;

@@ -13,6 +13,20 @@
 
 namespace hsolver
 {
+/// Narrow a projected coefficient to the vector scalar type. Real Krylov
+/// vectors produce real coefficients, although the small algebra stores complex doubles.
+template <typename T>
+inline T linear_coefficient(const std::complex<double>& value)
+{
+    return T(value);
+}
+
+template <>
+inline double linear_coefficient<double>(const std::complex<double>& value)
+{
+    return value.real();
+}
+
 /** @brief Device allocation helper, including type and empty-partition checks. */
 template <typename T, typename Device>
 void linear_buffer(ct::Tensor* buffer, const int64_t size)
