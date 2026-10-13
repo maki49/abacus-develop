@@ -461,6 +461,56 @@ TEST_F(TestModuleHsolverMathKernel, gemv_op_cpu)
     }
 }
 
+#if __UT_USE_CUDA
+namespace
+{
+template<typename T>
+void check_real_conjugate_transpose()
+{
+    // A is 2 x 3 in column-major order. A^T x = (0,2,4),
+    // and A A^T = [[35,44],[44,56]], so both GEMM transpose slots are checked.
+    const std::vector<T> input{1, 2, 3, 4, 5, 6, 2, -1};
+    const T one = 1;
+    const T zero = 0;
+    T* storage = nullptr;
+    base_device::memory::resize_memory_op<T, base_device::DEVICE_GPU>()(storage, 12);
+    base_device::memory::synchronize_memory_op<T, base_device::DEVICE_GPU, base_device::DEVICE_CPU>()(
+        storage, input.data(), 8);
+    T* x = storage + 6;
+    T* result = storage + 8;
+    std::vector<T> actual(4);
+    ModuleBase::createGpuBlasHandle();
+    ModuleBase::gemv_op<T, base_device::DEVICE_GPU>()(
+        'C', 2, 3, &one, storage, 2, x, 1, &zero, result, 1);
+    base_device::memory::synchronize_memory_op<T, base_device::DEVICE_CPU, base_device::DEVICE_GPU>()(
+        actual.data(), result, 3);
+    const std::vector<T> expected_vector{0, 2, 4};
+    for (int i = 0; i < 3; ++i) { EXPECT_EQ(actual[i], expected_vector[i]); }
+    ModuleBase::gemm_op<T, base_device::DEVICE_GPU>()(
+        'C', 'N', 3, 1, 2, &one, storage, 2, x, 2, &zero, result, 3);
+    base_device::memory::synchronize_memory_op<T, base_device::DEVICE_CPU, base_device::DEVICE_GPU>()(
+        actual.data(), result, 3);
+    for (int i = 0; i < 3; ++i) { EXPECT_EQ(actual[i], expected_vector[i]); }
+    ModuleBase::gemm_op<T, base_device::DEVICE_GPU>()(
+        'N', 'C', 2, 2, 3, &one, storage, 2, storage, 2, &zero, result, 2);
+    base_device::memory::synchronize_memory_op<T, base_device::DEVICE_CPU, base_device::DEVICE_GPU>()(
+        actual.data(), result, 4);
+    const std::vector<T> expected_matrix{35, 44, 44, 56};
+    EXPECT_EQ(actual, expected_matrix);
+    ModuleBase::destoryBLAShandle();
+    base_device::memory::delete_memory_op<T, base_device::DEVICE_GPU>()(storage);
+}
+} // namespace
+TEST_F(TestModuleHsolverMathKernel, RealConjugateTransposeFloat)
+{
+    check_real_conjugate_transpose<float>();
+}
+TEST_F(TestModuleHsolverMathKernel, RealConjugateTransposeDouble)
+{
+    check_real_conjugate_transpose<double>();
+}
+#endif
+
 #if __UT_USE_CUDA || __UT_USE_ROCM
 TEST_F(TestModuleHsolverMathKernel, zdot_real_op_gpu)
 {
