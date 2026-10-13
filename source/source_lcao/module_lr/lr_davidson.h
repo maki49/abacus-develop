@@ -20,8 +20,8 @@ struct DavidsonSolveSettings
 
 /// Solve H X = X Omega (S = I) with host LR actions and host input/output amplitudes.
 /// On GPU, Davidson's basis, Ritz rotations and reduced solve reside on the device;
-/// only H applications and the caller's inverse action cross the explicit host boundary.
-/// host_vectors contains options.initial_vectors columns on entry and roots on return.
+/// H applications and the caller's inverse action use explicit host staging.
+/// host_vectors holds initial_vectors columns (roots if zero) on entry and roots on return.
 template<typename T>
 hsolver::DavidsonResult solve_davidson(
     const hsolver::HSOperator<T>& host_operator,
