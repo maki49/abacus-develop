@@ -38,6 +38,7 @@ if(ENABLE_LCAO)
     lr_spectrum_velocity.cpp
     lr_preconditioner.cpp
     lr_block_preconditioner.cpp
+    lr_shifted_inverse.cpp
     hamilt_casida.cpp
     potentials/xc_kernel.cpp
     potentials/xc_kxc.cpp
@@ -58,7 +59,7 @@ if(ENABLE_LCAO)
 
   # The RI k-point list reader requires LibRI headers.
   if(ENABLE_LIBRI)
-    list(APPEND objects utils/lr_io_krlist.cpp)
+    list(APPEND objects utils/lr_io_krlist.cpp lr_ri_response.cpp)
   endif()
 
   add_library(lr OBJECT ${objects})

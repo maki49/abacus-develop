@@ -72,6 +72,10 @@ addtest(
   SOURCES test_read_input_parallel.cpp
           # io_input references stru_frame_io::extract_last_frame without linking cell.
           ../../source_cell/stru_frame_io.cpp)
+if(ENABLE_LIBRI)
+  # Test TUs disable __EXX, whereas the linked input parser retains the build feature.
+  target_compile_definitions(MODULE_IO_input_test_para PRIVATE TEST_INPUT_LIBRI)
+endif()
 
 add_test(
   NAME MODULE_IO_input_test_para_4
