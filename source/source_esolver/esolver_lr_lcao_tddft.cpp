@@ -169,6 +169,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
         // candidate selection and full-matrix eigenvector distribution.
         const LR::OrbitalTransitionSpace transitions{this->eig_ks.c, this->paraX_, this->nk,
                                                      this->nocc, this->nvirt, this->openshell};
+        const bool use_gpu = this->inp_->device == "gpu";
         if (this->inp_->lr_solver != "lapack")
         {
             precondition = orbital_energy_gaps(this->eig_ks.c, this->paraX_, this->nk,
@@ -245,7 +246,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
             LR::HSolver::solve(hulr, this->X[0].template data<T>(), nloc_per_state, nstates,
                                transitions,
                                this->pelec->ekb.c, this->inp_->lr_solver,
-                               this->inp_->lr_thr, precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, true);
+                               this->inp_->lr_thr, precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, use_gpu, true);
             if (this->inp_->out_wfc_lr) { write_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_state, nstates); }
         }
         else
@@ -290,7 +291,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                                    this->pelec->ekb.c + is * nstates,
                                    this->inp_->lr_solver,
                                    this->inp_->lr_thr,
-                                   precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, true);
+                                   precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, use_gpu, true);
                 if (this->inp_->out_wfc_lr) { write_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_state, nstates); }
             }
         }

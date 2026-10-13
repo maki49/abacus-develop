@@ -9,6 +9,7 @@
 #include "source_hsolver/diago_iter_assist.h"
 #include "source_lcao/module_lr/lr_preconditioner.h"
 #include "source_lcao/module_lr/lr_block_preconditioner.h"
+#include "source_lcao/module_lr/lr_davidson.h"
 #include "source_lcao/module_lr/lr_shifted_inverse.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
@@ -112,6 +113,7 @@ namespace LR
             const std::vector<Real<T>>& precondition,
             const int preconditioner_block_size,
             const std::function<void(const T*, T*)>& preconditioner_proxy,
+            const bool use_gpu,
             const bool hermitian)
         {
             ModuleBase::TITLE("HSolverLR", "solve");
@@ -181,16 +183,8 @@ namespace LR
                     // Keep that total budget, but restart within one continuous
                     // residual-controlled solve so candidate roots are retained.
                     const int iteration_budget = 6 * maxiter;
-                    hsolver::Diago_DavSubspace<T> dav_subspace(precondition,
-                        nband,
-                        dim,
-                        subspace_multiplier,
-                        diag_ethr,
-                        iteration_budget,
-                        comm_info,
-                        PARAM.inp.diag_subspace,
-                        PARAM.inp.nb2d);
-                    std::vector<double> ethr_band(nband, diag_ethr);
+                    const DavidsonSolveSettings settings{nband, dim, subspace_multiplier, diag_ethr,
+                        iteration_budget, PARAM.inp.diag_subspace, PARAM.inp.nb2d};
                     // A - omega I is approximated by the signed orbital gaps.
                     // Cap only near-resonant denominators (1e-4 Ry = 1.36 meV).
                     const double denominator_floor = 1e-4;
@@ -268,8 +262,10 @@ namespace LR
                     std::cout << "LR Davidson residual tolerance=" << options.residual_tolerance
                               << " Ry; energy-change tolerance=" << diag_ethr
                               << " Ry; initial/retained candidates=" << options.initial_vectors << '\n';
-                    const auto result = dav_subspace.diag(op, initial_space.vectors.data(), dim, eigenvalue.data(),
-                                                          ethr_band, inverse, options);
+                    // Initial/final amplitudes and AO actions remain on the host;
+                    // solve_davidson explicitly bridges them to the requested device.
+                    const auto result = solve_davidson<T>(op, initial_space.vectors.data(), eigenvalue.data(),
+                                                         precondition, inverse, options, settings, comm_info, use_gpu);
                     if (preconditioner_proxy)
                     {
                         std::cout << "LR RI inverse: solves=" << inner_solves << " proxy vectors=" << inner_vectors
