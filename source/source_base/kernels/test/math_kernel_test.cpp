@@ -461,7 +461,7 @@ TEST_F(TestModuleHsolverMathKernel, gemv_op_cpu)
     }
 }
 
-#if __UT_USE_CUDA
+#if __UT_USE_CUDA || __UT_USE_ROCM
 namespace
 {
 template<typename T>

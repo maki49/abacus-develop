@@ -163,9 +163,10 @@ hipblasOperation_t judge_trans_op(bool is_complex, const char& trans, const char
     {
         return HIPBLAS_OP_T;
     }
-    else if(is_complex && trans == 'C')
+    else if (trans == 'C')
     {
-        return HIPBLAS_OP_C;
+        // Match real BLAS semantics: conjugation is a no-op for real amplitudes.
+        return is_complex ? HIPBLAS_OP_C : HIPBLAS_OP_T;
     }
     else
     {
