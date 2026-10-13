@@ -429,6 +429,7 @@ void LinearWorkspace<T, Device>::cgs_finish(int ld, int dim, int nvec, T* x, T* 
     linear_op<T, Device>().cgs_finish(ld, dim, nvec, x, r, direction, ad, coefficients_.template data<T>());
     ModuleBase::timer::end("LinearWorkspace", "cgs_finish");
 }
+template class LinearWorkspace<double, base_device::DEVICE_CPU>;
 template class LinearWorkspace<std::complex<float>, base_device::DEVICE_CPU>;
 template class LinearWorkspace<std::complex<double>, base_device::DEVICE_CPU>;
 #if defined(__CUDA) || defined(__ROCM)

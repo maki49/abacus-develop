@@ -47,3 +47,4 @@ nocc              2
 # Skip optical postprocessing in this energy/force regression.
 abs_gauge         none
 cal_force         1
+lr_grad_solver    gmres # Short HF SCF: the orbital Hessian is indefinite.
