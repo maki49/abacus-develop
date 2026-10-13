@@ -9,11 +9,13 @@
 #include "source_hsolver/diago_iter_assist.h"
 #include "source_lcao/module_lr/lr_preconditioner.h"
 #include "source_lcao/module_lr/lr_block_preconditioner.h"
+#include "source_lcao/module_lr/lr_shifted_inverse.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "source_base/module_container/ATen/core/tensor_map.h"
 #include "source_base/parallel_comm.h"
 #include "source_base/parallel_device.h"
+#include <chrono>
 
 namespace LR
 {
@@ -109,6 +111,7 @@ namespace LR
             const Real<T>& diag_ethr, ///< threshold for diagonalization
             const std::vector<Real<T>>& precondition,
             const int preconditioner_block_size,
+            const std::function<void(const T*, T*)>& preconditioner_proxy,
             const bool hermitian)
         {
             ModuleBase::TITLE("HSolverLR", "solve");
@@ -199,7 +202,38 @@ namespace LR
                                                          precondition, denominator_floor);
                     };
                     LowEnergyPreconditioner<T> low_energy_block;
-                    if (preconditioner_block_size > 0)
+                    int inner_solves = 0;
+                    int inner_vectors = 0;
+                    int inner_unconverged = 0;
+                    int inner_fallbacks = 0;
+                    double inner_seconds = 0;
+                    double inner_max_residual = 0;
+                    const ShiftedInverseSettings inner_settings;
+                    if (preconditioner_proxy)
+                    {
+                        if (!hermitian || preconditioner_block_size > 0)
+                        { throw std::invalid_argument("RI proxy requires Hermitian TDA without the low-energy block"); }
+                        inverse = [&](T* residuals, const Real<T>* shifts, int local_dim, int nvec)
+                        {
+                            const auto start = std::chrono::steady_clock::now();
+                            for (int n = 0; n < nvec; ++n)
+                            {
+                                T* residual = residuals + n * local_dim;
+                                const auto result = apply_shifted_inverse(residual, local_dim, shifts[n], precondition,
+                                    preconditioner_proxy, inner_settings, comm_info);
+                                ++inner_solves;
+                                inner_vectors += result.operator_vectors;
+                                inner_unconverged += !result.converged;
+                                inner_fallbacks += result.used_gap_fallback;
+                                inner_max_residual = std::max(inner_max_residual, result.relative_residual);
+                            }
+                            inner_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+                        };
+                        std::cout << "LR Davidson preconditioner=minimal-Gaussian-RI GMRES tolerance="
+                                  << inner_settings.relative_tolerance << " max iterations="
+                                  << inner_settings.max_iterations << '\n';
+                    }
+                    else if (preconditioner_block_size > 0)
                     {
                         if (!hermitian) { throw std::invalid_argument("LR block preconditioning requires Hermitian TDA"); }
                         const auto selected = select_low_energy_transitions(transitions, preconditioner_block_size);
@@ -236,6 +270,13 @@ namespace LR
                               << " Ry; initial/retained candidates=" << options.initial_vectors << '\n';
                     const auto result = dav_subspace.diag(op, initial_space.vectors.data(), dim, eigenvalue.data(),
                                                           ethr_band, inverse, options);
+                    if (preconditioner_proxy)
+                    {
+                        std::cout << "LR RI inverse: solves=" << inner_solves << " proxy vectors=" << inner_vectors
+                                  << " unconverged=" << inner_unconverged << " gap fallbacks=" << inner_fallbacks
+                                  << " max relative residual=" << inner_max_residual
+                                  << " seconds=" << inner_seconds << '\n';
+                    }
                     const int returned_size = dim * nband;
                     std::copy_n(initial_space.vectors.data(), returned_size, psi);
                     hsolver::DiagoIterAssist<T>::avg_iter += result.iterations;

@@ -403,6 +403,7 @@ struct Input_para
     std::string xc_kernel = "LDA";              ///< exchange correlation (XC) kernel for LR-TDDFT
     std::string lr_solver = "dav";              ///< the eigensolver for LR-TDDFT
     int lr_preconditioner_block_size = 0;      ///< low-gap kernel block size; zero keeps the gap inverse
+    double lr_preconditioner_ri_cutoff = 0;    ///< bohr; positive enables the experimental Gaussian RI inverse
     double lr_thr = 1e-2;                       ///< convergence threshold of the LR-TDDFT eigensolver
     bool out_wfc_lr = false;                    ///< whether to output the eigenvectors (excitation amplitudes) in the particle-hole basis
     bool lr_unrestricted = false;               ///< whether to use the unrestricted construction for LR-TDDFT

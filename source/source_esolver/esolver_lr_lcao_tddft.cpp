@@ -12,8 +12,89 @@
 #include "source_hamilt/module_xc/xc_functional.h"
 #include <algorithm>
 #include <iomanip>
+#ifdef __EXX
+#include "source_lcao/module_lr/lr_ri_response.h"
+#include "source_lcao/module_ri/minimal_gaussian_ri.h"
+#include "source_lcao/module_ri/ri_util_bvk.h"
+#include "source_base/element_name.h"
+#include <RI/global/MPI_Wrapper.h>
+#endif
 
 using namespace LR;
+
+#ifdef __EXX
+namespace
+{
+// Gather fixed KS coefficients once, and describe the distributed transition rows.
+// The approximate operator owns this snapshot; neither the physical Hamiltonian
+// nor the ground-state EXX workspace participates in the inner iterations.
+template<typename T>
+RITransitionBasis<T> ri_transition_basis(const psi::Psi<T>& coefficients, const Parallel_2D& distribution,
+    const OrbitalTransitionSpace& transitions, const K_Vectors& kv, int naos)
+{
+    RITransitionBasis<T> basis;
+    basis.naos = naos;
+    basis.nk = transitions.nk;
+    const int spins = transitions.unrestricted ? 2 : 1;
+    basis.nocc.assign(transitions.nocc.begin(), transitions.nocc.begin() + spins);
+    basis.nvirt.assign(transitions.nvirt.begin(), transitions.nvirt.begin() + spins);
+    basis.coefficients.resize(spins);
+    for (int k = 0; k < basis.nk; ++k)
+    {
+        const auto& point = kv.kvec_d[k];
+        basis.kpoints.push_back({{point.x, point.y, point.z}});
+    }
+    int spin_offset = 0;
+    for (int spin = 0; spin < spins; ++spin)
+    {
+        const int no = basis.nocc[spin];
+        const int nv = basis.nvirt[spin];
+        const int bands = no + nv;
+        auto& full = basis.coefficients[spin];
+        full.resize(static_cast<std::size_t>(basis.nk) * bands * naos);
+        const auto& pairs = transitions.pair_distribution[spin];
+        for (int k = 0; k < basis.nk; ++k)
+        {
+            const int isk = spin * basis.nk + k;
+            const T* source = &coefficients(isk, 0, 0);
+            T* target = full.data() + k * bands * naos;
+            LR_Util::gather_2d_to_full(distribution, source, target, false, naos, bands);
+            for (int i = 0; i < pairs.get_col_size(); ++i)
+            {
+                const int occupied = pairs.local2global_col(i);
+                for (int a = 0; a < pairs.get_row_size(); ++a)
+                {
+                    const int virtual_index = pairs.local2global_row(a);
+                    const int index = spin_offset + k * no * nv + occupied * nv + virtual_index;
+                    basis.local_to_global.push_back(index);
+                }
+            }
+        }
+        spin_offset += basis.nk * no * nv;
+    }
+    return basis;
+}
+
+// Read the physical exchange kernel's explicit coefficients. The prototype
+// supports one radial kernel, so reject mixtures instead of silently replacing them.
+double ri_exchange_settings(const std::string& xc_kernel, const Exx_Info& exx,
+                            MinimalGaussianRISettings& settings)
+{
+    if (!exx_kernel_list().count(xc_kernel)) { return 0; }
+    const auto& components = exx.info_ri.coulomb_param;
+    if (components.size() != 1 || components.begin()->second.size() != 1)
+    { throw std::invalid_argument("Gaussian RI proxy supports one Fock or erfc exchange component"); }
+    const auto& component = *components.begin();
+    const auto& parameters = component.second.front();
+    if (component.first == Conv_Coulomb_Pot_K::Coulomb_Type::Erfc)
+    { settings.exchange_omega = std::stod(parameters.at("omega")); }
+    else if (component.first != Conv_Coulomb_Pot_K::Coulomb_Type::Fock)
+    { throw std::invalid_argument("Unsupported Gaussian RI proxy exchange kernel"); }
+    const double alpha = xc_kernel == "hf" ? 1.0 : exx.info_global.hybrid_alpha;
+    return alpha * std::stod(parameters.at("alpha"));
+}
+}
+#endif
 
 template <typename T, typename TR>
 ModuleESolver::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp,
@@ -93,6 +174,45 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
             precondition = orbital_energy_gaps(this->eig_ks.c, this->paraX_, this->nk,
                                                this->nocc, this->nvirt, openshell);
         }
+        std::function<void(const T*, T*)> preconditioner_proxy;
+#ifdef __EXX
+        std::unique_ptr<RIResponseOperator<T>> ri_response;
+        if (this->inp_->lr_preconditioner_ri_cutoff > 0)
+        {
+            const auto start = std::chrono::steady_clock::now();
+            MinimalGaussianRISettings settings;
+            settings.coulomb_cutoff = this->inp_->lr_preconditioner_ri_cutoff;
+            const double alpha = ri_exchange_settings(xc_kernel, this->exx_info, settings);
+            const auto period = RI_Util::get_Born_vonKarmen_period(this->kv);
+            const int mesh_size = period[0] * period[1] * period[2];
+            if (mesh_size != this->nk)
+            { throw std::invalid_argument("Gaussian RI proxy requires a full uniform k mesh"); }
+            std::vector<int> atomic_numbers;
+            for (int species = 0; species < ucell.ntype; ++species)
+            {
+                const auto& symbol = ucell.atoms[species].ncpp.psd;
+                const auto found = std::find(ModuleBase::element_name.begin(), ModuleBase::element_name.end(), symbol);
+                if (found == ModuleBase::element_name.end())
+                { throw std::invalid_argument("Gaussian RI proxy: unknown pseudopotential element " + symbol); }
+                const int number = found - ModuleBase::element_name.begin() + 1;
+                atomic_numbers.push_back(number);
+            }
+            const LCAO_Orbitals& orbitals = this->ks_ ? this->ks_->orb_ : this->orb_;
+            const auto comm = this->paraC_.comm();
+            const int rank = RI::MPI_Wrapper::mpi_get_rank(comm);
+            const int ranks = RI::MPI_Wrapper::mpi_get_size(comm);
+            const hsolver::diag_comm_info comm_info(comm, rank, ranks);
+            const auto fits = build_minimal_gaussian_ri<T>(comm, ucell, orbitals, atomic_numbers, period, settings);
+            std::unique_ptr<RIHartreeFock<T>> kernel(new RIHartreeFock<T>(comm, fits.geometry, fits.hartree, fits.exchange));
+            const auto basis = ri_transition_basis(*this->psi_ks, this->paraC_, transitions, this->kv, this->nbasis);
+            ri_response.reset(new RIResponseOperator<T>(fits.geometry, basis, std::move(kernel), precondition, alpha, comm_info));
+            const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+            std::cout << "LR RI proxy setup: seconds=" << seconds << " theta=" << settings.theta
+                      << " J/K lmax=" << settings.hartree_lmax << '/' << settings.exchange_lmax
+                      << " Coulomb cutoff=" << settings.coulomb_cutoff << " bohr exchange fraction=" << alpha
+                      << " omega=" << settings.exchange_omega << " bohr^-1\n";
+        }
+#endif
         // allocate and initialize A matrix and density matrix
         if (openshell)
         {
@@ -116,10 +236,16 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                               this->paraX_,
                               this->paraC_,
                               this->paraMat_);
+#ifdef __EXX
+            if (ri_response)
+            {
+                preconditioner_proxy = [&](const T* x, T* ax) { ri_response->apply(x, ax, RIResponseSpin::unrestricted); };
+            }
+#endif
             LR::HSolver::solve(hulr, this->X[0].template data<T>(), nloc_per_state, nstates,
                                transitions,
                                this->pelec->ekb.c, this->inp_->lr_solver,
-                               this->inp_->lr_thr, precondition, this->inp_->lr_preconditioner_block_size, true);
+                               this->inp_->lr_thr, precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, true);
             if (this->inp_->out_wfc_lr) { write_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_state, nstates); }
         }
         else
@@ -152,12 +278,19 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                                 this->out_dir,
                                 this->inp_->ri_hartree_benchmark,
                                 (this->inp_->ri_hartree_benchmark == "aims" ? this->inp_->aims_nbasis : std::vector<int>({})));
+#ifdef __EXX
+                if (ri_response)
+                {
+                    const RIResponseSpin spin = is == 0 ? RIResponseSpin::singlet : RIResponseSpin::triplet;
+                    preconditioner_proxy = [&, spin](const T* x, T* ax) { ri_response->apply(x, ax, spin); };
+                }
+#endif
                 LR::HSolver::solve(hlr, this->X[is].template data<T>(), nloc_per_state, nstates,
                                    transitions,
                                    this->pelec->ekb.c + is * nstates,
                                    this->inp_->lr_solver,
                                    this->inp_->lr_thr,
-                                   precondition, this->inp_->lr_preconditioner_block_size, true);
+                                   precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, true);
                 if (this->inp_->out_wfc_lr) { write_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_state, nstates); }
             }
         }
