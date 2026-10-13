@@ -1,5 +1,5 @@
 import unittest
-from state_check import check
+from excited_state_check import check
 
 SUMMARY = ('EXCITED-STATE RELAX step {step}: E_gs = -10 eV, Omega = 1 eV, '
            'E_exc = -9 eV | |F_gs|max = 0.1, |F_Omega|max = 0.2 eV/Angstrom\n')
@@ -10,7 +10,7 @@ LOG = SUMMARY.format(step=0) + SUMMARY.format(step=1) + MATCH
 CONFIG = dict(steps=2, dimensions=[3, 1], reference_first=True, min_overlap=0.99)
 
 
-class RootCheck(unittest.TestCase):
+class ExcitedStateCheck(unittest.TestCase):
     def test_accepts_retained_jt_branch_despite_group_direction_loss(self):
         check(LOG, CONFIG)
 

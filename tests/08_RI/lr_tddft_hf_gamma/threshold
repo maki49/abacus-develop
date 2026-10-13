@@ -1,0 +1,2 @@
+# Absolute tolerance for the summed excited-state force components.
+force_threshold 0.000001

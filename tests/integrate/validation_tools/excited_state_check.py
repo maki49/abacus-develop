@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check two-step LR root following without depending on degenerate eigenvector gauges."""
+"""Check two-step LR excited-state following without depending on degenerate eigenvector gauges."""
 import json
 import math
 from pathlib import Path
@@ -60,6 +60,6 @@ if __name__ == '__main__':
     try:
         check(Path(sys.argv[1]).read_text(), json.loads(Path(sys.argv[2]).read_text()))
     except (ValueError, OSError, IndexError) as error:
-        print('Root tracking check failed:', error)
+        print('Excited-state tracking check failed:', error)
         sys.exit(1)
-    print('Root tracking check passed')
+    print('Excited-state tracking check passed')

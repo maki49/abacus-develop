@@ -115,8 +115,8 @@ jobs:
       - name: Use KXC-enabled LibXC at runtime
         run: echo "LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/toolchain/install/libxc-kxc/lib:${LD_LIBRARY_PATH:-}" >> "${GITHUB_ENV}"
 
-      - name: Test LR root-tracking checker
-        run: python3 tests/integrate/validation_tools/test_state_chk.py
+      - name: Test LR excited-state tracking checker
+        run: python3 tests/integrate/validation_tools/test_es_check.py
 
       - name: Configure
         run: |
