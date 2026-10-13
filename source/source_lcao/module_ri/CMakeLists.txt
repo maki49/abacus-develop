@@ -26,6 +26,9 @@ if(ENABLE_LIBRI)
       exx_opt_orb_print.cpp
       exx_opt_orb.cpp
       gaussian_abfs.cpp
+      minimal_gaussian_basis.cpp
+      ri_hartree_fock.cpp
+      minimal_gaussian_ri.cpp
       singular_value.cpp
       exx_lri_detail.cpp
       exx_workspace.cpp
