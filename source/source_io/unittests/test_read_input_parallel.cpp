@@ -463,6 +463,7 @@ TEST_F(InputParaTest, ParaRead)
     EXPECT_EQ(param.inp.lr_init_xc_kernel[0], "default");
     EXPECT_EQ(param.inp.lr_solver, "dav");
     EXPECT_EQ(param.inp.lr_preconditioner_block_size, 0);
+    EXPECT_EQ(param.inp.lr_preconditioner_ri_cutoff, 0);
     EXPECT_DOUBLE_EQ(param.inp.lr_thr, 1e-2);
     EXPECT_EQ(param.inp.lr_grad_solver, "cg");
     EXPECT_FALSE(param.inp.lr_unrestricted);
@@ -570,6 +571,43 @@ TEST_F(InputParaTest, GgaGradAcceptedRange)
         }
     }
     EXPECT_TRUE(found);
+}
+
+TEST_F(InputParaTest, GaussianRIInverseInput)
+{
+    ModuleIO::ReadInput reader(0);
+    const auto& list = reader.get_input_lists();
+    const std::map<std::string, ModuleIO::Input_Item> items(list.begin(), list.end());
+    const auto set_value = [&](Parameter& parameter, const std::string& key, const std::string& value) {
+        auto item = items.at(key);
+        item.str_values = {value};
+        item.read_value(item, parameter);
+    };
+    const auto cutoff_item = items.at("lr_preconditioner_ri_cutoff");
+    Parameter disabled;
+    cutoff_item.check_value(cutoff_item, disabled); // Default PW/dav remains valid when disabled.
+    Parameter enabled;
+    set_value(enabled, "basis_type", "lcao");
+    set_value(enabled, "lr_solver", "dav_subspace");
+    set_value(enabled, "lr_preconditioner_ri_cutoff", "20");
+    EXPECT_DOUBLE_EQ(enabled.inp.lr_preconditioner_ri_cutoff, 20);
+#ifdef TEST_INPUT_LIBRI
+    cutoff_item.check_value(cutoff_item, enabled);
+#else
+    EXPECT_EXIT(cutoff_item.check_value(cutoff_item, enabled), testing::ExitedWithCode(1), "");
+#endif
+    const std::vector<std::pair<std::string, std::string>> invalid = {
+        {"lr_preconditioner_ri_cutoff", "-1"}, {"basis_type", "pw"},
+        {"lr_solver", "dav"}, {"kpar", "2"}, {"lr_preconditioner_block_size", "4"}};
+    for (const auto& option : invalid)
+    {
+        Parameter parameter;
+        set_value(parameter, "basis_type", "lcao");
+        set_value(parameter, "lr_solver", "dav_subspace");
+        set_value(parameter, "lr_preconditioner_ri_cutoff", "20");
+        set_value(parameter, option.first, option.second);
+        EXPECT_EXIT(cutoff_item.check_value(cutoff_item, parameter), testing::ExitedWithCode(1), "");
+    }
 }
 
 TEST_F(InputParaTest, TypedTDFieldLists)
