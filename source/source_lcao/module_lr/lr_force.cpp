@@ -300,7 +300,9 @@ namespace LR
     {
         ModuleBase::matrix f_exx_dmtrans(this->ucell_.nat, 3);
         auto& exx_lri_kernel = this->exx_lri_.lock()->get();
-        exx_lri_kernel.set_Ds(dm_trans, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
+        // Use the same unscreened density response as the LR energy operator.
+        constexpr double density_threshold = 0.0;
+        exx_lri_kernel.set_Ds(dm_trans, density_threshold, spin_suffix);
         exx_lri_kernel.cal_Hs({ "", "", spin_suffix });
         exx_lri_kernel.cal_force({ "", "", spin_suffix, "", "" });// using dm_trans，Pulay term only
         for (std::size_t idim = 0; idim < 3; ++idim)
@@ -349,8 +351,12 @@ namespace LR
         // Multiply spin factor (outside) on it gives the final result.
         // The spin factor is not hard-coded in this function.
 
+        // Both sides of Tr[(T+Z) dK[D_gs]] belong to the LR force. Retain all
+        // density blocks on either side so the two derivative terms use the same
+        // bilinear form; this does not change ground-state SCF screening.
+        constexpr double density_threshold = 0.0;
         // 1. Pulay term
-        lr_exx_kernel.set_Ds(dm_gs, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
+        lr_exx_kernel.set_Ds(dm_gs, density_threshold, spin_suffix);
         lr_exx_kernel.cal_Hs({ "", "", spin_suffix });  // using dm_gs as D_KL
         lr_exx_kernel.cal_force(relaxed_diff_dm, { "", "", spin_suffix , "", "" }); // using relaxed_diff_dm as D_IJ
         add_force_from_kernel();
@@ -358,7 +364,7 @@ namespace LR
         // 2. Hellmann-Feynman term
         const auto& dm_gs_transpose = transpose_dm(dm_gs);
         const auto& relaxed_diff_dm_transpose = transpose_dm(relaxed_diff_dm);
-        lr_exx_kernel.set_Ds(relaxed_diff_dm_transpose, this->exx_lri_.lock()->get_info().dm_threshold, spin_suffix);
+        lr_exx_kernel.set_Ds(relaxed_diff_dm_transpose, density_threshold, spin_suffix);
         lr_exx_kernel.cal_Hs({ "", "", spin_suffix });  // using relaxed_diff_dm as D_KL
         lr_exx_kernel.cal_force(dm_gs_transpose, { "", "", spin_suffix , "", "" }); // using dm_gs as D_IJ
         add_force_from_kernel();

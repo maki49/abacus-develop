@@ -186,10 +186,12 @@ namespace LR
         
         // 2. cal_Hs
         auto lri = this->exx_lri.lock();
-        // The Z Hessian must be linear even for tiny Krylov search directions.
-        // Screening the input density by amplitude invalidates residual recurrences.
-        const double density_threshold = density_screening_ == DensityScreening::none
-            ? 0.0 : lri->info.dm_threshold;
+        // All LR exchange contractions use the same linear K[D], including tiny
+        // Davidson/Z-vector directions. Dropping blocks according to |D| would
+        // make cached K[V] C differ from K[V C] after a Ritz rotation or restart.
+        // Pass zero locally: the shared Exx_LRI still uses its configured density
+        // threshold when the KS ground-state SCF resumes at the next geometry.
+        constexpr double density_threshold = 0.0;
         lri->exx_lri.set_Ds(std::move(Ds_trans[0]), density_threshold);
         lri->exx_lri.cal_Hs();
         lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
