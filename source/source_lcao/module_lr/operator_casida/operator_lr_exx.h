@@ -25,6 +25,9 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
     return exx_kernel_list().count(LR_Util::tolower(dft_functional)) > 0;
 };
 
+    /// Exchange response K[D] without amplitude-dependent density screening.
+    /// This preserves K[a D1 + b D2] = a K[D1] + b K[D2] for LR eigenvectors,
+    /// Z-vector equations and gradient intermediates, independent of the SCF threshold.
     template<typename T = double>
     class OperatorLREXX : public hamilt::Operator<T, base_device::DEVICE_CPU>
     {
@@ -141,7 +144,7 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
         // Geometry refresh constructs a new operator and therefore a new workspace.
         std::unique_ptr<ExxProjectionWorkspace<T>> projection_workspace_;
 
-        /// Build and communicate the exchange response once per input density.
+        /// Build and communicate K[D] with all density blocks retained; SCF settings stay unchanged.
         void cal_Hs() const;
 
         /// Gamma and complex Bloch matrix projection, including benchmark indices.

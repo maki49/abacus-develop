@@ -1,0 +1,11 @@
+HSE singlet LR-TDDFT for neutral benzene (C6H6), all 108 KS orbitals retained.
+Six Davidson roots in 1395 transitions, with the standard exx_dm_threshold=1e-4
+still active in the KS ground-state SCF. All LR response-density blocks must be
+retained: screening them at the input threshold caused 300 iterations to finish
+with only 1/6 roots converged. The solver independently checks all six final
+full-operator residuals against 1e-8 Ry before accepting excitation energies.
+Reference: the pre-fix binary with exx_dm_threshold=0; KS eigenvalues agree with
+the screened ground state to 1.2e-12 eV. The converged LR energies are the reference;
+no reference was taken from the failed screened LR solve. Geometry from
+02_NAO_Gamma/scf_upf100 with C/H ONCV PBE pseudopotentials. CPU, 4 MPI ranks,
+OMP_NUM_THREADS=1. The EXX outer SCF is allowed to converge (100-step limit).
