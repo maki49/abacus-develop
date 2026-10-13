@@ -309,7 +309,7 @@ DavidsonResult Diago_DavSubspace<T, Device>::diag(const HSOperator<T, Device>& o
 }
 
 // Keep the new policy available on the same scalar/device combinations as the
-// existing solver. LR currently invokes the CPU double/complex-double versions.
+// existing solver. LR selects CPU/GPU for double and complex-double amplitudes.
 template DavidsonResult Diago_DavSubspace<std::complex<double>, base_device::DEVICE_CPU>::diag(
     const HSOperator<std::complex<double>, base_device::DEVICE_CPU>&, std::complex<double>*, int, double*,
     const std::vector<double>&, const Preconditioner&, const DavidsonOptions&);

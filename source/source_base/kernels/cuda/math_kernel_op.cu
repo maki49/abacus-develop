@@ -151,9 +151,11 @@ cublasOperation_t judge_trans_op(bool is_complex, const char& trans, const char*
     {
         return CUBLAS_OP_T;
     }
-    else if(is_complex && trans == 'C')
+    else if (trans == 'C')
     {
-        return CUBLAS_OP_C;
+        // BLAS conjugate transpose equals transpose for real matrices. Generic
+        // Davidson algebra uses A^dagger for both real and complex amplitudes.
+        return is_complex ? CUBLAS_OP_C : CUBLAS_OP_T;
     }
     else
     {

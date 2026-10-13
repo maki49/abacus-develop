@@ -37,6 +37,7 @@ if(ENABLE_LCAO)
     lr_spectrum.cpp
     lr_spectrum_velocity.cpp
     lr_preconditioner.cpp
+    lr_davidson.cpp
     lr_block_preconditioner.cpp
     lr_shifted_inverse.cpp
     hamilt_casida.cpp

@@ -40,6 +40,27 @@ AddTest(
 )
 
 AddTest(
+  TARGET MODULE_LR_davidson
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_lr_davidson.cpp ../lr_davidson.cpp
+    ../../../source_hsolver/diago_dav_subspace.cpp
+    ../../../source_hsolver/diago_dav_subspace_residual.cpp
+    ../../../source_hsolver/diag_const_nums.cpp
+    ../../../source_hsolver/diag_hs_para.cpp
+    ../../../source_hsolver/diago_pxxxgvx.cpp
+)
+if(TARGET ELPA::ELPA)
+  target_link_libraries(MODULE_LR_davidson PRIVATE ELPA::ELPA genelpa)
+endif()
+if(ENABLE_MPI)
+  add_test(NAME MODULE_LR_davidson_parallel
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:MODULE_LR_davidson> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(MODULE_LR_davidson_parallel PROPERTIES
+    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+endif()
+
+AddTest(
   TARGET MODULE_LR_operator_lr_diag
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_operator_lr_diag.cpp ../../../source_hamilt/operator.cpp
