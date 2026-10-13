@@ -46,7 +46,8 @@ public:
     void hpsi(const T* x, T* hx, int ld, int columns) const override
     {
         const auto comm = communicator();
-        std::vector<T> global(dimension * columns, T(0));
+        const int global_elements = dimension * columns;
+        std::vector<T> global(global_elements, T(0));
         const int begin = world_rank * ld;
         for (int column = 0; column < columns; ++column)
         {
@@ -159,7 +160,8 @@ void check_eigenpairs(bool use_gpu, bool exact_initial, bool erase_inverse)
     const int returned_elements = dim * roots;
     std::vector<T> images(returned_elements);
     op.hpsi(vectors.data(), images.data(), dim, roots);
-    std::vector<double> squared_norms(2 * roots, 0.0);
+    const int norm_count = 2 * roots;
+    std::vector<double> squared_norms(norm_count, 0.0);
     for (int root = 0; root < roots; ++root)
     {
         const double angle = (root + 1) * pi / (dimension + 1);
