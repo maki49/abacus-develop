@@ -34,7 +34,17 @@ AddTest(
   TARGET MODULE_LR_zeq_cg_solver
   LIBS base parameter ${math_libs} container device
   SOURCES test_zeq_cg_solver.cpp ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
+    ../../../source_hsolver/linear_gmres.cpp ../../../source_hsolver/linear_algebra.cpp
+    ../../../source_hsolver/linear_workspace.cpp
 )
+if(ENABLE_MPI)
+  target_sources(MODULE_LR_zeq_cg_solver PRIVATE ../../../source_base/test/mpi_test_main.cpp)
+  add_test(NAME MODULE_LR_zeq_cg_solver_parallel
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:MODULE_LR_zeq_cg_solver> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(MODULE_LR_zeq_cg_solver_parallel PROPERTIES
+    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+endif()
 
 AddTest(
   TARGET MODULE_LR_exx_projection

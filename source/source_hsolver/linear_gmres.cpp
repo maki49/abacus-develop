@@ -101,7 +101,7 @@ void LinearGMRES<T, Device>::orthogonalize(int j, T* next, std::vector<T>* coeff
             for (int b = 0; b < active_; ++b)
             {
                 h_[b][i + j * (restart_ + 1)] += dots[i * active_ + b];
-                coeff[b] = T(dots[i * active_ + b]);
+                coeff[b] = linear_coefficient<T>(dots[i * active_ + b]);
             }
             work_.batch(ld_, dim_, active_, next, next, basis(i), T(1), T(-1), nullptr, coeff.data(), nullptr);
         }
@@ -171,7 +171,7 @@ void LinearGMRES<T, Device>::update_solution(int j,
         bool has_zero_coefficients = false;
         for (int b = 0; b < active_; ++b)
         {
-            coeff[b] = done[b] ? T(weights[b][i]) : T(0);
+            coeff[b] = done[b] ? linear_coefficient<T>(weights[b][i]) : T(0);
             has_zero_coefficients = has_zero_coefficients || coeff[b] == T(0);
         }
         const T* current_direction = direction(i);
@@ -421,6 +421,7 @@ LinearSolveResult LinearGMRES<T, Device>::solve(const LinearOperator<T, Device>&
         ++result.restarts;
     }
 }
+template class LinearGMRES<double, base_device::DEVICE_CPU>;
 template class LinearGMRES<std::complex<float>, base_device::DEVICE_CPU>;
 template class LinearGMRES<std::complex<double>, base_device::DEVICE_CPU>;
 #if defined(__CUDA) || defined(__ROCM)
