@@ -170,6 +170,21 @@ endif()
 
 if(ENABLE_MPI AND ENABLE_LIBRI)
   AddTest(
+    TARGET MODULE_LR_ri_response
+    LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
+    SOURCES test_lr_ri_response.cpp ../lr_ri_response.cpp ../exx_proj.cpp
+      ../dm_trans/dm_trans_serial.cpp ../../module_ri/ri_hartree_fock.cpp
+      ../../../source_hamilt/operator.cpp ../../../source_base/test/mpi_test_main.cpp
+  )
+  add_test(NAME MODULE_LR_ri_response_parallel
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:MODULE_LR_ri_response> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(MODULE_LR_ri_response_parallel PROPERTIES
+    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+  if(ENABLE_LIBRI_GPU)
+    target_link_libraries(MODULE_LR_ri_response PRIVATE DDLA::DDLA)
+  endif()
+  AddTest(
     TARGET MODULE_LR_exx_force_dm
     LIBS base parameter ${math_libs} container device MPI::MPI_CXX
     SOURCES test_exx_force_dm.cpp ../../../source_base/test/mpi_test_main.cpp
@@ -183,6 +198,13 @@ AddTest(
   TARGET MODULE_LR_block_preconditioner
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_lr_block_preconditioner.cpp ../lr_block_preconditioner.cpp
+    ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
+)
+
+AddTest(
+  TARGET MODULE_LR_shifted_inverse
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_lr_shifted_inverse.cpp ../lr_shifted_inverse.cpp
     ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
 )
 if(ENABLE_MPI)

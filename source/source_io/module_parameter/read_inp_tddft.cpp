@@ -1132,7 +1132,7 @@ void ReadInput::item_lr_tddft()
         item.category = "Linear Response TDDFT";
         item.type = "Integer";
         item.description = R"(Optional low-energy block preconditioner for lr_solver=dav_subspace in LCAO TDA.
-* 0: use the signed orbital-gap inverse (default).
+* 0: no low-energy block. Use the signed orbital-gap inverse unless the Gaussian RI inverse is enabled.
 * Positive: select this many lowest orbital-gap transitions across all spins and k points, completing the boundary degeneracy. Use the full LR kernel within this block and the orbital-gap diagonal outside it. The actual block size is bounded by the total transition count and can exceed the requested size at a degeneracy.
 
 The excitation operator and virtual-orbital window remain unchanged. Building a block of size m costs m full operator vectors per LR solve, plus O(m^3) work and O(m^2) replicated storage for its eigendecomposition. This experimental option may cost more than it saves; compare total applied vectors and wall time. It is not a Z-vector preconditioner.)";
@@ -1149,6 +1149,37 @@ The excitation operator and virtual-orbital window remain unchanged. Building a 
             if (size > 0 && (para.input.basis_type != "lcao" || para.input.lr_solver != "dav_subspace"))
             {
                 ModuleBase::WARNING_QUIT("ReadInput", "lr_preconditioner_block_size requires LCAO and lr_solver=dav_subspace");
+            }
+        };
+        this->add_item(item);
+    }
+    {
+        Input_Item item("lr_preconditioner_ri_cutoff");
+        item.annotation = "finite Coulomb radius (bohr) enabling the minimal Gaussian RI Davidson inverse";
+        item.category = "Linear Response TDDFT";
+        item.type = "Real";
+        item.description = R"(Experimental minimal Gaussian RI preconditioner for LCAO TDA with lr_solver=dav_subspace.
+* 0: disabled (default).
+* Positive: Coulomb cutoff radius in bohr for the approximate Hartree kernel and unscreened exchange. Screened exchange uses erfc(omega*r)/r with the configured omega.
+
+Uses theta=0.6, spd Hartree/s exchange auxiliary shells (H: s only), local two-center RI, and no semilocal XC kernel. GMRES approximately solves the shifted proxy equation with relative tolerance 1e-2 and at most 20 steps; failed corrections fall back to the signed gap inverse. The full excitation operator, virtual window, and final residual test are unchanged. Requires LibRI, kpar=1, a full uniform k mesh, and lr_preconditioner_block_size=0. Supports local kernels and single-component Fock or erfc exchange; mixed range-separated exchange is not supported. MO coefficients and trial vectors are replicated in this prototype. Compare total LR time including RI setup and inner iterations; acceleration is not guaranteed. This is not a Z-vector preconditioner.)";
+        item.default_value = "0";
+        item.unit = "bohr";
+        item.set_availability("basis_type==lcao and lr_solver==dav_subspace");
+        read_sync_double(input.lr_preconditioner_ri_cutoff);
+        item.check_value = [](const Input_Item&, const Parameter& para) {
+            const auto& input = para.input;
+            const double cutoff = input.lr_preconditioner_ri_cutoff;
+            if (!std::isfinite(cutoff) || cutoff < 0)
+            { ModuleBase::WARNING_QUIT("ReadInput", "lr_preconditioner_ri_cutoff must be finite and nonnegative"); }
+            if (cutoff == 0) { return; }
+#ifndef __EXX
+            ModuleBase::WARNING_QUIT("ReadInput", "lr_preconditioner_ri_cutoff requires LibRI");
+#endif
+            if (input.basis_type != "lcao" || input.lr_solver != "dav_subspace" || input.kpar != 1
+                || input.nspin == 4 || input.lr_preconditioner_block_size != 0)
+            {
+                ModuleBase::WARNING_QUIT("ReadInput", "Gaussian RI inverse requires LCAO dav_subspace, kpar=1, nspin=1/2, and no low-energy block");
             }
         };
         this->add_item(item);

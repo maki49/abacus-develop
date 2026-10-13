@@ -35,6 +35,10 @@ AddTest(
   LIBS parameter  base device io_input
   SOURCES read_input_ptest.cpp
 )
+if(ENABLE_LIBRI)
+  # Test TUs disable __EXX, whereas the linked input parser retains the build feature.
+  target_compile_definitions(MODULE_IO_input_test_para PRIVATE TEST_INPUT_LIBRI)
+endif()
 
 add_test(NAME MODULE_IO_input_test_para_4
       COMMAND mpirun -np 4 ./MODULE_IO_input_test_para
