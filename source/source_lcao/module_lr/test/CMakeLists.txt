@@ -120,6 +120,20 @@ AddTest(
 )
 
 AddTest(
+  TARGET MODULE_LR_state_projection
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_state_projection.cpp ../state_projection.cpp ${root_overlap_test_sources}
+)
+if(ENABLE_MPI)
+  target_sources(MODULE_LR_state_projection PRIVATE ../../../source_base/test/mpi_test_main.cpp)
+  add_test(NAME MODULE_LR_state_projection_parallel
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:MODULE_LR_state_projection> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(MODULE_LR_state_projection_parallel PROPERTIES
+    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+endif()
+
+AddTest(
   TARGET MODULE_LR_state_group
   LIBS base parameter ${math_libs} container device
   SOURCES test_state_group.cpp ../state_group.cpp

@@ -49,6 +49,7 @@ if(ENABLE_LCAO)
     grad_degen.cpp
     state_group.cpp
     state_track.cpp
+    state_projection.cpp
     state_ovlp.cpp
     grad_jt.cpp
     cal_edm.cpp
