@@ -100,6 +100,38 @@ namespace
         LR_Util::gather_2d_to_full(pb, x_loc.data(), x.data(), false, n, nrhs);
         for (std::size_t i = 0; i < x.size(); ++i) { expect_near(x[i], x_ref[i]); }
     }
+
+    template <typename T>
+    void check_cholesky_failure(const double pivot)
+    {
+        const int n = 20;
+        const int nb = 3;
+        const int failing_index = 10; // Put the failure beyond the first distributed block.
+        std::vector<T> a(n * n, T(0));
+        for (int i = 0; i < n; ++i) { a[i * n + i] = T(1); }
+        a[failing_index * n + failing_index] = T(pivot);
+        Parallel_2D pa;
+        LR_Util::setup_2d_division(pa, nb, n, n);
+        Parallel_2D pb;
+        LR_Util::setup_2d_division(pb, nb, n, 1, pa.blacs_ctxt);
+        std::vector<T> a_loc = to_local(a, pa);
+        const std::vector<T> rhs = rhs_matrix<T>(n, 1);
+        std::vector<T> b_loc = to_local(rhs, pb);
+        std::string error;
+        try
+        {
+            LR::scalapack_cholesky_linear_solver<T>(a_loc.data(), b_loc.data(), pa, pb);
+        }
+        catch (const std::runtime_error& failure) { error = failure.what(); }
+        EXPECT_NE(error.find("info=11"), std::string::npos) << error;
+        EXPECT_NE(error.find("lr_grad_solver=scalapack (LU)"), std::string::npos) << error;
+        if (pivot < 0.)
+        {
+            // Indefiniteness invalidates Cholesky, but this nonsingular matrix is solvable by LU.
+            check_against_lapack<T>(&LR::scalapack_linear_solver<T>, a, a, n, 1, nb);
+        }
+    }
+
 }
 
 class ZeqLinearSolverTest : public testing::Test
@@ -168,7 +200,7 @@ TEST_F(ZeqLinearSolverTest, ScalapackCholComplex)
 
 TEST_F(ZeqLinearSolverTest, ScalapackCholSolvesHermitianPart)
 {
-    // as for ELPA: a slightly non-symmetric input is solved as (A + A^T)/2
+    // A slightly non-symmetric input is solved as (A + A^T)/2
     for (const auto& s : sizes)
     {
         const int n = s[0];
@@ -188,7 +220,7 @@ TEST_F(ZeqLinearSolverTest, ScalapackCholSolvesHermitianPart)
 
 TEST_F(ZeqLinearSolverTest, ScalapackCholRejectsIndefinite)
 {
-    // every rank: p?potrf's INFO is global, so unlike ELPA this must throw everywhere, not hang
+    // p?potrf reports failure on every rank, including distributed runs.
     const int n = 20;
     const int nb = 3;
     const std::vector<double> a = hermitian_matrix<double>(n, -(n + 1.0));   // negative definite
@@ -202,66 +234,28 @@ TEST_F(ZeqLinearSolverTest, ScalapackCholRejectsIndefinite)
                  std::runtime_error);
 }
 
-#ifdef __ELPA
-TEST_F(ZeqLinearSolverTest, ElpaDouble)
+
+
+
+TEST_F(ZeqLinearSolverTest, IndefiniteDoubleFailsCollectivelyAndLuSolves)
 {
-    for (const auto& s : sizes)
-    {
-        const std::vector<double> a = hermitian_matrix<double>(s[0], s[0] + 1.0);
-        check_against_lapack<double>(&LR::elpa_linear_solver<double>, a, a, s[0], s[1], s[2]);
-    }
+    check_cholesky_failure<double>(-1.0);
 }
 
-TEST_F(ZeqLinearSolverTest, ElpaComplex)
+TEST_F(ZeqLinearSolverTest, IndefiniteComplexFailsCollectivelyAndLuSolves)
 {
-    typedef std::complex<double> C;
-    for (const auto& s : sizes)
-    {
-        const std::vector<C> a = hermitian_matrix<C>(s[0], s[0] + 1.0);
-        check_against_lapack<C>(&LR::elpa_linear_solver<C>, a, a, s[0], s[1], s[2]);
-    }
+    check_cholesky_failure<std::complex<double>>(-1.0);
 }
 
-TEST_F(ZeqLinearSolverTest, ElpaSolvesHermitianPart)
+TEST_F(ZeqLinearSolverTest, SingularDoubleFailsCollectively)
 {
-    // a slightly non-symmetric input must be solved as its symmetric part (A + A^T)/2,
-    // not as whatever its upper triangle happens to be
-    for (const auto& s : sizes)
-    {
-        const int n = s[0];
-        const std::vector<double> a_sym = hermitian_matrix<double>(n, n + 1.0);
-        std::vector<double> a = a_sym;
-        for (int j = 0; j < n; ++j)
-        {
-            for (int i = 0; i < j; ++i)
-            {
-                a[j * n + i] += 1e-2 * entry(i, j, 5);
-                a[i * n + j] -= 1e-2 * entry(i, j, 5);
-            }
-        }
-        check_against_lapack<double>(&LR::elpa_linear_solver<double>, a, a_sym, n, s[1], s[2]);
-    }
+    check_cholesky_failure<double>(0.0);
 }
 
-TEST_F(ZeqLinearSolverTest, ElpaRejectsIndefinite)
+TEST_F(ZeqLinearSolverTest, SingularComplexFailsCollectively)
 {
-    // single rank only: with several ranks ELPA's Cholesky deadlocks on an indefinite matrix
-    // (only the rank owning the failing block returns), see `elpa_linear_solver`
-    int nproc = 1;
-    MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-    if (nproc > 1) { return; }
-    const int n = 20;
-    const int nb = 3;
-    const std::vector<double> a = hermitian_matrix<double>(n, -(n + 1.0));   // negative definite
-    Parallel_2D pa;
-    LR_Util::setup_2d_division(pa, nb, n, n);
-    Parallel_2D pb;
-    LR_Util::setup_2d_division(pb, nb, n, 1, pa.blacs_ctxt);
-    std::vector<double> a_loc = to_local(a, pa);
-    std::vector<double> b_loc = to_local(rhs_matrix<double>(n, 1), pb);
-    EXPECT_THROW(LR::elpa_linear_solver<double>(a_loc.data(), b_loc.data(), pa, pb), std::runtime_error);
+    check_cholesky_failure<std::complex<double>>(0.0);
 }
-#endif
 
 
 TEST(ZeqCGReview, SolvesIdentityWithoutDumpingProductionVector)

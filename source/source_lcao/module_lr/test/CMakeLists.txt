@@ -28,19 +28,20 @@ AddTest(
 )
 
 if(ENABLE_MPI)
-  if(TARGET ELPA::ELPA)
-    AddTest(
-      TARGET MODULE_LR_zeqlin_solv
-      LIBS base parameter ${math_libs} container device psi ELPA::ELPA MPI::MPI_CXX
-      SOURCES test_zeqlin_solv.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
-    )
-  else()
-    AddTest(
-      TARGET MODULE_LR_zeqlin_solv
-      LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
-      SOURCES test_zeqlin_solv.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
-    )
-  endif()
+  AddTest(
+    TARGET MODULE_LR_zeqlin_solv
+    LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
+    SOURCES test_zeqlin_solv.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+  )
+  add_test(
+    NAME MODULE_LR_zeqlin_failure_mpi
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+      $<TARGET_FILE:MODULE_LR_zeqlin_solv> ${MPIEXEC_POSTFLAGS}
+      --gtest_filter=ZeqLinearSolverTest.*FailsCollectively*
+  )
+  set_tests_properties(MODULE_LR_zeqlin_failure_mpi PROPERTIES
+    PROCESSORS 4 TIMEOUT 60
+    ENVIRONMENT "OMP_NUM_THREADS=1;MKL_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endif()
 
 AddTest(

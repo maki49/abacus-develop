@@ -740,3 +740,29 @@ TEST_F(InputParaTest, ExternalLRKernelRejectsForces)
     set(charge, "lr_init_xc_kernel", {"from_charge_file", "rho.cube"});
     item.check_value(item, charge);
 }
+
+TEST_F(InputParaTest, RemovedElpaZSolverIsRejected)
+{
+    ModuleIO::ReadInput readinput(0);
+    std::map<std::string, ModuleIO::Input_Item> lists;
+    for (const auto& entry : readinput.get_input_lists()) { lists.emplace(entry.first, entry.second); }
+    ModuleIO::Input_Item item = lists.at("lr_grad_solver");
+    Parameter param;
+    for (const auto& solver : {"cg", "lapack"})
+    {
+        item.str_values = {solver};
+        item.read_value(item, param);
+        item.check_value(item, param);
+    }
+#ifdef __MPI
+    for (const auto& solver : {"scalapack", "scalapack_chol"})
+    {
+        item.str_values = {solver};
+        item.read_value(item, param);
+        item.check_value(item, param);
+    }
+#endif
+    item.str_values = {"elpa"};
+    item.read_value(item, param);
+    EXPECT_EXIT(item.check_value(item, param), testing::ExitedWithCode(1), "");
+}

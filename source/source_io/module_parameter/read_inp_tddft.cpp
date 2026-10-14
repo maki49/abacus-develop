@@ -1283,34 +1283,27 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
 * lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
 * scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
 * scalapack_chol: Construct the matrix distributed as for scalapack and solve by a ScaLAPACK Cholesky factorization, about half the flops of the LU and in place.
-* elpa: Construct the matrix distributed as for scalapack and solve by an ELPA Cholesky factorization.
 
-[NOTE] The direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column, which usually dominates the cost of the solve itself; scalapack, scalapack_chol and elpa need an MPI build, elpa also an ELPA build.
+[NOTE] The direct solvers build the matrix column by column, at the cost of one application of $A+B$ per column, which usually dominates the cost of the solve itself; scalapack and scalapack_chol need an MPI build.
 
-[NOTE] scalapack_chol and elpa require $A+B$ to be positive definite, which holds at a stable ground state. If it is not, scalapack_chol stops with an error, while elpa does so only in a single-process run and hangs in a multi-process one; scalapack (LU) has no such requirement.)";
+[NOTE] scalapack_chol requires $A+B$ to be positive definite. A non-positive-definite matrix causes an error on every MPI rank; use lr_grad_solver=scalapack (LU) instead. The LU solver does not require positive definiteness, but still requires a nonsingular matrix. The former elpa option has been removed; use scalapack_chol for distributed Cholesky.)";
         item.default_value = "cg";
         item.unit = "";
         item.check_value = [](const Input_Item& item, const Parameter& para) {
             const std::string& solver = para.input.lr_grad_solver;
-            const std::vector<std::string> solvers = { "cg", "lapack", "scalapack", "scalapack_chol", "elpa" };
+            const std::vector<std::string> solvers = { "cg", "lapack", "scalapack", "scalapack_chol" };
             if (std::find(solvers.begin(), solvers.end(), solver) == solvers.end())
             {
-                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_solver must be cg, lapack, scalapack, scalapack_chol or elpa");
+                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_solver must be cg, lapack, scalapack or scalapack_chol; elpa has been removed");
             }
 #ifndef __MPI
-            if (solver == "scalapack" || solver == "scalapack_chol" || solver == "elpa")
+            if (solver == "scalapack" || solver == "scalapack_chol")
             {
                 ModuleBase::WARNING_QUIT("ReadInput",
                     "lr_grad_solver = " + solver + " needs an MPI build; use cg or lapack");
             }
 #endif
-#ifndef __ELPA
-            if (solver == "elpa")
-            {
-                ModuleBase::WARNING_QUIT("ReadInput",
-                    "lr_grad_solver = elpa needs ABACUS compiled with ELPA; use scalapack");
-            }
-#endif
+
         };
         read_sync_string(input.lr_grad_solver);
         this->add_item(item);
