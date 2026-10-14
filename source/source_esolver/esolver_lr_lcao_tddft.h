@@ -18,6 +18,7 @@
 #include "source_lcao/module_lr/potentials/pot_hxc_lrtd.h"
 #include "source_lcao/module_lr/hamilt_casida.h"
 #include "source_lcao/module_lr/state_track.h"
+#include "source_lcao/module_lr/state_guess.h"
 #include "source_hamilt/module_gint/gint_info.h"
 #include "source_estate/module_pot/potential_new.h"
 #ifdef __EXX
@@ -148,6 +149,13 @@ namespace ModuleESolver
         /// -  [1][{nstates, nk * (locc[0] * lvirt[0]) + nk * (locc[1] * lvirt[1])}] for open-shell
         std::vector<ct::Tensor> X;
         int nloc_per_state = 1;
+        /// Own all converged roots and their old MO basis, independent of target tracking.
+        LR::ExcitationGuess<T> excitation_guesses_prev_;
+        LR::TransitionBasisView<T> transition_basis_() const;
+        /// Transport every cached root as O_vv^dagger X O_oo; fill lost directions from cold seeds.
+        void reuse_excitation_guesses_();
+        /// Snapshot before the next ground-state SCF overwrites the orbital coefficients.
+        void save_excitation_guesses_();
 
         std::vector<int> nocc;   ///< number of occupied orbitals for each spin used in the calculation
         int nocc_in = 1;    ///< nocc read from input (adjusted by nelec): max(spin-up, spindown)
