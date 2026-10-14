@@ -22,6 +22,15 @@
 #include <omp.h>
 #endif
 
+std::shared_ptr<const LR::KernelXC> LR::build_xc_kernel(const std::string& kernel_name,
+    const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const Charge& chg_gs,
+    const Parallel_Grid& pgrid, const int nspin, const bool openshell, const int gxc_spin,
+    const std::vector<std::string>& lr_init_xc_kernel)
+{
+    return std::make_shared<const KernelXC>(rho_basis, ucell, chg_gs, pgrid, nspin,
+        kernel_name, lr_init_xc_kernel, openshell, gxc_spin);
+}
+
 LR::KernelXC::KernelXC(const ModulePW::PW_Basis& rho_basis,
     const UnitCell& ucell,
     const Charge& chg_gs,
@@ -30,10 +39,12 @@ LR::KernelXC::KernelXC(const ModulePW::PW_Basis& rho_basis,
     const std::string& kernel_name,
     const std::vector<std::string>& lr_init_xc_kernel,
     const bool openshell,
-    const int gxc_spin) :rho_basis_(rho_basis), openshell_(openshell), gxc_spin_(gxc_spin)
+    const int gxc_spin) :nspin_(nspin), kernel_name_(kernel_name), gxc_spin_(gxc_spin),
+    rho_basis_(rho_basis), openshell_(openshell)
 {
     if (!LR_Util::has_local_xc(kernel_name)) { return; }
     XC_Functional::set_xc_type(kernel_name);    // for hse, (1-alpha) and omega are set here
+    this->functional_type_ = XC_Functional::get_func_type();
 
     const int& nrxx = rho_basis.nrxx;
     if (lr_init_xc_kernel[0] == "file")
@@ -447,7 +458,6 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
     // Build the $v^{(2)}$ coefficient sets. Must happen before `gradrho` is moved away below.
     // Only the combinations the caller asked for: at nspin=2 each set costs 10 doubles per grid
     // point for a GGA, so building an unused one is a third of the whole third-order kernel.
-    this->nspin_ = nspin;
     // Open shell keeps the raw libxc third-order arrays and contracts them on the fly in
     // `PotGradXCLR::cal_v_eff_openshell`: there is no single spin combination to pre-contract
     // into (the free spin index $\tau$ stays open), and pre-contracting would cost ~117 doubles

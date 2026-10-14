@@ -710,15 +710,20 @@ void ESolver_BSE<T, TR>::read_ks_wfc()
 template<typename T, typename TR>
 void ESolver_BSE<T, TR>::init_pot(const Charge& chg_gs)
 {
+    using ST = LR::PotHxcLR::SpinType;
     switch (this->nspin)
     {
-        using ST = LR::PotHxcLR::SpinType;
     case 1: case 2:
-        this->pot[0] = std::make_shared<LR::PotHxcLR>(this->xc_kernel, *this->pw_rho, *this->ucell_, chg_gs, this->pgrid(),
-            // BSE multiplies its bare Coulomb matrix by the singlet factor in HamiltBSE.
-            // S1_gs has weight one; S1 would apply that factor a second time on the grid path.
-            ST::S1_gs, this->inp_->lr_init_xc_kernel);
+    {
+        const auto& grid = this->pgrid();
+        const auto kernel = LR::build_xc_kernel(this->xc_kernel, *this->pw_rho, *this->ucell_,
+            chg_gs, grid, this->nspin, false, LR::KernelXC::NoGxc, this->inp_->lr_init_xc_kernel);
+        // BSE multiplies its bare Coulomb matrix by the singlet factor in HamiltBSE.
+        // S1_gs has weight one; S1 would apply that factor a second time on the grid path.
+        this->pot[0] = std::make_shared<LR::PotHxcLR>(kernel, *this->pw_rho, *this->ucell_,
+            chg_gs.nrxx, this->nspin, ST::S1_gs);
         break;
+    }
     // case 2:
     //     this->pot[0] = std::make_shared<PotHxcLR>(xc_kernel, *this->pw_rho, ucell, chg_gs, pgrid(), openshell ? ST::S2_updown : ST::S2_singlet, this->inp_->lr_init_xc_kernel);
     //     this->pot[1] = std::make_shared<PotHxcLR>(xc_kernel, *this->pw_rho, ucell, chg_gs, pgrid(), openshell ? ST::S2_updown : ST::S2_triplet, this->inp_->lr_init_xc_kernel);

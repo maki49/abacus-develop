@@ -222,17 +222,22 @@ void ModuleESolver::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
     // combinations that are actually going to be requested.
     const int gxc_lr = (!this->inp_->cal_force || !LR_Util::has_local_xc(xc_kernel)) ? GX::NoGxc
         : ((nspin == 1) ? GX::Singlet : GX::BothSpins);
-    std::shared_ptr<const LR::KernelXC> kernel_lr = PotHxcLR::make_kernel(
-        xc_kernel, *this->pw_rho, *this->ucell_, chg_gs, pgrid(), oshell, gxc_lr, this->inp_->lr_init_xc_kernel);
+    const auto& grid = pgrid();
+    std::shared_ptr<const LR::KernelXC> kernel_lr = LR::build_xc_kernel(
+        xc_kernel, *this->pw_rho, *this->ucell_, chg_gs, grid, nspin, oshell, gxc_lr, this->inp_->lr_init_xc_kernel);
     switch (nspin)
     {
     case 1:
-        this->pot[0] = std::make_shared<PotHxcLR>(kernel_lr, xc_kernel, *this->pw_rho, *this->ucell_, chg_gs.nrxx, ST::S1);
+        this->pot[0] = std::make_shared<PotHxcLR>(kernel_lr, *this->pw_rho, *this->ucell_, chg_gs.nrxx, nspin, ST::S1);
         break;
     case 2:
-        this->pot[0] = std::make_shared<PotHxcLR>(kernel_lr, xc_kernel, *this->pw_rho, *this->ucell_, chg_gs.nrxx, oshell ? ST::S2_updown : ST::S2_singlet);
-        this->pot[1] = std::make_shared<PotHxcLR>(kernel_lr, xc_kernel, *this->pw_rho, *this->ucell_, chg_gs.nrxx, oshell ? ST::S2_updown : ST::S2_triplet);
+    {
+        const ST first_spin = oshell ? ST::S2_updown : ST::S2_singlet;
+        const ST second_spin = oshell ? ST::S2_updown : ST::S2_triplet;
+        this->pot[0] = std::make_shared<PotHxcLR>(kernel_lr, *this->pw_rho, *this->ucell_, chg_gs.nrxx, nspin, first_spin);
+        this->pot[1] = std::make_shared<PotHxcLR>(kernel_lr, *this->pw_rho, *this->ucell_, chg_gs.nrxx, nspin, second_spin);
         break;
+    }
     default:
         throw std::invalid_argument("ESolver_LR: nspin must be 1 or 2");
     }
@@ -249,7 +254,7 @@ void ModuleESolver::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         const std::string xc_kernel_gs = (this->inp_->dft_functional == "default")
             ? LR_Util::tolower(this->ucell_->atoms[0].ncpp.xc_func)
             : LR_Util::tolower(this->inp_->dft_functional);
-        // `ST::S1` is only correct when nspin=1. `PotHxcLR` builds its `KernelXC` with
+        // `ST::S1` is only correct when nspin=1. `KernelXC` is built with
         // the input `nspin`, so at nspin=2 the kernel arrays carry 3 spin components per grid point
         // while the S1 integrand indexes them as if there were 1 -- it does not even read a
         // consistent spin combination. Use `ST::S2_gs` there, which is exactly half of S2_singlet,
@@ -263,8 +268,8 @@ void ModuleESolver::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
         // `KernelXC` are bit-for-bit identical, so reuse the one just built.
         const bool share_lr = (xc_kernel_gs == xc_kernel) && ((gxc_lr & gxc_gs) == gxc_gs);
         std::shared_ptr<const LR::KernelXC> kernel_gs = share_lr ? kernel_lr
-            : PotHxcLR::make_kernel(xc_kernel_gs, *this->pw_rho, *this->ucell_, chg_gs, pgrid(), oshell, gxc_gs, this->inp_->lr_init_xc_kernel);
-        this->pot_hxc_gs = std::make_shared<LR::PotHxcLR>(kernel_gs, xc_kernel_gs, *this->pw_rho, *this->ucell_, chg_gs.nrxx, st_gs);
+            : LR::build_xc_kernel(xc_kernel_gs, *this->pw_rho, *this->ucell_, chg_gs, grid, nspin, oshell, gxc_gs, this->inp_->lr_init_xc_kernel);
+        this->pot_hxc_gs = std::make_shared<LR::PotHxcLR>(kernel_gs, *this->pw_rho, *this->ucell_, chg_gs.nrxx, nspin, st_gs);
     }
 }
 

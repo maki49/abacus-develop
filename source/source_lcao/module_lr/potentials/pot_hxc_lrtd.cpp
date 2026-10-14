@@ -1,5 +1,4 @@
 #include "pot_hxc_lrtd.h"
-#include "source_io/module_parameter/parameter.h"
 #include "source_base/timer.h"
 #include "source_hamilt/module_xc/xc_functional.h"
 #include <set>
@@ -7,55 +6,26 @@
 #include <iostream>
 #include <cstdlib>
 #include "source_lcao/module_lr/utils/lr_util.h"
-#include "source_lcao/module_lr/utils/lr_util_xc.hpp"
 #define FXC_PARA_TYPE const double* const rho, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 }
 namespace LR
 {
     using Vec3 = ModuleBase::Vector3<double>;
-    std::shared_ptr<const KernelXC> PotHxcLR::make_kernel(const std::string& xc_kernel,
-        const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const Charge& chg_gs,
-        const Parallel_Grid& pgrid, const bool openshell, const int gxc_spin,
-        const std::vector<std::string>& lr_init_xc_kernel)
-    {   //calls XC_Functional::set_func_type and libxc
-        return std::make_shared<const KernelXC>(rho_basis, ucell, chg_gs, pgrid, LR_Util::kernel_nspin(),
-            xc_kernel, lr_init_xc_kernel, openshell, gxc_spin);
-    }
-
-    PotHxcLR::PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis,
-        const UnitCell& ucell, const Charge& chg_gs, const Parallel_Grid& pgrid,
-        const SpinType& st, const std::vector<std::string>& lr_init_xc_kernel)
-        : PotHxcLR(xc_kernel, rho_basis, ucell, chg_gs, pgrid, st,
-                   lr_init_xc_kernel, KernelXC::GxcSpin::NoGxc)
+    PotHxcLR::PotHxcLR(std::shared_ptr<const KernelXC> kernel,
+        const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const int nrxx,
+        const int nspin, const SpinType& st)
+        : PotLRBase(rho_basis, nspin, nrxx, ucell.tpiba),
+          xc_kernel_components_(kernel), spin_type_(st)
     {
-    }
-
-    // constructor for exchange-correlation kernel
-    PotHxcLR::PotHxcLR(const std::string& xc_kernel, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell,
-        const Charge& chg_gs/*ground state*/, const Parallel_Grid& pgrid,
-        const SpinType& st, const std::vector<std::string>& lr_init_xc_kernel, const int gxc_spin)
-        :PotLRBase(rho_basis, LR_Util::kernel_nspin(), chg_gs.nrxx, ucell.tpiba),
-        xc_kernel_(xc_kernel), spin_type_(st),
-        xc_kernel_components_(make_kernel(xc_kernel, rho_basis, ucell, chg_gs, pgrid, (st == SpinType::S2_updown), gxc_spin, lr_init_xc_kernel)),
-        xc_type_(XCType(XC_Functional::get_func_type()))
-    {
-        if (LR_Util::has_local_xc(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
+        if (!kernel || kernel->nspin() != nspin)
+        {
+            throw std::invalid_argument("PotHxcLR requires a non-null kernel with matching nspin");
+        }
+        this->xc_type_ = static_cast<XCType>(kernel->functional_type());
+        const bool local_xc = LR_Util::has_local_xc(kernel->name());
+        if (local_xc) { this->set_integral_func(this->spin_type_, this->xc_type_); }
         const bool gga = (this->xc_type_ == XCType::GGA || this->xc_type_ == XCType::HYB_GGA);
         this->build_spin_combos(gga);
     }
-
-    PotHxcLR::PotHxcLR(std::shared_ptr<const KernelXC> kernel, const std::string& xc_kernel,
-        const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const int nrxx, const SpinType& st)
-        :PotLRBase(rho_basis, LR_Util::kernel_nspin(), nrxx, ucell.tpiba),
-        xc_kernel_(xc_kernel), spin_type_(st),
-        xc_kernel_components_(std::move(kernel)),
-        xc_type_(XCType(XC_Functional::get_func_type()))
-    {
-        assert(this->xc_kernel_components_ != nullptr);
-        if (LR_Util::has_local_xc(xc_kernel)) { this->set_integral_func(this->spin_type_, this->xc_type_); }
-        const bool gga = (this->xc_type_ == XCType::GGA || this->xc_type_ == XCType::HYB_GGA);
-        this->build_spin_combos(gga);
-    }
-
 
     PotHxcLR::Scratch& PotHxcLR::scratch()
     {
@@ -145,7 +115,7 @@ namespace LR
         case SpinType::S1: case SpinType::S2_singlet:                         hartree_factor = 2.; break;
         default: break;
         }
-        const bool local_xc = LR_Util::has_local_xc(this->xc_kernel_);
+        const bool local_xc = LR_Util::has_local_xc(this->xc_kernel_components_->name());
         const bool gga = local_xc && (this->xc_type_ == XCType::GGA || this->xc_type_ == XCType::HYB_GGA);
 
         // $\rho^X(G)$ is needed by the Hartree term and by the GGA gradient, and used to be
@@ -166,7 +136,7 @@ namespace LR
 #ifdef __LIBXC
         this->kernel_to_potential_.at(spin_type_)(rho[0], v_eff, ispin_op);
 #else
-        throw std::domain_error("GlobalV::XC_Functional::get_func_type() =" + std::to_string(XC_Functional::get_func_type())
+        throw std::domain_error("PotHxcLR XC type =" + std::to_string(this->xc_type_)
             + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
 #endif
         ModuleBase::timer::end("PotHxcLR", "cal_v_eff");
@@ -410,7 +380,7 @@ namespace LR
         }
         else
         {
-            throw std::domain_error("GlobalV::XC_Functional::get_func_type() =" + std::to_string(XC_Functional::get_func_type())
+            throw std::domain_error("PotHxcLR XC type =" + std::to_string(this->xc_type_)
                 + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
         }
     }

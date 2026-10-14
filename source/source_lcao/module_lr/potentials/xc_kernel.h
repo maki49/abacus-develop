@@ -6,6 +6,7 @@
 #include "source_base/parallel_grid.h"
 #include "source_estate/module_charge/charge.h"
 #include <stdexcept>
+#include <memory>
 #define CREF(x) const std::vector<double>& x = x##_
 #define CREF3(x) const std::vector<ModuleBase::Vector3<double>>& x = x##_
 namespace LR
@@ -60,6 +61,11 @@ namespace LR
             const bool openshell = false,
             const int gxc_spin = GxcSpin::NoGxc);
         ~KernelXC() {}
+
+        /// Metadata belongs to this coefficient set, independent of later global XC changes.
+        int nspin() const { return nspin_; }
+        int functional_type() const { return functional_type_; }
+        const std::string& name() const { return kernel_name_; }
 
         // const references
         CREF(vrho);CREF(vsigma); CREF(v2rho2); CREF(v2rhosigma); CREF(v2sigma2);
@@ -176,12 +182,21 @@ namespace LR
         /// @brief Fill `dst` for one spin combination. All the spin algebralives here, driven by the weight
         /// vectors that distinguish singlet from triplet -- the two differ only in those weights.
         void build_gxc_coef(GxcCoef& dst, const bool triplet, const int& nspin, const bool& is_gga);
-        int nspin_ = 1;
+        const int nspin_;
+        const std::string kernel_name_;
+        int functional_type_ = 0;
         const int gxc_spin_ = GxcSpin::NoGxc;   ///< which `GxcCoef` sets to build, see `GxcSpin`
         // ================================== XC kernel Gradiants ====================================
         const ModulePW::PW_Basis& rho_basis_;
         const bool openshell_ = false;
     };
+
+    /// Explicitly evaluate a coefficient set for one functional and ground-state density.
+    /// Sharing potentials must use compatible spin layouts and derivative requirements.
+    std::shared_ptr<const KernelXC> build_xc_kernel(const std::string& kernel_name,
+        const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const Charge& chg_gs,
+        const Parallel_Grid& pgrid, const int nspin, const bool openshell, const int gxc_spin,
+        const std::vector<std::string>& lr_init_xc_kernel);
 }
 
 #endif // ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_XC_KERNEL_H
