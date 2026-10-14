@@ -140,6 +140,11 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
 
     //allocate 2-particle state and setup 2d division
     this->setup_eigenvectors_X();
+    // Gamma-point excited-state relaxation: project the previous converged roots
+    // into the new MO basis. Cold guesses remain available if transport loses rank.
+    const bool reuse_initial_guesses = this->excited_relax_ && this->nk == 1
+        && this->inp_->lr_solver == "dav_subspace";
+    if (reuse_initial_guesses) { this->reuse_excitation_guesses_(); }
     this->pelec->ekb.create(nspin, this->nstates);
 
     // set once here rather than inside the solver branches: the open-shell `spectrum` branch used
@@ -325,6 +330,9 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
             for (int is = 0;is < nspin;++is) { read_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_state, nstates); }
         }
     }
+    // HSolver has checked the true residual with the full LR operator. Cache all
+    // roots/channels before target tracking selects the state used for the force.
+    if (reuse_initial_guesses) { this->save_excitation_guesses_(); }
     if (this->excited_relax_)
     {
         // Re-select which root to follow BEFORE taking the gradient, so the force belongs to

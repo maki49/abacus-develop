@@ -7,8 +7,55 @@
 #include "source_io/module_output/cube_io.h"
 #include "source_base/module_external/scalapack_connector.h"
 #include <algorithm>
+#include <chrono>
 
 using namespace LR;
+
+template<typename T, typename TR>
+LR::TransitionBasisView<T> ModuleESolver::ESolver_LR<T, TR>::transition_basis_() const
+{
+    const TwoCenterIntegrator& overlap_integrator = *this->tcb().overlap_orb;
+    return {*this->ucell_, this->orb_cutoff_, overlap_integrator, *this->psi_ks,
+        this->paraC_, this->paraMat_, this->paraX_, this->nocc, this->nvirt,
+        this->openshell, this->target_is_};
+}
+
+template<typename T, typename TR>
+void ModuleESolver::ESolver_LR<T, TR>::reuse_excitation_guesses_()
+{
+    ModuleBase::timer::start("ESolver_LR", "reuse_excitation_guesses_");
+    const auto start = std::chrono::steady_clock::now();
+    const auto basis = this->transition_basis_();
+    std::vector<T*> guesses;
+    for (auto& channel : this->X) { guesses.push_back(channel.template data<T>()); }
+    const auto reused = LR::project_excitation_guesses(basis, this->excitation_guesses_prev_,
+        guesses, this->nloc_per_state, this->nstates);
+    const auto finish = std::chrono::steady_clock::now();
+    const double seconds = std::chrono::duration<double>(finish - start).count();
+    for (std::size_t channel = 0; channel < reused.size(); ++channel)
+    {
+        if (this->my_rank_ == 0)
+        {
+            std::cout << "LR initial guess: channel=" << channel << " reused=" << reused[channel]
+                << '/' << this->nstates << " projection seconds=" << seconds << std::endl;
+        }
+        this->ofs_running_ << "LR initial guess: channel=" << channel << " reused=" << reused[channel]
+            << '/' << this->nstates << " projection seconds=" << seconds << std::endl;
+    }
+    ModuleBase::timer::end("ESolver_LR", "reuse_excitation_guesses_");
+}
+
+template<typename T, typename TR>
+void ModuleESolver::ESolver_LR<T, TR>::save_excitation_guesses_()
+{
+    ModuleBase::timer::start("ESolver_LR", "save_excitation_guesses_");
+    const auto basis = this->transition_basis_();
+    std::vector<const T*> amplitudes;
+    for (const auto& channel : this->X) { amplitudes.push_back(channel.template data<T>()); }
+    this->excitation_guesses_prev_ = LR::capture_excitation_guess(basis, amplitudes,
+        this->nloc_per_state, this->nstates);
+    ModuleBase::timer::end("ESolver_LR", "save_excitation_guesses_");
+}
 
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::set_parallel_orbitals_band(Parallel_Orbitals& pmat, const int nbands_in)
