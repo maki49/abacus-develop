@@ -84,3 +84,29 @@ TEST(LR_XCSigma, RetainsExistingHSEStabilizationWithoutMutatingTheDensity)
     EXPECT_EQ(input[1], 1e-6);
     EXPECT_EQ(input[2], sigma[2]);
 }
+
+TEST(LRForceWindow, CompleteSpinResolvedWindowsNeedNoWarning)
+{
+    const std::vector<int> virtuals{11, 13};
+    EXPECT_TRUE(LR_Util::force_window_warning(17, 17, 0, virtuals, virtuals).empty());
+}
+
+TEST(LRForceWindow, ReportsVirtualTruncationAndForceLimitation)
+{
+    const std::vector<int> x{1, 3};
+    const std::vector<int> z{14, 16};
+    const std::string message = LR_Util::force_window_warning(17, 17, 0, x, z);
+    EXPECT_NE(message.find("virtual X window is truncated"), std::string::npos);
+    EXPECT_EQ(message.find("occupied X window is truncated"), std::string::npos);
+    EXPECT_NE(message.find("finite differences"), std::string::npos);
+    EXPECT_NE(message.find("nbands = NLOCAL (17)"), std::string::npos);
+}
+
+TEST(LRForceWindow, EqualXAndZDoNotHideOccupiedOrBandTruncation)
+{
+    const std::vector<int> virtuals{8};
+    const std::string occupied = LR_Util::force_window_warning(17, 17, 2, virtuals, virtuals);
+    EXPECT_NE(occupied.find("occupied X window is truncated"), std::string::npos);
+    const std::string bands = LR_Util::force_window_warning(17, 11, 0, virtuals, virtuals);
+    EXPECT_NE(bands.find("ground-state band space is incomplete"), std::string::npos);
+}

@@ -9,6 +9,33 @@
 #include "source_base/module_container/base/third_party/lapack.h"
 namespace LR_Util
 {
+    std::string force_window_warning(const int basis_size, const int gs_bands,
+        const int skipped_occupied, const std::vector<int>& x_virtual,
+        const std::vector<int>& z_virtual)
+    {
+        assert(x_virtual.size() == z_virtual.size());
+        const bool occupied_truncated = skipped_occupied > 0;
+        const bool bands_truncated = gs_bands < basis_size;
+        bool virtual_truncated = false;
+        for (size_t spin = 0; spin < x_virtual.size(); ++spin)
+        {
+            virtual_truncated = virtual_truncated || x_virtual[spin] < z_virtual[spin];
+        }
+        if (!occupied_truncated && !bands_truncated && !virtual_truncated) { return ""; }
+        std::string message = " WARNING: truncated LR force window:";
+        if (occupied_truncated) { message += " occupied X window is truncated;"; }
+        if (virtual_truncated) { message += " virtual X window is truncated;"; }
+        if (bands_truncated) { message += " ground-state band space is incomplete;"; }
+        message += " zero-padding X into the available Z virtual space is retained, but does not"
+            " restore all active/inactive orbital-response terms. The force may differ from finite"
+            " differences of the selected truncated excitation energy. For reliable forces and"
+            " relaxation, use all occupied orbitals, nbands = NLOCAL (";
+        message += std::to_string(basis_size);
+        message += ") and the full spin-resolved virtual window (nvirt = nbands - nocc)."
+            " Check force/window convergence before relaxation.";
+        return message;
+    }
+
     void check_force_pp(const UnitCell& cell, const bool cal_force, const std::string& calculation)
     {
         const bool relaxation = calculation == "relax" || calculation == "cell-relax";

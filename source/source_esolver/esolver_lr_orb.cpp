@@ -228,17 +228,13 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
     for (int is = 0; is < this->nspin; ++is)
     { this->ofs_running_ << " " << this->nvirt_z_[is] << "(X window: " << this->nvirt[is] << ")"; }
     this->ofs_running_ << std::endl;
-    if (this->nbands_z_ < this->nbasis)
+    // Initialization precedes ks_initialized_; subsequent geometry refreshes keep
+    // the same windows. Diagnose once, without changing the truncated eigenproblem.
+    if (!this->ks_initialized_)
     {
-        // The Z window can only be as wide as the ground state's band count, so a gradient is
-        // converged in it only when `nbands` reaches the size of the AO basis. Measured on
-        // `08_BeH2/rpa_at_lda` (NLOCAL 17), where Omega = eps_a - eps_i makes the finite
-        // difference exact: nbands 11 -> 18% too high, nbands 17 -> 6 digits.
-        this->ofs_running_ << " WARNING: the excited-state gradient is not converged with"
-            " respect to the Z-vector (CPSCF) space: nbands = " << this->nbands_z_
-            << " covers only part of the " << this->nbasis << " AO basis functions (NLOCAL)."
-            " Set nbands = " << this->nbasis << " for a converged gradient; nvirt may stay as"
-            " it is, since the excitation energies do not depend on this." << std::endl;
+        const std::string warning = LR_Util::force_window_warning(this->nbasis,
+            this->eig_ks_all.nc, start_band, this->nvirt, this->nvirt_z_);
+        if (!warning.empty()) { this->ofs_running_ << warning << std::endl; }
     }
 }
 

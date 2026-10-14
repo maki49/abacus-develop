@@ -81,6 +81,10 @@ namespace LR_Util
     /// Retain a positive user window, otherwise use all occupied orbitals.
     int cal_nocc_window(int requested_nocc, int nocc_max);
     
+    /// Diagnose resolved force windows without modifying X, Z or their energies.
+    std::string force_window_warning(int basis_size, int gs_bands, int skipped_occupied,
+        const std::vector<int>& x_virtual, const std::vector<int>& z_virtual);
+
     /// @brief  set the index map: ix to (ic, iv) and vice versa
     /// by diagonal traverse the c-v pairs
     /// leftdown -> rightup for mode 0, rightup -> leftdown for mode 1

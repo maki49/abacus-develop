@@ -1141,7 +1141,9 @@ void ReadInput::item_lr_tddft()
         item.type = "Integer";
         item.description = R"(The number of occupied orbitals (up to HOMO) retained in the majority-spin LR-TDDFT window. A positive value selects a shared core prefix to discard from both spin channels; it does not change the ground-state occupations.
 * If omitted, non-positive, or larger than the occupied majority-spin channel, all occupied orbitals are used.
-* The full occupied window is determined by the effective electron number (including nelec_delta once) and the ground-state spin populations. For nspin=2, the minority-spin window has abs(N_up-N_down) fewer occupied orbitals.)";
+* The full occupied window is determined by the effective electron number (including nelec_delta once) and the ground-state spin populations. For nspin=2, the minority-spin window has abs(N_up-N_down) fewer occupied orbitals.
+
+[NOTE] For reliable excited-state forces and relaxation, retain all occupied orbitals. With a truncated occupied or virtual X window, the current analytic force is an approximation and may differ from finite differences of the selected truncated excitation energy. Zero-padding X into a larger Z virtual space is retained, but does not restore every active/inactive orbital-response term. Check force/window convergence.)";
         item.default_value = "all occupied orbitals";
         item.unit = "";
         read_sync_int(input.nocc);
@@ -1153,7 +1155,9 @@ void ReadInput::item_lr_tddft()
         item.annotation = "the number of virtual orbitals to form the 2-particle basis (nocc + nvirt <= nbands)";
         item.category = "Linear Response TDDFT";
         item.type = "Integer";
-        item.description = "The number of virtual orbitals (starting from LUMO) used in the LR-TDDFT calculation.";
+        item.description = R"(The number of virtual orbitals (starting from LUMO) used in the LR-TDDFT calculation.
+
+[NOTE] For reliable excited-state forces and relaxation, use all occupied orbitals, nbands = NLOCAL (the AO basis size), and the full spin-resolved virtual window, nvirt = nbands - nocc. Merely setting nvirt = nbands - nocc is insufficient when nbands < NLOCAL. The Z virtual window is widened to the available ground-state bands and X is zero-padded without changing the selected excitation energy; this does not make the force an exact derivative of a truncated-X problem. Changing nvirt itself generally changes the excitation energies. Truncated-window forces remain available with a warning and require convergence checks, especially before optimization.)";
         item.default_value = "1";
         item.unit = "";
         read_sync_int(input.nvirt);
