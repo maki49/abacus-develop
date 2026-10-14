@@ -1,5 +1,6 @@
 #include "grad_degen.h"
 
+#include <stdexcept>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -138,7 +139,12 @@ namespace LR
 
     JTDirection find_jt_direction(const std::vector<double>& gflat, const int ncoord, const int d)
     {
-        assert(d >= 2);
+        // The deterministic search is validated only for doublets and triplets.
+        // Bound it before allocation or the exponential sign-pattern enumeration.
+        if (d < 2 || d > 3)
+        {
+            throw std::invalid_argument("JT direction supports only two- or three-state multiplets");
+        }
         assert(gflat.size() == static_cast<size_t>(ncoord) * d * d);
         JTDirection best;
         // A stationary multiplet still needs a valid branch for the force decomposition and

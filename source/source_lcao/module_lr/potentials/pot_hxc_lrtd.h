@@ -1,7 +1,6 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_HXC_LRTD_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_HXC_LRTD_H
 
-#include "source_estate/module_pot/h_hartree_pw.h"
 #include "xc_kernel.h"
 #include "pot_lr_base.h"
 #include <unordered_map>
@@ -59,7 +58,6 @@ namespace LR
 
         const KernelXC& xc_kernel_components() const { return *xc_kernel_components_; }
     private:
-        std::unique_ptr<elecstate::PotHartree> pot_hartree_;
         /// different components of local and semi-local xc kernels:
         /// LDA: v2rho2
         /// GGA: v2rho2, v2rhosigma, v2sigma2

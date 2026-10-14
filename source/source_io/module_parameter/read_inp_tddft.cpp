@@ -1084,6 +1084,7 @@ void ReadInput::item_lr_tddft()
         item.description = R"(The method to initalize the xc kernel.
 * "default": Calculate xc kernel from the ground-state charge density.
 * "file": Read the xc kernel on grid from the provided files. The following words should be the paths of ".cube" files, where the first 1 (nspin==1) or 3 (nspin==2, namely spin-aa, spin-ab and spin-bb) will be read in. The parameter xc_kernel will be invalid. Now only LDA-type kernel is supported as the potential will be calculated by directly multiplying the transition density.
+[NOTE] The "file" mode supports spectra only: excited-state forces and relaxation require density and geometry derivatives that the supplied kernel files do not define.
 * "from_charge_file": Calculate fxc from the charge density read from the provided files. The following words should be the paths of ".cube" files, where the first nspin files will be read in.)";
         item.default_value = "\"default\"";
         item.unit = "";
@@ -1095,6 +1096,16 @@ void ReadInput::item_lr_tddft()
         item.reset_value = [](const Input_Item& item, Parameter& para) {
             if (para.input.lr_init_xc_kernel.empty()) { para.input.lr_init_xc_kernel.push_back("default"); }
             };
+        item.check_value = [](const Input_Item& item, const Parameter& para) {
+            const auto& input = para.input;
+            const bool lr = input.esolver_type == "lr" || input.esolver_type == "ks-lr";
+            const bool forces = input.cal_force || input.calculation == "relax";
+            if (lr && forces && !input.lr_init_xc_kernel.empty() && input.lr_init_xc_kernel[0] == "file")
+            {
+                ModuleBase::WARNING_QUIT("ReadInput",
+                    "lr_init_xc_kernel=file supports spectra only; excited-state forces require kernel derivatives");
+            }
+        };
         sync_stringvec(input.lr_init_xc_kernel, para.input.lr_init_xc_kernel.size(), "default");
         this->add_item(item);
     }
@@ -1234,7 +1245,7 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
 
 * state: follow the gradient of that one state, as returned by the eigensolver. This is the historical behaviour and is what reproduces earlier results, but inside a multiplet it is not a well-defined quantity: the per-state gradients are the diagonal of the subspace gradient matrix in whichever basis the eigensolver happened to return, so they depend on numerical details of the diagonalisation rather than on physics.
 * average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. For a fixed complete multiplet the average is basis-independent and its gradient respects the multiplet symmetry. Tracking allows groups to split or merge: split groups are not recombined to enforce symmetry, so changing group membership can change the average surface and lose geometric symmetry. Groups larger than three are tracked but use the selected single-state energy and force with a warning. Both the reported energy and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.
-* jt: descend the Jahn-Teller branch. Solves $\min_{\|u\|=1}\lambda_{\min}(\sum_{A\alpha}u_{A\alpha}G^{(A\alpha)})$ -- a joint optimisation over the displacement and the mixing inside the multiplet, since the two are determined together -- and follows the force of the resulting branch. This needs the off-diagonal part of the gradient matrix, so it costs $d(d-1)/2$ further Z-vector solves per step on top of the $d$ diagonal ones. The running log reports the branch's force, its mixing coefficients, and its split into the part common to the multiplet and the part that actually breaks the degeneracy.
+* jt: descend the Jahn-Teller branch for a two- or three-state multiplet; larger JT force groups are rejected before gradient construction. Solves $\min_{\|u\|=1}\lambda_{\min}(\sum_{A\alpha}u_{A\alpha}G^{(A\alpha)})$ -- a joint optimisation over the displacement and the mixing inside the multiplet, since the two are determined together -- and follows the force of the resulting branch. This needs the off-diagonal part of the gradient matrix, so it costs $d(d-1)/2$ further Z-vector solves per step on top of the $d$ diagonal ones. The running log reports the branch's force, its mixing coefficients, and its split into the part common to the multiplet and the part that actually breaks the degeneracy.
 
 [NOTE] Groups have no tracking dimension cap. `average` ranks groups by total cross-geometry subspace overlap; `jt` instead ranks by the projection weight of the previous actual JT mixture in each current group. The running log records both dimensions, coverage and singular values. Lost coverage is diagnosed and tracking continues; this does not guarantee a continuous energy surface. For `average`, ties use the previous selected-state projection weight; for `jt`, ties use total subspace overlap.
 

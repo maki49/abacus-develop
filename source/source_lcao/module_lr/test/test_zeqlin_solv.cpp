@@ -1,7 +1,5 @@
 #include <gtest/gtest.h>
 #include "../zeq_solver.hpp"
-#include "../cal_edm.h"
-#include "../cal_edm.h"
 #include "mpi.h"
 #include "../zeqlin_solv.h"
 

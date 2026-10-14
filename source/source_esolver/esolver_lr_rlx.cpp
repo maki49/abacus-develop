@@ -197,6 +197,11 @@ void ModuleESolver::ESolver_LR<T, TR>::resolve_target_multiplet_()
             this->ofs_running_ << " WARNING: tracked group has " << g.size()
                 << " roots; average supports at most three. Following the selected single root." << std::endl;
         }
+        else if (!average && g.size() > 3)
+        {
+            ModuleBase::WARNING_QUIT("ESolver_LR",
+                "JT forces support only two- or three-state multiplets; reduce lr_degen_thr or use state mode");
+        }
         else if (g.size() > 1) { this->target_group_ = g; }
         break;
     }

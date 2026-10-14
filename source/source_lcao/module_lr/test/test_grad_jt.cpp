@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include <cmath>
 #include <vector>
 #include "../grad_degen.h"
@@ -249,5 +250,14 @@ TEST(JTDirection, ZeroGradientReturnsAValidStationaryBranch)
         EXPECT_EQ(sym, (std::vector<double>(ncoord, 0.0)));
         EXPECT_EQ(jt_part, sym);
         EXPECT_EQ(jt.displacement, sym);
+    }
+}
+
+TEST(JTDirection, RejectsUnsupportedDimensionsBeforeEnumeration)
+{
+    const std::vector<double> empty;
+    for (const int dimension : {1, 4, 33})
+    {
+        EXPECT_THROW(LR::find_jt_direction(empty, 1, dimension), std::invalid_argument);
     }
 }

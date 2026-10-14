@@ -160,6 +160,7 @@ namespace LR
     inline void solve_Z_lapack(T* const Z, const T* const R, const int& ld, const int& nstates,
         THam& hm, const int nspin_x, const bool test_force)
     {
+        ModuleBase::timer::start("Z_vector", "solve_Z_lapack");
         ModuleBase::TITLE("Z_vector", "solve_Z_lapack");
         const int n_global = zvec_global_dim(hm, nspin_x);
         int ld_expect = 0;
@@ -185,9 +186,7 @@ namespace LR
 #endif
 
         // use lapack to solve the linear equation
-        ModuleBase::timer::start("Z_vector", "lapack_solver");
         LR_Util::lapack_linear_solver(hessian_full.data(), Z_full.data(), R_full.data(), n_global, nstates);
-        ModuleBase::timer::end("Z_vector", "lapack_solver");
 
         // test: print full Z
         if (test_force)
@@ -210,6 +209,7 @@ namespace LR
             std::cout << "The local Z-vector solved by LAPACK:" << std::endl;
             LR_Util::print_value(Z, nstates, ld);
         }
+        ModuleBase::timer::end("Z_vector", "solve_Z_lapack");
     }
 
 #ifdef __MPI
@@ -365,12 +365,12 @@ namespace LR
         const T* const X, container::Tensor& R, T* const Z,
         const int nloc_per_band, const int nstates, const std::string& zvec_solver, const bool test_force)
     {
-        ModuleBase::timer::start("Z_vector", "Z_vector_R");
+        ModuleBase::timer::start("Z_vector", "build_and_solve_zeq");
         ops_R.hPsi(X, R.template data<T>(), nloc_per_band, nstates);  // act each operator on X
-        ModuleBase::timer::end("Z_vector", "Z_vector_R");
         // std::cout << "The right side of the Z-vector equation:" << std::endl;
         // LR_Util::print_value(R.template data<T>(), nstates, nloc_per_band);
         solve_zeq_with(Z, R.template data<T>(), nloc_per_band, nstates, ops_L, nspin_x, zvec_solver, test_force);
+        ModuleBase::timer::end("Z_vector", "build_and_solve_zeq");
     }
 
     template<typename T>

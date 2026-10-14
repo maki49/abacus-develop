@@ -1,6 +1,5 @@
 #include "pot_hxc_lrtd.h"
 #include "source_io/module_parameter/parameter.h"
-#include "source_estate/module_pot/h_hartree_pw.h"
 #include "source_base/timer.h"
 #include "source_hamilt/module_xc/xc_functional.h"
 #include <set>
@@ -36,7 +35,6 @@ namespace LR
         const SpinType& st, const std::vector<std::string>& lr_init_xc_kernel, const int gxc_spin)
         :PotLRBase(rho_basis, LR_Util::kernel_nspin(), chg_gs.nrxx, ucell.tpiba),
         xc_kernel_(xc_kernel), spin_type_(st),
-        pot_hartree_(LR_Util::make_unique<elecstate::PotHartree>(&rho_basis)),
         xc_kernel_components_(make_kernel(xc_kernel, rho_basis, ucell, chg_gs, pgrid, (st == SpinType::S2_updown), gxc_spin, lr_init_xc_kernel)),
         xc_type_(XCType(XC_Functional::get_func_type()))
     {
@@ -49,7 +47,6 @@ namespace LR
         const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell, const int nrxx, const SpinType& st)
         :PotLRBase(rho_basis, LR_Util::kernel_nspin(), nrxx, ucell.tpiba),
         xc_kernel_(xc_kernel), spin_type_(st),
-        pot_hartree_(LR_Util::make_unique<elecstate::PotHartree>(&rho_basis)),
         xc_kernel_components_(std::move(kernel)),
         xc_type_(XCType(XC_Functional::get_func_type()))
     {

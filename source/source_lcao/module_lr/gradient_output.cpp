@@ -85,7 +85,8 @@ void print_grad_matrix(const std::vector<std::vector<ModuleBase::matrix>>& g,
                 ofs << "     ";
                 for (int l = 0; l < d; ++l)
                 {
-                    const double v = g[k][l](iat, ixyz) * fac;
+                    // Internal entries are forces; printed G contains energy derivatives.
+                    const double v = -g[k][l](iat, ixyz) * fac;
                     ofs << std::setw(15) << v;
                     block[static_cast<size_t>(k) * d + l] = v;
                 }
@@ -102,7 +103,7 @@ void print_grad_matrix(const std::vector<std::vector<ModuleBase::matrix>>& g,
     std::vector<ModuleBase::matrix> diag;
     for (int k = 0; k < d; ++k) { diag.push_back(g[k][k]); }
     const ModuleBase::matrix average = average_forces(diag);
-    ModuleIO::print_force(ofs, ucell, "MULTIPLET-AVERAGE FORCE Tr(G)/d (eV/Angstrom)", average, false);
+    ModuleIO::print_force(ofs, ucell, "MULTIPLET-AVERAGE FORCE -Tr(G)/d (eV/Angstrom)", average, false);
 }
 
 }

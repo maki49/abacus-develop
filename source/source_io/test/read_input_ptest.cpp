@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <fstream>
 #include <functional>
+#include <map>
 
 // #ifdef __MPI
 #include "mpi.h"
@@ -708,4 +709,34 @@ int main(int argc, char** argv)
     int result = RUN_ALL_TESTS();
     MPI_Finalize();
     return result;
+}
+
+TEST_F(InputParaTest, ExternalLRKernelRejectsForces)
+{
+    ModuleIO::ReadInput readinput(0);
+    std::map<std::string, ModuleIO::Input_Item> lists;
+    for (const auto& entry : readinput.get_input_lists()) { lists.emplace(entry.first, entry.second); }
+    const ModuleIO::Input_Item item = lists.at("lr_init_xc_kernel");
+    const auto set = [&lists](Parameter& param, const std::string& key,
+                             const std::vector<std::string>& values) {
+        ModuleIO::Input_Item input = lists.at(key);
+        input.str_values = values;
+        input.read_value(input, param);
+    };
+    Parameter param;
+    set(param, "esolver_type", {"ks-lr"});
+    set(param, "lr_init_xc_kernel", {"file", "kernel.cube"});
+    set(param, "calculation", {"scf"});
+    set(param, "cal_force", {"0"});
+    item.check_value(item, param);
+    set(param, "cal_force", {"1"});
+    EXPECT_EXIT(item.check_value(item, param), testing::ExitedWithCode(1), "");
+    set(param, "cal_force", {"0"});
+    set(param, "calculation", {"relax"});
+    EXPECT_EXIT(item.check_value(item, param), testing::ExitedWithCode(1), "");
+    Parameter charge;
+    set(charge, "esolver_type", {"ks-lr"});
+    set(charge, "calculation", {"relax"});
+    set(charge, "lr_init_xc_kernel", {"from_charge_file", "rho.cube"});
+    item.check_value(item, charge);
 }

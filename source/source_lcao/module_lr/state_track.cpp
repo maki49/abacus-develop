@@ -66,7 +66,8 @@ void project_local_references(const RootInputs<T>& inputs, const RootBasis<T>& o
     std::vector<std::vector<T>*> references{&previous};
     for (auto& root : group) { references.push_back(&root); }
     int offset = 0;
-    const std::vector<int> spins = inputs.openshell ? std::vector<int>{0, 1} : std::vector<int>{inputs.channel};
+    // Both closed-shell channels define X in the spin-up KS orbital basis.
+    const std::vector<int> spins = inputs.openshell ? std::vector<int>{0, 1} : std::vector<int>{0};
     for (const int spin : spins)
     {
         const Parallel_2D& px = inputs.px[spin];

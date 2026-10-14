@@ -42,6 +42,12 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
         // neighbour lists, the grid tables and the Hamiltonian for the geometry of this step.
         XC_Functional::set_xc_type(ucell.atoms[0].ncpp.xc_func);
         this->ks_->runner(ucell, istep);
+        this->conv_esolver = this->ks_->conv_esolver;
+        if (this->inp_->calculation == "relax" && !this->conv_esolver)
+        {
+            ModuleBase::WARNING_QUIT("ESolver_LR",
+                "Excited-state relaxation requires a converged ground-state SCF; ionic step rejected");
+        }
         this->etot_gs_ = this->ks_->cal_energy();
         if (!this->ks_initialized_)
         {

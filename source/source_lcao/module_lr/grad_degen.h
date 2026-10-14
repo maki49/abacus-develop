@@ -165,7 +165,7 @@ namespace LR
     ///               ($-\partial\Omega/\partial R$) makes `displacement` point downhill directly,
     ///               while feeding gradients makes it point uphill.
     /// @param ncoord $3N$
-    /// @param d      the multiplet's dimension, must be >= 2
+    /// @param d      the multiplet's dimension, must be 2 or 3 (tracking has no dimension cap)
     JTDirection find_jt_direction(const std::vector<double>& gflat, const int ncoord, const int d);
 
     /// @brief Split a branch gradient into the part shared by the whole multiplet and the part that

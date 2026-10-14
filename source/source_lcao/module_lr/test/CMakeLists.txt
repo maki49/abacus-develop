@@ -23,13 +23,13 @@ if(ENABLE_MPI)
     AddTest(
       TARGET MODULE_LR_zeqlin_solv
       LIBS base parameter ${math_libs} container device psi ELPA::ELPA MPI::MPI_CXX
-      SOURCES test_zeqlin.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+      SOURCES test_zeqlin_solv.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
     )
   else()
     AddTest(
       TARGET MODULE_LR_zeqlin_solv
       LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
-      SOURCES test_zeqlin.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+      SOURCES test_zeqlin_solv.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
     )
   endif()
 endif()
@@ -63,5 +63,12 @@ AddTest(
 AddTest(
   TARGET MODULE_LR_state_group
   LIBS base parameter ${math_libs} container device
-  SOURCES test_state_grp.cpp ../state_group.cpp
+  SOURCES test_state_group.cpp ../state_group.cpp
+)
+
+AddTest(
+  TARGET MODULE_LR_state_track
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES test_state_track.cpp ../state_track.cpp ../state_group.cpp ../grad_degen.cpp
+          ../../../source_base/test/mpi_test_main.cpp ${root_overlap_test_sources}
 )
