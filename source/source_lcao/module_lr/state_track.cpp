@@ -15,96 +15,6 @@ namespace LR
 namespace
 {
 template <typename T>
-RootBasis<T> capture_basis(const RootInputs<T>& inputs)
-{
-    RootBasis<T> basis;
-    basis.lattice = inputs.cell.latvec;
-    basis.lat0 = inputs.cell.lat0;
-    basis.nbasis = inputs.pc.get_global_row_size();
-    basis.nbands = inputs.nocc[0] + inputs.nvirt[0];
-    basis.nocc = inputs.nocc;
-    basis.nvirt = inputs.nvirt;
-    basis.layout = {inputs.pc.get_block_size(), inputs.pc.get_dim0(), inputs.pc.get_dim1(),
-        inputs.pc.get_coord_row(), inputs.pc.get_coord_col(), inputs.pc.get_row_size(), inputs.pc.get_col_size()};
-    for (const auto& px : inputs.px)
-    {
-        basis.layout.push_back(px.get_block_size());
-        basis.layout.push_back(px.get_row_size());
-        basis.layout.push_back(px.get_col_size());
-    }
-
-    for (int atom = 0; atom < inputs.cell.nat; ++atom)
-    {
-        const auto position = inputs.cell.get_tau(atom);
-        basis.positions.push_back(position);
-    }
-    // Snapshot only this rank's column-major coefficient block; no AO-by-band gather.
-    const int coefficient_count = inputs.pc.get_local_size();
-    const T zero = T(0);
-    for (int spin = 0; spin < inputs.orbitals.get_nk(); ++spin)
-    {
-        std::vector<T> coefficients(coefficient_count, zero);
-        for (int band = 0; band < inputs.pc.get_col_size(); ++band)
-        {
-            for (int ao = 0; ao < inputs.pc.get_row_size(); ++ao)
-            {
-                coefficients[band * inputs.pc.get_row_size() + ao] = inputs.orbitals(spin, band, ao);
-            }
-        }
-        basis.coefficients.push_back(std::move(coefficients));
-    }
-    return basis;
-}
-
-
-template <typename T>
-void project_local_references(const RootInputs<T>& inputs, const RootBasis<T>& old,
-    const RootBasis<T>& current, const std::vector<double>& ao, std::vector<T>& previous,
-    std::vector<std::vector<T>>& group)
-{
-    const std::vector<T> typed_ao(ao.begin(), ao.end());
-    std::vector<std::vector<T>*> references{&previous};
-    for (auto& root: group)
-    {
-        references.push_back(&root);
-    }
-    int offset = 0;
-    // Both closed-shell channels define X in the spin-up KS orbital basis.
-    const std::vector<int> spins = inputs.openshell ? std::vector<int>{0, 1} : std::vector<int>{0};
-    for (const int spin : spins)
-    {
-        const Parallel_2D& px = inputs.px[spin];
-        const int no = inputs.nocc[spin];
-        const int nv = inputs.nvirt[spin];
-        const int local_count = px.get_local_size();
-        Parallel_2D pi;
-        Parallel_2D pv;
-#ifdef __MPI
-        const int block_size = px.get_block_size();
-        pi.set(no, no, block_size, px.blacs_ctxt);
-        pv.set(nv, nv, block_size, px.blacs_ctxt);
-#else
-        pi.set_serial(no, no);
-        pv.set_serial(nv, nv);
-#endif
-        // Only oo/vv are needed; construct each once and reuse across references.
-        const int occupied_start = 0;
-        const auto occupied = mo_overlap_dist(old.coefficients[spin], typed_ao,
-            current.coefficients[spin], inputs.pc, inputs.pmat, pi, occupied_start);
-        const auto virtuals = mo_overlap_dist(old.coefficients[spin], typed_ao,
-            current.coefficients[spin], inputs.pc, inputs.pmat, pv, no);
-        for (auto* reference : references)
-        {
-            std::vector<T> local_reference(local_count);
-            std::copy_n(reference->begin() + offset, local_count, local_reference.begin());
-            const auto projected = project_reference_dist(local_reference, occupied, virtuals, pi, pv, px);
-            std::copy(projected.begin(), projected.end(), reference->begin() + offset);
-        }
-        offset += px.get_local_size();
-    }
-}
-
-template <typename T>
 int follow_subspace(const RootInputs<T>& inputs, const T* amplitudes,
     const std::vector<std::vector<int>>& groups, std::vector<T>& previous,
     const std::vector<std::vector<T>>& old_group, std::ostream& log)
@@ -216,24 +126,19 @@ void follow_cross_root(const RootInputs<T>& inputs, const T* amplitudes,
     {
         throw std::invalid_argument("LR root overlap: energy/root counts differ");
     }
-    RootBasis<T> current = capture_basis(inputs);
-    if (!basis.positions.empty())
+    RootBasis<T> current;
+    current.orbitals = capture_orbital_basis(inputs.basis);
+    if (!basis.orbitals.positions.empty())
     {
-        const auto difference = current.lattice - basis.lattice;
-        const double cell_change = std::abs(difference.e11) + std::abs(difference.e12) + std::abs(difference.e13)
-            + std::abs(difference.e21) + std::abs(difference.e22) + std::abs(difference.e23)
-            + std::abs(difference.e31) + std::abs(difference.e32) + std::abs(difference.e33);
-        if (cell_change > 1e-12 || std::abs(current.lat0 - basis.lat0) > 1e-12
-            || current.nbasis != basis.nbasis || current.nbands != basis.nbands
-            || current.nocc != basis.nocc || current.nvirt != basis.nvirt
-            || current.layout != basis.layout
-            || current.positions.size() != basis.positions.size()
-            || current.coefficients.size() != basis.coefficients.size())
+        if (!compatible_orbital_bases(basis.orbitals, current.orbitals))
         {
             throw std::invalid_argument("LR root overlap: cell, orbital window or MPI layout changed between steps");
         }
-        const auto ao = cross_ao_overlap(inputs.cell, basis.positions, inputs.cutoff, inputs.integrator, inputs.pmat);
-        project_local_references(inputs, basis, current, ao, previous, basis.group_amplitudes);
+        const auto& view = inputs.basis;
+        const auto ao = cross_ao_overlap(view.cell, basis.orbitals.positions, view.cutoff, view.integrator, view.pmat);
+        std::vector<std::vector<T>*> references{&previous};
+        for (auto& root : basis.group_amplitudes) { references.push_back(&root); }
+        project_transition_vectors(view, basis.orbitals, current.orbitals, ao, references);
         log << " EXCITED-STATE RELAX: root overlap uses old-new AO and MO bases." << std::endl;
     }
     const auto groups = group_degenerate_states(energies, group_threshold);
