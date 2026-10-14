@@ -43,17 +43,9 @@ namespace LR
             const std::string& in_dir,
             const std::string& out_dir,
             const std::string& dft_functional)
-            : HamiltLR<T>(xc_kernel, nspin, naos, nocc, nvirt, ucell, orb_cutoff, gd, psi_ks, eig_ks,
-#ifdef __EXX
-                exx_lri, exx_alpha,
-#endif
-                pot_hxc_gs, kv, pX, pc, pmat, spin_type, in_dir, out_dir)
+            : HamiltLR<T>(nspin, nocc, nvirt, pX, kv, pmat)
         {
             ModuleBase::TITLE("Z_vector_L", "Z_vector_L");
-            // Destroy the base chain while its borrowed density matrix is still alive.
-            delete this->ops;
-            this->ops = nullptr;
-            this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             // Hessian (A+B) with GS XC kernel 
             // 1. diag term in A

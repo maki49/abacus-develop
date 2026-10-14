@@ -44,12 +44,10 @@ namespace LR
                const std::string& out_dir,
                const std::string& ri_hartree_benchmark = "none",
                const std::vector<int>& aims_nbasis = {})
-          : nspin(nspin), nocc(nocc), nvirt(nvirt), pX(pX_in), nk(kv_in.get_nks() / nspin)
+          : HamiltLR(nspin, nocc, nvirt, pX_in, kv_in, pmat_in)
         {
             ModuleBase::TITLE("HamiltLR", "HamiltLR");
             if (ri_hartree_benchmark != "aims" && ri_hartree_benchmark !="aims-librpa") { assert(aims_nbasis.empty()); }
-            // always use nspin=1 for transition density matrix
-            this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
             if (ri_hartree_benchmark == "none") { LR_Util::initialize_DMR(*this->DM_trans, pmat_in, ucell_in, gd_in, orb_cutoff); }
             // this->DM_trans->init_dmr(&gd_in, &ucell_in); // too large due to not restricted by orb_cutoff
 
@@ -202,6 +200,23 @@ namespace LR
         const int nk = 1;
         const std::vector<Parallel_2D>& pX;
     protected:
+        /// Initialize shared storage without constructing a Casida operator chain or
+        /// installing its density callback. Z operators build their own chains directly.
+        /// Each caller initializes DMR for its geometry (RI benchmarks may omit it).
+        HamiltLR(const int& nspin_in,
+                 const std::vector<int>& nocc_in,
+                 const std::vector<int>& nvirt_in,
+                 const std::vector<Parallel_2D>& pX_in,
+                 const K_Vectors& kv_in,
+                 const Parallel_Orbitals& pmat_in)
+            : nocc(nocc_in), nvirt(nvirt_in), nspin(nspin_in),
+              nk(kv_in.get_nks() / nspin_in), pX(pX_in)
+        {
+            // Both Casida and Z operators use one transition-density spin channel.
+            this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(
+                &pmat_in, 1, kv_in.kvec_d, this->nk);
+        }
+
         const bool tdm_sym = false;     ///< whether to symmetrize the transition density matrix
         T one()const;
         /// transition density matrix in AO representation

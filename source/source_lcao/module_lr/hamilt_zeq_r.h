@@ -45,18 +45,10 @@ namespace LR
             const std::string& out_dir,
             const std::string& dft_functional,
             const std::string& spin_type = "singlet")
-            : HamiltLR<T>(xc_kernel, nspin, naos, nocc, nvirt, ucell, orb_cutoff, gd, psi_ks, eig_ks,
-#ifdef __EXX
-                exx_lri, exx_alpha,
-#endif
-                pot, kv, pX, pc, pmat, spin_type, in_dir, out_dir)
+            : HamiltLR<T>(nspin, nocc, nvirt, pX, kv, pmat)
         {
             ModuleBase::TITLE("Z_vector_R", "Z_vector_R");
 
-            // Destroy the base chain while its borrowed density matrix is still alive.
-            delete this->ops;
-            this->ops = nullptr;
-            this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             this->DM_diff = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat, 1, kv.kvec_d, this->nk);
             LR_Util::initialize_DMR(*this->DM_diff, pmat, ucell, gd, orb_cutoff);
