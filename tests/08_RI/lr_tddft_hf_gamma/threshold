@@ -1,2 +1,2 @@
-# Absolute tolerance for the summed excited-state force components.
+# Absolute tolerance for signed LR force components and their absolute-value total.
 force_threshold 0.000001
