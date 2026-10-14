@@ -2322,7 +2322,7 @@ TEST_F(InputTest, Item_test2)
         testing::internal::CaptureStdout();
         EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
         output = testing::internal::GetCapturedStdout();
-        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, lapack, scalapack, scalapack_chol or elpa"));
+        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver must be cg, lapack, scalapack or scalapack_chol"));
         for (const std::string solver : { "scalapack", "scalapack_chol" })
         {
             TestParameters::input(param).lr_grad_solver = solver;
@@ -2335,16 +2335,12 @@ TEST_F(InputTest, Item_test2)
             EXPECT_THAT(output, testing::HasSubstr("needs an MPI build"));
 #endif
         }
-#if defined(__MPI) && defined(__ELPA)
-        TestParameters::input(param).lr_grad_solver = "elpa";
-        it->second.check_value(it->second, param);
-#else   // rejected by the MPI or the ELPA check; both messages name the value
+        // Removed solver names are rejected independently of MPI/ELPA build options.
         TestParameters::input(param).lr_grad_solver = "elpa";
         testing::internal::CaptureStdout();
         EXPECT_EXIT(it->second.check_value(it->second, param), ::testing::ExitedWithCode(1), "");
         output = testing::internal::GetCapturedStdout();
-        EXPECT_THAT(output, testing::HasSubstr("lr_grad_solver = elpa"));
-#endif
+        EXPECT_THAT(output, testing::HasSubstr("elpa has been removed"));
     }
 }
 
