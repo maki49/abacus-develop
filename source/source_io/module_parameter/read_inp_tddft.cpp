@@ -1228,6 +1228,8 @@ At a $d$-fold degeneracy no single state has a gradient vector: the branch slope
 
 The threshold proposes candidates; it cannot tell a true degeneracy from an accidental near-degeneracy, where the states have genuinely different excitation energies and the construction does not apply. Each multiplet's actual energy spread and the orthonormality of its eigenvectors are reported in the running log so the distinction can be made there.
 
+[NOTE] In `lr_degen_mode = jt`, all members of a threshold-defined group are approximated as sharing one energy: relaxation reports their mean excitation energy but uses the selected JT mixed-state force. At an exact degeneracy this force gives the first-order branch slope; no additional mixing-coefficient response is required. With a finite energy spread below this threshold, however, the mean energy and JT force are generally not derivatives of the same surface. Energy-based line searches can therefore be inconsistent within this grouping interval, even if the spread is small. The ordinary single-root energy and force resume when the tracked group becomes a singleton after threshold-based splitting. This threshold does not bound the resulting force error. Check the reported spreads against numerical accuracy and test sensitivity to the grouping threshold before relying on JT relaxation convergence.
+
 [NOTE] A sensible value is a few times the eigensolver threshold `lr_thr`, so that states split by real physics are not merged.)";
         item.default_value = "0";
         item.unit = "Ry";
@@ -1253,7 +1255,7 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
 
 [NOTE] Groups have no tracking dimension cap. `average` ranks groups by total cross-geometry subspace overlap; `jt` instead ranks by the projection weight of the previous actual JT mixture in each current group. The running log records both dimensions, coverage and singular values. Lost coverage is diagnosed and tracking continues; this does not guarantee a continuous energy surface. For `average`, ties use the previous selected-state projection weight; for `jt`, ties use total subspace overlap.
 
-[NOTE] The usual sequence is `average` first, to reach the symmetric stationary point, then `jt` from there: at a stationary point of the average surface the common part vanishes and the whole force is Jahn-Teller. `jt` is self-limiting -- once a step has split the multiplet there is no group left and the ordinary single-state gradient takes over.
+[NOTE] The usual sequence is `average` first, to reach the symmetric stationary point, then `jt` from there: at a stationary point of the average surface the common part vanishes and the whole force is Jahn-Teller. `jt` returns to the ordinary single-state energy and force once threshold-based splitting leaves the tracked group with one member; smaller splittings remain subject to the approximation described under `lr_degen_thr`.
 
 [NOTE] `jt` gives the first-order DIRECTION. The distortion amplitude also needs the harmonic term, and the step norm is Cartesian rather than mass-weighted. A linear molecule has no first-order term at all (the effect is second-order Renner-Teller) and the log says so.)";
         item.default_value = "state";
