@@ -123,10 +123,10 @@ namespace LR
         }
 #ifdef __MPI
         std::vector<ct::Tensor> cZc = cal_dm_trans_pblas(epsi_Z.data(), px, c, pc, naos, nocc, nvirt, pmat);
-        std::for_each(cZc.begin(), cZc.end(), [&](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
+        std::for_each(cZc.begin(), cZc.end(), [naos, &pmat](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
 #else
         std::vector<ct::Tensor> cZc = cal_dm_trans_blas(epsi_Z.data(), c, nocc, nvirt);
-        std::for_each(cZc.begin(), cZc.end(), [&](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos); });
+        std::for_each(cZc.begin(), cZc.end(), [naos](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos); });
 #endif
 
         //3. c * K_cvcx * c
@@ -135,10 +135,10 @@ namespace LR
         // `matsym` then supplies the 1/2 that turns $2\,X_\kappa K c_\lambda$ into the symmetric pair above. 
 #ifdef __MPI
         std::vector<ct::Tensor> cKc = cal_dm_trans_pblas(K_cvcx, px, c, pc, naos, nocc, nvirt, pmat, (T)1.0);
-        std::for_each(cKc.begin(), cKc.end(), [&](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
+        std::for_each(cKc.begin(), cKc.end(), [naos, &pmat](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
 #else
         std::vector<ct::Tensor> cKc = cal_dm_trans_blas(K_cvcx, c, nocc, nvirt, (T)1.0);
-        std::for_each(cKc.begin(), cKc.end(), [&](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos); });
+        std::for_each(cKc.begin(), cKc.end(), [naos](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos); });
 #endif
 
         // 4. $\sum_i (\Omega + \epsilon_i) \sum_{ab} C_{\mu a} X_{ia} C_{\nu b} X_{ib}$
@@ -322,7 +322,7 @@ namespace LR
         // to what $W^X_{ai\sigma}=2\sum_jX_{aj\sigma}K_{ji\sigma}[D^X]$ needs, and since
         // $(K[D])^T=K[D^T]$, transposing on the way in restores it.
         std::vector<ct::Tensor> dmx_buf;
-        auto set_dm_trans = [&](const int is)->void
+        auto set_dm_trans = [&dmx_buf, X, &off_x, &px, &psi_ks_spin, &pc, naos, &nocc, &nvirt, &pmat, nk, &DM_trans](const int is)->void
             {
 #ifdef __MPI
                 dmx_buf = cal_dm_trans_pblas(X + off_x[is], px[is], psi_ks_spin[is], pc, naos, nocc[is], nvirt[is], pmat);

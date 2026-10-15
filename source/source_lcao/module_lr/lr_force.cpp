@@ -323,7 +323,7 @@ namespace LR
         auto& exx_lri_kernel = this->exx_lri_.lock()->get();
         ExxForceTwoDM<int, int, 3, TK> lr_exx_kernel(std::move(exx_lri_kernel));
 
-        auto add_force_from_kernel = [&]() {
+        auto add_force_from_kernel = [&lr_exx_kernel, &f_exx_gs_diff]() {
             for (std::size_t idim = 0; idim < 3; ++idim)
                 for (const auto& force_item : lr_exx_kernel.force[idim])
                     f_exx_gs_diff(force_item.first, idim) += std::real(force_item.second);

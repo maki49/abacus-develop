@@ -1,3 +1,6 @@
+if(ENABLE_MPI)
+  set(test_zeqlin_solv_main ../../../source_base/test/mpi_test_main.cpp)
+endif()
 if(ENABLE_LIBXC)
   AddTest(
     TARGET MODULE_LR_pot_hxc_lrtd
@@ -31,7 +34,7 @@ if(ENABLE_MPI)
   AddTest(
     TARGET MODULE_LR_zeqlin_solv
     LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
-    SOURCES test_zeqlin_solv.cpp ../zeq_cg.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+    SOURCES test_zeqlin_solv.cpp ${test_zeqlin_solv_main} ../zeq_cg.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
   )
   add_test(
     NAME MODULE_LR_zeqlin_failure_mpi

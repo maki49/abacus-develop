@@ -123,7 +123,7 @@ namespace LR
             // the opposite order to what this term needs, and since
             //     $(K[D])^T = K[D^T]$,
             // transposing the density matrix on the way in restores it.
-            this->cal_dm_trans = [&, this](const int& is, const T* X)->void
+            this->cal_dm_trans = [this, &psi_ks, &pc, naos, &nocc, &nvirt, &pmat](const int& is, const T* X)->void
                 {
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);
 #ifdef __MPI
@@ -140,7 +140,7 @@ namespace LR
                     for (int ik = 0;ik < this->nk;++ik) { this->DM_trans->set_dmk_ptr(ik, dm_trans_2d[ik].data<T>()); }
                 };
 
-            this->cal_dm_diff = [&, this](const int& is, const T* const X)->void
+            this->cal_dm_diff = [this, &psi_ks, &pc, naos, &nocc, &nvirt, &pmat](const int& is, const T* const X)->void
                 {
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);
 #ifdef __MPI
@@ -234,7 +234,7 @@ namespace LR
 
             // 1. $\sum_bX_{bi\sigma}H_{ba\sigma}[D^X]-\sum_kX_{ak\sigma}H_{ik\sigma}[D^X]$,
             //    excited-state kernel, $D^X$ fed TRANSPOSED (see `set_dm` below)
-            auto newCXC = [&](const int sl, const int sr)
+            auto newCXC = [this, &nspin, &naos, &nocc, &nvirt, &psi_ks, &pot, &ucell, &orb_cutoff, &gd, &kv, &pX, &pc, &pmat](const int sl, const int sr)
                 {
                     return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                         *this->DM_trans, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
@@ -246,7 +246,7 @@ namespace LR
             this->ops[3] = newCXC(1, 1);
 
             // 2. $H_{ai\sigma}[T]$, ground-state kernel
-            auto newHT = [&](const int sl, const int sr)
+            auto newHT = [this, &nspin, &naos, &nocc, &nvirt, &psi_ks, &pot_hxc_gs, &ucell, &orb_cutoff, &gd, &kv, &pX, &pc, &pmat](const int sl, const int sr)
                 {
                     return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                         *this->DM_diff, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,

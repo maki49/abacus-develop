@@ -70,7 +70,7 @@ namespace LR
                 this->ops->add(op_hz_exx);
             }
 #endif
-            this->cal_dm_trans = [&, this](const int& is, const T* X)->void
+            this->cal_dm_trans = [this, &psi_ks, &pc, naos, &nocc, &nvirt, &pmat](const int& is, const T* X)->void
                 {
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);
 #ifdef __MPI
@@ -139,7 +139,7 @@ namespace LR
                 pX[1], this->nk, nocc[1], nvirt[1], /*add_on=*/true);
 
             // 2. $H_{ai\sigma}[D^Z]=2\sum_{\sigma'}K_{ai\sigma}[D^Z_{\sigma'}]$
-            auto newHxc = [&](const int sl, const int sr)
+            auto newHxc = [this, &nspin, &naos, &nocc, &nvirt, &psi_ks, &pot_hxc_gs, &ucell, &orb_cutoff, &gd, &kv, &pX, &pc, &pmat](const int sl, const int sr)
                 {
                     return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                         *this->DM_trans, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,

@@ -28,12 +28,19 @@
 namespace LR { template <typename T> struct GradientInputs; }
 namespace ModuleESolver
 {
+    struct LRRuntime
+    {
+        std::ofstream& running_log;
+        std::ofstream& warning_log;
+        int rank;
+    };
+
     ///Excited State Solver: Linear Response TDDFT (Tamm Dancoff Approximation) 
     template<typename T, typename TR = double>
     class ESolver_LR : public ModuleESolver::ESolver_FP
     {
     public:
-        ESolver_LR(const Input_para& inp, const std::string& in_dir, const std::string& out_dir);
+        ESolver_LR(const Input_para& inp, const std::string& in_dir, const std::string& out_dir, const LRRuntime& runtime);
         ~ESolver_LR() {}
 
         ///input: input, call, basis(LCAO), psi(ground state), elecstate
@@ -57,9 +64,9 @@ namespace ModuleESolver
         std::vector<double> orb_cutoff_;
 
         /// cached aliases, read once here instead of at every log/print call site below
-        std::ofstream& ofs_running_ = GlobalV::ofs_running;
-        std::ofstream& ofs_warning_ = GlobalV::ofs_warning;
-        const int my_rank_ = GlobalV::MY_RANK;
+        std::ofstream& ofs_running_;
+        std::ofstream& ofs_warning_;
+        const int my_rank_;
 
         /// @brief the ground-state solver, kept alive across ionic steps (esolver_type = "ks-lr").
         /// Null on the `lr` path, where the ground state comes from files instead.

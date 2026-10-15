@@ -20,7 +20,7 @@ template<typename T>
 void LR_Density<T>::dm_to_density(module_dm::DensityMatrix<std::complex<double>, std::complex<double>>& dm, double** density)
 {
     ModuleBase::TITLE("LR_Density", "dm_to_density");
-    auto dm_to_density_real = [&](const char& part) -> void
+    auto dm_to_density_real = [this, &dm, density](const char& part) -> void
         {
             module_dm::DensityMatrix<std::complex<double>, double> dm_real(&pmat_, 1, kv_.kvec_d, nk_);
             LR_Util::initialize_DMR<std::complex<double>, double>(dm_real, pmat_, ucell_, gd_, orb_cutoff_);
@@ -45,11 +45,11 @@ LR_Density<T>::LR_Density(const UnitCell& ucell,
     const std::vector<Parallel_2D>& pX,
     const Parallel_2D& pc,
     const Parallel_Orbitals& pmat,
-    const bool openshell) :
+    const bool openshell, const int output_precision, const std::string& output_directory) :
     ucell_(ucell), kv_(kv), gd_(gd), psi_ks_(psi_ks),
     orb_cutoff_(orb_cutoff), pgrid_(pgrid), nspin_(nspin),
     nocc_(nocc), nvirt_(nvirt), nao_(nao), pX_(pX), pc_(pc), pmat_(pmat),
-    openshell_(openshell)
+    openshell_(openshell), out_chg_precision_(output_precision), global_out_dir_(output_directory)
 {
     nk_ = kv.get_nks() / nspin;
     spintype_ = openshell ? std::vector<std::string>({ "up", "down" })

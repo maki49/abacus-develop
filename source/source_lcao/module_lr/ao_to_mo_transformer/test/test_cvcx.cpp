@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "mpi.h"
+#include "source_base/parallel_cell.h"
 #include "../cvcx.h"
 
 #include "source_lcao/module_lr/utils/lr_util.h"
@@ -27,12 +27,14 @@ public:
     };
     int nstate = 2;
     std::ofstream ofs_running;
-    int my_rank;
+    int my_rank = 0;
 #ifdef __MPI
     void SetUp() override
     {
-        MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-        this->ofs_running.open("log" + std::to_string(my_rank) + ".txt");
+        const auto world = ModuleBase::world_comm_domain();
+        my_rank = world.rank();
+        const std::string logfile = testing::TempDir() + "cvcx_test_" + std::to_string(my_rank) + ".txt";
+        this->ofs_running.open(logfile);
         ofs_running << "my_rank = " << my_rank << std::endl;
     }
     void TearDown() override
@@ -342,14 +344,3 @@ TEST_F(AXTest, ComplexParallel)
     }
 }
 #endif
-
-
-int main(int argc, char** argv)
-{
-    srand(time(NULL));  // for random number generator
-    MPI_Init(&argc, &argv);
-    testing::InitGoogleTest(&argc, argv);
-    int result = RUN_ALL_TESTS();
-    MPI_Finalize();
-    return result;
-}

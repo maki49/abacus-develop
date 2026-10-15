@@ -35,14 +35,17 @@ namespace LR
 
     void PotHxcLR::Scratch::alloc(const int nrxx, const int npw, const int nmaxgr, const bool gga)
     {
+        const std::size_t real_size = nrxx;
+        const std::size_t reciprocal_size = npw;
+        const std::size_t fft_size = nmaxgr;
         // resize() on an already-large vector is a no-op, so only the first call allocates.
-        if (static_cast<int>(this->vxc.size()) < nrxx) { this->vxc.resize(nrxx); }
-        if (static_cast<int>(this->rhog.size()) < npw) { this->rhog.resize(npw); }
-        if (static_cast<int>(this->vg.size()) < nmaxgr) { this->vg.resize(nmaxgr); }
+        if (this->vxc.size() < real_size) { this->vxc.resize(real_size); }
+        if (this->rhog.size() < reciprocal_size) { this->rhog.resize(reciprocal_size); }
+        if (this->vg.size() < fft_size) { this->vg.resize(fft_size); }
         if (gga)
         {
-            if (static_cast<int>(this->drho.size()) < nrxx) { this->drho.resize(nrxx); }
-            if (static_cast<int>(this->gdot.size()) < nrxx) { this->gdot.resize(nrxx); }
+            if (this->drho.size() < real_size) { this->drho.resize(real_size); }
+            if (this->gdot.size() < real_size) { this->gdot.resize(real_size); }
         }
     }
 

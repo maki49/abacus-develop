@@ -43,7 +43,7 @@ HamiltULR<T>::HamiltULR(const std::string& xc_kernel,
     this->ops[0] = new OperatorLRDiag<T>(eig_ks.c, pX_in[0], nk, nocc[0], nvirt[0], /*add_on=*/true);
     this->ops[3] = new OperatorLRDiag<T>(eig_ks.c + nk * (nocc[0] + nvirt[0]), pX_in[1], nk, nocc[1], nvirt[1], /*add_on=*/true);
 
-    auto newHxc = [&](const int& sl, const int& sr) { return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
+    auto newHxc = [this, &nspin, &naos, &nocc, &nvirt, &psi_ks_in, &pot_in, &ucell_in, &orb_cutoff, &gd_in, &kv_in, &pX_in, &pc_in, &pmat_in](const int& sl, const int& sr) { return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
         *this->DM_trans, pot_in[sl], ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in, { sl,sr }); };
     this->ops[0]->add(newHxc(0, 0));
     this->ops[1] = newHxc(0, 1);
@@ -66,7 +66,7 @@ HamiltULR<T>::HamiltULR(const std::string& xc_kernel,
     }
 #endif
 
-    this->cal_dm_trans = [&, this](const int& is, const T* const X)->void
+    this->cal_dm_trans = [this, &psi_ks_in, &pc_in, naos, &nocc, &nvirt, &pmat_in](const int& is, const T* const X)->void
         {
             const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks_in, is, nk);
             // LR_Util::print_value(X, pX_in[is].get_local_size());

@@ -314,7 +314,8 @@ namespace LR_Util
         initialize_DMR(dm, pmat, ucell, gd, orb_cutoff);
         for (int is = 0; is < nspin_dm; ++is)
         {
-            assert(static_cast<int>(dmk[is].size()) >= nk);
+            const std::size_t kpoint_count = nk;
+            assert(dmk[is].size() >= kpoint_count);
             if (symmetrize)
             {
                 for (int ik = 0; ik < nk; ++ik)

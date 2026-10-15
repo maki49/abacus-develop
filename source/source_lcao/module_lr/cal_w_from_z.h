@@ -136,7 +136,7 @@ namespace LR
             { 0 }, T(1.0), ATYPE::CC_oo);
 
         std::vector<ct::Tensor> dm_trans_2d, dm_diff_2d;
-        auto cal_dm_trans = [&](const int is, const T* const x_ptr)->void //DX
+        auto cal_dm_trans = [&psi_ks, nk, &dm_trans_2d, &px, &pc, naos, &nocc, &nvirt, &pmat, &DM_trans](const int is, const T* const x_ptr)->void //DX
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
 #ifdef __MPI
@@ -148,7 +148,7 @@ namespace LR
 #endif
                 for (int ik = 0;ik < nk;++ik) { DM_trans.set_dmk_ptr(ik, dm_trans_2d[ik].data<T>()); }
             };
-        auto cal_dm_diff_relaxed = [&](const int& is, const T* const x_ptr, const T* const z_ptr)->void  // T+DZ
+        auto cal_dm_diff_relaxed = [&psi_ks, nk, &px, &pc, naos, &nocc, &nvirt, &pmat, &dm_diff_2d, &DM_diff_relaxed](const int& is, const T* const x_ptr, const T* const z_ptr)->void  // T+DZ
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
 #ifdef __MPI
@@ -279,7 +279,7 @@ namespace LR
 #endif
         // the relaxed difference density matrix of one spin channel
         std::vector<ct::Tensor> dm_buf;
-        auto set_dm_diff_relaxed = [&](const int is)->void
+        auto set_dm_diff_relaxed = [&psi_ks, nk, X, Z, &off_x, &px, &pc, naos, &nocc, &nvirt, &pmat, &dm_buf, &DM_diff_relaxed](const int is)->void
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
                 const T* const x_ptr = X + off_x[is];

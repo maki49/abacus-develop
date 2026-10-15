@@ -4,6 +4,7 @@
 #include "source_lcao/module_lr/dm_trans/dm_diff.h"
 #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 #include <iosfwd>
+#include <string>
 class K_Vectors;
 namespace LR
 {
@@ -27,8 +28,8 @@ namespace LR
         const bool openshell_;
         std::vector<std::string> spintype_;
         /// cached aliases, read once here instead of at every call site below
-        const int out_chg_precision_ = PARAM.inp.out_chg[1];
-        const std::string global_out_dir_ = PARAM.globalv.global_out_dir;
+        const int out_chg_precision_;
+        const std::string global_out_dir_;
 
         void dm_to_density(module_dm::DensityMatrix<double, double>& dm, double** density);
         void dm_to_density(module_dm::DensityMatrix<std::complex<double>, std::complex<double>>& dm, double** density);
@@ -47,7 +48,7 @@ namespace LR
             const std::vector<Parallel_2D>& pX,
             const Parallel_2D& pc,
             const Parallel_Orbitals& pmat,
-            const bool openshell);
+            const bool openshell, const int output_precision, const std::string& output_directory);
 
         /// @brief calculate the electron density from the density matrix in 2d-block distribution
         void cal_eh_density_single_state(const T* const X_istate, const int ispin, double** density);

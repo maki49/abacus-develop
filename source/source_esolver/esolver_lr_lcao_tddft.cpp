@@ -18,8 +18,9 @@ using namespace LR;
 template <typename T, typename TR>
 ModuleESolver::ESolver_LR<T, TR>::ESolver_LR(const Input_para& inp,
                                             const std::string& in_dir,
-                                            const std::string& out_dir)
-    : in_dir(in_dir), out_dir(out_dir)
+                                            const std::string& out_dir, const LRRuntime& runtime)
+    : in_dir(in_dir), out_dir(out_dir), ofs_running_(runtime.running_log),
+      ofs_warning_(runtime.warning_log), my_rank_(runtime.rank)
 {
 #ifdef __EXX
     init_exx_info(this->exx_info, inp);
@@ -69,8 +70,8 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     // a relaxation writes these once per ionic step; without the suffix every step would overwrite
     // the last, and the trajectory would be impossible to inspect afterwards
     const std::string step_suffix = this->excited_relax_ ? "_step" + std::to_string(istep) : "";
-    auto efile_out = [&](const std::string& label)->std::string {return this->out_dir + "Excitation_Energy_" + label + step_suffix + ".dat";};
-    auto vfile_out = [&](const std::string& label)->std::string {return this->out_dir + "Excitation_Amplitude_" + label + step_suffix + "_" + std::to_string(this->my_rank_+1) + ".dat";};
+    auto efile_out = [this, &step_suffix](const std::string& label)->std::string {return this->out_dir + "Excitation_Energy_" + label + step_suffix + ".dat";};
+    auto vfile_out = [this, &step_suffix](const std::string& label)->std::string {return this->out_dir + "Excitation_Amplitude_" + label + step_suffix + "_" + std::to_string(this->my_rank_+1) + ".dat";};
     if (this->inp_->lr_solver == "elpa")
     {
         ModuleBase::WARNING_QUIT("ESolver_LR", "ESolver_LR doesn't support elpa now.");
@@ -168,7 +169,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     else    // lr_solver == "spectrum", read the eigenvalues
     {
         auto efile_in = [&](const std::string& label)->std::string {return this->in_dir + "Excitation_Energy_" + label + ".dat";};
-        auto vfile_in = [&](const std::string& label)->std::string {return this->in_dir + "Excitation_Amplitude_" + label + "_" + std::to_string(this->my_rank_+1) + ".dat";};
+        auto vfile_in = [this](const std::string& label)->std::string {return this->in_dir + "Excitation_Amplitude_" + label + "_" + std::to_string(this->my_rank_+1) + ".dat";};
     
         auto read_states = [&](const std::string& label, Real<T>* e, T* v, const int& dim, const int& nst)->void
             {
@@ -240,7 +241,7 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
     {
         LR_Density<T> lr_density(*this->ucell_, kv, gd(), *psi_ks, orb_cutoff_, pgrid(),
             nspin, nocc, nvirt, nbasis,
-            paraX_, paraC_, paraMat_, openshell);
+            paraX_, paraC_, paraMat_, openshell, this->inp_->out_chg[1], this->out_dir);
 
         if (openshell)
         {

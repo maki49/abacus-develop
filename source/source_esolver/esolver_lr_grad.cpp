@@ -210,7 +210,7 @@ ModuleESolver::ESolver_LR<T, TR>::cal_grad_matrix_degenerate(const int ispin,
     ModuleBase::timer::start("ESolver_LR", "cal_grad_matrix_degenerate");
     const int d = static_cast<int>(group.size());
     assert(d >= 2);
-    assert(static_cast<int>(diag.size()) == d);
+    assert(diag.size() == group.size());
     const std::vector<std::pair<int, int>> pairs = LR::degenerate_pairs(d);
     const int nloc_g = this->nloc_per_state_z_;
     const int ekb_off = this->openshell ? 0 : ispin * this->nstates;

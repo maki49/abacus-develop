@@ -1,3 +1,6 @@
+if(ENABLE_MPI)
+  set(test_dm_diff_main ../../../../source_base/test/mpi_test_main.cpp)
+endif()
 abacus_disable_feature_definitions(__LIBXC)
 AddTest(
   TARGET MODULE_LR_dm_trans_test
@@ -16,5 +19,5 @@ AddTest(
 AddTest(
   TARGET MODULE_LR_dm_diff_test
   LIBS psi base parameter ${math_libs} device container
-  SOURCES test_dm_diff.cpp ../dm_diff_ser.cpp ../dm_diff_par.cpp ../../utils/lr_util.cpp
+  SOURCES test_dm_diff.cpp ${test_dm_diff_main} ../dm_diff_ser.cpp ../dm_diff_par.cpp ../../utils/lr_util.cpp
 )

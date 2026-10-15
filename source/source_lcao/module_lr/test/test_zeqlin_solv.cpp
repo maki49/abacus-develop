@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "../zeq_solver.h"
-#include "mpi.h"
+#include "source_base/parallel_cell.h"
 #include "../zeqlin_solv.h"
 
 #include <cmath>
@@ -290,13 +290,4 @@ TEST(ZeqCGReview, RejectsAnUnsolvableSystem)
     const std::function<void(const double*, double*)> zero =
         [](const double*, double* y) { y[0] = 0.0; y[1] = 0.0; };
     EXPECT_THROW(LR::solve_Z_CG(z, rhs, 2, 1, zero, false), std::runtime_error);
-}
-
-int main(int argc, char** argv)
-{
-    MPI_Init(&argc, &argv);
-    testing::InitGoogleTest(&argc, argv);
-    const int result = RUN_ALL_TESTS();
-    MPI_Finalize();
-    return result;
 }

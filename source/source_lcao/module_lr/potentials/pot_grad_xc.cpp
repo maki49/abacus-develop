@@ -19,16 +19,17 @@ namespace LR
 
     void PotGradXCLR::Scratch::alloc(const int nrxx, const bool two_channel, const bool gga)
     {
+        const std::size_t real_size = nrxx;
         // resize() on an already-large vector is a no-op, so only the first call allocates.
-        if (static_cast<int>(this->vtmp.size()) < nrxx) { this->vtmp.resize(nrxx); }
+        if (this->vtmp.size() < real_size) { this->vtmp.resize(real_size); }
         if (gga)
         {
-            if (static_cast<int>(this->gdot.size()) < nrxx) { this->gdot.resize(nrxx); }
-            if (static_cast<int>(this->div.size()) < nrxx) { this->div.resize(nrxx); }
+            if (this->gdot.size() < real_size) { this->gdot.resize(real_size); }
+            if (this->div.size() < real_size) { this->div.resize(real_size); }
             const int nch = two_channel ? 2 : 1;
             for (int is = 0; is < nch; ++is)
             {
-                if (static_cast<int>(this->drho1[is].size()) < nrxx) { this->drho1[is].resize(nrxx); }
+                if (this->drho1[is].size() < real_size) { this->drho1[is].resize(real_size); }
             }
         }
     }
