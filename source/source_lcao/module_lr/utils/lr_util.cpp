@@ -1,5 +1,6 @@
 #include "source_base/constants.h"
 #include "lr_util.h"
+#include "source_base/parallel_reduce.h"
 #include "source_cell/unitcell.h"
 #include <algorithm>
 #include <cmath>
@@ -9,6 +10,32 @@
 #include "source_base/module_container/base/third_party/lapack.h"
 namespace LR_Util
 {
+    int spin_population_difference(const ModuleBase::matrix& wg, const int kpar, const int rank_in_pool)
+    {   // only for nspin=2
+        const int& nk = wg.nr / 2;
+        auto occ_sum_k = [&](const int& is, const int& ib)->double { double o = 0.0; for (int ik = 0;ik < nk;++ik) { o += wg(is * nk + ik, ib); } return o;};
+        // Sum the occupations of each channel FIRST and round once, instead of rounding band by band
+        // and summing the differences. A half-occupied degenerate frontier pair (OH's 2-Pi doublet
+        // smears its odd electron as 0.5/0.5 over the two pi_down orbitals) otherwise makes the answer
+        // a coin flip: the stored values are 0.5000000052 and 0.4999999947, so one rounds up and one
+        // down, and which way they land is pure noise.
+        double up = 0.0;
+        double dn = 0.0;
+        for (int ib = 0;ib < wg.nc;++ib) { up += occ_sum_k(0, ib); dn += occ_sum_k(1, ib); }
+        // wg is replicated within a pool, but each pool holds different k points.
+        if (kpar > 1)
+        {
+            if (rank_in_pool != 0)
+            {
+                up = 0.0;
+                dn = 0.0;
+            }
+            Parallel_Reduce::reduce_all(up);
+            Parallel_Reduce::reduce_all(dn);
+        }
+        return static_cast<int>(std::lround(up) - std::lround(dn));
+    }
+
     std::string force_window_warning(const int basis_size, const int gs_bands,
         const int skipped_occupied, const std::vector<int>& x_virtual,
         const std::vector<int>& z_virtual)

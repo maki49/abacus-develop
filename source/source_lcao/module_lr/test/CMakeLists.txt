@@ -2,7 +2,7 @@ if(ENABLE_LIBXC)
   AddTest(
     TARGET MODULE_LR_pot_hxc_lrtd
     LIBS base parameter device container psi Libxc::xc
-    SOURCES test_pot_hxc_lrtd.cpp ../potentials/pot_hxc_lrtd.cpp
+    SOURCES test_pot_hxc_lrtd.cpp ../potentials/pot_hxc_lrtd.cpp ../kernel_pots.cpp
       ../potentials/xc_kernel.cpp ../potentials/xc_kxc.cpp ../utils/lr_util.cpp
       ../../../source_hamilt/module_xc/xc_functional.cpp
       ../../../source_hamilt/module_xc/libxc_setup.cpp
@@ -31,7 +31,7 @@ if(ENABLE_MPI)
   AddTest(
     TARGET MODULE_LR_zeqlin_solv
     LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
-    SOURCES test_zeqlin_solv.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+    SOURCES test_zeqlin_solv.cpp ../zeq_cg.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
   )
   add_test(
     NAME MODULE_LR_zeqlin_failure_mpi

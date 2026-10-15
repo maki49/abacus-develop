@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include "../kernel_pots.h"
+#include "source_io/module_parameter/input_parameter.h"
 #include "../potentials/pot_hxc_lrtd.h"
 #include "source_hamilt/module_xc/xc_functional.h"
 #include "source_hamilt/module_xc/libxc_abacus.h"
@@ -160,4 +162,56 @@ TEST_F(PotHxcLRTest, RejectMissingOrMismatchedKernel)
     const auto kernel = build("lda", 1);
     EXPECT_EQ(kernel->nspin(), 1);
     EXPECT_THROW(LR::PotHxcLR(kernel, basis, cell, 1, 2, LR::PotHxcLR::S2_triplet), std::invalid_argument);
+}
+
+TEST_F(PotHxcLRTest, PotentialFactorySharesSameFunctionalAcrossSpinViews)
+{
+    Input_para input;
+    input.cal_force = true;
+    input.dft_functional = "lda";
+    input.lr_init_xc_kernel = init;
+    for (const int nspin : {1, 2})
+    {
+        const auto prepared = LR::prepare_lr_potentials(input, input.dft_functional,
+            basis, cell, charge, grid, nspin, false);
+        ASSERT_EQ(prepared.pot.size(), nspin);
+        for (const auto& potential : prepared.pot)
+        {
+            EXPECT_EQ(&potential->xc_kernel_components(), prepared.kernel.get());
+        }
+        const auto gs = LR::prepare_gs_potential(input, input.dft_functional,
+            basis, cell, charge, grid, nspin, false, prepared);
+        EXPECT_EQ(&gs->xc_kernel_components(), prepared.kernel.get());
+    }
+}
+
+TEST_F(PotHxcLRTest, PotentialFactorySeparatesMixedFunctionals)
+{
+    Input_para input;
+    input.cal_force = true;
+    input.dft_functional = "pbe";
+    input.lr_init_xc_kernel = init;
+    const std::string lr_functional = "lda";
+    const auto prepared = LR::prepare_lr_potentials(input, lr_functional,
+        basis, cell, charge, grid, 2, false);
+    const auto gs = LR::prepare_gs_potential(input, lr_functional,
+        basis, cell, charge, grid, 2, false, prepared);
+    EXPECT_NE(&gs->xc_kernel_components(), prepared.kernel.get());
+    EXPECT_EQ(gs->xc_kernel_components().name(), "pbe");
+    EXPECT_EQ(prepared.kernel->name(), "lda");
+}
+
+TEST_F(PotHxcLRTest, PotentialFactoryRetainsOpenShellKernelSharing)
+{
+    Input_para input;
+    input.cal_force = true;
+    input.dft_functional = "lda";
+    input.lr_init_xc_kernel = init;
+    const auto prepared = LR::prepare_lr_potentials(input, input.dft_functional,
+        basis, cell, charge, grid, 2, true);
+    ASSERT_EQ(prepared.pot.size(), 2);
+    EXPECT_EQ(&prepared.pot[0]->xc_kernel_components(), &prepared.pot[1]->xc_kernel_components());
+    const auto gs = LR::prepare_gs_potential(input, input.dft_functional,
+        basis, cell, charge, grid, 2, true, prepared);
+    EXPECT_EQ(&gs->xc_kernel_components(), prepared.kernel.get());
 }

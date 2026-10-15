@@ -1,5 +1,3 @@
-#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_PAR_HPP
-#define ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_PAR_HPP
 #ifdef __MPI
 // #include <ATen/core/tensor_types.h>
 #include "source_base/module_container/ATen/core/tensor_types.h"
@@ -9,7 +7,7 @@
 #include "dm_diff.h"
 namespace LR
 {
-    inline void CvX(
+    void CvX(
         const double* C,
         const Parallel_2D& pc,
         const double* X,
@@ -31,7 +29,7 @@ namespace LR
             X, &i1, &i1, px.desc,
             &beta, CvX, &i1, &i1, pcx.desc);
     }
-    inline void CvX(
+    void CvX(
         const std::complex<double>* C,
         const Parallel_2D& pc,
         const std::complex<double>* X,
@@ -54,7 +52,7 @@ namespace LR
             &beta, CvX, &i1, &i1, pcx.desc);
     }
 
-    inline void CoXT(
+    void CoXT(
         const double* C,
         const Parallel_2D& pc,
         const double* X,
@@ -75,7 +73,7 @@ namespace LR
             X, &i1, &i1, px.desc,
             &beta, CoXT, &i1, &i1, pcxt.desc);
     }
-    inline void CoXT(
+    void CoXT(
         const std::complex<double>* C,
         const Parallel_2D& pc,
         const std::complex<double>* X,
@@ -97,7 +95,7 @@ namespace LR
             &beta, CoXT, &i1, &i1, pcxt.desc);
     }
 
-    inline void AAT(
+    void AAT(
         const double* A,
         const Parallel_2D& pa,
         const int& nrow,
@@ -116,7 +114,7 @@ namespace LR
             A, &i1, &i1, pa.desc,
             &beta, C, &i1, &i1, pc.desc);
     }
-    inline void AAT(
+    void AAT(
         const std::complex<double>* A,
         const Parallel_2D& pa,
         const int& nrow,
@@ -188,7 +186,8 @@ namespace LR
         }
         return dm_diff;
     }
+template std::vector<container::Tensor> cal_dm_diff_pblas<double>(const double* const, const Parallel_2D&, const psi::Psi<double, base_device::DEVICE_CPU>&, const Parallel_2D&, const int&, const int&, const int&, const Parallel_2D&, const bool, const int);
+template std::vector<container::Tensor> cal_dm_diff_pblas<std::complex<double>>(const std::complex<double>* const, const Parallel_2D&, const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>&, const Parallel_2D&, const int&, const int&, const int&, const Parallel_2D&, const bool, const int);
+
 }
 #endif
-
-#endif // ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_PAR_HPP

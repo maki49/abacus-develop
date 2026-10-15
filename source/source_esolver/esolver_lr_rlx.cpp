@@ -23,7 +23,7 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_relax_target_()
     this->excited_relax_ = (this->inp_->calculation == "relax");
     if (!this->excited_relax_) { return; }
 
-    // The Z-vector equation has no complex solver (see zeq_solver.hpp), so an
+    // The Z-vector equation has no complex solver (see zeq_solver.h), so an
     // excited-state gradient only exists at gamma. Fail here rather than after the SCF.
     if (!std::is_same<T, double>::value)
     {

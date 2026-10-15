@@ -16,5 +16,5 @@ AddTest(
 AddTest(
   TARGET MODULE_LR_dm_diff_test
   LIBS psi base parameter ${math_libs} device container
-  SOURCES test_dm_diff.cpp ../../utils/lr_util.cpp
+  SOURCES test_dm_diff.cpp ../dm_diff_ser.cpp ../dm_diff_par.cpp ../../utils/lr_util.cpp
 )

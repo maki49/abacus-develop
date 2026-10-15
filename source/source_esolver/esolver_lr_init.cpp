@@ -1,3 +1,4 @@
+#include "source_lcao/module_lr/init_helpers.h"
 // Initialize LR from an embedded KS solver or standalone ground-state files.
 #include "esolver_lr_lcao_tddft.h"
 #include "source_basis/module_pw/pw_basis_big.h"
@@ -153,7 +154,7 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_ks_(UnitCell& ucell, cons
     //kv
     this->kv = ks_sol.kv;   // copy: cheap, and the KS solver keeps using its own
 
-    this->parameter_check();
+    LR::check_lr_parameters(*this->inp_, this->xc_kernel, this->nspin);
 
     this->set_dimension();
 
@@ -270,7 +271,7 @@ void ModuleESolver::ESolver_LR<T, TR>::refresh_from_ks_(UnitCell& ucell)
 
     if (nspin == 2)
     {
-        const int nupdown_now = cal_nupdown_form_occ(ks_sol.pelec->wg);
+        const int nupdown_now = LR_Util::spin_population_difference(ks_sol.pelec->wg, this->kv.para_k.kpar, this->kv.para_k.rank_in_pool);
         if (!this->ks_initialized_)
         {
             this->nupdown = nupdown_now;
@@ -342,7 +343,7 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
     ModuleBase::GlobalFunc::DONE(this->ofs_running_, "INIT K-POINTS");
     ModuleIO::print_parameters(ucell, this->kv, inp);
 
-    this->parameter_check();
+    LR::check_lr_parameters(*this->inp_, this->xc_kernel, this->nspin);
 
     /// read orbitals and build the interpolation table
     two_center_bundle_own_.build_orb(ucell.ntype, ucell.orbital_fn.data(), inp.orbital_dir);
@@ -353,7 +354,7 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
     orb_cutoff_ = orb.cutoffs();
     if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
     {
-        setup_2center_table(this->two_center_bundle_own_, orb, ucell);
+        LR::setup_2center_table(this->two_center_bundle_own_, orb, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
     }
 
     this->set_dimension();

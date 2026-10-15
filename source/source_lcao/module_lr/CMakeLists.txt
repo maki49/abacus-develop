@@ -21,6 +21,17 @@ if(ENABLE_LCAO)
     operator_casida/operator_lr_exx.cpp
     potentials/pot_hxc_lrtd.cpp
     potentials/pot_grad_xc.cpp
+    kernel_pots.cpp
+    init_helpers.cpp
+    hsolver_lrtd.cpp
+    zeq_solver.cpp
+    zeq_cg.cpp
+    hamilt_ulr.cpp
+    lr_density.cpp
+    utils/spectrum_mo.cpp
+    utils/spectrum_out.cpp
+    dm_trans/dm_diff_ser.cpp
+    dm_trans/dm_diff_par.cpp
     lr_spectrum.cpp
     lr_spectrum_velocity.cpp
     hamilt_casida.cpp

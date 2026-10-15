@@ -110,3 +110,29 @@ TEST(LRForceWindow, EqualXAndZDoNotHideOccupiedOrBandTruncation)
     const std::string bands = LR_Util::force_window_warning(17, 11, 0, virtuals, virtuals);
     EXPECT_NE(bands.find("ground-state band space is incomplete"), std::string::npos);
 }
+
+TEST(LRSpinPopulation, RoundAfterSummingFractionalOccupations)
+{
+    ModuleBase::matrix occupations(2, 3);
+    occupations(0, 0) = 1.0;
+    occupations(0, 1) = 1.0;
+    occupations(0, 2) = 1.0;
+    occupations(1, 0) = 1.0;
+    occupations(1, 1) = 0.5000000052;
+    occupations(1, 2) = 0.4999999947;
+    EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
+    std::swap(occupations(1, 1), occupations(1, 2));
+    EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
+}
+
+TEST(LRSpinPopulation, SumKPointsBeforeRounding)
+{
+    ModuleBase::matrix occupations(4, 2);
+    occupations(0, 0) = 0.5;
+    occupations(1, 0) = 0.5;
+    occupations(0, 1) = 0.5;
+    occupations(1, 1) = 0.5;
+    occupations(2, 0) = 0.5;
+    occupations(3, 0) = 0.5;
+    EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
+}

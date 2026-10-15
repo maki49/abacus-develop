@@ -1,3 +1,4 @@
+#include "source_lcao/module_lr/init_helpers.h"
 #include "esolver_lr_lcao_bse.h"
 #include <array>
 #include "source_basis/module_pw/pw_basis_big.h"
@@ -36,7 +37,7 @@ void ESolver_BSE<T, TR>::before_all_runners(BaseCell& basecell, const Input_para
     ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "Set K-POINTS and R-list for RI");
     ModuleIO::print_parameters(ucell, this->kv, inp);
 
-    this->parameter_check();
+    LR::check_lr_parameters(*this->inp_, this->xc_kernel, this->nspin);
 
     /// read orbitals and build the interpolation table
     this->two_center_bundle_own_.build_orb(ucell.ntype, ucell.orbital_fn.data(), inp.orbital_dir);
@@ -46,7 +47,7 @@ void ESolver_BSE<T, TR>::before_all_runners(BaseCell& basecell, const Input_para
     this->orb_cutoff_ = this->orb_.cutoffs();
     if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
     {
-        this->setup_2center_table(this->two_center_bundle_own_, this->orb_, ucell);
+        LR::setup_2center_table(this->two_center_bundle_own_, this->orb_, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
     }
 
     this->set_dimension();
@@ -75,7 +76,7 @@ void ESolver_BSE<T, TR>::before_all_runners(BaseCell& basecell, const Input_para
     // NOTE: openshell is not implemented in BSE
     if (this->nspin == 2)
     {
-        this->nupdown = this->cal_nupdown_form_occ(this->pelec->wg);
+        this->nupdown = LR_Util::spin_population_difference(this->pelec->wg, this->kv.para_k.kpar, this->kv.para_k.rank_in_pool);
         this->reset_dim_spin2();
     }
 

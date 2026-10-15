@@ -219,8 +219,6 @@ namespace ModuleESolver
 
         LCAO_Orbitals orb_; ///< numerical atomic orbital data for single-point evaluation
         std::vector<std::complex<double>> velocity_mo; ///< store the velocity matrix elements in MO basis
-        int cal_nupdown_form_occ(const ModuleBase::matrix& wg);
-        void setup_2center_table(TwoCenterBundle& two_center_bundle, LCAO_Orbitals& orb, UnitCell& ucell);
 
         /// @brief allocate and set the inital value of X
         void setup_eigenvectors_X();
@@ -234,7 +232,6 @@ namespace ModuleESolver
         virtual void init_pot(const Charge& chg_gs);
 
         /// @brief check the legality of the input parameters
-        void parameter_check() const;
         /// @brief set nocc, nvirt, nbasis, npairs and nstates
         void set_dimension();
         /// reset nocc, nvirt, npairs after read ground-state wavefunction when nspin=2

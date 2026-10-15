@@ -1,6 +1,6 @@
-#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_HSOLVER_LRTD_HPP
-#define ABACUS_SOURCE_LCAO_MODULE_LR_HSOLVER_LRTD_HPP
-
+#include "hsolver_lrtd.h"
+#include "hamilt_casida.h"
+#include "hamilt_ulr.h"
 #include "source_io/module_parameter/parameter.h"
 #include "source_hsolver/diag_comm_info.h"
 #include "source_hsolver/diago_david.h"
@@ -14,7 +14,7 @@
 
 namespace LR
 {
-    template<typename T> using Real = typename GetTypeReal<T>::type;
+
 
     namespace HSolver
     {
@@ -59,10 +59,10 @@ namespace LR
             const std::string method,
             const Real<T>& diag_ethr, ///< threshold for diagonalization
             const std::vector<Real<T>>& precondition,
-            const bool hermitian = true)
+            const bool hermitian)
         {
             ModuleBase::TITLE("HSolverLR", "solve");
-            ModuleBase::timer::start("HSolverLR", "solve");  
+            ModuleBase::timer::start("HSolverLR", "solve");
             const std::vector<std::string> spin_types = { "singlet", "triplet" };
             // note: if not TDA, the eigenvalues will be complex
             // then we will need a new constructor of DiagoDavid
@@ -92,7 +92,7 @@ namespace LR
                 bool openshell = std::is_same<THamilt, HamiltULR<T>>::value;
                 // copy eigenvectors
 #ifdef __MPI
-                LR_Util::global2local_X(psi, Amat_full.data(), nband, nk, 
+                LR_Util::global2local_X(psi, Amat_full.data(), nband, nk,
                                         nocc, nvirt, pX, openshell);
 #else
                 std::memcpy(psi, Amat_full.data(), sizeof(T) * nband * gdim);
@@ -183,7 +183,10 @@ namespace LR
                 << "; current threshold: " << diag_ethr << std::endl;
             ModuleBase::timer::end("HSolverLR", "solve");
         }
+template void solve<double, HamiltLR<double>>(const HamiltLR<double>&, double*, const int&, const int&, const int&, const std::vector<int>&, const std::vector<int>&, const std::vector<Parallel_2D>&, double*, const std::string, const double&, const std::vector<double>&, const bool);
+template void solve<double, HamiltULR<double>>(const HamiltULR<double>&, double*, const int&, const int&, const int&, const std::vector<int>&, const std::vector<int>&, const std::vector<Parallel_2D>&, double*, const std::string, const double&, const std::vector<double>&, const bool);
+template void solve<std::complex<double>, HamiltLR<std::complex<double>>>(const HamiltLR<std::complex<double>>&, std::complex<double>*, const int&, const int&, const int&, const std::vector<int>&, const std::vector<int>&, const std::vector<Parallel_2D>&, double*, const std::string, const double&, const std::vector<double>&, const bool);
+template void solve<std::complex<double>, HamiltULR<std::complex<double>>>(const HamiltULR<std::complex<double>>&, std::complex<double>*, const int&, const int&, const int&, const std::vector<int>&, const std::vector<int>&, const std::vector<Parallel_2D>&, double*, const std::string, const double&, const std::vector<double>&, const bool);
+
     }
 }
-
-#endif // ABACUS_SOURCE_LCAO_MODULE_LR_HSOLVER_LRTD_HPP

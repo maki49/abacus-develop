@@ -1,5 +1,3 @@
-#ifndef ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_SER_HPP
-#define ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_SER_HPP
 #include "source_base/module_container/ATen/core/tensor_types.h"
 #include "source_base/module_external/blas_connector.h"
 #include "source_base/tool_title.h"
@@ -8,7 +6,7 @@
 namespace LR
 {
     template<typename T>
-    inline void print_colfirst(const T* ptr, const std::string& name, const int& nrow, const int& ncol)
+    void print_colfirst(const T* ptr, const std::string& name, const int& nrow, const int& ncol)
     {
         std::cout << name << std::endl;
         for (int i = 0;i < nrow;++i)
@@ -18,7 +16,7 @@ namespace LR
             std::cout << std::endl;
         }
     }
-    inline void CvX(
+    void CvX(
         const double* C,
         const double* X,
         const int& naos,
@@ -35,7 +33,7 @@ namespace LR
             X, &nvirt,
             &beta, CvX, &naos);
     }
-    inline void CvX(
+    void CvX(
         const std::complex<double>* C,
         const std::complex<double>* X,
         const int& naos,
@@ -53,7 +51,7 @@ namespace LR
             &beta, CvX, &naos);
     }
 
-    inline void CoXT(
+    void CoXT(
         const double* C,
         const double* X,
         const int& naos,
@@ -70,7 +68,7 @@ namespace LR
             X, &nvirt,
             &beta, CoXT, &naos);
     }
-    inline void CoXT(
+    void CoXT(
         const std::complex<double>* C,
         const std::complex<double>* X,
         const int& naos,
@@ -88,7 +86,7 @@ namespace LR
             &beta, CoXT, &naos);
     }
 
-    inline void AAT(
+    void AAT(
         const double* A,
         const int& nrow,
         const int& ncol,
@@ -104,7 +102,7 @@ namespace LR
             A, &nrow,
             &beta, C, &nrow);
     }
-    inline void AAT(
+    void AAT(
         const std::complex<double>* A,
         const int& nrow,
         const int& ncol,
@@ -159,8 +157,8 @@ namespace LR
         return dm_diff;
     }
 
-    inline double get_conj(const double& x) { return x; }
-    inline std::complex<double> get_conj(const std::complex<double>& x) { return std::conj(x); }
+    double get_conj(const double& x) { return x; }
+    std::complex<double> get_conj(const std::complex<double>& x) { return std::conj(x); }
 
     template<typename T>
     std::vector<ct::Tensor> cal_dm_diff_forloop(
@@ -203,5 +201,9 @@ namespace LR
         }
         return dm_diff;
     }
+template std::vector<container::Tensor> cal_dm_diff_blas<double>(const double* const, const psi::Psi<double, base_device::DEVICE_CPU>&, const int&, const int&, const int&, const bool, const int);
+template std::vector<container::Tensor> cal_dm_diff_forloop<double>(const double* const, const psi::Psi<double, base_device::DEVICE_CPU>&, const int&, const int&, const int&, const bool, const int);
+template std::vector<container::Tensor> cal_dm_diff_blas<std::complex<double>>(const std::complex<double>* const, const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>&, const int&, const int&, const int&, const bool, const int);
+template std::vector<container::Tensor> cal_dm_diff_forloop<std::complex<double>>(const std::complex<double>* const, const psi::Psi<std::complex<double>, base_device::DEVICE_CPU>&, const int&, const int&, const int&, const bool, const int);
+
 }
-#endif // ABACUS_SOURCE_LCAO_MODULE_LR_DM_TRANS_DM_DIFF_SER_HPP

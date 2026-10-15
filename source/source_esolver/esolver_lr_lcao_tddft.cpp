@@ -2,10 +2,10 @@
 #include "esolver_lr_lcao_tddft.h"
 #include "source_lcao/module_lr/utils/lr_io.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
-#include "source_lcao/module_lr/hamilt_ulr.hpp"
-#include "source_lcao/module_lr/hsolver_lrtd.hpp"
+#include "source_lcao/module_lr/hamilt_ulr.h"
+#include "source_lcao/module_lr/hsolver_lrtd.h"
 #include "source_lcao/module_lr/lr_spectrum.h"
-#include "source_lcao/module_lr/lr_density.hpp"
+#include "source_lcao/module_lr/lr_density.h"
 #include "source_lcao/module_lr/ri_benchmark/ri_benchmark.h"
 #include "source_lcao/module_lr/operator_casida/operator_lr_diag.h"
 #include "source_lcao/module_lr/zeq_solver.h"
@@ -118,7 +118,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
             LR::HSolver::solve(hulr, this->X[0].template data<T>(), nloc_per_state, nstates,
                                this->nk, this->nocc, this->nvirt, this->paraX_,
                                this->pelec->ekb.c, this->inp_->lr_solver,
-                               this->inp_->lr_thr, precondition);
+                               this->inp_->lr_thr, precondition, true);
             if (this->inp_->out_wfc_lr) { write_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_state, nstates); }
         }
         else
@@ -160,7 +160,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                                    this->pelec->ekb.c + is * nstates,
                                    this->inp_->lr_solver,
                                    this->inp_->lr_thr,
-                                   precondition);
+                                   precondition, true);
                 if (this->inp_->out_wfc_lr) { write_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_state, nstates); }
             }
         }

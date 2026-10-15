@@ -29,6 +29,9 @@ template <> struct ToComplex<std::complex<float>> { using type = std::complex<fl
 
 namespace LR_Util
 {
+    /// Sum k-point spin populations before rounding; count each pool only once.
+    int spin_population_difference(const ModuleBase::matrix& wg, int kpar, int rank_in_pool);
+
     /// Reject unsupported NLCC force requests after pseudopotentials have been loaded.
     void check_force_pp(const UnitCell& cell, bool cal_force, const std::string& calculation);
 
@@ -66,13 +69,13 @@ namespace LR_Util
     }
 
     /// @brief calculate the number of electrons
-    /// @tparam TCell 
-    /// @param ucell 
+    /// @tparam TCell
+    /// @param ucell
     template <typename TCell>
     int cal_nelec(const TCell& ucell);
-    
+
     /// @brief calculate the number of occupied orbitals
-    /// @param nelec 
+    /// @param nelec
     int cal_nocc(int nelec);
 
     /// Largest occupied spin channel; nelec already includes the charge correction.
@@ -80,7 +83,7 @@ namespace LR_Util
 
     /// Retain a positive user window, otherwise use all occupied orbitals.
     int cal_nocc_window(int requested_nocc, int nocc_max);
-    
+
     /// Diagnose resolved force windows without modifying X, Z or their energies.
     std::string force_window_warning(int basis_size, int gs_bands, int skipped_occupied,
         const std::vector<int>& x_virtual, const std::vector<int>& z_virtual);
@@ -121,10 +124,10 @@ namespace LR_Util
     }
 
     //====== newers and deleters========
-    /// @brief  delete 2d pointer  
+    /// @brief  delete 2d pointer
     template <typename T>
     void _deallocate_2order_nested_ptr(T** p2, size_t size);
-    /// @brief  new 2d pointer  
+    /// @brief  new 2d pointer
     template <typename T>
     void _allocate_2order_nested_ptr(T**& p2, size_t size1, size_t size2);
 
@@ -171,11 +174,11 @@ namespace LR_Util
     ///=================2D-block Parallel===============
     // pack the process to setup 2d divion reusing blacs_ctxt of a new 2d-matrix
     void setup_2d_division(Parallel_2D& pv, int nb, int gr, int gc);
-    
+
     /// @brief assign global X to 2d-matrix, its col is band(excition state), and row is { spin, k-point, occ, virt }
     /// @attention pX is 2d-blocked as {occ, virt}, this assignment is used to calculate transition density matrix c_b X_{bj} c_j
     template <typename T>
-    void global2local_X(T* local_X, const T* global_X, const int nband, const int nk, 
+    void global2local_X(T* local_X, const T* global_X, const int nband, const int nk,
         const std::vector<int>& nocc, const std::vector<int>& nvirt, const std::vector<Parallel_2D>& pX,
         const bool openshell);
 #ifdef __MPI
@@ -201,7 +204,7 @@ namespace LR_Util
     };
     /// @brief assign X in pA to X in pX
     template <typename T>
-    void pA2pX(T* X_pX, const T* X_pA, const int nband, const int nk, 
+    void pA2pX(T* X_pX, const T* X_pA, const int nband, const int nk,
         const std::vector<int>& nocc, const std::vector<int>& nvirt,
         const std::vector<Parallel_2D>& pX, const Parallel_2D& pA,
         const int row_offset, const int col_offset, const bool openshell,

@@ -103,6 +103,16 @@ rules. Read the complete governance document before making or reviewing changes:
   `docs/advanced/`, `toolchain/`, `Dockerfile.gnu`, `Dockerfile.intel`, and
   `Dockerfile.cuda`.
 
+## File Move / Split Checklist
+
+When moving, splitting, or deleting a `.cpp`/`.h`, update **all** build surfaces:
+
+1. `source/Makefile.Objects` (legacy Makefile object lists)
+2. All C++ `CMakeLists.txt`
+3. `python/pyabacus/src/*/CMakeLists.txt` — pyabacus has independent hardcoded source lists that do not track the main CMake build
+
+When splitting a function into a new `.cpp`, if its callers span LCAO and PW, put it in an unconditionally-built OBJECT library, not inside `if(ENABLE_LCAO)`.
+
 ## Build And Test Entry Points
 
 - Prefer the repository CMake/CTest flow already used by CI. For focused local

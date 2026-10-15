@@ -21,5 +21,5 @@ AddTest(
 AddTest(
   TARGET MODULE_LR_spectrum_mo_output_test
   LIBS parameter base device psi container planewave
-  SOURCES test_spectrum_mo_output.cpp
+  SOURCES test_spectrum_mo_output.cpp ../spectrum_out.cpp
 )

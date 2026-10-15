@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../zeq_solver.hpp"
+#include "../zeq_solver.h"
 #include "mpi.h"
 #include "../zeqlin_solv.h"
 
