@@ -12,8 +12,15 @@ class Grid_Driver;
 class K_Vectors;
 class Parallel_2D;
 class Parallel_Orbitals;
-namespace ModuleBase { class matrix; }
-namespace module_dm { template<typename TK, typename TR> class DensityMatrix; }
+namespace ModuleBase
+{
+class matrix;
+}
+namespace module_dm
+{
+template <typename TK, typename TR>
+class DensityMatrix;
+}
 #ifdef __EXX
 template<typename T> class Exx_LRI;
 #endif

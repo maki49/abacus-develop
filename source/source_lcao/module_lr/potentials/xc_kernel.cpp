@@ -42,7 +42,10 @@ LR::KernelXC::KernelXC(const ModulePW::PW_Basis& rho_basis,
     const int gxc_spin) :nspin_(nspin), kernel_name_(kernel_name), gxc_spin_(gxc_spin),
     rho_basis_(rho_basis), openshell_(openshell)
 {
-    if (!LR_Util::has_local_xc(kernel_name)) { return; }
+    if (!LR_Util::has_local_xc(kernel_name))
+    {
+        return;
+    }
     XC_Functional::set_xc_type(kernel_name);    // for hse, (1-alpha) and omega are set here
     this->functional_type_ = XC_Functional::get_func_type();
 
@@ -160,14 +163,19 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         hybrid_alpha,
         hse_omega);
     const int& nrxx = rho_basis_.nrxx;
-    const bool is_gga = std::any_of(funcs.begin(), funcs.end(), [](const xc_func_type& f) { return f.info->family == XC_FAMILY_GGA || f.info->family == XC_FAMILY_HYB_GGA; });
+    const bool is_gga = std::any_of(funcs.begin(), funcs.end(), [](const xc_func_type& f) {
+        return f.info->family == XC_FAMILY_GGA || f.info->family == XC_FAMILY_HYB_GGA;
+    });
     // The third-order kernel exists for exactly one purpose: the $g^{xc}$ part of the LR
     // gradient. If none was requested, skip it. Open shell needs the RAW arrays (see below) --
     // `build_gxc_coef` is a closed-shell-only pre-contraction.
     const bool need_kxc = (this->gxc_spin_ != GxcSpin::NoGxc);
     try
     {
-        for (const auto& functional : funcs) { require_xc_kxc(functional, need_kxc); }
+        for (const auto& functional: funcs)
+        {
+            require_xc_kxc(functional, need_kxc);
+        }
     }
     catch (const std::exception& error)
     {
@@ -476,7 +484,10 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             this->build_gxc_coef(this->gxc_t_, /*triplet=*/true, nspin, is_gga);
         }
     }
-    if (is_gga) { this->drho_gs_ = std::move(gradrho); }
+    if (is_gga)
+    {
+        this->drho_gs_ = std::move(gradrho);
+    }
     ModuleBase::timer::end("XC_Functional", "f_xc_libxc");
 }
 
@@ -493,11 +504,23 @@ void LR::KernelXC::get_rho_drho_sigma(const int& nspin,
 #ifdef _OPENMP
 #pragma omp parallel for collapse(2) schedule(static, 1024)
 #endif
-    for (int is = 0; is < nspin; ++is) { for (int ir = 0; ir < nrxx; ++ir) { rho[ir * nspin + is] = rho_gs[is][ir]; } }
+    for (int is = 0; is < nspin; ++is)
+    {
+        for (int ir = 0; ir < nrxx; ++ir)
+        {
+            rho[ir * nspin + is] = rho_gs[is][ir];
+        }
+    }
     if (rho_core)
     {
         const double fac = 1.0 / nspin;
-        for (int is = 0; is < nspin; ++is) { for (int ir = 0; ir < nrxx; ++ir) { rho[ir * nspin + is] += fac * rho_core[ir]; } }
+        for (int is = 0; is < nspin; ++is)
+        {
+            for (int ir = 0; ir < nrxx; ++ir)
+            {
+                rho[ir * nspin + is] += fac * rho_core[ir];
+            }
+        }
     }
     if (is_gga)
     {
@@ -580,9 +603,15 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
     dst.a_s2.resize(nrxx, 0.);
     if (is_gga)
     {
-        dst.a_st.resize(nrxx, 0.); dst.a_t2.resize(nrxx, 0.); dst.a_q.resize(nrxx, 0.);
-        dst.c_s.resize(nrxx, 0.); dst.c_t.resize(nrxx, 0.);
-        dst.e_s2.resize(nrxx); dst.e_st.resize(nrxx); dst.e_t2.resize(nrxx); dst.e_q.resize(nrxx);
+        dst.a_st.resize(nrxx, 0.);
+        dst.a_t2.resize(nrxx, 0.);
+        dst.a_q.resize(nrxx, 0.);
+        dst.c_s.resize(nrxx, 0.);
+        dst.c_t.resize(nrxx, 0.);
+        dst.e_s2.resize(nrxx);
+        dst.e_st.resize(nrxx);
+        dst.e_t2.resize(nrxx);
+        dst.e_q.resize(nrxx);
     }
     const std::vector<double>& v2rs = this->v2rhosigma_;
     const std::vector<double>& v2s2 = this->v2sigma2_;
@@ -613,7 +642,10 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
         for (int i = 0;i < nrxx;++i)
         {
             dst.a_s2[i] = to_singlet * v3r3[i];
-            if (!is_gga) { continue; }
+            if (!is_gga)
+            {
+                continue;
+            }
             dst.a_st[i] = to_singlet * v3r2s[i] * 4.;
             dst.a_t2[i] = to_singlet * v3rs2[i] * 4.;
             dst.a_q[i] = to_singlet * v2rs[i] * 2.;
@@ -646,7 +678,10 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
         dst.a_s2[i] = eta[0] * eta[0] * v3r3[o4]
             + 2. * eta[0] * eta[1] * v3r3[o4 + 1]
             + eta[1] * eta[1] * v3r3[o4 + 2];
-        if (!is_gga) { continue; }
+        if (!is_gga)
+        {
+            continue;
+        }
 
         // ---- the local part $A$ ----
         // $a_{st}=4\sum_\sigma\eta_\sigma\sum_{\alpha\beta}\mu_{\alpha\beta}g^{\rho_u\rho_\sigma\sigma_{\alpha\beta}}$
@@ -654,18 +689,29 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
         // rho-pair block = (sigma==d).
         double a_st = 0.;
         for (int sg = 0;sg < 2;++sg) {
-            for (int b = 0;b < 3;++b) { a_st += eta[sg] * mu[b] * v3r2s[o9 + 3 * sg + b]; } }
+            for (int b = 0; b < 3; ++b)
+            {
+                a_st += eta[sg] * mu[b] * v3r2s[o9 + 3 * sg + b];
+            }
+        }
         dst.a_st[i] = a_st * 4.;
 
         // $a_{t^2}=4\sum_{\alpha\beta,\gamma\delta}\mu\mu\,g^{\rho_u\sigma_{\alpha\beta}\sigma_{\gamma\delta}}$
         double a_t2 = 0.;
         for (int b = 0;b < 3;++b) {
-            for (int c = 0;c < 3;++c) { a_t2 += mu[b] * mu[c] * v3rs2[o12 + p2[b][c]]; } }
+            for (int c = 0; c < 3; ++c)
+            {
+                a_t2 += mu[b] * mu[c] * v3rs2[o12 + p2[b][c]];
+            }
+        }
         dst.a_t2[i] = a_t2 * 4.;
 
         // $a_q=2F$, $F=\sum_{\alpha\beta}\nu_{\alpha\beta}f^{\rho_u\sigma_{\alpha\beta}}$
         double F = 0.;
-        for (int b = 0;b < 3;++b) { F += nu[b] * v2rs[o6 + b]; }
+        for (int b = 0; b < 3; ++b)
+        {
+            F += nu[b] * v2rs[o6 + b];
+        }
         dst.a_q[i] = F * 2.;
 
         // ---- the divergence part $\boldsymbol{E}$ ----
@@ -687,15 +733,32 @@ void LR::KernelXC::build_gxc_coef(GxcCoef& dst, const bool triplet, const int& n
                     + 2. * eta[0] * eta[1] * v3r2s[o9 + 3 + a]
                     + eta[1] * eta[1] * v3r2s[o9 + 6 + a]);
                 for (int sg = 0;sg < 2;++sg) {
-                    for (int c = 0;c < 3;++c) { Q += w * eta[sg] * mu[c] * v3rs2[o12 + 6 * sg + p2[a][c]]; } }
+                    for (int c = 0; c < 3; ++c)
+                    {
+                        Q += w * eta[sg] * mu[c] * v3rs2[o12 + 6 * sg + p2[a][c]];
+                    }
+                }
                 for (int c = 0;c < 3;++c) {
-                    for (int d = 0;d < 3;++d) { R += w * mu[c] * mu[d] * v3s3[o10 + p3[a][c][d]]; } }
-                for (int c = 0;c < 3;++c) { S += w * nu[c] * v2s2[o6 + p2[a][c]]; }
+                    for (int d = 0; d < 3; ++d)
+                    {
+                        R += w * mu[c] * mu[d] * v3s3[o10 + p3[a][c][d]];
+                    }
+                }
+                for (int c = 0; c < 3; ++c)
+                {
+                    S += w * nu[c] * v2s2[o6 + p2[a][c]];
+                }
             }
             if (wt != 0.)
             {
-                for (int sg = 0;sg < 2;++sg) { T += wt * eta[sg] * v2rs[o6 + 3 * sg + a]; }
-                for (int c = 0;c < 3;++c) { St += wt * mu[c] * v2s2[o6 + p2[a][c]]; }
+                for (int sg = 0; sg < 2; ++sg)
+                {
+                    T += wt * eta[sg] * v2rs[o6 + 3 * sg + a];
+                }
+                for (int c = 0; c < 3; ++c)
+                {
+                    St += wt * mu[c] * v2s2[o6 + p2[a][c]];
+                }
             }
         }
         dst.c_s[i] = T * 2.;

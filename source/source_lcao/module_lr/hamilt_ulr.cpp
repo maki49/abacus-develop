@@ -72,21 +72,31 @@ HamiltULR<T>::HamiltULR(const std::string& xc_kernel,
             // LR_Util::print_value(X, pX_in[is].get_local_size());
 #ifdef __MPI
             std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_pblas(X, pX[is], psi_ks_is, pc_in, naos, nocc[is], nvirt[is], pmat_in, (T)1.0 / (T)nk);
-            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat_in);
+            if (this->tdm_sym)
+                for (auto& t: dm_trans_2d)
+                    LR_Util::matsym(t.data<T>(), naos, pmat_in);
 #else
             std::vector<ct::Tensor>  dm_trans_2d = cal_dm_trans_blas(X, psi_ks_is, nocc[is], nvirt[is], (T)1.0 / (T)nk);
-            if (this->tdm_sym) for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
+            if (this->tdm_sym)
+                for (auto& t: dm_trans_2d)
+                    LR_Util::matsym(t.data<T>(), naos);
 #endif
             // LR_Util::print_tensor<T>(dm_trans_2d[0], "DMtrans(k=0)", &pmat_in);
             // tensor to vector, then set DMK
-            for (int ik = 0;ik < nk;++ik) { this->DM_trans->set_dmk_ptr(ik, dm_trans_2d[ik].data<T>()); }
+            for (int ik = 0; ik < nk; ++ik)
+            {
+                this->DM_trans->set_dmk_ptr(ik, dm_trans_2d[ik].data<T>());
+            }
         };
 }
 
 template<typename T>
 HamiltULR<T>::~HamiltULR()
 {
-    for (auto& op : ops) { delete op; }
+    for (auto& op: ops)
+    {
+        delete op;
+    }
 }
 
 template<typename T>
@@ -149,7 +159,10 @@ std::vector<T> HamiltULR<T>::matrix()const
                     const int lj = px.global2local_col(j);
                     const int lb = px.global2local_row(b);
                     const int lcol = loffset_bj + ik_bj * px.get_local_size() + lj * px.get_row_size() + lb;//local
-                    if (px.in_this_processor(b, j)) { X_bj[lcol] = T(1); }
+                    if (px.in_this_processor(b, j))
+                    {
+                        X_bj[lcol] = T(1);
+                    }
                     this->cal_dm_trans(is_bj, X_bj.data() + loffset_bj);
                     std::vector<T> Aloc_col(this->ldim, T(0)); // a col of A matrix (local)
                     for (int is_ai : {0, 1})

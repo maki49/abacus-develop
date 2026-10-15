@@ -20,7 +20,10 @@ namespace LR
     inline int zvec_global_dim(THam& hm, const int nspin_x)
     {
         int n_global = 0;
-        for (int is = 0;is < nspin_x;++is) { n_global += hm.nk * hm.nocc[is] * hm.nvirt[is]; }
+        for (int is = 0; is < nspin_x; ++is)
+        {
+            n_global += hm.nk * hm.nocc[is] * hm.nvirt[is];
+        }
         return n_global;
     }
 
@@ -87,7 +90,10 @@ namespace LR
         ModuleBase::TITLE("Z_vector", "solve_Z_lapack");
         const int n_global = zvec_global_dim(hm, nspin_x);
         int ld_expect = 0;
-        for (int is = 0;is < nspin_x;++is) { ld_expect += hm.nk * hm.pX[is].get_local_size(); }
+        for (int is = 0; is < nspin_x; ++is)
+        {
+            ld_expect += hm.nk * hm.pX[is].get_local_size();
+        }
         assert(ld == ld_expect);
 
         std::vector<T> hessian_full = hm.matrix();   // MO-hessian, A+B
@@ -160,9 +166,15 @@ namespace LR
             hm.hPsi(e_loc.data(), he_loc.data(), ld, 1);
             zvec_local_to_full(hm, nspin_x, he_loc.data(), he_full.data());
             const int lcol = ph.global2local_col(gcol);
-            if (lcol < 0) { continue; }
+            if (lcol < 0)
+            {
+                continue;
+            }
             T* const h_col = h_loc.data() + static_cast<std::size_t>(lcol) * ph.get_row_size();
-            for (int lrow = 0; lrow < ph.get_row_size(); ++lrow) { h_col[lrow] = he_full[ph.local2global_row(lrow)]; }
+            for (int lrow = 0; lrow < ph.get_row_size(); ++lrow)
+            {
+                h_col[lrow] = he_full[ph.local2global_row(lrow)];
+            }
         }
         ModuleBase::timer::end("Z_vector", "zvec_hessian_2d");
         return h_loc;
@@ -198,9 +210,15 @@ namespace LR
         {
             zvec_local_to_full(hm, nspin_x, R + istate * ld, r_full.data());
             const int lcol = pz.global2local_col(istate);
-            if (lcol < 0) { continue; }
+            if (lcol < 0)
+            {
+                continue;
+            }
             T* const z_col = z_loc.data() + static_cast<std::size_t>(lcol) * pz.get_row_size();
-            for (int lrow = 0; lrow < pz.get_row_size(); ++lrow) { z_col[lrow] = r_full[pz.local2global_row(lrow)]; }
+            for (int lrow = 0; lrow < pz.get_row_size(); ++lrow)
+            {
+                z_col[lrow] = r_full[pz.local2global_row(lrow)];
+            }
         }
 
         linear_solver(h_loc.data(), z_loc.data(), ph, pz);
@@ -250,17 +268,38 @@ namespace LR
     inline void solve_zeq_with(T* const Z, T* const R, const int ld, const int nstates,
         THamL& ops_L, const int nspin_x, const std::string& zvec_solver, const bool test_force)
     {
-        for (int i = 0; i < nstates * ld; ++i) { Z[i] = T(0.0); }   // clear Z
+        for (int i = 0; i < nstates * ld; ++i)
+        {
+            Z[i] = T(0.0);
+        } // clear Z
         if (zvec_solver == "cg")
         {
-            solve_Z_CG(Z, R, ld, nstates,
-                [&ops_L, ld, nstates](const T* const in, T* const out)
-                { ops_L.hPsi(in, out, ld, nstates); }, test_force);
+            solve_Z_CG(
+                Z,
+                R,
+                ld,
+                nstates,
+                [&ops_L, ld, nstates](const T* const in, T* const out) {
+                    ops_L.hPsi(in, out, ld, nstates);
+                },
+                test_force);
         }
-        else if (zvec_solver == "lapack") { solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x, test_force); }
-        else if (zvec_solver == "scalapack") { solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x); }
-        else if (zvec_solver == "scalapack_chol") { solve_Z_scalapack_chol(Z, R, ld, nstates, ops_L, nspin_x); }
-        else { throw std::runtime_error("Unsupported Z-vector solver: " + zvec_solver); }
+        else if (zvec_solver == "lapack")
+        {
+            solve_Z_lapack(Z, R, ld, nstates, ops_L, nspin_x, test_force);
+        }
+        else if (zvec_solver == "scalapack")
+        {
+            solve_Z_scalapack(Z, R, ld, nstates, ops_L, nspin_x);
+        }
+        else if (zvec_solver == "scalapack_chol")
+        {
+            solve_Z_scalapack_chol(Z, R, ld, nstates, ops_L, nspin_x);
+        }
+        else
+        {
+            throw std::runtime_error("Unsupported Z-vector solver: " + zvec_solver);
+        }
     }
 
     /// Builds the Z-vector equation's RHS from `ops_R` and solves it with `ops_L`. Extracted to

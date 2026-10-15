@@ -135,28 +135,36 @@ namespace LR
             // that one is a different object and its original -2.0 is correct, as the formula and H2-DZP scan confirms.
             { 0 }, T(1.0), ATYPE::CC_oo);
 
-        std::vector<ct::Tensor> dm_trans_2d, dm_diff_2d;
+        std::vector<ct::Tensor> dm_trans_2d;
+        std::vector<ct::Tensor> dm_diff_2d;
         auto cal_dm_trans = [&psi_ks, nk, &dm_trans_2d, &px, &pc, naos, &nocc, &nvirt, &pmat, &DM_trans](const int is, const T* const x_ptr)->void //DX
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
 #ifdef __MPI
                 dm_trans_2d = cal_dm_trans_pblas(x_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
-                for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
+                for (auto& t: dm_trans_2d)
+                    LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
                 dm_trans_2d = cal_dm_trans_blas(x_ptr, psi_ks_is, nocc[is], nvirt[is]);
-                for (auto& t : dm_trans_2d) LR_Util::matsym(t.data<T>(), naos);
+                for (auto& t: dm_trans_2d)
+                    LR_Util::matsym(t.data<T>(), naos);
 #endif
-                for (int ik = 0;ik < nk;++ik) { DM_trans.set_dmk_ptr(ik, dm_trans_2d[ik].data<T>()); }
+                for (int ik = 0; ik < nk; ++ik)
+                {
+                    DM_trans.set_dmk_ptr(ik, dm_trans_2d[ik].data<T>());
+                }
             };
         auto cal_dm_diff_relaxed = [&psi_ks, nk, &px, &pc, naos, &nocc, &nvirt, &pmat, &dm_diff_2d, &DM_diff_relaxed](const int& is, const T* const x_ptr, const T* const z_ptr)->void  // T+DZ
             {
                 const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, nk);
 #ifdef __MPI
                 std::vector<ct::Tensor> z_2d = cal_dm_trans_pblas(z_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
-                for (auto& t : z_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
+                for (auto& t: z_2d)
+                    LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
                 std::vector<ct::Tensor> z_2d = cal_dm_trans_blas(z_ptr, psi_ks_is, nocc[is], nvirt[is]);
-                for (auto& t : z_2d) LR_Util::matsym(t.data<T>(), naos);
+                for (auto& t: z_2d)
+                    LR_Util::matsym(t.data<T>(), naos);
 #endif
 
 #ifdef __MPI
@@ -246,7 +254,10 @@ namespace LR
         const int nband_window = nocc[0] + nvirt[0];   // common KS window, see `set_dimension`
 
         W.assign(2, {});
-        for (int is : {0, 1}) { W[is].assign(ld_oo[is], T(0.0)); }
+        for (int is: {0, 1})
+        {
+            W[is].assign(ld_oo[is], T(0.0));
+        }
 
         module_dm::DensityMatrix<T, T> DM_diff_relaxed(&pmat, 1, kv.kvec_d, nk);   // T+D^Z of one channel
         LR_Util::initialize_DMR(DM_diff_relaxed, pmat, ucell, gd, orb_cutoff);
@@ -264,7 +275,10 @@ namespace LR
         }
 #ifdef __EXX
         std::vector<psi::Psi<T>> psi_ks_spin;
-        for (int is : {0, 1}) { psi_ks_spin.push_back(LR_Util::get_psi_spin(psi_ks, is, nk)); }
+        for (int is: {0, 1})
+        {
+            psi_ks_spin.push_back(LR_Util::get_psi_spin(psi_ks, is, nk));
+        }
         std::vector<std::unique_ptr<OperatorLREXX<T>>> op_ht_exx(2);
         const bool with_exx = LR::gs_is_hybrid(dft_functional);
         if (with_exx)
@@ -286,11 +300,17 @@ namespace LR
                 const T* const z_ptr = Z + off_x[is];
 #ifdef __MPI
                 std::vector<ct::Tensor> z_2d = cal_dm_trans_pblas(z_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
-                for (auto& t : z_2d) { LR_Util::matsym(t.data<T>(), naos, pmat); }
+                for (auto& t: z_2d)
+                {
+                    LR_Util::matsym(t.data<T>(), naos, pmat);
+                }
                 dm_buf = cal_dm_diff_pblas(x_ptr, px[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
 #else
                 std::vector<ct::Tensor> z_2d = cal_dm_trans_blas(z_ptr, psi_ks_is, nocc[is], nvirt[is]);
-                for (auto& t : z_2d) { LR_Util::matsym(t.data<T>(), naos); }
+                for (auto& t: z_2d)
+                {
+                    LR_Util::matsym(t.data<T>(), naos);
+                }
                 dm_buf = cal_dm_diff_blas(x_ptr, psi_ks_is, naos, nocc[is], nvirt[is]);
 #endif
                 for (int ik = 0;ik < nk;++ik)
@@ -332,7 +352,10 @@ namespace LR
             for (int is : {0, 1})
             {
                 const int off = is * ld_oo[0];
-                for (int i = 0;i < ld_oo[is];++i) { W[is][i] += w_flat[off + i]; }
+                for (int i = 0; i < ld_oo[is]; ++i)
+                {
+                    W[is][i] += w_flat[off + i];
+                }
             }
         }
 

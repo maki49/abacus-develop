@@ -50,10 +50,16 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_eigenvectors_X()
     this->nloc_per_state = nk * (openshell ? paraX_[0].get_local_size() + paraX_[1].get_local_size() : paraX_[0].get_local_size());
 
     this->X.resize(openshell ? 1 : nspin, LR_Util::newTensor<T>({ nstates, nloc_per_state }));
-    for (auto& x : X) { x.zero(); }
+    for (auto& x: X)
+    {
+        x.zero();
+    }
 
     // if spectrum-only, read the LR-eigenstates from file and return
-    if (this->inp_->lr_solver != "spectrum") { set_X_initial_guess(); }
+    if (this->inp_->lr_solver != "spectrum")
+    {
+        set_X_initial_guess();
+    }
 }
 
 template<typename T, typename TR>
@@ -69,10 +75,20 @@ void ModuleESolver::ESolver_LR<T, TR>::set_X_initial_guess()
 
         // if (E_{lumo}-E_{homo-1} < E_{lumo+1}-E{homo}), mode = 0, else 1(smaller first)
         bool ix_mode = false;   //default
-        if (this->eig_ks.nc > no + 1 && no >= 2 && eig_ks(is, no) - eig_ks(is, no - 2) - 1e-5 > eig_ks(is, no + 1) - eig_ks(is, no - 1)) { ix_mode = true; }
+        if (this->eig_ks.nc > no + 1 && no >= 2
+            && eig_ks(is, no) - eig_ks(is, no - 2) - 1e-5 > eig_ks(is, no + 1) - eig_ks(is, no - 1))
+        {
+            ix_mode = true;
+        }
         this->ofs_running_ << "setting the initial guess of X of spin" << is << std::endl;
-        if (no >= 2 && eig_ks.nc > no) { this->ofs_running_ << "E_{lumo}-E_{homo-1}=" << eig_ks(is, no) - eig_ks(is, no - 2) << std::endl; }
-        if (no >= 1 && eig_ks.nc > no + 1) { this->ofs_running_ << "E_{lumo+1}-E{homo}=" << eig_ks(is, no + 1) - eig_ks(is, no - 1) << std::endl; }
+        if (no >= 2 && eig_ks.nc > no)
+        {
+            this->ofs_running_ << "E_{lumo}-E_{homo-1}=" << eig_ks(is, no) - eig_ks(is, no - 2) << std::endl;
+        }
+        if (no >= 1 && eig_ks.nc > no + 1)
+        {
+            this->ofs_running_ << "E_{lumo+1}-E{homo}=" << eig_ks(is, no + 1) - eig_ks(is, no - 1) << std::endl;
+        }
         this->ofs_running_ << "mode of X-index: " << ix_mode << std::endl;
 
         /// global index map between (i,c) and ix
@@ -116,8 +132,14 @@ void ModuleESolver::ESolver_LR<T, TR>::read_ks_wfc()
         std::vector<double> eig_ks_vec = RI_Benchmark::read_aims_ebands<double>(this->in_dir + "band_out", nocc_in, nvirt_in, ncore);
         std::cout << "ncore=" << ncore << ", nocc=" << nocc_in << ", nvirt=" << nvirt_in << ", nbands=" << this->nbands << std::endl;
         std::cout << "eig_ks_vec.size()=" << eig_ks_vec.size() << std::endl;
-        if(eig_ks_vec.size() != this->nbands) {ModuleBase::WARNING_QUIT("ESolver_LR", "read_aims_ebands failed.");};
-        for (int i = 0;i < nbands;++i) { this->eig_ks(0, i) = eig_ks_vec[i]; }
+        if (eig_ks_vec.size() != this->nbands)
+        {
+            ModuleBase::WARNING_QUIT("ESolver_LR", "read_aims_ebands failed.");
+        };
+        for (int i = 0; i < nbands; ++i)
+        {
+            this->eig_ks(0, i) = eig_ks_vec[i];
+        }
         RI_Benchmark::read_aims_eigenvectors<T>(*this->psi_ks, this->in_dir + "KS_eigenvectors.out", ncore, nbands, nbasis);
 #else
         ModuleBase::WARNING_QUIT("ESolver_LR", "RI benchmark is only supported when compile with LibRI.");
@@ -159,7 +181,10 @@ template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
 {
     ModuleBase::TITLE("ESolver_LR", "fill_z_window_");
-    if (!this->inp_->cal_force || this->psi_ks_all_ == nullptr) { return; }
+    if (!this->inp_->cal_force || this->psi_ks_all_ == nullptr)
+    {
+        return;
+    }
 
     const int start_band = this->nocc_max - *std::max_element(nocc.begin(), nocc.end());
     // Every band the ground state solved, from the window start upward. `eig_ks_all` is the
@@ -171,7 +196,10 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
         this->nbands_z_ = this->nbands;
     }
     this->nvirt_z_.assign(this->nspin, 0);
-    for (int is = 0; is < this->nspin; ++is) { this->nvirt_z_[is] = this->nbands_z_ - this->nocc[is]; }
+    for (int is = 0; is < this->nspin; ++is)
+    {
+        this->nvirt_z_[is] = this->nbands_z_ - this->nocc[is];
+    }
 
     const int block_size = this->paraC_.get_block_size();
     LR_Util::setup_2d_division(this->paraC_z_, block_size, this->nbasis, this->nbands_z_
@@ -221,12 +249,16 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
         }
 #endif
         for (int ib = 0; ib < this->nbands_z_; ++ib)
-        { this->eig_ks_z_(ik, ib) = this->eig_ks_all(ik, start_band + ib); }
+        {
+            this->eig_ks_z_(ik, ib) = this->eig_ks_all(ik, start_band + ib);
+        }
     }
     this->ofs_running_ << "Z-vector window: nbands = " << this->nbands_z_
         << " (X window: " << this->nbands << "), nvirt =";
     for (int is = 0; is < this->nspin; ++is)
-    { this->ofs_running_ << " " << this->nvirt_z_[is] << "(X window: " << this->nvirt[is] << ")"; }
+    {
+        this->ofs_running_ << " " << this->nvirt_z_[is] << "(X window: " << this->nvirt[is] << ")";
+    }
     this->ofs_running_ << std::endl;
     // Initialization precedes ks_initialized_; subsequent geometry refreshes keep
     // the same windows. Diagnose once, without changing the truncated eigenproblem.
@@ -234,7 +266,10 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
     {
         const std::string warning = LR_Util::force_window_warning(this->nbasis,
             this->eig_ks_all.nc, start_band, this->nvirt, this->nvirt_z_);
-        if (!warning.empty()) { this->ofs_running_ << warning << std::endl; }
+        if (!warning.empty())
+        {
+            this->ofs_running_ << warning << std::endl;
+        }
     }
 }
 
@@ -248,8 +283,14 @@ void ModuleESolver::ESolver_LR<T, TR>::read_ks_chg(Charge& chg_gs)
     for (int is = 0; is < this->nspin; ++is)
     {
         std::stringstream ssc;
-        if (this->nspin == 1) { ssc << this->in_dir << "chg.cube"; }
-        else { ssc << this->in_dir << "chgs" << is + 1 << ".cube"; }
+        if (this->nspin == 1)
+        {
+            ssc << this->in_dir << "chg.cube";
+        }
+        else
+        {
+            ssc << this->in_dir << "chgs" << is + 1 << ".cube";
+        }
         this->ofs_running_ << ssc.str() << std::endl;
         if (ModuleIO::read_vdata_palgrid(pgrid(),
             this->my_rank_,

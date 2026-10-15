@@ -85,7 +85,10 @@ TEST(ExxProjection, AllFourModesPreserveNonsymmetricProbeContraction)
                             minus_factor, scratch.data(), result.data());
             expected = reference(h, cvx, cv, nvirt, factor);
             const auto occ = reference(h, co, coxt, nvirt, minus_factor);
-            for (std::size_t i = 0; i < expected.size(); ++i) { expected[i] += occ[i]; }
+            for (std::size_t i = 0; i < expected.size(); ++i)
+            {
+                expected[i] += occ[i];
+            }
         }
         else
         {
@@ -143,7 +146,10 @@ TEST(ExxProjection, ComplexBlochPhasesAndAllFourProbeModes)
         for (int r = 0; r < 3; ++r)
         {
             const Complex phase = std::exp(Complex(0, (ik + 1) * angles[r]));
-            for (int i = 0; i < naos * naos; ++i) { h[i] += phase * blocks[r][i]; }
+            for (int i = 0; i < naos * naos; ++i)
+            {
+                h[i] += phase * blocks[r][i];
+            }
         }
         for (int mode = 0; mode < 4; ++mode)
         {
@@ -230,8 +236,14 @@ TEST(ExxProjection, BenchmarkMappedIndicesPreserveProbeContraction)
     const auto cv = coefficients(nvirt, -0.2);
     std::vector<Complex> co_complex(co.begin(), co.end());
     std::vector<Complex> cv_complex(cv.begin(), cv.end());
-    for (int i = 0; i < naos * nocc; ++i) { co_complex[i] += Complex(0, 0.05 * i); }
-    for (int i = 0; i < naos * nvirt; ++i) { cv_complex[i] += Complex(0, -0.09 * i); }
+    for (int i = 0; i < naos * nocc; ++i)
+    {
+        co_complex[i] += Complex(0, 0.05 * i);
+    }
+    for (int i = 0; i < naos * nvirt; ++i)
+    {
+        cv_complex[i] += Complex(0, -0.09 * i);
+    }
     std::vector<double> result(nocc * nvirt, 0.0);
     std::vector<double> scratch(naos * nocc);
     std::vector<Complex> result_complex(nocc * nvirt, Complex(0));

@@ -67,9 +67,18 @@ public:
     Exx_LRI operator=(Exx_LRI&&);
 
     // accessors used by the LR-TDDFT analytical-gradient module
-    RI::Exx<TA, Tcell, Ndim, Tdata>& get() { return this->exx_lri; }
-    auto& get_info() const { return this->info; }
-    auto& get_mpi_comm() const { return this->mpi_comm; }
+    RI::Exx<TA, Tcell, Ndim, Tdata>& get()
+    {
+        return this->exx_lri;
+    }
+    auto& get_info() const
+    {
+        return this->info;
+    }
+    auto& get_mpi_comm() const
+    {
+        return this->mpi_comm;
+    }
 
     // Share read-only geometry tensors, but keep all electronic work buffers independent.
     std::shared_ptr<Exx_LRI<Tdata>> make_lr_workspace(const UnitCell& ucell,

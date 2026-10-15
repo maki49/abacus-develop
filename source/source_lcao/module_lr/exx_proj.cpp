@@ -14,7 +14,10 @@ void project_exx(const double* h,
                  double* scratch,
                  double* result)
 {
-    if (nleft == 0 || nright == 0) { return; }
+    if (nleft == 0 || nright == 0)
+    {
+        return;
+    }
     const double one = 1.0;
     const double zero = 0.0;
     // Transpose, rather than symmetrize: K[D^X] need not be symmetric.
@@ -34,7 +37,10 @@ void project_exx(const std::complex<double>* h,
                  std::complex<double>* scratch,
                  std::complex<double>* result)
 {
-    if (nleft == 0 || nright == 0) { return; }
+    if (nleft == 0 || nright == 0)
+    {
+        return;
+    }
     const std::complex<double> one(1.0, 0.0);
     const std::complex<double> zero(0.0, 0.0);
     const std::complex<double> scale(factor, 0.0);

@@ -47,7 +47,10 @@ ModuleBase::matrix cal_pulay_fs(
                             for (int nu = 0; nu < pv.get_ncol_atom(iat1); nu += npol)
                             {
                                 double dm2d = 0.0;
-                                for (int is = 0; is < nspin_dmr; ++is) { dm2d += mat_dmr[is]->get_value(mu, nu); }
+                                for (int is = 0; is < nspin_dmr; ++is)
+                                {
+                                    dm2d += mat_dmr[is]->get_value(mu, nu);
+                                }
                                 f(iat0, ixyz) += dm2d * factor_force * 2.0 * mat_dhs.get_value(mu, nu);
                             }
                         }
@@ -127,7 +130,10 @@ ModuleBase::matrix cal_pulay_fs_openshell(
     double** rho;
     const int& nrxx = pot->nrxx;
     LR_Util::_allocate_2order_nested_ptr(rho, nspin_dm, nrxx);
-    for (int is = 0; is < nspin_dm; ++is) { ModuleBase::GlobalFunc::ZEROS(rho[is], nrxx); }
+    for (int is = 0; is < nspin_dm; ++is)
+    {
+        ModuleBase::GlobalFunc::ZEROS(rho[is], nrxx);
+    }
     ModuleGint::cal_gint_rho(dm.get_dmr_vec(), nspin_dm, rho, false);
 
     // 2. $v_\sigma=\sum_{\sigma'}f^{\sigma\sigma'}\rho_{\sigma'}$
@@ -145,7 +151,10 @@ ModuleBase::matrix cal_pulay_fs_openshell(
     // 3. v(r) -> force, summed over the outer spin by `cal_gint_fvl`
     std::vector<const double*> p_vr_hxc(nspin_dm);
     // Keep empty-grid ranks in the integration and subsequent pool reduction.
-    for (int is = 0; is < nspin_dm; ++is) { p_vr_hxc[is] = vr_hxc[is].c; }
+    for (int is = 0; is < nspin_dm; ++is)
+    {
+        p_vr_hxc[is] = vr_hxc[is].c;
+    }
     ModuleGint::cal_gint_fvl(nspin_dm, p_vr_hxc, dm.get_dmr_vec(), /*isforce=*/true, false, &force, &stress_tmp);
     Parallel_Reduce::reduce_pool(force.c, force.nr * force.nc);   // see the closed-shell overload above
     return force;

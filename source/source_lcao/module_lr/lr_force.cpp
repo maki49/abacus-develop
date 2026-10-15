@@ -124,7 +124,10 @@ namespace LR
         PulayForceStress::cal_pulay_fs(relax_diff_dm.get_dmr_vec().size()/*nspin*/, fhxc_dphi, stress_tmp,
             relax_diff_dm, this->ucell_, pot_hxc.get(), true, false);
         Parallel_Reduce::reduce_pool(fhxc_dphi.c, fhxc_dphi.nr * fhxc_dphi.nc);   // see `fvl_dphi` above
-        if (reproduce_gs) {fhxc_dphi *= 0.5;} // avoid double count
+        if (reproduce_gs)
+        {
+            fhxc_dphi *= 0.5;
+        } // avoid double count
 
         // 3.3 Hartree + xc (Hellmann-Feynman)
         ModuleBase::matrix fhxc_dvhxc(this->ucell_.nat, 3);
@@ -171,7 +174,10 @@ namespace LR
                 }
             }
             std::vector<const double*> vr_eff(nspin_dm);
-            for (int is = 0; is < nspin_dm; ++is) { vr_eff[is] = v_lin[is].c; }
+            for (int is = 0; is < nspin_dm; ++is)
+            {
+                vr_eff[is] = v_lin[is].c;
+            }
             ModuleGint::cal_gint_fvl(nspin_dm, vr_eff, dm_gs.get_dmr_vec(), true, false, &fhxc_dvhxc, &stress_tmp);
         }
         else
@@ -280,12 +286,18 @@ namespace LR
         const double* rho_in[nspin_dm] = { chr_x.rho[0], chr_x.rho[1] };
 
         std::vector<ModuleBase::matrix> v2(nspin_dm, ModuleBase::matrix(1, this->rhopw_.nrxx));
-        for (int tau = 0; tau < nspin_dm; ++tau) { pot_grad.cal_v_eff_openshell(rho_in, this->ucell_, v2[tau], tau); }
+        for (int tau = 0; tau < nspin_dm; ++tau)
+        {
+            pot_grad.cal_v_eff_openshell(rho_in, this->ucell_, v2[tau], tau);
+        }
 
         ModuleBase::matrix f(this->ucell_.nat, 3);
         ModuleBase::matrix stress_tmp;
         std::vector<const double*> vr_eff(nspin_dm);
-        for (int is = 0; is < nspin_dm; ++is) { vr_eff[is] = v2[is].c; }
+        for (int is = 0; is < nspin_dm; ++is)
+        {
+            vr_eff[is] = v2[is].c;
+        }
         ModuleGint::cal_gint_fvl(nspin_dm, vr_eff, dm_gs.get_dmr_vec(), true, false, &f, &stress_tmp);
         Parallel_Reduce::reduce_pool(f.c, f.nr * f.nc);   // see `fvl_dphi` in cal_force_hamilt_gs_dm_relaxed_diff
         return f;

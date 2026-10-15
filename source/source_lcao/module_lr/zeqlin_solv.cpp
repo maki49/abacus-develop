@@ -25,7 +25,10 @@ namespace LR
         const T one(1.0);
         const T zero(0.0);
         ScalapackConnector::tranc(n, n, one, A, 1, 1, pA.desc, zero, AH.data(), 1, 1, pA.desc);
-        for (std::size_t i = 0; i < AH.size(); ++i) { A[i] = 0.5 * (A[i] + AH[i]); }
+        for (std::size_t i = 0; i < AH.size(); ++i)
+        {
+            A[i] = 0.5 * (A[i] + AH[i]);
+        }
     }
 
     template <typename T>

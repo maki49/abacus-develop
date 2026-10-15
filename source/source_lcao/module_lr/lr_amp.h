@@ -10,7 +10,10 @@ namespace LR
 inline int electron_hole_offset(const int state, const int nk, const int up_size,
     const int down_size, const int ispin, const bool openshell)
 {
-    if (openshell) { return state * nk * (up_size + down_size) + ispin * nk * up_size; }
+    if (openshell)
+    {
+        return state * nk * (up_size + down_size) + ispin * nk * up_size;
+    }
     const int channel_size = ispin == 0 ? up_size : down_size;
     return state * nk * channel_size;
 }
@@ -26,14 +29,26 @@ void save_mixed_root(const T* Xall, const int n, const std::vector<int>& group,
     previous.assign(n, T(0));
     for (size_t k = 0; k < group.size(); ++k)
     {
-        for (int i = 0; i < n; ++i) { previous[i] += mixing[k] * Xall[group[k] * n + i]; }
+        for (int i = 0; i < n; ++i)
+        {
+            previous[i] += mixing[k] * Xall[group[k] * n + i];
+        }
     }
     double norm_squared = 0.0;
-    for (const T& value : previous) { norm_squared += std::real(LR_Util::get_conj(value) * value); }
+    for (const T& value: previous)
+    {
+        norm_squared += std::real(LR_Util::get_conj(value) * value);
+    }
     Parallel_Reduce::reduce_all(norm_squared);
-    if (norm_squared <= 0.0) { throw std::runtime_error("JT reference has zero norm"); }
+    if (norm_squared <= 0.0)
+    {
+        throw std::runtime_error("JT reference has zero norm");
+    }
     const double scale = 1.0 / std::sqrt(norm_squared);
-    for (T& value : previous) { value *= scale; }
+    for (T& value: previous)
+    {
+        value *= scale;
+    }
 }
 
 template <typename T>
@@ -41,7 +56,10 @@ void follow_root(const T* Xall, const int n, const int nstates, const int initia
     int& target_state, std::vector<T>& previous, std::ostream& ofs)
 {
 
-    if (target_state < 0) { target_state = initial_state; }
+    if (target_state < 0)
+    {
+        target_state = initial_state;
+    }
 
     // Ranks with no local pairs still participate in the global overlap collective.
     int reference_size = previous.size();
@@ -53,7 +71,10 @@ void follow_root(const T* Xall, const int n, const int nstates, const int initia
         {
             const T* const Xj = Xall + j * n;
             T acc = T(0);
-            for (int i = 0; i < n; ++i) { acc += LR_Util::get_conj(previous[i]) * Xj[i]; }
+            for (int i = 0; i < n; ++i)
+            {
+                acc += LR_Util::get_conj(previous[i]) * Xj[i];
+            }
             ov[j] = acc;
         }
         // X is distributed over the same 2D grid as the particle-hole pairs, so the inner
@@ -67,7 +88,11 @@ void follow_root(const T* Xall, const int n, const int nstates, const int initia
         for (int j = 0; j < nstates; ++j)
         {
             const double a = std::abs(ov[j]);
-            if (a > best_ov) { best_ov = a; best = j; }
+            if (a > best_ov)
+            {
+                best_ov = a;
+                best = j;
+            }
         }
 
         if (best != target_state)
@@ -83,14 +108,23 @@ void follow_root(const T* Xall, const int n, const int nstates, const int initia
         if (best_ov < 0.5)
         {
             ofs << " WARNING: largest amplitude overlap with the previous step is"
-                " only " << best_ov << ". The followed state may have left the window spanned by"
-                " lr_nstates; consider raising lr_nstates or reducing the ionic step." << std::endl;
+                   " only "
+                << best_ov
+                << ". The followed state may have left the window spanned by"
+                   " lr_nstates; consider raising lr_nstates or reducing the ionic step."
+                << std::endl;
         }
         target_state = best;
     }
 
-    if (n > 0) { previous.assign(Xall + target_state * n, Xall + (target_state + 1) * n); }
-    else { previous.clear(); }
+    if (n > 0)
+    {
+        previous.assign(Xall + target_state * n, Xall + (target_state + 1) * n);
+    }
+    else
+    {
+        previous.clear();
+    }
 }
 
 template <typename T>
@@ -132,7 +166,10 @@ ct::Tensor pad_amplitudes(const std::vector<ct::Tensor>& X, const bool openshell
                 {
                     for (int v = 0;v < nvirt[is];++v)
                     {
-                        if (!pxs.in_this_processor(v, o)) { continue; }
+                        if (!pxs.in_this_processor(v, o))
+                        {
+                            continue;
+                        }
                         dst[zoff + pxz.global2local_col(o) * pxz.get_row_size() + pxz.global2local_row(v)]
                             = src[soff + pxs.global2local_col(o) * pxs.get_row_size() + pxs.global2local_row(v)];
                     }

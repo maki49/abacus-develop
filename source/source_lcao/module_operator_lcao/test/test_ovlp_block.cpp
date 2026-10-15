@@ -45,7 +45,10 @@ TEST_F(OverlapBlockTest, AddsToExistingRealBlock)
     // The existing operator fixture mocks each two-center integral as one.
     hamilt::cal_overlap_block(cell, integrator, 0, 0, distribution, displacement, values.data());
     hamilt::cal_overlap_block(cell, integrator, 0, 0, distribution, displacement, values.data());
-    for (double value : values) { EXPECT_DOUBLE_EQ(value, 4.0); }
+    for (double value: values)
+    {
+        EXPECT_DOUBLE_EQ(value, 4.0);
+    }
 }
 
 TEST_F(OverlapBlockTest, PreservesComplexSpinOffDiagonalEntries)

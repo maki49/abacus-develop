@@ -1,6 +1,10 @@
 #ifndef ABACUS_LCAO_OVLP_BLOCK_H
 #define ABACUS_LCAO_OVLP_BLOCK_H
-namespace ModuleBase { template <typename T> class Vector3; }
+namespace ModuleBase
+{
+template <typename T>
+class Vector3;
+}
 class UnitCell;
 class Parallel_Orbitals;
 class TwoCenterIntegrator;

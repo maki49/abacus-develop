@@ -80,7 +80,10 @@ namespace LR
     {
         // 1/sqrt(2) as a literal: `std::sqrt` is not constexpr under the C++11 baseline.
         const T inv_sqrt2 = static_cast<T>(0.70710678118654752440);
-        for (size_t i = 0; i < nloc; ++i) { Xplus[i] = inv_sqrt2 * (Xk[i] + Xl[i]); }
+        for (size_t i = 0; i < nloc; ++i)
+        {
+            Xplus[i] = inv_sqrt2 * (Xk[i] + Xl[i]);
+        }
     }
 
     /// @brief Assemble $G_{kl}$ of one multiplet from the diagonal gradients and the combinations,
@@ -100,7 +103,10 @@ namespace LR
     {
         const int d = static_cast<int>(diag.size());
         std::vector<std::vector<TMat>> g(d, std::vector<TMat>(d));
-        for (int k = 0; k < d; ++k) { g[k][k] = diag[k]; }
+        for (int k = 0; k < d; ++k)
+        {
+            g[k][k] = diag[k];
+        }
         for (size_t ip = 0; ip < pairs.size(); ++ip)
         {
             const int k = pairs[ip].first;

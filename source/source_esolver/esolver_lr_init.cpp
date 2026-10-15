@@ -215,7 +215,10 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_ks_(UnitCell& ucell, cons
         const bool share = (ks_sol.exx_nao.exd && std::is_same<T, double>::value)
                         || (ks_sol.exx_nao.exc && std::is_same<T, std::complex<double>>::value);
         warn_if_kernel_differs_from_gs(xc_kernel, dft_functional, this->ofs_running_);
-        if (share) { this->exx_owned_ = false; }   // `refresh_from_ks_` refreshes the geometry snapshot
+        if (share)
+        {
+            this->exx_owned_ = false;
+        }       // `refresh_from_ks_` refreshes the geometry snapshot
         else    // construct C, V from scratch
         {
             // `input_conv` already filled `info_ri.coulomb_param` from INPUT.
@@ -266,7 +269,10 @@ void ModuleESolver::ESolver_LR<T, TR>::refresh_from_ks_(UnitCell& ucell)
         }
 #endif
         // copy the KS bands in the [nocc, nvirt] window
-        for (int ib = 0;ib < this->nbands;++ib) { this->eig_ks(ik, ib) = this->eig_ks_all(ik, start_band + ib); }
+        for (int ib = 0; ib < this->nbands; ++ib)
+        {
+            this->eig_ks(ik, ib) = this->eig_ks_all(ik, start_band + ib);
+        }
     }
 
     if (nspin == 2)
@@ -295,8 +301,14 @@ void ModuleESolver::ESolver_LR<T, TR>::refresh_from_ks_(UnitCell& ucell)
         {   // Cs/Vs follow the atoms, so they are rebuilt for every geometry
             this->exx_lri->cal_exx_ions(ucell, this->inp_->out_ri_cv);
         }
-        else if (ks_sol.exx_nao.exd) { this->share_exx_lri(ks_sol.exx_nao.exd->exx_ptr); }
-        else if (ks_sol.exx_nao.exc) { this->share_exx_lri(ks_sol.exx_nao.exc->exx_ptr); }
+        else if (ks_sol.exx_nao.exd)
+        {
+            this->share_exx_lri(ks_sol.exx_nao.exd->exx_ptr);
+        }
+        else if (ks_sol.exx_nao.exc)
+        {
+            this->share_exx_lri(ks_sol.exx_nao.exc->exx_ptr);
+        }
     }
 #endif
     // the grid-integration tables hang off a static pointer that the ground-state solver
@@ -410,7 +422,10 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
         pw_big->bz,
         GlobalV::NPROC);
     Charge chg_gs;
-    if (this->inp_->ri_hartree_benchmark == "none") { this->read_ks_chg(chg_gs); }
+    if (this->inp_->ri_hartree_benchmark == "none")
+    {
+        this->read_ks_chg(chg_gs);
+    }
     this->init_pot(chg_gs);
 
     // search adjacent atoms and init Gint

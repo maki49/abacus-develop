@@ -16,7 +16,10 @@ namespace LR
     /// bands, so any term that contracts against ONE channel of `dm_gs` needs this factor.
     /// Closed-shell bookkeeping only: the open-shell path sums the two channels explicitly and
     /// must not apply it.
-    inline double gs_dm_channel_factor(const int& nspin) { return (nspin == 1) ? 0.5 : 1.0; }
+inline double gs_dm_channel_factor(const int& nspin)
+{
+    return (nspin == 1) ? 0.5 : 1.0;
+}
 
     /// Force-term switches and functional name, owned by the caller's resolved INPUT.
     struct ForceSettings

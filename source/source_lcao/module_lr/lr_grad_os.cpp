@@ -29,7 +29,10 @@ std::vector<ModuleBase::matrix> evaluate_open_shell_force(
                                     static_cast<int>(inputs.nk * paraX_g[1].get_local_size()) };
     const std::vector<int> off_x = { 0, ld_x[0] };
     std::vector<psi::Psi<T>> c_spin;
-    for (int is : {0, 1}) { c_spin.push_back(LR_Util::get_psi_spin(inputs.psi_ks, is, inputs.nk)); }
+    for (int is: {0, 1})
+    {
+        c_spin.push_back(LR_Util::get_psi_spin(inputs.psi_ks, is, inputs.nk));
+    }
 
     inputs.ofs << "Start to calculate excited-state force of updown (open shell)" << std::endl;
 
@@ -43,7 +46,9 @@ std::vector<ModuleBase::matrix> evaluate_open_shell_force(
         const T* const Z_istate = Z.template data<T>() + offset;
 
         // 1. the k-space blocks of each spin channel
-        std::vector<std::vector<ct::Tensor>> dmx_k(2), dmdiff_k(2), relaxed_k(2);
+        std::vector<std::vector<ct::Tensor>> dmx_k(2);
+        std::vector<std::vector<ct::Tensor>> dmdiff_k(2);
+        std::vector<std::vector<ct::Tensor>> relaxed_k(2);
         for (int is : {0, 1})
         {
 #ifdef __MPI
@@ -53,12 +58,18 @@ std::vector<ModuleBase::matrix> evaluate_open_shell_force(
                 inputs.nbasis, inputs.nocc[is], nvirt_g[is], inputs.pmat);
             std::vector<ct::Tensor> dmz_k = cal_dm_trans_pblas(Z_istate + off_x[is], paraX_g[is], c_spin[is],
                 inputs.pc, inputs.nbasis, inputs.nocc[is], nvirt_g[is], inputs.pmat);
-            for (auto& d : dmz_k) { LR_Util::matsym(d.template data<T>(), inputs.nbasis, inputs.pmat); }
+            for (auto& d: dmz_k)
+            {
+                LR_Util::matsym(d.template data<T>(), inputs.nbasis, inputs.pmat);
+            }
 #else
             dmx_k[is] = cal_dm_trans_blas(X_istate + off_x[is], c_spin[is], inputs.nocc[is], nvirt_g[is]);
             dmdiff_k[is] = cal_dm_diff_blas(X_istate + off_x[is], c_spin[is], inputs.nbasis, inputs.nocc[is], nvirt_g[is]);
             std::vector<ct::Tensor> dmz_k = cal_dm_trans_blas(Z_istate + off_x[is], c_spin[is], inputs.nocc[is], nvirt_g[is]);
-            for (auto& d : dmz_k) { LR_Util::matsym(d.template data<T>(), inputs.nbasis); }
+            for (auto& d: dmz_k)
+            {
+                LR_Util::matsym(d.template data<T>(), inputs.nbasis);
+            }
 #endif
             relaxed_k[is] = dmdiff_k[is] + dmz_k;
         }

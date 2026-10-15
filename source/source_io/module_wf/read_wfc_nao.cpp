@@ -83,13 +83,19 @@ bool ModuleIO::read_wfc_nao_spin_populations(const std::string& readin_dir,
     populations.assign(nspin, 0.0);
     bool success = (nspin == 1 || nspin == 2) && nkstot > 0 && nkstot % nspin == 0;
     std::vector<int> ik2iktot;
-    for (int ik = 0; ik < nkstot; ++ik) { ik2iktot.push_back(ik); }
-    if (gamma_only && nkstot != nspin) { success = false; }
+    for (int ik = 0; ik < nkstot; ++ik)
+    {
+        ik2iktot.push_back(ik);
+    }
+    if (gamma_only && nkstot != nspin)
+    {
+        success = false;
+    }
     if (my_rank == 0 && success)
     {
-        const int nk = ik2iktot.size() / nspin;
+        const int nk = nkstot / nspin;
         const int read_type = binary ? 2 : 1;
-        for (int ik = 0; ik < static_cast<int>(ik2iktot.size()) && success; ++ik)
+        for (int ik = 0; ik < nkstot && success; ++ik)
         {
             const std::string file = ModuleIO::filename_output(readin_dir, "wf", "nao",
                 ik, ik2iktot, nspin, nkstot, read_type, false, gamma_only, -1);

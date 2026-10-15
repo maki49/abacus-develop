@@ -43,12 +43,36 @@ public:
     }
 #endif
 
-    void set_ones(double* data, int size) { for (int i = 0;i < size;++i) data[i] = 1.0; };
-    void set_int(double* data, int size) { for (int i = 0;i < size;++i) data[i] = static_cast<double>(i + 1); };
-    void set_int(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(i + 1, -i - 1); };
-    void set_rand(double* data, int size) { for (int i = 0;i < size;++i) data[i] = double(rand()) / double(RAND_MAX) * 10.0 - 5.0; };
-    void set_rand(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(rand(), rand()) / double(RAND_MAX) * 10.0 - 5.0; };
-    void check_eq(double* data1, double* data2, int size) { for (int i = 0;i < size;++i) EXPECT_NEAR(data1[i], data2[i], 1e-8); };
+    void set_ones(double* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = 1.0;
+    };
+    void set_int(double* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = static_cast<double>(i + 1);
+    };
+    void set_int(std::complex<double>* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = std::complex<double>(i + 1, -i - 1);
+    };
+    void set_rand(double* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = double(rand()) / double(RAND_MAX) * 10.0 - 5.0;
+    };
+    void set_rand(std::complex<double>* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = std::complex<double>(rand(), rand()) / double(RAND_MAX) * 10.0 - 5.0;
+    };
+    void check_eq(double* data1, double* data2, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            EXPECT_NEAR(data1[i], data2[i], 1e-8);
+    };
     void check_eq(std::complex<double>* data1, std::complex<double>* data2, int size)
     {
         for (int i = 0;i < size;++i)
@@ -76,7 +100,8 @@ TEST_F(AXTest, DoubleSerial)
             psi::Psi<double, base_device::DEVICE_CPU> c(s.nks, s.nocc + s.nvirt, s.naos, {}, true);
             std::vector<container::Tensor> V(s.nks, container::Tensor(DAT::DT_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             set_rand(c.get_pointer(), size_c);
-            for (auto& v : V)set_rand(v.data<double>(), size_v);
+            for (auto& v: V)
+                set_rand(v.data<double>(), size_v);
             X.fix_b(istate);
             AX_for.fix_b(istate);
             AX_blas.fix_b(istate);
@@ -113,7 +138,8 @@ TEST_F(AXTest, ComplexSerial)
             psi::Psi<std::complex<double>, base_device::DEVICE_CPU> c(s.nks, s.nocc + s.nvirt, s.naos, {}, true);
             std::vector<container::Tensor> V(s.nks, container::Tensor(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { s.naos, s.naos }));
             set_rand(c.get_pointer(), size_c);
-            for (auto& v : V)set_rand(v.data<std::complex<double>>(), size_v);
+            for (auto& v: V)
+                set_rand(v.data<std::complex<double>>(), size_v);
             X.fix_b(istate);
             AX_for.fix_b(istate);
             AX_blas.fix_b(istate);

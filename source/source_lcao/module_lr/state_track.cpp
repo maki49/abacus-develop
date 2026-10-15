@@ -64,7 +64,10 @@ void project_local_references(const RootInputs<T>& inputs, const RootBasis<T>& o
 {
     const std::vector<T> typed_ao(ao.begin(), ao.end());
     std::vector<std::vector<T>*> references{&previous};
-    for (auto& root : group) { references.push_back(&root); }
+    for (auto& root: group)
+    {
+        references.push_back(&root);
+    }
     int offset = 0;
     // Both closed-shell channels define X in the spin-up KS orbital basis.
     const std::vector<int> spins = inputs.openshell ? std::vector<int>{0, 1} : std::vector<int>{0};
@@ -108,7 +111,10 @@ int follow_subspace(const RootInputs<T>& inputs, const T* amplitudes,
 {
     const int nlocal = previous.size();
     int nstates = 0;
-    for (const auto& group : groups) { nstates += group.size(); }
+    for (const auto& group: groups)
+    {
+        nstates += group.size();
+    }
     const int old_dimension = old_group.size();
     std::vector<T> overlaps(old_dimension * nstates, T(0));
     std::vector<T> reference(nstates, T(0));
@@ -129,31 +135,46 @@ int follow_subspace(const RootInputs<T>& inputs, const T* amplitudes,
     Parallel_Reduce::reduce_all(reference.data(), nstates);
     const std::vector<std::complex<double>> complex_overlap(overlaps.begin(), overlaps.end());
     std::vector<double> reference_size(nstates);
-    for (int root = 0; root < nstates; ++root) { reference_size[root] = std::abs(reference[root]); }
+    for (int root = 0; root < nstates; ++root)
+    {
+        reference_size[root] = std::abs(reference[root]);
+    }
     const auto match = match_state_group(complex_overlap, old_dimension, nstates, groups, reference_size, inputs.reference_first);
     for (size_t ig = 0; ig < groups.size(); ++ig)
     {
         log << " EXCITED-STATE RELAX: candidate roots";
-        for (const int root : groups[ig]) { log << " " << root; }
+        for (const int root: groups[ig])
+        {
+            log << " " << root;
+        }
         log << "; reference projection weight " << match.reference_weights[ig] << std::endl;
     }
     const auto& selected = groups[match.group];
     int target = selected.front();
     for (const int root : selected)
     {
-        if (reference_size[root] > reference_size[target]) { target = root; }
+        if (reference_size[root] > reference_size[target])
+        {
+            target = root;
+        }
     }
     log << " EXCITED-STATE RELAX: subspace dimensions " << old_dimension << " -> " << selected.size()
-        << "; old/new coverage " << match.old_coverage << " / " << match.new_coverage
-        << "; reference-first " << inputs.reference_first << "; subspace score " << match.subspace_score
-        << "; best/runner-up score " << match.score << " / " << match.runner_up << "; singular values";
-    for (const double value : match.singular_values) { log << " " << value; }
+        << "; old/new coverage " << match.old_coverage << " / " << match.new_coverage << "; reference-first "
+        << inputs.reference_first << "; subspace score " << match.subspace_score << "; best/runner-up score "
+        << match.score << " / " << match.runner_up << "; singular values";
+    for (const double value: match.singular_values)
+    {
+        log << " " << value;
+    }
     log << "; selected roots";
-    for (const int root : selected) { log << " " << root; }
+    for (const int root: selected)
+    {
+        log << " " << root;
+    }
     const auto largest_reference = std::max_element(reference_size.begin(), reference_size.end());
     const int reference_root = std::distance(reference_size.begin(), largest_reference);
-    log << "; target " << target << "; reference overlap " << reference_size[target]
-        << "; best reference root " << reference_root << " (" << *largest_reference << ")" << std::endl;
+    log << "; target " << target << "; reference overlap " << reference_size[target] << "; best reference root "
+        << reference_root << " (" << *largest_reference << ")" << std::endl;
     if (!inputs.reference_first && std::find(selected.begin(), selected.end(), reference_root) == selected.end())
     {
         log << " WARNING: the group match excludes the root with largest single/JT reference overlap."
@@ -173,8 +194,14 @@ int follow_subspace(const RootInputs<T>& inputs, const T* amplitudes,
         log << " WARNING: low tracking coverage; continuing with the best candidate."
             << " The surface may be discontinuous; consider a smaller step or more roots." << std::endl;
     }
-    if (nlocal > 0) { previous.assign(amplitudes + target * nlocal, amplitudes + (target + 1) * nlocal); }
-    else { previous.clear(); }
+    if (nlocal > 0)
+    {
+        previous.assign(amplitudes + target * nlocal, amplitudes + (target + 1) * nlocal);
+    }
+    else
+    {
+        previous.clear();
+    }
     return target;
 }
 }
@@ -214,14 +241,23 @@ void follow_cross_root(const RootInputs<T>& inputs, const T* amplitudes,
     {
         target = follow_subspace(inputs, amplitudes, groups, previous, basis.group_amplitudes, log);
     }
-    else { follow_root(amplitudes, nlocal, nstates, initial_state, target, previous, log); }
+    else
+    {
+        follow_root(amplitudes, nlocal, nstates, initial_state, target, previous, log);
+    }
     for (const auto& group : groups)
     {
-        if (std::find(group.begin(), group.end(), target) == group.end()) { continue; }
+        if (std::find(group.begin(), group.end(), target) == group.end())
+        {
+            continue;
+        }
         for (const int root : group)
         {
             std::vector<T> local(nlocal);
-            if (nlocal > 0) { std::copy_n(amplitudes + root * nlocal, nlocal, local.begin()); }
+            if (nlocal > 0)
+            {
+                std::copy_n(amplitudes + root * nlocal, nlocal, local.begin());
+            }
             current.group_amplitudes.push_back(std::move(local));
         }
         break;

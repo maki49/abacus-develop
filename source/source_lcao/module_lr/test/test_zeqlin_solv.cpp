@@ -19,10 +19,20 @@ namespace
     {
         return std::sin(0.7 * i + 1.3 * j + 0.37 * salt + 0.1 * i * j);
     }
-    double conj_if_complex(const double v) { return v; }
-    std::complex<double> conj_if_complex(const std::complex<double>& v) { return std::conj(v); }
+    double conj_if_complex(const double v)
+    {
+        return v;
+    }
+    std::complex<double> conj_if_complex(const std::complex<double>& v)
+    {
+        return std::conj(v);
+    }
     template <typename T> T make_value(const double re, const double im);
-    template <> double make_value<double>(const double re, const double im) { return re; }
+    template <>
+    double make_value<double>(const double re, const double im)
+    {
+        return re;
+    }
     template <> std::complex<double> make_value<std::complex<double>>(const double re, const double im)
     {
         return std::complex<double>(re, im);
@@ -52,7 +62,10 @@ namespace
         std::vector<T> b(static_cast<std::size_t>(n) * nrhs);
         for (int j = 0; j < nrhs; ++j)
         {
-            for (int i = 0; i < n; ++i) { b[j * n + i] = make_value<T>(entry(i, j, 3), entry(i, j, 4)); }
+            for (int i = 0; i < n; ++i)
+            {
+                b[j * n + i] = make_value<T>(entry(i, j, 3), entry(i, j, 4));
+            }
         }
         return b;
     }
@@ -72,7 +85,10 @@ namespace
         return loc;
     }
 
-    void expect_near(const double a, const double b) { EXPECT_NEAR(a, b, 1e-10); }
+    void expect_near(const double a, const double b)
+    {
+        EXPECT_NEAR(a, b, 1e-10);
+    }
     void expect_near(const std::complex<double>& a, const std::complex<double>& b)
     {
         EXPECT_NEAR(a.real(), b.real(), 1e-10);
@@ -98,7 +114,10 @@ namespace
 
         std::vector<T> x(b.size(), T(0));
         LR_Util::gather_2d_to_full(pb, x_loc.data(), x.data(), false, n, nrhs);
-        for (std::size_t i = 0; i < x.size(); ++i) { expect_near(x[i], x_ref[i]); }
+        for (std::size_t i = 0; i < x.size(); ++i)
+        {
+            expect_near(x[i], x_ref[i]);
+        }
     }
 
     template <typename T>
@@ -108,7 +127,10 @@ namespace
         const int nb = 3;
         const int failing_index = 10; // Put the failure beyond the first distributed block.
         std::vector<T> a(n * n, T(0));
-        for (int i = 0; i < n; ++i) { a[i * n + i] = T(1); }
+        for (int i = 0; i < n; ++i)
+        {
+            a[i * n + i] = T(1);
+        }
         a[failing_index * n + failing_index] = T(pivot);
         Parallel_2D pa;
         LR_Util::setup_2d_division(pa, nb, n, n);
@@ -122,7 +144,10 @@ namespace
         {
             LR::scalapack_cholesky_linear_solver<T>(a_loc.data(), b_loc.data(), pa, pb);
         }
-        catch (const std::runtime_error& failure) { error = failure.what(); }
+        catch (const std::runtime_error& failure)
+        {
+            error = failure.what();
+        }
         EXPECT_NE(error.find("info=11"), std::string::npos) << error;
         EXPECT_NE(error.find("lr_grad_solver=scalapack (LU)"), std::string::npos) << error;
         if (pivot < 0.)
@@ -262,8 +287,10 @@ TEST(ZeqCGReview, SolvesIdentityWithoutDumpingProductionVector)
 {
     double rhs[] = {2.0, -3.0};
     double z[] = {0.0, 0.0};
-    const std::function<void(const double*, double*)> identity =
-        [](const double* x, double* y) { y[0] = x[0]; y[1] = x[1]; };
+    const std::function<void(const double*, double*)> identity = [](const double* x, double* y) {
+        y[0] = x[0];
+        y[1] = x[1];
+    };
     testing::internal::CaptureStdout();
     LR::solve_Z_CG(z, rhs, 2, 1, identity, false);
     const std::string output = testing::internal::GetCapturedStdout();
@@ -276,8 +303,10 @@ TEST(ZeqCGReview, ZeroRhsIsConverged)
 {
     double rhs[] = {0.0, 0.0};
     double z[] = {9.0, -1.0};
-    const std::function<void(const double*, double*)> identity =
-        [](const double* x, double* y) { y[0] = x[0]; y[1] = x[1]; };
+    const std::function<void(const double*, double*)> identity = [](const double* x, double* y) {
+        y[0] = x[0];
+        y[1] = x[1];
+    };
     LR::solve_Z_CG(z, rhs, 2, 1, identity, false);
     EXPECT_DOUBLE_EQ(z[0], 0.0);
     EXPECT_DOUBLE_EQ(z[1], 0.0);
@@ -287,7 +316,9 @@ TEST(ZeqCGReview, RejectsAnUnsolvableSystem)
 {
     double rhs[] = {1.0, 2.0};
     double z[] = {0.0, 0.0};
-    const std::function<void(const double*, double*)> zero =
-        [](const double*, double* y) { y[0] = 0.0; y[1] = 0.0; };
+    const std::function<void(const double*, double*)> zero = [](const double*, double* y) {
+        y[0] = 0.0;
+        y[1] = 0.0;
+    };
     EXPECT_THROW(LR::solve_Z_CG(z, rhs, 2, 1, zero, false), std::runtime_error);
 }

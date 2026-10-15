@@ -55,7 +55,10 @@ std::vector<ModuleBase::Vector3<int>> cross_image_indices(
             {
                 const ModuleBase::Vector3<int> image(x, y, z);
                 const ModuleBase::Vector3<double> shifted = displacement + image * lattice;
-                if (shifted.norm() < cutoff) { images.push_back(image); }
+                if (shifted.norm() < cutoff)
+                {
+                    images.push_back(image);
+                }
             }
         }
     }
@@ -69,7 +72,10 @@ std::vector<double> cross_ao_overlap(const UnitCell& cell,
     const std::vector<double>& cutoff, const TwoCenterIntegrator& integrator,
     const Parallel_Orbitals& pmat)
 {
-    if (cell.get_npol() != 1) { throw std::invalid_argument("LR root overlap requires collinear spin"); }
+    if (cell.get_npol() != 1)
+    {
+        throw std::invalid_argument("LR root overlap requires collinear spin");
+    }
     ModuleBase::Matrix3 lattice = cell.latvec;
     lattice *= cell.lat0;
     hamilt::HContainer<double> overlap_r(&pmat);
@@ -78,7 +84,10 @@ std::vector<double> cross_ao_overlap(const UnitCell& cell,
         const int type_i = cell.iat2it[i];
         for (int j = 0; j < cell.nat; ++j)
         {
-            if (pmat.is_invalid_atom_pair(i, j)) { continue; }
+            if (pmat.is_invalid_atom_pair(i, j))
+            {
+                continue;
+            }
             const int type_j = cell.iat2it[j];
             const auto displacement = (cell.get_tau(j) - old_positions[i]) * cell.lat0;
             const double radius = cutoff[type_i] + cutoff[type_j];

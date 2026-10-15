@@ -7,8 +7,15 @@ class UnitCell;
 class Parallel_2D;
 class Parallel_Orbitals;
 class TwoCenterIntegrator;
-namespace base_device { struct DEVICE_CPU; }
-namespace psi { template <typename T, typename Device> class Psi; }
+namespace base_device
+{
+struct DEVICE_CPU;
+}
+namespace psi
+{
+template <typename T, typename Device>
+class Psi;
+}
 namespace LR
 {
 // Snapshot of the previous geometry and MO basis; reference amplitudes are stored separately.

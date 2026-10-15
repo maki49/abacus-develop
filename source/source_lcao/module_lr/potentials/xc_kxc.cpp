@@ -7,7 +7,10 @@
 
 void LR::require_xc_kxc(const xc_func_type& functional, const bool need_kxc)
 {
-    if (!need_kxc) { return; }
+    if (!need_kxc)
+    {
+        return;
+    }
     // Only mixed functionals evaluate these children as separate XC contributions.
     // Other auxiliary objects may merely provide internal parameters or lower derivatives.
     if (functional.mix_coef != nullptr)

@@ -54,7 +54,10 @@ namespace LR
             orb_cutoff_(orb_cutoff), mo_type_(mo_type), factor_(factor),
             nk_(kv.get_nks() / nspin), nrxx_(rho_basis.nrxx), ks_solver_(ks_solver)
         {
-            for (int is : {0, 1}) { this->psi_spin_.push_back(LR_Util::get_psi_spin(psi_ks, is, this->nk_)); }
+            for (int is: {0, 1})
+            {
+                this->psi_spin_.push_back(LR_Util::get_psi_spin(psi_ks, is, this->nk_));
+            }
             this->hR_ = LR_Util::make_unique<hamilt::HContainer<double>>(&pmat);
             LR_Util::initialize_HR<T, double>(*this->hR_, ucell, gd, orb_cutoff);
         }
@@ -74,10 +77,16 @@ namespace LR
 #ifdef __MPI
                 dmk[is] = cal_dm_trans_pblas(X_full + off_x[is], pX_[is], psi_spin_[is], pc_,
                     naos_, nocc_[is], nvirt_[is], pmat_);
-                for (auto& t : dmk[is]) { LR_Util::matsym(t.template data<T>(), naos_, pmat_); }
+                for (auto& t: dmk[is])
+                {
+                    LR_Util::matsym(t.template data<T>(), naos_, pmat_);
+                }
 #else
                 dmk[is] = cal_dm_trans_blas(X_full + off_x[is], psi_spin_[is], nocc_[is], nvirt_[is]);
-                for (auto& t : dmk[is]) { LR_Util::matsym(t.template data<T>(), naos_); }
+                for (auto& t: dmk[is])
+                {
+                    LR_Util::matsym(t.template data<T>(), naos_);
+                }
 #endif
             }
             module_dm::DensityMatrix<T, double> dm = LR_Util::build_dm_from_dmk_spin<T, double>(dmk,
@@ -85,7 +94,10 @@ namespace LR
 
             double** rho1 = nullptr;
             LR_Util::_allocate_2order_nested_ptr(rho1, 2, nrxx_);
-            for (int is : {0, 1}) { ModuleBase::GlobalFunc::ZEROS(rho1[is], nrxx_); }
+            for (int is: {0, 1})
+            {
+                ModuleBase::GlobalFunc::ZEROS(rho1[is], nrxx_);
+            }
             ModuleGint::cal_gint_rho(dm.get_dmr_vec(), 2, rho1, false);
 
             // 2. one potential per output spin, then AO -> MO.
@@ -100,7 +112,10 @@ namespace LR
                 this->hR_->set_zero();
                 ModuleGint::cal_gint_vl(v2.c, this->hR_.get());
                 std::vector<ct::Tensor> v_2d(nk_, LR_Util::newTensor<T>({ pmat_.get_col_size(), pmat_.get_row_size() }));
-                for (auto& v : v_2d) { v.zero(); }
+                for (auto& v: v_2d)
+                {
+                    v.zero();
+                }
                 const int nrow = ModuleBase::GlobalFunc::IS_COLUMN_MAJOR_KS_SOLVER(this->ks_solver_)
                     ? pmat_.get_row_size() : pmat_.get_col_size();
                 for (int ik = 0;ik < nk_;++ik)

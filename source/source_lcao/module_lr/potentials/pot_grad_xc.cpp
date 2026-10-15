@@ -21,15 +21,27 @@ namespace LR
     {
         const std::size_t real_size = nrxx;
         // resize() on an already-large vector is a no-op, so only the first call allocates.
-        if (this->vtmp.size() < real_size) { this->vtmp.resize(real_size); }
+        if (this->vtmp.size() < real_size)
+        {
+            this->vtmp.resize(real_size);
+        }
         if (gga)
         {
-            if (this->gdot.size() < real_size) { this->gdot.resize(real_size); }
-            if (this->div.size() < real_size) { this->div.resize(real_size); }
+            if (this->gdot.size() < real_size)
+            {
+                this->gdot.resize(real_size);
+            }
+            if (this->div.size() < real_size)
+            {
+                this->div.resize(real_size);
+            }
             const int nch = two_channel ? 2 : 1;
             for (int is = 0; is < nch; ++is)
             {
-                if (this->drho1[is].size() < real_size) { this->drho1[is].resize(real_size); }
+                if (this->drho1[is].size() < real_size)
+                {
+                    this->drho1[is].resize(real_size);
+                }
             }
         }
     }
@@ -95,11 +107,16 @@ namespace LR
             Vec3* const gdot_terms = scratch().gdot.data();
             const Vec3* const dgs = kxc.drho_gs.at(0).data();
             const double* const r1 = rho[0];
-            const double* const e_s2 = g.e_s2.data(); const double* const e_st = g.e_st.data();
-            const double* const e_t2 = g.e_t2.data(); const double* const e_q = g.e_q.data();
-            const double* const c_s = g.c_s.data();   const double* const c_t = g.c_t.data();
-            const double* const a_s2 = g.a_s2.data(); const double* const a_st = g.a_st.data();
-            const double* const a_t2 = g.a_t2.data(); const double* const a_q = g.a_q.data();
+            const double* const e_s2 = g.e_s2.data();
+            const double* const e_st = g.e_st.data();
+            const double* const e_t2 = g.e_t2.data();
+            const double* const e_q = g.e_q.data();
+            const double* const c_s = g.c_s.data();
+            const double* const c_t = g.c_t.data();
+            const double* const a_s2 = g.a_s2.data();
+            const double* const a_st = g.a_st.data();
+            const double* const a_t2 = g.a_t2.data();
+            const double* const a_q = g.a_q.data();
 
             // 1. the vector under the divergence, accumulated negated so that `grad_dot` yields
             //    $-\nabla\cdot\boldsymbol{E}$. The four $e$ coefficients share the same
@@ -174,7 +191,8 @@ namespace LR
         // Branch on THIS kernel's own GGA-ness, not the ground state's (see `cal_v_eff`).
         if (!kxc.is_gga())   // LDA: only $g^{\rho\rho\rho}$ survives
         {
-            const double* const r1u = rho1[0]; const double* const r1d = rho1[1];
+            const double* const r1u = rho1[0];
+            const double* const r1d = rho1[1];
             const double* const g3 = v3r3.data();
             double* const v = v_eff.c;
 #ifdef _OPENMP
@@ -185,7 +203,11 @@ namespace LR
                 const double s[2] = { r1u[ir], r1d[ir] };
                 double a = 0.;
                 for (int s0 = 0;s0 < 2;++s0) {
-                    for (int s1 = 0;s1 < 2;++s1) { a += s[s0] * s[s1] * g3[ir * 4 + r3(tau, s0, s1)]; } }
+                    for (int s1 = 0; s1 < 2; ++s1)
+                    {
+                        a += s[s0] * s[s1] * g3[ir * 4 + r3(tau, s0, s1)];
+                    }
+                }
                 v[ir] += ModuleBase::e2 * a;
             }
             ModuleBase::timer::end("PotGradXCLR", "cal_v_eff_openshell");
@@ -195,7 +217,10 @@ namespace LR
         // GGA / HYB_GGA
         scratch().alloc(nrxx_, /*two_channel=*/true, /*gga=*/true);
         Vec3* const drho1[2] = { scratch().drho1[0].data(), scratch().drho1[1].data() };
-        for (int is : {0, 1}) { LR_Util::grad(rho1[is], drho1[is], this->rho_basis_, this->tpiba_); }
+        for (int is: {0, 1})
+        {
+            LR_Util::grad(rho1[is], drho1[is], this->rho_basis_, this->tpiba_);
+        }
 
         double* const v_tmp = scratch().vtmp.data();
         Vec3* const gdot_terms = scratch().gdot.data();
@@ -225,12 +250,27 @@ namespace LR
             // ---- the local part $A_\tau$ ----
             double A = 0.;
             for (int s0 = 0;s0 < 2;++s0) {
-                for (int s1 = 0;s1 < 2;++s1) { A += s[s0] * s[s1] * v3r3[o4 + r3(tau, s0, s1)]; } }
+                for (int s1 = 0; s1 < 2; ++s1)
+                {
+                    A += s[s0] * s[s1] * v3r3[o4 + r3(tau, s0, s1)];
+                }
+            }
             for (int s0 = 0;s0 < 2;++s0) {
-                for (int a = 0;a < 3;++a) { A += 2. * s[s0] * S[a] * v3r2s[o9 + r2s(tau, s0, a)]; } }
+                for (int a = 0; a < 3; ++a)
+                {
+                    A += 2. * s[s0] * S[a] * v3r2s[o9 + r2s(tau, s0, a)];
+                }
+            }
             for (int a = 0;a < 3;++a) {
-                for (int b = 0;b < 3;++b) { A += S[a] * S[b] * v3rs2[o12 + rs2(tau, a, b)]; } }
-            for (int a = 0;a < 3;++a) { A += Q[a] * v2rs[o6 + rs(tau, a)]; }
+                for (int b = 0; b < 3; ++b)
+                {
+                    A += S[a] * S[b] * v3rs2[o12 + rs2(tau, a, b)];
+                }
+            }
+            for (int a = 0; a < 3; ++a)
+            {
+                A += Q[a] * v2rs[o6 + rs(tau, a)];
+            }
             v_tmp[ir] = A;
 
             // ---- the divergence part $\boldsymbol{E}_\tau$ ----
@@ -240,20 +280,44 @@ namespace LR
             for (int a = 0;a < 3;++a)
             {
                 const double th = theta[tau][a];
-                if (th == 0.) { continue; }
+                if (th == 0.)
+                {
+                    continue;
+                }
                 const int c = chan[tau][a];
                 double up = 0.;
                 double upp = 0.;
-                for (int s0 = 0;s0 < 2;++s0) { up += s[s0] * v2rs[o6 + rs(s0, a)]; }
-                for (int b = 0;b < 3;++b) { up += S[b] * v2s2[o6 + p2[a][b]]; }
+                for (int s0 = 0; s0 < 2; ++s0)
+                {
+                    up += s[s0] * v2rs[o6 + rs(s0, a)];
+                }
+                for (int b = 0; b < 3; ++b)
+                {
+                    up += S[b] * v2s2[o6 + p2[a][b]];
+                }
 
                 for (int s0 = 0;s0 < 2;++s0) {
-                    for (int s1 = 0;s1 < 2;++s1) { upp += s[s0] * s[s1] * v3r2s[o9 + r2s(s0, s1, a)]; } }
+                    for (int s1 = 0; s1 < 2; ++s1)
+                    {
+                        upp += s[s0] * s[s1] * v3r2s[o9 + r2s(s0, s1, a)];
+                    }
+                }
                 for (int s0 = 0;s0 < 2;++s0) {
-                    for (int b = 0;b < 3;++b) { upp += 2. * s[s0] * S[b] * v3rs2[o12 + rs2(s0, a, b)]; } }
+                    for (int b = 0; b < 3; ++b)
+                    {
+                        upp += 2. * s[s0] * S[b] * v3rs2[o12 + rs2(s0, a, b)];
+                    }
+                }
                 for (int b = 0;b < 3;++b) {
-                    for (int cc = 0;cc < 3;++cc) { upp += S[b] * S[cc] * v3s3[o10 + p3[a][b][cc]]; } }
-                for (int b = 0;b < 3;++b) { upp += Q[b] * v2s2[o6 + p2[a][b]]; }
+                    for (int cc = 0; cc < 3; ++cc)
+                    {
+                        upp += S[b] * S[cc] * v3s3[o10 + p3[a][b][cc]];
+                    }
+                }
+                for (int b = 0; b < 3; ++b)
+                {
+                    upp += Q[b] * v2s2[o6 + p2[a][b]];
+                }
 
                 E += th * (drho[c] * upp + dr1[c] * (2. * up));
             }
@@ -265,7 +329,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-        for (int ir = 0;ir < nrxx_;++ir) { vout[ir] += ModuleBase::e2 * (v_tmp[ir] + div[ir]); }
+        for (int ir = 0; ir < nrxx_; ++ir)
+        {
+            vout[ir] += ModuleBase::e2 * (v_tmp[ir] + div[ir]);
+        }
         ModuleBase::timer::end("PotGradXCLR", "cal_v_eff_openshell");
     }
 }

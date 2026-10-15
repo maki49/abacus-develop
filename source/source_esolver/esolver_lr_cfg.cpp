@@ -47,11 +47,13 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     {
         // calculate total number of basis funcs, see https://en.cppreference.com/w/cpp/algorithm/inner_product
         this->nbasis = std::inner_product(this->inp_->aims_nbasis.begin(), /* iterator1.begin */
-                                          this->inp_->aims_nbasis.end(),  /* iterator1.end */
-                                          this->ucell_->atoms,  /* iterator2.begin */
-                                          0,  /* init value */
-                                          std::plus<int>(), /* iter op1 */
-                                          [](const int& a, const Atom& b) { return a * b.na; }); /* iter op2 */
+                                          this->inp_->aims_nbasis.end(),   /* iterator1.end */
+                                          this->ucell_->atoms,             /* iterator2.begin */
+                                          0,                               /* init value */
+                                          std::plus<int>(),                /* iter op1 */
+                                          [](const int& a, const Atom& b) {
+                                              return a * b.na;
+                                          }); /* iter op2 */
         std::cout << "nbasis from aims: " << this->nbasis << std::endl;
         for (int it = 0; it < this->ucell_->ntype; ++it)
         {
@@ -72,8 +74,15 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     // which determines the basis size of the excited states
     this->nocc_in = LR_Util::cal_nocc_window(this->inp_->nocc, this->nocc_max);
     this->nvirt_in = ks_nbands - this->nocc_max;   //nbands-nocc
-    if (this->inp_->nvirt > this->nvirt_in) { this->ofs_running_ << "ESolver_LR: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = " << this->nvirt_in << std::endl; }
-    else if (this->inp_->nvirt > 0) { this->nvirt_in = this->inp_->nvirt; }
+    if (this->inp_->nvirt > this->nvirt_in)
+    {
+        this->ofs_running_ << "ESolver_LR: input nvirt is too large to cover by nbands, set nvirt = nbands - nocc = "
+                           << this->nvirt_in << std::endl;
+    }
+    else if (this->inp_->nvirt > 0)
+    {
+        this->nvirt_in = this->inp_->nvirt;
+    }
     this->nbands = this->nocc_in + this->nvirt_in;
     this->nk = this->inp_->nspin == 2 ? this->kv.get_nks() / 2 : this->kv.get_nks();
     this->nocc.resize(nspin, nocc_in);
@@ -82,7 +91,10 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
         this->nstates = nk * nocc_in * nvirt_in;
         this->ofs_running_ << "ESolver_LR: lr_nstates <= 0, set nstates = nk * nocc * nvirt = " << this->nstates << std::endl;
     }
-    for (int is = 0;is < nspin;++is) { this->npairs.push_back(nocc[is] * nvirt[is]); }
+    for (int is = 0; is < nspin; ++is)
+    {
+        this->npairs.push_back(nocc[is] * nvirt[is]);
+    }
     this->ofs_running_ << "Setting LR-TDDFT parameters: " << std::endl;
     this->ofs_running_ << "full occupied bands in largest spin channel: " << nocc_max << std::endl;
     const int skipped_core_bands = nocc_max - nocc_in;
@@ -139,7 +151,10 @@ template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::init_pot(const Charge& chg_gs)
 {
     this->pot.assign(nspin, nullptr);
-    if (this->inp_->ri_hartree_benchmark != "none") { return; }
+    if (this->inp_->ri_hartree_benchmark != "none")
+    {
+        return;
+    }
     const auto& grid = pgrid();
     auto prepared = LR::prepare_lr_potentials(*this->inp_, xc_kernel, *this->pw_rho,
         *this->ucell_, chg_gs, grid, nspin, openshell);

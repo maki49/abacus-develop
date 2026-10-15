@@ -70,7 +70,7 @@ set(root_overlap_test_sources
 AddTest(
   TARGET MODULE_LR_state_ovlp
   LIBS base parameter ${math_libs} container device psi
-  SOURCES test_state_ovlp.cpp ${root_overlap_test_sources}
+  SOURCES test_state_ovlp.cpp state_ovlp_test.h ${root_overlap_test_sources}
 )
 
 AddTest(
@@ -79,11 +79,15 @@ AddTest(
   SOURCES test_state_group.cpp ../state_group.cpp
 )
 
+set(state_track_test_sources test_state_track.cpp ../state_track.cpp ../state_group.cpp ../grad_degen.cpp
+                             ${root_overlap_test_sources})
+if(ENABLE_MPI)
+  list(APPEND state_track_test_sources ../../../source_base/test/mpi_test_main.cpp)
+endif()
 AddTest(
   TARGET MODULE_LR_state_track
   LIBS base parameter ${math_libs} container device psi
-  SOURCES test_state_track.cpp ../state_track.cpp ../state_group.cpp ../grad_degen.cpp
-          ../../../source_base/test/mpi_test_main.cpp ${root_overlap_test_sources}
+  SOURCES ${state_track_test_sources}
 )
 
 set(cal_edm_test_sources test_cal_edm.cpp ../cal_edm.cpp ../utils/lr_util.cpp)

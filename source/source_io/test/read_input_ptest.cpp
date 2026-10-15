@@ -715,7 +715,10 @@ TEST_F(InputParaTest, ExternalLRKernelRejectsForces)
 {
     ModuleIO::ReadInput readinput(0);
     std::map<std::string, ModuleIO::Input_Item> lists;
-    for (const auto& entry : readinput.get_input_lists()) { lists.emplace(entry.first, entry.second); }
+    for (const auto& entry: readinput.get_input_lists())
+    {
+        lists.emplace(entry.first, entry.second);
+    }
     const ModuleIO::Input_Item item = lists.at("lr_init_xc_kernel");
     const auto set = [&lists](Parameter& param, const std::string& key,
                              const std::vector<std::string>& values) {
@@ -745,7 +748,10 @@ TEST_F(InputParaTest, RemovedElpaZSolverIsRejected)
 {
     ModuleIO::ReadInput readinput(0);
     std::map<std::string, ModuleIO::Input_Item> lists;
-    for (const auto& entry : readinput.get_input_lists()) { lists.emplace(entry.first, entry.second); }
+    for (const auto& entry: readinput.get_input_lists())
+    {
+        lists.emplace(entry.first, entry.second);
+    }
     ModuleIO::Input_Item item = lists.at("lr_grad_solver");
     Parameter param;
     for (const auto& solver : {"cg", "lapack"})

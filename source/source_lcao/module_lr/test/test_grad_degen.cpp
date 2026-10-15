@@ -51,13 +51,19 @@ namespace
             double s = 0.0;
             for (int i = 0; i < nov; ++i)
             {
-                for (int j = 0; j < nov; ++j) { s += x[i] * b[i * nov + j] * y[j]; }
+                for (int j = 0; j < nov; ++j)
+                {
+                    s += x[i] * b[i * nov + j] * y[j];
+                }
             }
             return s;
         }
 
         /// what "the code" returns for one state
-        double operator()(const std::vector<double>& x) const { return bilinear(x, x); }
+        double operator()(const std::vector<double>& x) const
+        {
+            return bilinear(x, x);
+        }
     };
 
     /// three orthonormal vectors spanning the stand-in degenerate subspace
@@ -77,7 +83,10 @@ namespace
         const int d = static_cast<int>(x.size());
         const std::vector<std::pair<int, int>> pairs = LR::degenerate_pairs(d);
         std::vector<double> diag(d);
-        for (int k = 0; k < d; ++k) { diag[k] = f(x[k]); }
+        for (int k = 0; k < d; ++k)
+        {
+            diag[k] = f(x[k]);
+        }
         std::vector<double> plus(pairs.size());
         for (size_t ip = 0; ip < pairs.size(); ++ip)
         {
@@ -104,7 +113,10 @@ TEST(GradMatrixDegenerate, PolarizationRecoversBilinearForm)
         for (int l = 0; l < d; ++l)
         {
             EXPECT_NEAR(g[k][l], f.bilinear(x[k], x[l]), 1e-12) << "k=" << k << " l=" << l;
-            if (k != l && std::abs(g[k][l]) > 1e-6) { any_offdiag = true; }
+            if (k != l && std::abs(g[k][l]) > 1e-6)
+            {
+                any_offdiag = true;
+            }
         }
     }
     // guard against a degenerate test case that would pass with G assembled as zero off-diagonal
@@ -118,7 +130,10 @@ TEST(GradMatrixDegenerate, IsSymmetric)
     const std::vector<std::vector<double>> g = route_a2(f, subspace_basis());
     for (size_t k = 0; k < g.size(); ++k)
     {
-        for (size_t l = 0; l < g.size(); ++l) { EXPECT_DOUBLE_EQ(g[k][l], g[l][k]); }
+        for (size_t l = 0; l < g.size(); ++l)
+        {
+            EXPECT_DOUBLE_EQ(g[k][l], g[l][k]);
+        }
     }
 }
 
@@ -154,7 +169,10 @@ TEST(GradMatrixDegenerate, RotationCovariance)
     {
         for (int l = 0; l < d; ++l)
         {
-            for (int i = 0; i < nov; ++i) { xr[k][i] += u[l][k] * x[l][i]; }
+            for (int i = 0; i < nov; ++i)
+            {
+                xr[k][i] += u[l][k] * x[l][i];
+            }
         }
     }
     const std::vector<std::vector<double>> gr = route_a2(f, xr);
@@ -166,7 +184,10 @@ TEST(GradMatrixDegenerate, RotationCovariance)
             double expect = 0.0;
             for (int p = 0; p < d; ++p)
             {
-                for (int q = 0; q < d; ++q) { expect += u[p][k] * g[p][q] * u[q][l]; }
+                for (int q = 0; q < d; ++q)
+                {
+                    expect += u[p][k] * g[p][q] * u[q][l];
+                }
             }
             EXPECT_NEAR(gr[k][l], expect, 1e-12) << "k=" << k << " l=" << l;
         }
@@ -209,7 +230,10 @@ TEST(GradMatrixDegenerate, CombineNormalizedKeepsNorm)
     std::vector<double> p(nov);
     LR::combine_normalized(a.data(), b.data(), nov, p.data());
     double n = 0.0;
-    for (int i = 0; i < nov; ++i) { n += p[i] * p[i]; }
+    for (int i = 0; i < nov; ++i)
+    {
+        n += p[i] * p[i];
+    }
     EXPECT_NEAR(n, 1.0, 1e-14);
     EXPECT_NEAR(p[0], 1.0 / std::sqrt(2.0), 1e-14);
     EXPECT_NEAR(p[1], 1.0 / std::sqrt(2.0), 1e-14);
@@ -227,7 +251,8 @@ TEST(GradMatrixDegenerate, PairOrder)
     // d + d(d-1)/2 = d(d+1)/2 evaluations in total, the number of independent components
     for (int d = 1; d < 8; ++d)
     {
-        EXPECT_EQ(static_cast<int>(LR::degenerate_pairs(d).size()) + d, d * (d + 1) / 2);
+        const auto pairs = LR::degenerate_pairs(d);
+        EXPECT_EQ(pairs.size(), d * (d - 1) / 2);
     }
 }
 
@@ -254,7 +279,10 @@ TEST(GradMatrixDegenerate, GroupingSortsAndHandlesEdgeCases)
     // thr <= 0 disables grouping entirely (the default: current per-state behaviour)
     const std::vector<std::vector<int>> none = LR::group_degenerate_states(omega, 0.0);
     EXPECT_EQ(none.size(), omega.size());
-    for (const std::vector<int>& grp : none) { EXPECT_EQ(grp.size(), 1u); }
+    for (const std::vector<int>& grp: none)
+    {
+        EXPECT_EQ(grp.size(), 1u);
+    }
 
     EXPECT_TRUE(LR::group_degenerate_states(std::vector<double>(), 2e-3).empty());
 }
@@ -265,7 +293,10 @@ TEST(GradMatrixDegenerate, GroupingDoesNotChain)
 {
     const double thr = 1e-3;
     std::vector<double> omega;
-    for (int i = 0; i < 6; ++i) { omega.push_back(0.5 + i * 0.9e-3); }
+    for (int i = 0; i < 6; ++i)
+    {
+        omega.push_back(0.5 + i * 0.9e-3);
+    }
     const std::vector<std::vector<int>> g = LR::group_degenerate_states(omega, thr);
     for (const std::vector<int>& grp : g)
     {

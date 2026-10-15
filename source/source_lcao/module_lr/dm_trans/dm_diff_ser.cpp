@@ -160,7 +160,8 @@ namespace LR
         const std::complex<double> beta(add ? 1.0 : 0.0, 0.0);
         // take conjugate of A
         std::vector<std::complex<double>> A_conj(nrow * ncol);
-        for (int i = 0;i < A_conj.size();++i) A_conj[i] = std::conj(A[i]);
+        for (int i = 0; i < A_conj.size(); ++i)
+            A_conj[i] = std::conj(A[i]);
         BlasConnector::gemm_cm(transa,
             transb,
             nrow,
@@ -211,8 +212,14 @@ namespace LR
         return dm_diff;
     }
 
-    double get_conj(const double& x) { return x; }
-    std::complex<double> get_conj(const std::complex<double>& x) { return std::conj(x); }
+    double get_conj(const double& x)
+    {
+        return x;
+    }
+    std::complex<double> get_conj(const std::complex<double>& x)
+    {
+        return std::conj(x);
+    }
 
     template<typename T>
     std::vector<ct::Tensor> cal_dm_diff_forloop(

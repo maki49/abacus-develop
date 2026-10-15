@@ -4,7 +4,10 @@
 #include <complex>
 #include <sstream>
 
-namespace { int test_rank = 0; }
+namespace
+{
+int test_rank = 0;
+}
 
 TEST(GradientAmplitudes, InitialRootSeedsTheReference)
 {

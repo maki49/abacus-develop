@@ -5,7 +5,10 @@
 
 // Cross-geometry AO/MO overlaps and reference projection, without tracking state.
 // Distributed buffers are local column-major blocks; no matrices are gathered here.
-namespace ModuleBase { class Matrix3; }
+namespace ModuleBase
+{
+class Matrix3;
+}
 class UnitCell;
 class Parallel_Orbitals;
 class Parallel_2D;

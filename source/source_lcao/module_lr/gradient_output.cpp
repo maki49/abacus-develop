@@ -23,7 +23,10 @@ void print_lr_force(const std::vector<ModuleBase::matrix>& force, std::ostream& 
         {
             std::string istate = iat == 0 ? std::to_string(istate_begin + i) : " ";
             ofs << std::setw(6) << istate << std::setw(6) << iat << std::setw(6) << "force";
-            for (int ixyz = 0;ixyz < 3;++ixyz) { ofs << std::setw(20) << force[i](iat, ixyz) * fac; }
+            for (int ixyz = 0; ixyz < 3; ++ixyz)
+            {
+                ofs << std::setw(20) << force[i](iat, ixyz) * fac;
+            }
             ofs << std::endl;
         }
     }
@@ -41,7 +44,10 @@ ModuleBase::matrix average_forces(const std::vector<ModuleBase::matrix>& f)
 {
     assert(!f.empty());
     ModuleBase::matrix avg(f[0].nr, f[0].nc);
-    for (size_t k = 0; k < f.size(); ++k) { avg += f[k]; }
+    for (size_t k = 0; k < f.size(); ++k)
+    {
+        avg += f[k];
+    }
     avg *= 1.0 / static_cast<double>(f.size());
     return avg;
 }
@@ -60,7 +66,10 @@ void print_grad_matrix(const std::vector<std::vector<ModuleBase::matrix>>& g,
     const int d = static_cast<int>(g.size());
     const int nat = g[0][0].nr;
     ofs << std::endl << " DEGENERATE-SUBSPACE GRADIENT MATRIX G_kl (eV/Angstrom), states";
-    for (int k = 0; k < d; ++k) { ofs << " " << group[k]; }
+    for (int k = 0; k < d; ++k)
+    {
+        ofs << " " << group[k];
+    }
     ofs << std::endl
         << " Branch slopes along a displacement u are the EIGENVALUES of sum_a u_a G^(a); the"
         << std::endl
@@ -96,12 +105,18 @@ void print_grad_matrix(const std::vector<std::vector<ModuleBase::matrix>>& g,
             std::vector<double> eig(d, 0.0);
             LR_Util::diag_lapack(d, block.data(), eig.data());
             ofs << "       eig";
-            for (int k = 0; k < d; ++k) { ofs << std::setw(15) << eig[k]; }
+            for (int k = 0; k < d; ++k)
+            {
+                ofs << std::setw(15) << eig[k];
+            }
             ofs << std::endl;
         }
     }
     std::vector<ModuleBase::matrix> diag;
-    for (int k = 0; k < d; ++k) { diag.push_back(g[k][k]); }
+    for (int k = 0; k < d; ++k)
+    {
+        diag.push_back(g[k][k]);
+    }
     const ModuleBase::matrix average = average_forces(diag);
     ModuleIO::print_force(ofs, ucell, "MULTIPLET-AVERAGE FORCE -Tr(G)/d (eV/Angstrom)", average, false);
 }

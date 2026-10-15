@@ -205,7 +205,8 @@ namespace LR
         const std::complex<double> beta(add ? 1.0 : 0.0, 0.0);
         // take conjugate of A
         std::vector<std::complex<double>> A_conj(pa.get_local_size());
-        for (int i = 0;i < pa.get_local_size();++i) A_conj[i] = std::conj(A[i]);
+        for (int i = 0; i < pa.get_local_size(); ++i)
+            A_conj[i] = std::conj(A[i]);
         ScalapackConnector::gemm(transa,
             transb,
             nrow,

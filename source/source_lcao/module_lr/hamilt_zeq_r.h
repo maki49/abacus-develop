@@ -128,16 +128,28 @@ namespace LR
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);
 #ifdef __MPI
                     std::vector<ct::Tensor> dm_trans_2d = cal_dm_trans_pblas(X, this->pX[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
-                    for (auto& t : dm_trans_2d) { LR_Util::mattrans(t.data<T>(), naos, pmat); }
+                    for (auto& t: dm_trans_2d)
+                    {
+                        LR_Util::mattrans(t.data<T>(), naos, pmat);
+                    }
 #else
                     std::vector<ct::Tensor> dm_trans_2d = cal_dm_trans_blas(X, psi_ks_is, nocc[is], nvirt[is]);
                     for (auto& t : dm_trans_2d)
                     {
                         T* d = t.data<T>();
-                        for (int u = 0;u < naos;++u) { for (int v = u + 1;v < naos;++v) { std::swap(d[u * naos + v], d[v * naos + u]); } }
+                        for (int u = 0; u < naos; ++u)
+                        {
+                            for (int v = u + 1; v < naos; ++v)
+                            {
+                                std::swap(d[u * naos + v], d[v * naos + u]);
+                            }
+                        }
                     }
 #endif
-                    for (int ik = 0;ik < this->nk;++ik) { this->DM_trans->set_dmk_ptr(ik, dm_trans_2d[ik].data<T>()); }
+                    for (int ik = 0; ik < this->nk; ++ik)
+                    {
+                        this->DM_trans->set_dmk_ptr(ik, dm_trans_2d[ik].data<T>());
+                    }
                 };
 
             this->cal_dm_diff = [this, &psi_ks, &pc, naos, &nocc, &nvirt, &pmat](const int& is, const T* const X)->void
@@ -145,12 +157,17 @@ namespace LR
                     const auto psi_ks_is = LR_Util::get_psi_spin(psi_ks, is, this->nk);
 #ifdef __MPI
                     std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_pblas(X, this->pX[is], psi_ks_is, pc, naos, nocc[is], nvirt[is], pmat);
-                    for (auto& t : dm_diff_2d) LR_Util::matsym(t.data<T>(), naos, pmat);
+                    for (auto& t: dm_diff_2d)
+                        LR_Util::matsym(t.data<T>(), naos, pmat);
 #else
                     std::vector<ct::Tensor> dm_diff_2d = cal_dm_diff_blas(X, psi_ks_is, naos, nocc[is], nvirt[is]);
-                    for (auto& t : dm_diff_2d) LR_Util::matsym(t.data<T>(), naos);
+                    for (auto& t: dm_diff_2d)
+                        LR_Util::matsym(t.data<T>(), naos);
 #endif
-                    for (int ik = 0;ik < this->nk;++ik) { this->DM_diff->set_dmk_ptr(ik, dm_diff_2d[ik].data<T>()); }
+                    for (int ik = 0; ik < this->nk; ++ik)
+                    {
+                        this->DM_diff->set_dmk_ptr(ik, dm_diff_2d[ik].data<T>());
+                    }
                     // std::cout << "difference density matrix" << std::endl;
                     // for (int ik = 0;ik < this->nk;++ik) { LR_Util::print_value(dm_diff_2d[ik].data<T>(), naos, naos); }
                     // std::cout << "test: set dm_diff to zero" << std::endl;
@@ -269,7 +286,10 @@ namespace LR
             }
 
 #ifdef __EXX
-            for (int is : {0, 1}) { this->psi_ks_spin_.push_back(LR_Util::get_psi_spin(psi_ks, is, this->nk)); }
+            for (int is: {0, 1})
+            {
+                this->psi_ks_spin_.push_back(LR_Util::get_psi_spin(psi_ks, is, this->nk));
+            }
             if (exx_kernel_list().count(xc_kernel))
             {
                 for (int is : {0, 1})
@@ -294,7 +314,10 @@ namespace LR
     protected:
         void band_extra(const T* const X, T* const out) const override
         {
-            if (this->gxc_) { this->gxc_->act(X, out); }
+            if (this->gxc_)
+            {
+                this->gxc_->act(X, out);
+            }
         }
 
         /// Rebuild BOTH density matrices from the `is` block of X: the CXC operators read
@@ -306,10 +329,16 @@ namespace LR
 #ifdef __MPI
             this->dmx_buf_ = cal_dm_trans_pblas(X, this->pX[is], psi_ks_is, this->pc_,
                 this->naos_, this->nocc[is], this->nvirt[is], this->pmat_);
-            for (auto& t : this->dmx_buf_) { LR_Util::mattrans(t.template data<T>(), this->naos_, this->pmat_); }
+            for (auto& t: this->dmx_buf_)
+            {
+                LR_Util::mattrans(t.template data<T>(), this->naos_, this->pmat_);
+            }
             this->dmd_buf_ = cal_dm_diff_pblas(X, this->pX[is], psi_ks_is, this->pc_,
                 this->naos_, this->nocc[is], this->nvirt[is], this->pmat_);
-            for (auto& t : this->dmd_buf_) { LR_Util::matsym(t.template data<T>(), this->naos_, this->pmat_); }
+            for (auto& t: this->dmd_buf_)
+            {
+                LR_Util::matsym(t.template data<T>(), this->naos_, this->pmat_);
+            }
 #else
             this->dmx_buf_ = cal_dm_trans_blas(X, psi_ks_is, this->nocc[is], this->nvirt[is]);
             for (auto& t : this->dmx_buf_)
@@ -317,11 +346,17 @@ namespace LR
                 T* d = t.template data<T>();
                 for (int u = 0;u < this->naos_;++u)
                 {
-                    for (int v = u + 1;v < this->naos_;++v) { std::swap(d[u * this->naos_ + v], d[v * this->naos_ + u]); }
+                    for (int v = u + 1; v < this->naos_; ++v)
+                    {
+                        std::swap(d[u * this->naos_ + v], d[v * this->naos_ + u]);
+                    }
                 }
             }
             this->dmd_buf_ = cal_dm_diff_blas(X, psi_ks_is, this->naos_, this->nocc[is], this->nvirt[is]);
-            for (auto& t : this->dmd_buf_) { LR_Util::matsym(t.template data<T>(), this->naos_); }
+            for (auto& t: this->dmd_buf_)
+            {
+                LR_Util::matsym(t.template data<T>(), this->naos_);
+            }
 #endif
             for (int ik = 0;ik < this->nk;++ik)
             {

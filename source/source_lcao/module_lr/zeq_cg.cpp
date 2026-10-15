@@ -39,7 +39,9 @@ namespace LR
             int ifPD = 0;   //???
             double step = cg.step_length(LP.data<double>(), P.data<double>(), ifPD);
             // for (int i = 0; i < size; ++i) Z[i] += step * P[i];
-            std::transform(Z, Z + size, P.data<double>(), Z, [step](const double& z, const double& p) { return z + step * p; });
+            std::transform(Z, Z + size, P.data<double>(), Z, [step](const double& z, const double& p) {
+                return z + step * p;
+            });
             residual = cg.get_residual();
         }
         if (!(residual < tol))

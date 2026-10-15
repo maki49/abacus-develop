@@ -43,12 +43,36 @@ public:
     }
 #endif
 
-    void set_ones(double* data, int size) { for (int i = 0;i < size;++i) data[i] = 1.0; };
-    void set_int(double* data, int size) { for (int i = 0;i < size;++i) data[i] = static_cast<double>(i + 1); };
-    void set_int(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(i + 1, -i - 1); };
-    void set_rand(double* data, int size) { for (int i = 0;i < size;++i) data[i] = double(rand()) / double(RAND_MAX) * 10.0 - 5.0; };
-    void set_rand(std::complex<double>* data, int size) { for (int i = 0;i < size;++i) data[i] = std::complex<double>(rand(), rand()) / double(RAND_MAX) * 10.0 - 5.0; };
-    void check_eq(double* data1, double* data2, int size) { for (int i = 0;i < size;++i) EXPECT_NEAR(data1[i], data2[i], 1e-8); };
+    void set_ones(double* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = 1.0;
+    };
+    void set_int(double* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = static_cast<double>(i + 1);
+    };
+    void set_int(std::complex<double>* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = std::complex<double>(i + 1, -i - 1);
+    };
+    void set_rand(double* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = double(rand()) / double(RAND_MAX) * 10.0 - 5.0;
+    };
+    void set_rand(std::complex<double>* data, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            data[i] = std::complex<double>(rand(), rand()) / double(RAND_MAX) * 10.0 - 5.0;
+    };
+    void check_eq(double* data1, double* data2, int size)
+    {
+        for (int i = 0; i < size; ++i)
+            EXPECT_NEAR(data1[i], data2[i], 1e-8);
+    };
     void check_eq(std::complex<double>* data1, std::complex<double>* data2, int size)
     {
         for (int i = 0;i < size;++i)
@@ -73,7 +97,8 @@ TEST_F(DMDiffTest, DoubleSerial)
             X.fix_b(istate);
             const std::vector<container::Tensor>& dm_for = LR::cal_dm_diff_forloop(X.get_pointer(), c, s.naos, s.nocc, s.nvirt);
             const std::vector<container::Tensor>& dm_blas = LR::cal_dm_diff_blas(X.get_pointer(), c, s.naos, s.nocc, s.nvirt);
-            for (int isk = 0;isk < s.nks;++isk) check_eq(dm_for[isk].data<double>(), dm_blas[isk].data<double>(), s.naos * s.naos);
+            for (int isk = 0; isk < s.nks; ++isk)
+                check_eq(dm_for[isk].data<double>(), dm_blas[isk].data<double>(), s.naos * s.naos);
         }
 
     }
@@ -92,7 +117,10 @@ TEST_F(DMDiffTest, ComplexSerial)
             X.fix_b(istate);
             const std::vector<container::Tensor>& dm_for = LR::cal_dm_diff_forloop(X.get_pointer(), c, s.naos, s.nocc, s.nvirt);
             const std::vector<container::Tensor>& dm_blas = LR::cal_dm_diff_blas(X.get_pointer(), c, s.naos, s.nocc, s.nvirt);
-            for (int isk = 0;isk < s.nks;++isk) check_eq(dm_for[isk].data<std::complex<double>>(), dm_blas[isk].data<std::complex<double>>(), s.naos * s.naos);
+            for (int isk = 0; isk < s.nks; ++isk)
+                check_eq(dm_for[isk].data<std::complex<double>>(),
+                         dm_blas[isk].data<std::complex<double>>(),
+                         s.naos * s.naos);
         }
     }
 }
@@ -164,7 +192,8 @@ TEST_F(DMDiffTest, DoubleParallel)
             if (my_rank == 0)
             {
                 const std::vector<container::Tensor>& dm_full = LR::cal_dm_diff_blas(X_full.get_pointer(), c_full, s.naos, s.nocc, s.nvirt);
-                for (int isk = 0;isk < s.nks;++isk) check_eq(dm_full[isk].data<double>(), dm_gather[isk].data<double>(), s.naos * s.naos);
+                for (int isk = 0; isk < s.nks; ++isk)
+                    check_eq(dm_full[isk].data<double>(), dm_gather[isk].data<double>(), s.naos * s.naos);
             }
         }
     }
@@ -229,7 +258,10 @@ TEST_F(DMDiffTest, ComplexParallel)
             if (my_rank == 0)
             {
                 std::vector<container::Tensor> dm_full = LR::cal_dm_diff_blas(X_full.get_pointer(), c_full, s.naos, s.nocc, s.nvirt);
-                for (int isk = 0;isk < s.nks;++isk) check_eq(dm_full[isk].data<std::complex<double>>(), dm_gather[isk].data<std::complex<double>>(), s.naos * s.naos);
+                for (int isk = 0; isk < s.nks; ++isk)
+                    check_eq(dm_full[isk].data<std::complex<double>>(),
+                             dm_gather[isk].data<std::complex<double>>(),
+                             s.naos * s.naos);
             }
         }
     }

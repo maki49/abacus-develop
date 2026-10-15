@@ -12,17 +12,24 @@ namespace LR
     {
         const int nst = static_cast<int>(omega.size());
         std::vector<std::vector<int>> groups;
-        if (nst == 0) { return groups; }
+        if (nst == 0)
+        {
+            return groups;
+        }
 
         // Casida output happens to come out ascending, but nothing here should depend on that.
         std::vector<int> order(nst);
         std::iota(order.begin(), order.end(), 0);
-        std::stable_sort(order.begin(), order.end(),
-            [&omega](const int a, const int b) { return omega[a] < omega[b]; });
+        std::stable_sort(order.begin(), order.end(), [&omega](const int a, const int b) {
+            return omega[a] < omega[b];
+        });
 
         if (thr <= 0.0)
         {
-            for (int i = 0; i < nst; ++i) { groups.push_back(std::vector<int>(1, order[i])); }
+            for (int i = 0; i < nst; ++i)
+            {
+                groups.push_back(std::vector<int>(1, order[i]));
+            }
             return groups;
         }
 
@@ -43,18 +50,27 @@ namespace LR
                 anchor = omega[ist];
             }
         }
-        for (std::vector<int>& g : groups) { std::sort(g.begin(), g.end()); }
+        for (std::vector<int>& g: groups)
+        {
+            std::sort(g.begin(), g.end());
+        }
         return groups;
     }
 
     std::vector<std::pair<int, int>> degenerate_pairs(const int d)
     {
         std::vector<std::pair<int, int>> pairs;
-        if (d < 2) { return pairs; }
+        if (d < 2)
+        {
+            return pairs;
+        }
         pairs.reserve(static_cast<size_t>(d) * (d - 1) / 2);
         for (int k = 0; k < d; ++k)
         {
-            for (int l = k + 1; l < d; ++l) { pairs.push_back(std::make_pair(k, l)); }
+            for (int l = k + 1; l < d; ++l)
+            {
+                pairs.push_back(std::make_pair(k, l));
+            }
         }
         return pairs;
     }

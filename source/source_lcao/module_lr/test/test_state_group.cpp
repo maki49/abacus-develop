@@ -34,10 +34,16 @@ TEST(RootGroup, MergeReportsUnrelatedAddedDirection)
 TEST(RootGroup, HandlesMoreThanThreeRootsAndComplexGauge)
 {
     std::vector<std::complex<double>> overlap(16, 0.0);
-    for (int i = 0; i < 4; ++i) { overlap[i * 4 + i] = std::complex<double>(0.0, 1.0); }
+    for (int i = 0; i < 4; ++i)
+    {
+        overlap[i * 4 + i] = std::complex<double>(0.0, 1.0);
+    }
     const auto result = LR::match_state_group(overlap, 4, 4, {{0, 1, 2, 3}}, {1.0, 0.0, 0.0, 0.0}, false);
     ASSERT_EQ(result.singular_values.size(), 4);
-    for (const double value : result.singular_values) { EXPECT_DOUBLE_EQ(value, 1.0); }
+    for (const double value: result.singular_values)
+    {
+        EXPECT_DOUBLE_EQ(value, 1.0);
+    }
 }
 
 TEST(RootGroup, PenalizesUnrelatedExtraMembers)

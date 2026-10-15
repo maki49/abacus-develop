@@ -22,7 +22,10 @@ namespace LR
         }
         this->xc_type_ = static_cast<XCType>(kernel->functional_type());
         const bool local_xc = LR_Util::has_local_xc(kernel->name());
-        if (local_xc) { this->set_integral_func(this->spin_type_, this->xc_type_); }
+        if (local_xc)
+        {
+            this->set_integral_func(this->spin_type_, this->xc_type_);
+        }
         const bool gga = (this->xc_type_ == XCType::GGA || this->xc_type_ == XCType::HYB_GGA);
         this->build_spin_combos(gga);
     }
@@ -39,24 +42,47 @@ namespace LR
         const std::size_t reciprocal_size = npw;
         const std::size_t fft_size = nmaxgr;
         // resize() on an already-large vector is a no-op, so only the first call allocates.
-        if (this->vxc.size() < real_size) { this->vxc.resize(real_size); }
-        if (this->rhog.size() < reciprocal_size) { this->rhog.resize(reciprocal_size); }
-        if (this->vg.size() < fft_size) { this->vg.resize(fft_size); }
+        if (this->vxc.size() < real_size)
+        {
+            this->vxc.resize(real_size);
+        }
+        if (this->rhog.size() < reciprocal_size)
+        {
+            this->rhog.resize(reciprocal_size);
+        }
+        if (this->vg.size() < fft_size)
+        {
+            this->vg.resize(fft_size);
+        }
         if (gga)
         {
-            if (this->drho.size() < real_size) { this->drho.resize(real_size); }
-            if (this->gdot.size() < real_size) { this->gdot.resize(real_size); }
+            if (this->drho.size() < real_size)
+            {
+                this->drho.resize(real_size);
+            }
+            if (this->gdot.size() < real_size)
+            {
+                this->gdot.resize(real_size);
+            }
         }
     }
 
     void PotHxcLR::build_spin_combos(const bool gga)
     {
-        if (this->nspin != 2) { return; }   // nspin=1 kernels have a single component already
+        if (this->nspin != 2)
+        {
+            return;
+        } // nspin=1 kernels have a single component already
         double sign = 0.;
         switch (this->spin_type_)
         {
-        case SpinType::S2_singlet: case SpinType::S2_gs: sign = 1.; break;
-        case SpinType::S2_triplet:                       sign = -1.; break;
+        case SpinType::S2_singlet:
+        case SpinType::S2_gs:
+            sign = 1.;
+            break;
+        case SpinType::S2_triplet:
+            sign = -1.;
+            break;
         default: return;   // S2_updown indexes single components, nothing to pre-contract
         }
         auto& fxc = *this->xc_kernel_components_;
@@ -68,7 +94,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-            for (int ir = 0; ir < nrxx; ++ir) { c[ir] = f[3 * ir] + sign * f[3 * ir + 1]; }
+            for (int ir = 0; ir < nrxx; ++ir)
+            {
+                c[ir] = f[3 * ir] + sign * f[3 * ir + 1];
+            }
         }
         if (gga && this->vsigma_comb_.empty() && !fxc.vsigma.empty())
         {
@@ -78,7 +107,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-            for (int ir = 0; ir < nrxx; ++ir) { c[ir] = 2. * f[3 * ir] + sign * f[3 * ir + 1]; }
+            for (int ir = 0; ir < nrxx; ++ir)
+            {
+                c[ir] = 2. * f[3 * ir] + sign * f[3 * ir + 1];
+            }
         }
     }
 
@@ -102,7 +134,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-        for (int ir = 0; ir < nrxx; ++ir) { v[ir] += factor * vg[ir].real(); }
+        for (int ir = 0; ir < nrxx; ++ir)
+        {
+            v[ir] += factor * vg[ir].real();
+        }
     }
 
     void PotHxcLR::cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op) const
@@ -114,8 +149,15 @@ namespace LR
         double hartree_factor = 0.;
         switch (this->spin_type_)
         {
-        case SpinType::S1_gs: case SpinType::S2_updown: case SpinType::S2_gs: hartree_factor = 1.; break;
-        case SpinType::S1: case SpinType::S2_singlet:                         hartree_factor = 2.; break;
+        case SpinType::S1_gs:
+        case SpinType::S2_updown:
+        case SpinType::S2_gs:
+            hartree_factor = 1.;
+            break;
+        case SpinType::S1:
+        case SpinType::S2_singlet:
+            hartree_factor = 2.;
+            break;
         default: break;
         }
         const bool local_xc = LR_Util::has_local_xc(this->xc_kernel_components_->name());
@@ -128,7 +170,10 @@ namespace LR
             scratch().alloc(nrxx, this->rho_basis_.npw, this->rho_basis_.nmaxgr, gga);
             this->rho_basis_.real2recip(rho[0], scratch().rhog.data());
         }
-        if (hartree_factor != 0.) { this->add_v_hartree(ucell, v_eff, hartree_factor); }
+        if (hartree_factor != 0.)
+        {
+            this->add_v_hartree(ucell, v_eff, hartree_factor);
+        }
 
         // XC
         if (!local_xc)
@@ -169,7 +214,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-                        for (int ir = 0;ir < nrxx;++ir) { v[ir] += fac * f[ir] * rho[ir]; }
+                        for (int ir = 0; ir < nrxx; ++ir)
+                        {
+                            v[ir] += fac * f[ir] * rho[ir];
+                        }
                     };
                 break;
             }
@@ -188,7 +236,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-                        for (int ir = 0;ir < nrxx;++ir) { v[ir] += fac * f[ir] * rho[ir]; }
+                        for (int ir = 0; ir < nrxx; ++ir)
+                        {
+                            v[ir] += fac * f[ir] * rho[ir];
+                        }
                     };
                 break;
             }
@@ -202,7 +253,10 @@ namespace LR
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
-                        for (int ir = 0;ir < nrxx;++ir) { v[ir] += ModuleBase::e2 * f[3 * ir + is] * rho[ir]; }
+                        for (int ir = 0; ir < nrxx; ++ir)
+                        {
+                            v[ir] += ModuleBase::e2 * f[3 * ir + is] * rho[ir];
+                        }
                     };
                 break;
             default:
@@ -321,32 +375,52 @@ namespace LR
                         // the four (sigma, sigma') blocks: which pre-contracted arrays to read,
                         // which vsigma component multiplies drho^X, and which v2rho2 component.
                         const int blk = ispin_op[0] << 1 | ispin_op[1];
-                        const Vec3* rs = nullptr; const Vec3* su = nullptr; const Vec3* sd = nullptr;
-                        int i_vsig = 0, i_rr = 0; double vsig_fac = 1.;
+                        const Vec3* rs = nullptr;
+                        const Vec3* su = nullptr;
+                        const Vec3* sd = nullptr;
+                        int i_vsig = 0;
+                        int i_rr = 0;
+                        double vsig_fac = 1.;
                         // `rs2` is the v2rhosigma array used again in the non-divergence term;
                         // for the off-diagonal blocks it is the transposed one (ud vs du).
                         const Vec3* rs2 = nullptr;
                         switch (blk)
                         {
                         case 0: // (0,0)
-                            rs = fxc.v2rhosigma_drho_uu.data(); rs2 = rs;
-                            su = fxc.v2sigma2_drho_uu_u.data(); sd = fxc.v2sigma2_drho_uu_d.data();
-                            i_vsig = 0; vsig_fac = 2.; i_rr = 0;
+                            rs = fxc.v2rhosigma_drho_uu.data();
+                            rs2 = rs;
+                            su = fxc.v2sigma2_drho_uu_u.data();
+                            sd = fxc.v2sigma2_drho_uu_d.data();
+                            i_vsig = 0;
+                            vsig_fac = 2.;
+                            i_rr = 0;
                             break;
                         case 1: // (0,1): rho_d, drho_u
-                            rs = fxc.v2rhosigma_drho_du.data(); rs2 = fxc.v2rhosigma_drho_ud.data();
-                            su = fxc.v2sigma2_drho_ud_u.data(); sd = fxc.v2sigma2_drho_ud_d.data();
-                            i_vsig = 1; vsig_fac = 1.; i_rr = 1;
+                            rs = fxc.v2rhosigma_drho_du.data();
+                            rs2 = fxc.v2rhosigma_drho_ud.data();
+                            su = fxc.v2sigma2_drho_ud_u.data();
+                            sd = fxc.v2sigma2_drho_ud_d.data();
+                            i_vsig = 1;
+                            vsig_fac = 1.;
+                            i_rr = 1;
                             break;
                         case 2: // (1,0): rho_u, drho_d
-                            rs = fxc.v2rhosigma_drho_ud.data(); rs2 = fxc.v2rhosigma_drho_du.data();
-                            su = fxc.v2sigma2_drho_du_u.data(); sd = fxc.v2sigma2_drho_du_d.data();
-                            i_vsig = 1; vsig_fac = 1.; i_rr = 1;
+                            rs = fxc.v2rhosigma_drho_ud.data();
+                            rs2 = fxc.v2rhosigma_drho_du.data();
+                            su = fxc.v2sigma2_drho_du_u.data();
+                            sd = fxc.v2sigma2_drho_du_d.data();
+                            i_vsig = 1;
+                            vsig_fac = 1.;
+                            i_rr = 1;
                             break;
                         case 3: // (1,1)
-                            rs = fxc.v2rhosigma_drho_dd.data(); rs2 = rs;
-                            su = fxc.v2sigma2_drho_dd_u.data(); sd = fxc.v2sigma2_drho_dd_d.data();
-                            i_vsig = 2; vsig_fac = 2.; i_rr = 2;
+                            rs = fxc.v2rhosigma_drho_dd.data();
+                            rs2 = rs;
+                            su = fxc.v2sigma2_drho_dd_u.data();
+                            sd = fxc.v2sigma2_drho_dd_d.data();
+                            i_vsig = 2;
+                            vsig_fac = 2.;
+                            i_rr = 2;
                             break;
                         default:
                             throw std::runtime_error("Invalid ispin_op");

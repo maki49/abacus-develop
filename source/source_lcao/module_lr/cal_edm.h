@@ -78,7 +78,12 @@ namespace LR
             cal_X_ao_occ(X + idx_X, px, &c(ik, 0, 0), pc, X_ao_occ.data(), px_ao_occ);
             std::vector<double> eig_ks_plus_ext(nocc, 0.0);
             const int idx_eig_ks = ik * (nocc + nvirt);
-            std::transform(eig_ks + idx_eig_ks, eig_ks + idx_eig_ks + nocc, eig_ks_plus_ext.begin(), [eig_ext_istate](double x) {return x + eig_ext_istate;});
+            std::transform(eig_ks + idx_eig_ks,
+                           eig_ks + idx_eig_ks + nocc,
+                           eig_ks_plus_ext.begin(),
+                           [eig_ext_istate](double x) {
+                               return x + eig_ext_istate;
+                           });
             edm[ik] = cal_edm_single_kpoint(X_ao_occ.data(), px_ao_occ, eig_ks_plus_ext.data(), pmat);
         }
         return edm;
@@ -123,10 +128,14 @@ namespace LR
         }
 #ifdef __MPI
         std::vector<ct::Tensor> cZc = cal_dm_trans_pblas(epsi_Z.data(), px, c, pc, naos, nocc, nvirt, pmat);
-        std::for_each(cZc.begin(), cZc.end(), [naos, &pmat](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
+        std::for_each(cZc.begin(), cZc.end(), [naos, &pmat](ct::Tensor& s) {
+            LR_Util::matsym(s.data<T>(), naos, pmat);
+        });
 #else
         std::vector<ct::Tensor> cZc = cal_dm_trans_blas(epsi_Z.data(), c, nocc, nvirt);
-        std::for_each(cZc.begin(), cZc.end(), [naos](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos); });
+        std::for_each(cZc.begin(), cZc.end(), [naos](ct::Tensor& s) {
+            LR_Util::matsym(s.data<T>(), naos);
+        });
 #endif
 
         //3. c * K_cvcx * c
@@ -135,10 +144,14 @@ namespace LR
         // `matsym` then supplies the 1/2 that turns $2\,X_\kappa K c_\lambda$ into the symmetric pair above. 
 #ifdef __MPI
         std::vector<ct::Tensor> cKc = cal_dm_trans_pblas(K_cvcx, px, c, pc, naos, nocc, nvirt, pmat, (T)1.0);
-        std::for_each(cKc.begin(), cKc.end(), [naos, &pmat](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos, pmat); });
+        std::for_each(cKc.begin(), cKc.end(), [naos, &pmat](ct::Tensor& s) {
+            LR_Util::matsym(s.data<T>(), naos, pmat);
+        });
 #else
         std::vector<ct::Tensor> cKc = cal_dm_trans_blas(K_cvcx, c, nocc, nvirt, (T)1.0);
-        std::for_each(cKc.begin(), cKc.end(), [naos](ct::Tensor& s) { LR_Util::matsym(s.data<T>(), naos); });
+        std::for_each(cKc.begin(), cKc.end(), [naos](ct::Tensor& s) {
+            LR_Util::matsym(s.data<T>(), naos);
+        });
 #endif
 
         // 4. $\sum_i (\Omega + \epsilon_i) \sum_{ab} C_{\mu a} X_{ia} C_{\nu b} X_{ib}$
@@ -287,7 +300,10 @@ namespace LR
         //    The free spin sits on X (hence `psi_in = X + off_x[sl]`, laid out over `px[sl]`),
         //    the summed spin sits on $D^X$.
         std::vector<std::vector<T>> K_cvcx(2);
-        for (int is : {0, 1}) { K_cvcx[is].assign(ld_x[is], T(0.0)); }
+        for (int is: {0, 1})
+        {
+            K_cvcx[is].assign(ld_x[is], T(0.0));
+        }
 
         module_dm::DensityMatrix<T, T> DM_trans(&pmat, 1, kv.kvec_d, nk);
         LR_Util::initialize_DMR(DM_trans, pmat, ucell, gd, orb_cutoff);
@@ -302,7 +318,10 @@ namespace LR
             }
         }
         std::vector<psi::Psi<T>> psi_ks_spin;
-        for (int is : {0, 1}) { psi_ks_spin.push_back(LR_Util::get_psi_spin(psi_ks, is, nk)); }
+        for (int is: {0, 1})
+        {
+            psi_ks_spin.push_back(LR_Util::get_psi_spin(psi_ks, is, nk));
+        }
 #ifdef __EXX
         std::vector<std::unique_ptr<OperatorLREXX<T>>> op_K_exx(2);
         const bool with_exx_lr = LR::exx_kernel_list().count(xc_kernel) > 0;
@@ -326,7 +345,10 @@ namespace LR
             {
 #ifdef __MPI
                 dmx_buf = cal_dm_trans_pblas(X + off_x[is], px[is], psi_ks_spin[is], pc, naos, nocc[is], nvirt[is], pmat);
-                for (auto& t : dmx_buf) { LR_Util::mattrans(t.data<T>(), naos, pmat); }
+                for (auto& t: dmx_buf)
+                {
+                    LR_Util::mattrans(t.data<T>(), naos, pmat);
+                }
 #else
                 dmx_buf = cal_dm_trans_blas(X + off_x[is], psi_ks_spin[is], nocc[is], nvirt[is]);
                 for (auto& t : dmx_buf)
@@ -334,11 +356,17 @@ namespace LR
                     T* d = t.data<T>();
                     for (int u = 0;u < naos;++u)
                     {
-                        for (int v = u + 1;v < naos;++v) { std::swap(d[u * naos + v], d[v * naos + u]); }
+                        for (int v = u + 1; v < naos; ++v)
+                        {
+                            std::swap(d[u * naos + v], d[v * naos + u]);
+                        }
                     }
                 }
 #endif
-                for (int ik = 0;ik < nk;++ik) { DM_trans.set_dmk_ptr(ik, dmx_buf[ik].data<T>()); }
+                for (int ik = 0; ik < nk; ++ik)
+                {
+                    DM_trans.set_dmk_ptr(ik, dmx_buf[ik].data<T>());
+                }
             };
         for (int sr : {0, 1})
         {

@@ -60,7 +60,10 @@ namespace LR_Util
     /// @brief check if the xc functional has local xc kernel
     inline bool has_local_xc(const std::string& name)
     {
-        if (std::set<std::string>({ "lda", "pwlda", "pbe" }).count(name)) { return true; }
+        if (std::set<std::string>({"lda", "pwlda", "pbe"}).count(name))
+        {
+            return true;
+        }
         // Every hybrid but pure HF keeps a semilocal remainder: the KS exchange left over after
         // the EXX part is taken out, $(1-\alpha)E_x^\text{KS-LR}+[1-(\alpha+\beta)]E_x^
         // \text{KS-SR}$. libxc returns exactly that once `f_xc_libxc` hands the functional its
@@ -244,8 +247,14 @@ std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
     const int maxsize = std::max(a.size(), b.size());
     const int minsize = std::min(a.size(), b.size());
     std::vector<T> c(maxsize);
-    for (int i = 0;i < minsize;++i) { c[i] = a[i] + b[i]; }
-    for (int i = minsize;i < maxsize;++i) { c[i] = (a.size() > b.size() ? a[i] : b[i]); }
+    for (int i = 0; i < minsize; ++i)
+    {
+        c[i] = a[i] + b[i];
+    }
+    for (int i = minsize; i < maxsize; ++i)
+    {
+        c[i] = (a.size() > b.size() ? a[i] : b[i]);
+    }
     return c;
 }
 #include "lr_util.hpp"

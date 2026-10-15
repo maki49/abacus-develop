@@ -39,7 +39,11 @@ namespace LR
         virtual void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff,
             const std::vector<int>& ispin_op = { 0,0 }) const override;
 
-        const KernelXC& xc_kernel_components() const { return *xc_kernel_components_; }
+        const KernelXC& xc_kernel_components() const
+        {
+            return *xc_kernel_components_;
+        }
+
     private:
         /// different components of local and semi-local xc kernels:
         /// LDA: v2rho2

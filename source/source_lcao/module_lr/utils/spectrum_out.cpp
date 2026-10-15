@@ -21,7 +21,8 @@ void output_spectrum_mo(const std::vector<std::complex<double>>& out_spectrum_mo
     ofs << "NOTICE: KS_index are restricted in nocc and nvirt" << std::endl;
 
     int step = nk * KS_num * KS_num;
-    int offset = 0, ipair = 0;
+    int offset = 0;
+    int ipair = 0;
     for (int is = 0; is < nspin_tmp; ++is)
     {
         ofs << "ispin: " << is << std::endl;
@@ -65,7 +66,8 @@ void output_spectrum_mo_librpa(const std::vector<std::complex<double>>& out_spec
     ofs << nbands << std::endl;
     ofs << nbasis << std::endl;
     double HaBohrToEvAng = ModuleBase::Hartree_to_eV * ModuleBase::BOHR_TO_A; // 27.211396 * 0.5291770
-    int offset = 0, ipair = 0;
+    int offset = 0;
+    int ipair = 0;
     for (int is = 0; is < nspin_tmp; ++is)
     {
         for (int ik = 0; ik < nk; ++ik)

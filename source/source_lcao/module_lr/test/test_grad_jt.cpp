@@ -14,7 +14,7 @@ namespace
         std::vector<double> g(static_cast<size_t>(ncoord) * d * d, 0.0);
         unsigned x = seed;
         const auto next = [&x]() {
-            x = x * 1664525u + 1013904223u;   // deterministic; a test must not depend on rand()
+            x = x * 1664525u + 1013904223u; // deterministic; a test must not depend on rand()
             return static_cast<double>(static_cast<int>(x >> 8) % 2000 - 1000) / 500.0;
         };
         for (int a = 0; a < ncoord; ++a)
@@ -43,7 +43,10 @@ namespace
             double q = 0.0;
             for (int k = 0; k < d; ++k)
             {
-                for (int l = 0; l < d; ++l) { q += v[k] * b[k * d + l] * v[l]; }
+                for (int l = 0; l < d; ++l)
+                {
+                    q += v[k] * b[k * d + l] * v[l];
+                }
             }
             s += q * q;
         }
@@ -58,7 +61,10 @@ namespace
         for (int a = 0; a < ncoord; ++a)
         {
             const double* const b = g.data() + static_cast<size_t>(a) * d * d;
-            for (int i = 0; i < d * d; ++i) { m[i] += u[a] * b[i]; }
+            for (int i = 0; i < d * d; ++i)
+            {
+                m[i] += u[a] * b[i];
+            }
         }
         // smallest Rayleigh quotient, sampled densely; d is 2 or 3 in these tests
         double lo = 1e300;
@@ -86,7 +92,10 @@ namespace
                     double r = 0.0;
                     for (int p = 0; p < 3; ++p)
                     {
-                        for (int q = 0; q < 3; ++q) { r += v[p] * m[p * 3 + q] * v[q]; }
+                        for (int q = 0; q < 3; ++q)
+                        {
+                            r += v[p] * m[p * 3 + q] * v[q];
+                        }
                     }
                     lo = std::min(lo, r);
                 }
@@ -107,19 +116,25 @@ TEST(JTDirection, ReductionIdentityHolds)
         const int ncoord = 6;
         const std::vector<double> g = sample_gflat(ncoord, d, 7u + d);
         const LR::JTDirection jt = LR::find_jt_direction(g, ncoord, d);
-        ASSERT_EQ(static_cast<int>(jt.displacement.size()), ncoord) << "d=" << d;
-        ASSERT_EQ(static_cast<int>(jt.mixing.size()), d);
+        ASSERT_EQ(jt.displacement.size(), ncoord) << "d=" << d;
+        ASSERT_EQ(jt.mixing.size(), d);
         EXPECT_GT(jt.slope, 0.0);
 
         // |q(v*)| must equal the reported slope
         EXPECT_NEAR(branch_grad_norm(g, ncoord, d, jt.mixing), jt.slope, 1e-9 * jt.slope);
         // the displacement is the normalized branch gradient
         double n = 0.0;
-        for (int a = 0; a < ncoord; ++a) { n += jt.displacement[a] * jt.displacement[a]; }
+        for (int a = 0; a < ncoord; ++a)
+        {
+            n += jt.displacement[a] * jt.displacement[a];
+        }
         EXPECT_NEAR(std::sqrt(n), 1.0, 1e-12);
         // and along MINUS it the smallest eigenvalue is -slope: the two sides of the identity
         std::vector<double> u(ncoord);
-        for (int a = 0; a < ncoord; ++a) { u[a] = -jt.displacement[a]; }
+        for (int a = 0; a < ncoord; ++a)
+        {
+            u[a] = -jt.displacement[a];
+        }
         EXPECT_NEAR(lambda_min_along(g, ncoord, d, u), -jt.slope, 1e-4 * jt.slope) << "d=" << d;
     }
 }
@@ -177,10 +192,16 @@ TEST(JTDirection, DegenerateCaseGivesTheCommonGradient)
     }
     const LR::JTDirection jt = LR::find_jt_direction(g, ncoord, d);
     double n = 0.0;
-    for (int a = 0; a < ncoord; ++a) { n += comm[a] * comm[a]; }
+    for (int a = 0; a < ncoord; ++a)
+    {
+        n += comm[a] * comm[a];
+    }
     n = std::sqrt(n);
     EXPECT_NEAR(jt.slope, n, 1e-10);
-    for (int a = 0; a < ncoord; ++a) { EXPECT_NEAR(jt.displacement[a], comm[a] / n, 1e-10); }
+    for (int a = 0; a < ncoord; ++a)
+    {
+        EXPECT_NEAR(jt.displacement[a], comm[a] / n, 1e-10);
+    }
     // every start reaches the same value, since the objective is constant on the sphere
     EXPECT_GE(jt.restarts_agreeing, 2);
 }
@@ -192,11 +213,17 @@ TEST(JTDirection, ScalesLinearly)
     const int d = 3;
     const std::vector<double> g = sample_gflat(ncoord, d, 13u);
     std::vector<double> g3 = g;
-    for (size_t i = 0; i < g3.size(); ++i) { g3[i] *= 3.0; }
+    for (size_t i = 0; i < g3.size(); ++i)
+    {
+        g3[i] *= 3.0;
+    }
     const LR::JTDirection a = LR::find_jt_direction(g, ncoord, d);
     const LR::JTDirection b = LR::find_jt_direction(g3, ncoord, d);
     EXPECT_NEAR(b.slope, 3.0 * a.slope, 1e-8 * a.slope);
-    for (int i = 0; i < ncoord; ++i) { EXPECT_NEAR(b.displacement[i], a.displacement[i], 1e-8); }
+    for (int i = 0; i < ncoord; ++i)
+    {
+        EXPECT_NEAR(b.displacement[i], a.displacement[i], 1e-8);
+    }
 }
 
 /// The symmetric / Jahn-Teller split must reconstruct the branch gradient, and the symmetric part
@@ -215,11 +242,17 @@ TEST(JTDirection, SymmetricSplitReconstructs)
         double q = 0.0;
         for (int k = 0; k < d; ++k)
         {
-            for (int l = 0; l < d; ++l) { q += jt.mixing[k] * b[k * d + l] * jt.mixing[l]; }
+            for (int l = 0; l < d; ++l)
+            {
+                q += jt.mixing[k] * b[k * d + l] * jt.mixing[l];
+            }
         }
         EXPECT_NEAR(sym[a] + jt_part[a], q, 1e-12);
         double tr = 0.0;
-        for (int k = 0; k < d; ++k) { tr += b[k * d + k]; }
+        for (int k = 0; k < d; ++k)
+        {
+            tr += b[k * d + k];
+        }
         EXPECT_NEAR(sym[a], tr / d, 1e-12);
     }
     // a different mixing keeps the same symmetric part
@@ -227,7 +260,10 @@ TEST(JTDirection, SymmetricSplitReconstructs)
     other[0] = 1.0;
     std::vector<double> jt2;
     const std::vector<double> sym2 = LR::split_symmetric_part(g, ncoord, d, other, jt2);
-    for (int a = 0; a < ncoord; ++a) { EXPECT_NEAR(sym2[a], sym[a], 1e-14); }
+    for (int a = 0; a < ncoord; ++a)
+    {
+        EXPECT_NEAR(sym2[a], sym[a], 1e-14);
+    }
 }
 
 TEST(JTDirection, ZeroGradientReturnsAValidStationaryBranch)
@@ -243,7 +279,10 @@ TEST(JTDirection, ZeroGradientReturnsAValidStationaryBranch)
         EXPECT_DOUBLE_EQ(jt.slope, 0.0);
         EXPECT_DOUBLE_EQ(jt.mixing[0], 1.0);
         double norm_squared = 0.0;
-        for (const double value : jt.mixing) { norm_squared += value * value; }
+        for (const double value: jt.mixing)
+        {
+            norm_squared += value * value;
+        }
         EXPECT_DOUBLE_EQ(norm_squared, 1.0);
         std::vector<double> jt_part;
         const std::vector<double> sym = LR::split_symmetric_part(zero, ncoord, d, jt.mixing, jt_part);

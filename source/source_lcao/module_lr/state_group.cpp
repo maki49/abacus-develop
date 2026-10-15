@@ -23,14 +23,23 @@ GroupMatch match_state_group(const std::vector<std::complex<double>>& overlap,
     {
         const auto& group = groups[ig];
         const int dimension = group.size();
-        if (dimension == 0) { throw std::invalid_argument("LR group overlap: empty group"); }
+        if (dimension == 0)
+        {
+            throw std::invalid_argument("LR group overlap: empty group");
+        }
         double weight = 0.0;
         double reference = 0.0;
         for (const int root : group)
         {
-            if (root < 0 || root >= nstates) { throw std::invalid_argument("LR group overlap: invalid root"); }
+            if (root < 0 || root >= nstates)
+            {
+                throw std::invalid_argument("LR group overlap: invalid root");
+            }
             reference += reference_overlap[root] * reference_overlap[root];
-            for (int a = 0; a < old_dimension; ++a) { weight += std::norm(overlap[a * nstates + root]); }
+            for (int a = 0; a < old_dimension; ++a)
+            {
+                weight += std::norm(overlap[a * nstates + root]);
+            }
         }
         // Symmetric normalization penalizes unrelated extra roots as well as lost directions.
         const double subspace_score = weight / std::max(old_dimension, dimension);
@@ -53,13 +62,14 @@ GroupMatch match_state_group(const std::vector<std::complex<double>>& overlap,
         result.new_coverage = weight / dimension;
     }
     const auto& selected = groups[result.group];
-    const int rank = std::min(old_dimension, static_cast<int>(selected.size()));
+    const int selected_dimension = static_cast<int>(selected.size());
+    const int rank = std::min(old_dimension, selected_dimension);
     std::vector<std::complex<double>> gram(rank * rank, 0.0);
     for (int col = 0; col < rank; ++col)
     {
         for (int row = 0; row < rank; ++row)
         {
-            if (old_dimension <= static_cast<int>(selected.size()))
+            if (old_dimension <= selected_dimension)
             {
                 for (const int root : selected)
                 {
@@ -96,8 +106,14 @@ GroupMatch match_state_group(const std::vector<std::complex<double>>& overlap,
         lwork,
         real_work.data(),
         info);
-    if (info != 0) { throw std::runtime_error("LR group overlap: singular spectrum failed"); }
-    for (double& value : result.singular_values) { value = std::sqrt(std::max(0.0, value)); }
+    if (info != 0)
+    {
+        throw std::runtime_error("LR group overlap: singular spectrum failed");
+    }
+    for (double& value: result.singular_values)
+    {
+        value = std::sqrt(std::max(0.0, value));
+    }
     std::reverse(result.singular_values.begin(), result.singular_values.end());
     return result;
 }

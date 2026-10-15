@@ -60,11 +60,23 @@ namespace LR_Util
         {
             virtual_truncated = virtual_truncated || x_virtual[spin] < z_virtual[spin];
         }
-        if (!occupied_truncated && !bands_truncated && !virtual_truncated) { return ""; }
+        if (!occupied_truncated && !bands_truncated && !virtual_truncated)
+        {
+            return "";
+        }
         std::string message = " WARNING: truncated LR force window:";
-        if (occupied_truncated) { message += " occupied X window is truncated;"; }
-        if (virtual_truncated) { message += " virtual X window is truncated;"; }
-        if (bands_truncated) { message += " ground-state band space is incomplete;"; }
+        if (occupied_truncated)
+        {
+            message += " occupied X window is truncated;";
+        }
+        if (virtual_truncated)
+        {
+            message += " virtual X window is truncated;";
+        }
+        if (bands_truncated)
+        {
+            message += " ground-state band space is incomplete;";
+        }
         message += " zero-padding X into the available Z virtual space is retained, but does not"
             " restore all active/inactive orbital-response terms. The force may differ from finite"
             " differences of the selected truncated excitation energy. For reliable forces and"
@@ -78,7 +90,10 @@ namespace LR_Util
     void check_force_pp(const UnitCell& cell, const bool cal_force, const std::string& calculation)
     {
         const bool relaxation = calculation == "relax" || calculation == "cell-relax";
-        if (!cal_force && !relaxation) { return; }
+        if (!cal_force && !relaxation)
+        {
+            return;
+        }
         for (int type = 0; type < cell.ntype; ++type)
         {
             if (cell.atoms[type].ncpp.nlcc)
@@ -96,7 +111,10 @@ namespace LR_Util
                                                const bool is_hse06,
                                                std::vector<double>& hse_buffer)
     {
-        if (!is_hse06) { return sigma; }
+        if (!is_hse06)
+        {
+            return sigma;
+        }
         hse_buffer.resize(sigma.size());
         for (std::size_t index = 0; index < sigma.size(); ++index)
         {
@@ -309,7 +327,8 @@ namespace LR_Util
     void mattrans<std::complex<double>>(const std::complex<double>* in, const int n, const Parallel_2D& pmat, std::complex<double>* out)
     {
         std::copy(in, in + pmat.get_local_size(), out);
-        const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
+        const std::complex<double> alpha(1.0, 0.0);
+        const std::complex<double> beta(0.0, 0.0);
         const int i1 = 1;
         ScalapackConnector::tranc(n,
             n,
@@ -329,7 +348,8 @@ namespace LR_Util
     {
         std::vector<std::complex<double>> tmp(pmat.get_local_size());
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
-        const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
+        const std::complex<double> alpha(1.0, 0.0);
+        const std::complex<double> beta(0.0, 0.0);
         const int i1 = 1;
         ScalapackConnector::tranc(n,
             n,
@@ -372,7 +392,8 @@ namespace LR_Util
     {
         std::vector<std::complex<double>> tmp(pmat.get_local_size());
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
-        const std::complex<double> alpha(-0.5, 0.0), beta(0.5, 0.0);
+        const std::complex<double> alpha(-0.5, 0.0);
+        const std::complex<double> beta(0.5, 0.0);
         const int i1 = 1;
         ScalapackConnector::tranc(n,
             n,
@@ -481,11 +502,17 @@ namespace LR_Util
         std::vector<int> ipiv(n);   // pivot indices
         int info = 0;
         container::lapackConnector::getrf(n, n, A_copy.data(), n, ipiv.data(), info);
-        if (info) { std::cout << "ERROR: Lapack solver dgetrf, info=" << info << std::endl; }
+        if (info)
+        {
+            std::cout << "ERROR: Lapack solver dgetrf, info=" << info << std::endl;
+        }
         // 3. Solve Ax=b
         const char trans = 'N';
         container::lapackConnector::getrs(trans, n, nrhs, A_copy.data(), n, ipiv.data(), x, n, info);
-        if (info) { std::cout << "ERROR: Lapack solver dgetrs, info=" << info << std::endl; }
+        if (info)
+        {
+            std::cout << "ERROR: Lapack solver dgetrs, info=" << info << std::endl;
+        }
         return info;
     }
 
@@ -501,11 +528,17 @@ namespace LR_Util
         std::vector<int> ipiv(n);   // pivot indices, for
         int info = 0;
         container::lapackConnector::getrf(n, n, A_copy.data(), n, ipiv.data(), info);
-        if (info) { std::cout << "ERROR: Lapack solver zgetrf, info=" << info << std::endl; }
+        if (info)
+        {
+            std::cout << "ERROR: Lapack solver zgetrf, info=" << info << std::endl;
+        }
         // 3. Solve Ax=b
         const char trans = 'N';
         container::lapackConnector::getrs(trans, n, nrhs, A_copy.data(), n, ipiv.data(), x, n, info);
-        if (info) { std::cout << "ERROR: Lapack solver zgetrs, info=" << info << std::endl; }
+        if (info)
+        {
+            std::cout << "ERROR: Lapack solver zgetrs, info=" << info << std::endl;
+        }
         return info;
     }
 

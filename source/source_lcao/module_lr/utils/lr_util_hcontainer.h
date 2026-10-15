@@ -68,14 +68,20 @@ namespace LR_Util
             auto ap_real = HR_real.find_pair(ia, ja);
             // under MPI-parallel (2D block-cyclic) HContainer, an atom pair not owned by this
             // rank is absent from find_pair() and returns nullptr here; skip it
-            if (!ap_real) { continue; }
+            if (!ap_real)
+            {
+                continue;
+            }
             for (int iR = 0;iR < ap->get_R_size();++iR)
             {
                 // R index may be different between the two HContainers, find by R value instead of R-index
                 auto dR = ap->get_R_index(iR);
                 auto ptr = ap->get_HR_values(iR).get_pointer();
                 auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
-                for (int i = 0;i < ap->get_size();++i) { ptr_real[i] = (get_imag ? std::imag(ptr[i]) : std::real(ptr[i])); }
+                for (int i = 0; i < ap->get_size(); ++i)
+                {
+                    ptr_real[i] = (get_imag ? std::imag(ptr[i]) : std::real(ptr[i]));
+                }
             }
         }
     }
@@ -87,7 +93,7 @@ namespace LR_Util
     {
         assert(DMR.get_dmr_vec().size() == DMR_real.get_dmr_vec().size());
         const bool get_imag = (type == 'I' || type == 'i');
-        for (size_t is = 0;is < DMR.get_dmr_vec().size();++is)
+        for (size_t is = 0; is < DMR.get_dmr_vec().size(); ++is)
         {
             auto dr = DMR.get_dmr_vec()[is]; //get_dmr_ptr() has bug when is=0
             auto dr_real = DMR_real.get_dmr_vec()[is];
@@ -133,7 +139,10 @@ namespace LR_Util
                 auto dR = ap->get_R_index(iR);
                 auto ptr = ap->get_HR_values(iR).get_pointer();
                 auto ptr_real = ap_real->get_HR_values(dR.x, dR.y, dR.z).get_pointer();
-                for (int i = 0;i < ap->get_size();++i) { get_imag ? ptr[i].imag(ptr_real[i]) : ptr[i].real(ptr_real[i]); }
+                for (int i = 0; i < ap->get_size(); ++i)
+                {
+                    get_imag ? ptr[i].imag(ptr_real[i]) : ptr[i].real(ptr_real[i]);
+                }
             }
         }
     }
@@ -327,7 +336,10 @@ namespace LR_Util
 #endif
                 }
             }
-            for (int ik = 0; ik < nk; ++ik) { dm.set_dmk_ptr(is * nk + ik, dmk[is][ik].data<TK>()); }
+            for (int ik = 0; ik < nk; ++ik)
+            {
+                dm.set_dmk_ptr(is * nk + ik, dmk[is][ik].data<TK>());
+            }
         }
         if (cal_dmr)
         {
@@ -357,7 +369,8 @@ namespace LR_Util
                 int start_j = pv.atom_begin_col[atom_j];
                 int row_size = pv.get_nrow_atom(atom_i);
                 int col_size = pv.get_ncol_atom(atom_j);
-                for (int iR = 0; iR < hR.get_atom_pair(iap).get_R_size(); ++iR) {
+                for (int iR = 0; iR < hR.get_atom_pair(iap).get_R_size(); ++iR)
+                {
                     auto& matrix = hR.get_atom_pair(iap).get_HR_values(iR);
                     const ModuleBase::Vector3<int> r_index
                         = hR.get_atom_pair(iap).get_R_index(iR);
@@ -394,8 +407,13 @@ namespace LR_Util
             std::vector<int> non_zero_counts(smat.size(), 0);   // number of Rs
             int i = 0;
             for (const auto& Rij : smat)
-                non_zero_counts[i++] = std::accumulate(Rij.second.begin(), Rij.second.end(), 0,
-                    [](int sum, const std::pair<const size_t, std::map<size_t, TR>>& line) { return sum + line.second.size(); });
+                non_zero_counts[i++]
+                    = std::accumulate(Rij.second.begin(),
+                                      Rij.second.end(),
+                                      0,
+                                      [](int sum, const std::pair<const size_t, std::map<size_t, TR>>& line) {
+                                          return sum + line.second.size();
+                                      });
             Parallel_Reduce::reduce_all(non_zero_counts.data(), non_zero_counts.size());
 
 
@@ -419,7 +437,10 @@ namespace LR_Util
                 single_R_options.binary = false;
                 ModuleIO::save_lat_r(ofs, Rij.second, pv, single_R_options);
             }
-            if (my_rank == 0) { ofs.close(); }
+            if (my_rank == 0)
+            {
+                ofs.close();
+            }
         }
     }
 
@@ -463,7 +484,10 @@ namespace LR_Util
     {
         const int& nk = dm.get_DMK_nks();   // nks/nspin
         std::vector<const std::vector<TK>*> DMk_trans_pointer(nk);
-        for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &dm.get_dmk_vec()[ik]; }
+        for (int ik = 0; ik < nk; ++ik)
+        {
+            DMk_trans_pointer[ik] = &dm.get_dmk_vec()[ik];
+        }
         return RI_2D_Comm::split_m2D_ktoR<TK>(ucell, kv, DMk_trans_pointer, pmat, /*nspin=*/1)[0];
     }
     // return SPIN_multiple*D[0] as implemented in split_m2D_ktoR

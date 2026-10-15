@@ -39,17 +39,26 @@ TEST(StateTrack, ClosedShellTripletIgnoresDownSpinVirtualRotation)
     std::vector<Parallel_2D> px(2);
 #ifdef __MPI
     pmat.set(3, 3, 1, pc.blacs_ctxt);
-    for (auto& block : px) { block.set(2, 1, 1, pc.blacs_ctxt); }
+    for (auto& block: px)
+    {
+        block.set(2, 1, 1, pc.blacs_ctxt);
+    }
 #else
     pmat.set_serial(3, 3);
-    for (auto& block : px) { block.set_serial(2, 1); }
+    for (auto& block: px)
+    {
+        block.set_serial(2, 1);
+    }
 #endif
     pmat.set_atomic_trace(cell.get_iat2iwt(), cell.nat, 3);
     const std::vector<int> ngk{3, 3};
     psi::Psi<double> orbitals(2, 3, 3, ngk, true);
     orbitals.zero_out();
     for (int spin = 0; spin < 2; ++spin)
-        for (int band = 0; band < 3; ++band) { orbitals(spin, band, band) = 1.0; }
+        for (int band = 0; band < 3; ++band)
+        {
+            orbitals(spin, band, band) = 1.0;
+        }
     TwoCenterIntegrator integrator;
     const std::vector<double> cutoff{0.5};
     const std::vector<int> nocc{1, 1};

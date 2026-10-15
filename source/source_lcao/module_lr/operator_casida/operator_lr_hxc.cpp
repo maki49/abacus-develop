@@ -142,7 +142,7 @@ namespace LR
         // 2. transition electron density, evaluated for each real/imaginary part
         // \f[ \tilde{\rho}(r)=\sum_{\mu_j, \mu_b}\tilde{\rho}_{\mu_j,\mu_b}\phi_{\mu_b}(r)\phi_{\mu_j}(r) \f]
         const int nrxx = this->pot.lock()->nrxx;
-        const int nparts = nk > 1 ? 2 : 1;  // real; also imaginary for multi-k
+        const int nparts = nk > 1 ? 2 : 1; // real; also imaginary for multi-k
         auto& density = density_cache[&this->DM_trans];
         if (density.empty())
         {

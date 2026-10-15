@@ -7,7 +7,10 @@ struct Input_para;
 class UnitCell;
 class Charge;
 class Parallel_Grid;
-namespace ModulePW { class PW_Basis; }
+namespace ModulePW
+{
+class PW_Basis;
+}
 namespace LR
 {
 class PotHxcLR;

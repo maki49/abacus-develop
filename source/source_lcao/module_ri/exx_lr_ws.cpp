@@ -18,22 +18,40 @@ void share_exx_geometry(const RI::Exx<int, int, 3, Tdata>& source,
 {
     // Only geometry packs may cross the KS/LR boundary. In particular, do not copy
     // Ds, Hs, cvc, label bindings, symmetry filters or parallel/post-processing objects.
-    if (source.flag_finish.Cs) { copy_pack(source, destination, "Cs_"); }
-    if (source.flag_finish.Vs) { copy_pack(source, destination, "Vs_"); }
+    if (source.flag_finish.Cs)
+    {
+        copy_pack(source, destination, "Cs_");
+    }
+    if (source.flag_finish.Vs)
+    {
+        copy_pack(source, destination, "Vs_");
+    }
     for (int axis = 0; axis < 3; ++axis)
     {
         const std::string suffix = std::to_string(axis) + "_";
         const std::string dc_name = "dCs_" + suffix;
         const std::string dv_name = "dVs_" + suffix;
-        if (source.flag_finish.dCs) { copy_pack(source, destination, dc_name); }
-        if (source.flag_finish.dVs) { copy_pack(source, destination, dv_name); }
+        if (source.flag_finish.dCs)
+        {
+            copy_pack(source, destination, dc_name);
+        }
+        if (source.flag_finish.dVs)
+        {
+            copy_pack(source, destination, dv_name);
+        }
         for (int second = 0; second < 3; ++second)
         {
             const std::string stress_suffix = suffix + std::to_string(second) + "_";
             const std::string dcr_name = "dCRs_" + stress_suffix;
             const std::string dvr_name = "dVRs_" + stress_suffix;
-            if (source.flag_finish.dCRs) { copy_pack(source, destination, dcr_name); }
-            if (source.flag_finish.dVRs) { copy_pack(source, destination, dvr_name); }
+            if (source.flag_finish.dCRs)
+            {
+                copy_pack(source, destination, dcr_name);
+            }
+            if (source.flag_finish.dVRs)
+            {
+                copy_pack(source, destination, dvr_name);
+            }
         }
     }
     destination.flag_finish.Cs = source.flag_finish.Cs;

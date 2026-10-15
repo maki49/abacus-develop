@@ -23,7 +23,10 @@ namespace LR
                 double s = 0.0;
                 for (int k = 0; k < d; ++k)
                 {
-                    for (int l = 0; l < d; ++l) { s += v[k] * block[k * d + l] * v[l]; }
+                    for (int l = 0; l < d; ++l)
+                    {
+                        s += v[k] * block[k * d + l] * v[l];
+                    }
                 }
                 q[a] = s;
             }
@@ -33,7 +36,10 @@ namespace LR
         double norm2(const std::vector<double>& x)
         {
             double s = 0.0;
-            for (size_t i = 0; i < x.size(); ++i) { s += x[i] * x[i]; }
+            for (size_t i = 0; i < x.size(); ++i)
+            {
+                s += x[i] * x[i];
+            }
             return std::sqrt(s);
         }
 
@@ -47,7 +53,10 @@ namespace LR
             for (int a = 0; a < ncoord; ++a)
             {
                 const double* const block = gflat.data() + static_cast<size_t>(a) * d * d;
-                for (int i = 0; i < d * d; ++i) { m[i] += u[a] * block[i]; }
+                for (int i = 0; i < d * d; ++i)
+                {
+                    m[i] += u[a] * block[i];
+                }
             }
             return m;
         }
@@ -59,21 +68,33 @@ namespace LR
         std::vector<double> min_eigenvector(std::vector<double> m, const int d)
         {
             std::vector<double> ev(static_cast<size_t>(d) * d, 0.0);
-            for (int i = 0; i < d; ++i) { ev[i * d + i] = 1.0; }
+            for (int i = 0; i < d; ++i)
+            {
+                ev[i * d + i] = 1.0;
+            }
             for (int sweep = 0; sweep < 100; ++sweep)
             {
                 double off = 0.0;
                 for (int i = 0; i < d; ++i)
                 {
-                    for (int j = i + 1; j < d; ++j) { off += m[i * d + j] * m[i * d + j]; }
+                    for (int j = i + 1; j < d; ++j)
+                    {
+                        off += m[i * d + j] * m[i * d + j];
+                    }
                 }
-                if (off < 1e-30) { break; }
+                if (off < 1e-30)
+                {
+                    break;
+                }
                 for (int i = 0; i < d; ++i)
                 {
                     for (int j = i + 1; j < d; ++j)
                     {
                         const double aij = m[i * d + j];
-                        if (std::abs(aij) < 1e-300) { continue; }
+                        if (std::abs(aij) < 1e-300)
+                        {
+                            continue;
+                        }
                         const double theta = 0.5 * (m[j * d + j] - m[i * d + i]) / aij;
                         const double t = (theta >= 0.0 ? 1.0 : -1.0)
                             / (std::abs(theta) + std::sqrt(theta * theta + 1.0));
@@ -103,12 +124,21 @@ namespace LR
             int best = 0;
             for (int i = 1; i < d; ++i)
             {
-                if (m[i * d + i] < m[best * d + best]) { best = i; }
+                if (m[i * d + i] < m[best * d + best])
+                {
+                    best = i;
+                }
             }
             std::vector<double> v(d, 0.0);
-            for (int k = 0; k < d; ++k) { v[k] = ev[k * d + best]; }
+            for (int k = 0; k < d; ++k)
+            {
+                v[k] = ev[k * d + best];
+            }
             const double n = norm2(v);
-            for (int k = 0; k < d; ++k) { v[k] /= n; }
+            for (int k = 0; k < d; ++k)
+            {
+                v[k] /= n;
+            }
             return v;
         }
 
@@ -129,7 +159,10 @@ namespace LR
                 std::vector<double> v(d, 1.0 / std::sqrt(static_cast<double>(d)));
                 for (int k = 1; k < d; ++k)
                 {
-                    if ((mask >> (k - 1)) & 1) { v[k] = -v[k]; }
+                    if ((mask >> (k - 1)) & 1)
+                    {
+                        v[k] = -v[k];
+                    }
                 }
                 starts.push_back(v);
             }
@@ -165,22 +198,38 @@ namespace LR
                 const double nq = norm2(q);
                 // A vanishing gradient means this branch is already stationary: there is no
                 // direction to report from this start, so leave it to the others.
-                if (nq < 1e-14) { break; }
-                if (nq - obj < 1e-12 * std::max(1.0, nq)) { obj = nq; break; }
+                if (nq < 1e-14)
+                {
+                    break;
+                }
+                if (nq - obj < 1e-12 * std::max(1.0, nq))
+                {
+                    obj = nq;
+                    break;
+                }
                 obj = nq;
                 // u minimizes u.q(v) at fixed v; v then minimizes v^T M(u) v at fixed u. Both are
                 // exact, so the joint objective -\|q\| decreases monotonically.
                 std::vector<double> u(ncoord);
-                for (int a = 0; a < ncoord; ++a) { u[a] = -q[a] / nq; }
+                for (int a = 0; a < ncoord; ++a)
+                {
+                    u[a] = -q[a] / nq;
+                }
                 v = min_eigenvector(contract_direction(gflat, ncoord, d, u), d);
             }
-            if (obj <= 0.0) { continue; }
+            if (obj <= 0.0)
+            {
+                continue;
+            }
             if (obj > best.slope * (1.0 + 1e-9))
             {
                 best.slope = obj;
                 best.mixing = v;
                 best.displacement.assign(ncoord, 0.0);
-                for (int a = 0; a < ncoord; ++a) { best.displacement[a] = q[a] / obj; }
+                for (int a = 0; a < ncoord; ++a)
+                {
+                    best.displacement[a] = q[a] / obj;
+                }
                 best.iterations = it;
                 best.restarts_agreeing = 1;
             }
@@ -205,7 +254,10 @@ namespace LR
         {
             const double* const block = gflat.data() + static_cast<size_t>(a) * d * d;
             double tr = 0.0;
-            for (int k = 0; k < d; ++k) { tr += block[k * d + k]; }
+            for (int k = 0; k < d; ++k)
+            {
+                tr += block[k * d + k];
+            }
             sym[a] = tr / static_cast<double>(d);
             jt_part[a] = q[a] - sym[a];
         }

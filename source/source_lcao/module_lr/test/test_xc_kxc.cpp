@@ -78,6 +78,9 @@ TEST(XcKxc, RuntimeLdaFlagsDetermineAvailability)
     {
         EXPECT_NO_THROW(LR::require_xc_kxc(functional, true));
     }
-    else { EXPECT_THROW(LR::require_xc_kxc(functional, true), std::runtime_error); }
+    else
+    {
+        EXPECT_THROW(LR::require_xc_kxc(functional, true), std::runtime_error);
+    }
     xc_func_end(&functional);
 }

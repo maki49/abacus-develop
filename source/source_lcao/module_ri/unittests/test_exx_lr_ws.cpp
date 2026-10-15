@@ -45,7 +45,10 @@ void check_workspace()
     TensorMap gs_hs;
     for (const auto& atom : ks.Hs)
     {
-        for (const auto& entry : atom.second) { gs_hs[atom.first][entry.first] = entry.second.copy(); }
+        for (const auto& entry: atom.second)
+        {
+            gs_hs[atom.first][entry.first] = entry.second.copy();
+        }
     }
     std::map<std::string, TensorMap> original_packs;
     for (const auto& pack : ks.lri.data_pool)
@@ -133,8 +136,14 @@ void check_workspace()
 }
 }
 
-TEST(ExxLRWorkspace, RealGeometryAndElectronicIsolation) { check_workspace<double>(); }
-TEST(ExxLRWorkspace, ComplexGeometryAndElectronicIsolation) { check_workspace<std::complex<double>>(); }
+TEST(ExxLRWorkspace, RealGeometryAndElectronicIsolation)
+{
+    check_workspace<double>();
+}
+TEST(ExxLRWorkspace, ComplexGeometryAndElectronicIsolation)
+{
+    check_workspace<std::complex<double>>();
+}
 
 int main(int argc, char** argv)
 {

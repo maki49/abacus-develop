@@ -6,13 +6,23 @@
 namespace
 {
 template<typename T> T value(double real, double imag);
-template<> double value<double>(double real, double) { return real; }
+template <>
+double value<double>(double real, double)
+{
+    return real;
+}
 template<> std::complex<double> value<std::complex<double>>(double real, double imag)
 {
     return std::complex<double>(real, imag);
 }
-double conjugate(double x) { return x; }
-std::complex<double> conjugate(std::complex<double> x) { return std::conj(x); }
+double conjugate(double x)
+{
+    return x;
+}
+std::complex<double> conjugate(std::complex<double> x)
+{
+    return std::conj(x);
+}
 
 template<typename T> T coefficient(int row, int band)
 {
@@ -121,5 +131,11 @@ template<typename T> void check_contractions()
 }
 }
 
-TEST(CalEdm, RealColumnMajorContractions) { check_contractions<double>(); }
-TEST(CalEdm, ComplexAdjointContractions) { check_contractions<std::complex<double>>(); }
+TEST(CalEdm, RealColumnMajorContractions)
+{
+    check_contractions<double>();
+}
+TEST(CalEdm, ComplexAdjointContractions)
+{
+    check_contractions<std::complex<double>>();
+}

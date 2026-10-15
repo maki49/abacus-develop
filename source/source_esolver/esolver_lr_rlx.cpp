@@ -21,7 +21,10 @@ template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::setup_relax_target_()
 {
     this->excited_relax_ = (this->inp_->calculation == "relax");
-    if (!this->excited_relax_) { return; }
+    if (!this->excited_relax_)
+    {
+        return;
+    }
 
     // The Z-vector equation has no complex solver (see zeq_solver.h), so an
     // excited-state gradient only exists at gamma. Fail here rather than after the SCF.
@@ -76,7 +79,7 @@ void ModuleESolver::ESolver_LR<T, TR>::setup_relax_target_()
     }
     this->force_gs_.create(this->ucell_->nat, 3);
     this->lr_force_.create(this->ucell_->nat, 3);
-    this->target_state_ = this->inp_->lr_target_state;   // seed; overlap takes over from step 2
+    this->target_state_ = this->inp_->lr_target_state; // seed; overlap takes over from step 2
     this->ofs_running_ << " Excited-state relaxation follows state " << this->inp_->lr_target_state
         << " of the " << (this->openshell ? "updown" : (this->target_is_ == 1 ? "triplet" : "singlet"))
         << " channel, tracked by cross-geometry orbital and amplitude overlap." << std::endl;
@@ -113,7 +116,10 @@ double ModuleESolver::ESolver_LR<T, TR>::cal_energy()
 {
     // Outside a relaxation nothing consumes this, and returning a non-zero value would change
     // what the existing single-point outputs report.
-    if (!this->excited_relax_) { return 0.0; }
+    if (!this->excited_relax_)
+    {
+        return 0.0;
+    }
     // `target_omega_()` is the multiplet average under `lr_degen_mode = average` and the
     // single state otherwise, matching whatever `cal_lr_force_relax_` produced the gradient of.
     // The energy-based optimisers line-search on this, so the two must not describe different
@@ -180,29 +186,43 @@ void ModuleESolver::ESolver_LR<T, TR>::resolve_target_multiplet_()
     // followed root at every ionic step, and the multiplet has to be the one containing the root
     // actually being followed. They differ as soon as two surfaces have crossed.
     this->target_group_.clear();
-    if (LR_Util::tolower(this->inp_->lr_degen_mode) == "state") { return; }
+    if (LR_Util::tolower(this->inp_->lr_degen_mode) == "state")
+    {
+        return;
+    }
     const int ekb_off = this->openshell ? 0 : this->target_is_ * this->nstates;
     std::vector<double> omega(this->nstates);
-    for (int ist = 0; ist < this->nstates; ++ist) { omega[ist] = this->pelec->ekb.c[ekb_off + ist]; }
+    for (int ist = 0; ist < this->nstates; ++ist)
+    {
+        omega[ist] = this->pelec->ekb.c[ekb_off + ist];
+    }
     const std::vector<std::vector<int>> groups
         = LR::group_degenerate_states(omega, this->inp_->lr_degen_thr);
     for (const std::vector<int>& g : groups)
     {
-        if (std::find(g.begin(), g.end(), this->target_state_) == g.end()) { continue; }
+        if (std::find(g.begin(), g.end(), this->target_state_) == g.end())
+        {
+            continue;
+        }
         // a one-member group means the target is not degenerate here, and averaging over it would
         // be the single-state path with extra steps
         const bool average = LR_Util::tolower(this->inp_->lr_degen_mode) == "average";
         if (average && g.size() > 3)
         {
             this->ofs_running_ << " WARNING: tracked group has " << g.size()
-                << " roots; average supports at most three. Following the selected single root." << std::endl;
+                               << " roots; average supports at most three. Following the selected single root."
+                               << std::endl;
         }
         else if (!average && g.size() > 3)
         {
-            ModuleBase::WARNING_QUIT("ESolver_LR",
+            ModuleBase::WARNING_QUIT(
+                "ESolver_LR",
                 "JT forces support only two- or three-state multiplets; reduce lr_degen_thr or use state mode");
         }
-        else if (g.size() > 1) { this->target_group_ = g; }
+        else if (g.size() > 1)
+        {
+            this->target_group_ = g;
+        }
         break;
     }
 }
@@ -210,10 +230,16 @@ void ModuleESolver::ESolver_LR<T, TR>::resolve_target_multiplet_()
 template<typename T, typename TR>
 double ModuleESolver::ESolver_LR<T, TR>::target_omega_() const
 {
-    if (this->target_group_.empty()) { return this->pelec->ekb.c[this->target_ekb_offset_()]; }
+    if (this->target_group_.empty())
+    {
+        return this->pelec->ekb.c[this->target_ekb_offset_()];
+    }
     const int ekb_off = this->openshell ? 0 : this->target_is_ * this->nstates;
     double sum = 0.0;
-    for (const int ist : this->target_group_) { sum += this->pelec->ekb.c[ekb_off + ist]; }
+    for (const int ist: this->target_group_)
+    {
+        sum += this->pelec->ekb.c[ekb_off + ist];
+    }
     return sum / static_cast<double>(this->target_group_.size());
 }
 
@@ -233,20 +259,27 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_lr_force_relax_(std::of
     const int ekb_off = this->openshell ? 0 : this->target_is_ * this->nstates;
     const ct::Tensor Xz = this->pad_group_to_z_(this->target_is_, this->target_group_);
     std::vector<double> omega(d);
-    for (int k = 0; k < d; ++k) { omega[k] = this->pelec->ekb.c[ekb_off + this->target_group_[k]]; }
+    for (int k = 0; k < d; ++k)
+    {
+        omega[k] = this->pelec->ekb.c[ekb_off + this->target_group_[k]];
+    }
     const std::vector<ModuleBase::matrix> forces = this->openshell
         ? this->cal_force_openshell_Xz(Xz, omega, this->target_group_.front())
         : this->cal_force_Xz(this->target_is_, Xz, omega, this->target_group_.front());
     ofs << " Followed state " << this->target_state_ << " is degenerate with";
     for (const int ist : this->target_group_)
     {
-        if (ist != this->target_state_) { ofs << " " << ist; }
+        if (ist != this->target_state_)
+        {
+            ofs << " " << ist;
+        }
     }
     ofs << " (Omega_bar = " << this->target_omega_() << " Ry)." << std::endl;
     if (!jt_mode)
     {
         ofs << " lr_degen_mode=average: following the multiplet average, which keeps the"
-            " geometry on the current average surface; split groups are not recombined." << std::endl;
+               " geometry on the current average surface; split groups are not recombined."
+            << std::endl;
         return average_forces(forces);
     }
     return this->cal_jt_force_(forces, ofs);
@@ -292,7 +325,10 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::cal_jt_force_(
     ofs << " lr_degen_mode=jt: descending the steepest branch of the multiplet." << std::endl
         << "   |F| of that branch  = " << jt.slope * fac << " eV/Angstrom" << std::endl
         << "   mixing v            =";
-    for (int k = 0; k < d; ++k) { ofs << " " << jt.mixing[k]; }
+    for (int k = 0; k < d; ++k)
+    {
+        ofs << " " << jt.mixing[k];
+    }
     ofs << std::endl
         << "   starts agreeing     = " << jt.restarts_agreeing << " of "
         << (d + (1 << (d - 1))) << " (iterations " << jt.iterations << ")" << std::endl;
@@ -341,7 +377,10 @@ ModuleBase::matrix ModuleESolver::ESolver_LR<T, TR>::MultipletLVC::average_force
 {
     assert(!this->g.empty());
     std::vector<ModuleBase::matrix> diag;
-    for (int k = 0; k < this->dim(); ++k) { diag.push_back(this->g[k][k]); }
+    for (int k = 0; k < this->dim(); ++k)
+    {
+        diag.push_back(this->g[k][k]);
+    }
     return average_forces(diag);
 }
 

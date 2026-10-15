@@ -46,7 +46,8 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
         this->conv_esolver = this->ks_->conv_esolver;
         if (this->inp_->calculation == "relax" && !this->conv_esolver)
         {
-            ModuleBase::WARNING_QUIT("ESolver_LR",
+            ModuleBase::WARNING_QUIT(
+                "ESolver_LR",
                 "Excited-state relaxation requires a converged ground-state SCF; ionic step rejected");
         }
         this->etot_gs_ = this->ks_->cal_energy();
@@ -55,7 +56,10 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
             this->initialize_from_ks_(ucell, *this->inp_);
             this->setup_relax_target_();   // needs the final dimensions, i.e. `openshell`
         }
-        else { this->refresh_from_ks_(ucell); }
+        else
+        {
+            this->refresh_from_ks_(ucell);
+        }
     }
 
     //allocate 2-particle state and setup 2d division
@@ -70,8 +74,13 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     // a relaxation writes these once per ionic step; without the suffix every step would overwrite
     // the last, and the trajectory would be impossible to inspect afterwards
     const std::string step_suffix = this->excited_relax_ ? "_step" + std::to_string(istep) : "";
-    auto efile_out = [this, &step_suffix](const std::string& label)->std::string {return this->out_dir + "Excitation_Energy_" + label + step_suffix + ".dat";};
-    auto vfile_out = [this, &step_suffix](const std::string& label)->std::string {return this->out_dir + "Excitation_Amplitude_" + label + step_suffix + "_" + std::to_string(this->my_rank_+1) + ".dat";};
+    auto efile_out = [this, &step_suffix](const std::string& label) -> std::string {
+        return this->out_dir + "Excitation_Energy_" + label + step_suffix + ".dat";
+    };
+    auto vfile_out = [this, &step_suffix](const std::string& label) -> std::string {
+        return this->out_dir + "Excitation_Amplitude_" + label + step_suffix + "_" + std::to_string(this->my_rank_ + 1)
+               + ".dat";
+    };
     if (this->inp_->lr_solver == "elpa")
     {
         ModuleBase::WARNING_QUIT("ESolver_LR", "ESolver_LR doesn't support elpa now.");
@@ -79,11 +88,18 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     }
     else if (this->inp_->lr_solver != "spectrum")
     {
-        auto write_states = [&](const std::string& label, const Real<T>* e, const T* v, const int& dim, const int& nst, const int& prec = 8)->void
+        auto write_states = [this, &efile_out, &vfile_out](const std::string& label,
+                                const Real<T>* e,
+                                const T* v,
+                                const int& dim,
+                                const int& nst,
+                                const int& prec = 8) -> void {
+            if (this->my_rank_ == 0)
             {
-                if (this->my_rank_ == 0) { assert(nst == LR_Util::write_value(efile_out(label), prec, e, nst)); }
-                assert(nst * dim == LR_Util::write_value(vfile_out(label), prec, v, nst, dim));
-            };
+                assert(nst == LR_Util::write_value(efile_out(label), prec, e, nst));
+            }
+            assert(nst * dim == LR_Util::write_value(vfile_out(label), prec, v, nst, dim));
+        };
         std::vector<double> precondition(this->inp_->lr_solver == "lapack" ? 0 : nloc_per_state, 1.0);
         // allocate and initialize A matrix and density matrix
         if (openshell)
@@ -169,8 +185,10 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     else    // lr_solver == "spectrum", read the eigenvalues
     {
         auto efile_in = [&](const std::string& label)->std::string {return this->in_dir + "Excitation_Energy_" + label + ".dat";};
-        auto vfile_in = [this](const std::string& label)->std::string {return this->in_dir + "Excitation_Amplitude_" + label + "_" + std::to_string(this->my_rank_+1) + ".dat";};
-    
+        auto vfile_in = [this](const std::string& label) -> std::string {
+            return this->in_dir + "Excitation_Amplitude_" + label + "_" + std::to_string(this->my_rank_ + 1) + ".dat";
+        };
+
         auto read_states = [&](const std::string& label, Real<T>* e, T* v, const int& dim, const int& nst)->void
             {
                 if (this->my_rank_ == 0) {
@@ -210,8 +228,14 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
         // it the relaxation only reports a force, and whether E_gs + Omega actually goes down --
         // the thing being minimised -- cannot be read off the log at all.
         const double omega = this->target_omega_();
-        auto max_abs = [](const ModuleBase::matrix& m) -> double
-            { double v = 0.0; for (int i = 0;i < m.nr * m.nc;++i) { v = std::max(v, std::abs(m.c[i])); } return v; };
+        auto max_abs = [](const ModuleBase::matrix& m) -> double {
+            double v = 0.0;
+            for (int i = 0; i < m.nr * m.nc; ++i)
+            {
+                v = std::max(v, std::abs(m.c[i]));
+            }
+            return v;
+        };
         this->ofs_running_ << std::setprecision(8) << std::fixed
             << " EXCITED-STATE RELAX step " << istep
             << ": E_gs = " << this->etot_gs_ * ModuleBase::Ry_to_eV
@@ -305,7 +329,10 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
             // }
             // =============================================== for test ====================================================
         }
-        if (this->inp_->cal_force && !this->excited_relax_) { this->cal_force_and_grad_matrix_(is, this->ofs_running_); }
+        if (this->inp_->cal_force && !this->excited_relax_)
+        {
+            this->cal_force_and_grad_matrix_(is, this->ofs_running_);
+        }
     }
 }
 template class ModuleESolver::ESolver_LR<double, double>;

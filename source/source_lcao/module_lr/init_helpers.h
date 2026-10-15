@@ -2,7 +2,10 @@
 #define ABACUS_LR_INIT_HELPERS_H
 #include <iosfwd>
 #include <string>
-namespace ModuleBase { class matrix; }
+namespace ModuleBase
+{
+class matrix;
+}
 struct Input_para;
 class TwoCenterBundle;
 class LCAO_Orbitals;

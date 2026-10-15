@@ -40,7 +40,13 @@ namespace LR
             ops(4, nullptr)
         {
         }
-        virtual ~ZeqULR() { for (auto& op : this->ops) { delete op; } }
+        virtual ~ZeqULR()
+        {
+            for (auto& op: this->ops)
+            {
+                delete op;
+            }
+        }
 
         void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband)
         {

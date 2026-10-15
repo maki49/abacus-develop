@@ -23,7 +23,10 @@ public:
         const bool with_ewald = true,
         const elecstate::ElecState* pelec = nullptr)
     {
-        if (nspin == 4) { throw std::runtime_error("ForcePWTerms: nspin=4 is not supported."); }
+        if (nspin == 4)
+        {
+            throw std::runtime_error("ForcePWTerms: nspin=4 is not supported.");
+        }
         ModuleBase::TITLE("Force_Stress_LCAO", "cal_force_pw");
         Forces<T> f_pw(ucell.nat);
         ModuleBase::matrix fvl_dvl(ucell.nat, 3), fewalds(ucell.nat, 3), fcc(ucell.nat, 3), fscc(ucell.nat, 3);
@@ -79,7 +82,10 @@ ModuleBase::matrix cal_force_nonlocal(
 {
     ModuleBase::TITLE("Force_Stress_LCAO", "cal_force_nonlocal_dvnl");
     std::vector<double> orb_cutoffs(ucell.ntype);
-    for (int it = 0;it < ucell.ntype;++it) { orb_cutoffs[it] = ucell.atoms[it].Rcut; }
+    for (int it = 0; it < ucell.ntype; ++it)
+    {
+        orb_cutoffs[it] = ucell.atoms[it].Rcut;
+    }
 
     hamilt::Nonlocal<hamilt::OperatorLCAO<TK, double>> tmp_nonlocal(nullptr,
         kvec_d,
@@ -116,7 +122,10 @@ ModuleBase::matrix cal_force_nonlocal_dvnl(
     ModuleBase::TITLE("Force_Stress_LCAO", "cal_force_nonlocal_dvnl");
 
     std::vector<double> orb_cutoffs(ucell.ntype);
-    for (int it = 0;it < ucell.ntype;++it) { orb_cutoffs[it] = ucell.atoms[it].Rcut; }
+    for (int it = 0; it < ucell.ntype; ++it)
+    {
+        orb_cutoffs[it] = ucell.atoms[it].Rcut;
+    }
 
     hamilt::Nonlocal<hamilt::OperatorLCAO<std::complex<double>, std::complex<double>>> tmp_nonlocal(
         nullptr,

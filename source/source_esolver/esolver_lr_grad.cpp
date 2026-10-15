@@ -100,8 +100,14 @@ ct::Tensor ModuleESolver::ESolver_LR<T, TR>::solve_zvector_eqation(const int isp
 template<typename T, typename TR>
 std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force(const int ispin, const int istate_only)
 {
-    if (this->inp_->test_force && ispin == 0) { this->test_force(); }
-    if (this->openshell) { return this->cal_force_openshell(istate_only); }
+    if (this->inp_->test_force && ispin == 0)
+    {
+        this->test_force();
+    }
+    if (this->openshell)
+    {
+        return this->cal_force_openshell(istate_only);
+    }
 
     const int ist_begin = (istate_only < 0) ? 0 : istate_only;
     const int nst = (istate_only < 0) ? this->nstates : 1;
@@ -161,27 +167,41 @@ template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::cal_force_and_grad_matrix_(const int ispin, std::ofstream& ofs)
 {
     const std::vector<ModuleBase::matrix> forces = this->cal_force(ispin);
-    if (this->inp_->lr_degen_thr <= 0.0) { return; }
+    if (this->inp_->lr_degen_thr <= 0.0)
+    {
+        return;
+    }
     // Rebuilt from scratch for this channel: a relaxation calls this once per ionic step, and a
     // stale multiplet from the previous geometry must not survive into the next one.
-    this->multiplet_lvc_.erase(
-        std::remove_if(this->multiplet_lvc_.begin(), this->multiplet_lvc_.end(),
-            [ispin](const MultipletLVC& m) { return m.ispin == ispin; }),
-        this->multiplet_lvc_.end());
+    this->multiplet_lvc_.erase(std::remove_if(this->multiplet_lvc_.begin(),
+                                              this->multiplet_lvc_.end(),
+                                              [ispin](const MultipletLVC& m) {
+                                                  return m.ispin == ispin;
+                                              }),
+                               this->multiplet_lvc_.end());
     // The per-state gradients above are the diagonal of the degenerate-subspace gradient matrix in
     // whatever basis the eigensolver returned, so inside a multiplet only their trace means
     // anything. `lr_degen_thr` asks for the off-diagonal part too, which is the rest of the
     // first-order information.
     const int ekb_off = this->openshell ? 0 : ispin * this->nstates;
     std::vector<double> omega(this->nstates);
-    for (int ist = 0; ist < this->nstates; ++ist) { omega[ist] = this->pelec->ekb.c[ekb_off + ist]; }
+    for (int ist = 0; ist < this->nstates; ++ist)
+    {
+        omega[ist] = this->pelec->ekb.c[ekb_off + ist];
+    }
     const std::vector<std::vector<int>> groups
         = LR::group_degenerate_states(omega, this->inp_->lr_degen_thr);
     for (const std::vector<int>& group : groups)
     {
-        if (group.size() < 2) { continue; }
+        if (group.size() < 2)
+        {
+            continue;
+        }
         std::vector<ModuleBase::matrix> diag;
-        for (const int ist : group) { diag.push_back(forces[ist]); }
+        for (const int ist: group)
+        {
+            diag.push_back(forces[ist]);
+        }
         MultipletLVC lvc;
         lvc.ispin = ispin;
         lvc.states = group;
@@ -218,7 +238,10 @@ ModuleESolver::ESolver_LR<T, TR>::cal_grad_matrix_degenerate(const int ispin,
     // 1. the multiplet's members, each widened into the Z window
     const ct::Tensor Xz = this->pad_group_to_z_(ispin, group);
     std::vector<double> omega_member(d);
-    for (int k = 0; k < d; ++k) { omega_member[k] = this->pelec->ekb.c[ekb_off + group[k]]; }
+    for (int k = 0; k < d; ++k)
+    {
+        omega_member[k] = this->pelec->ekb.c[ekb_off + group[k]];
+    }
 
     // 2. the two preconditions of route (A2), reported rather than enforced: the combinations
     //    $X_\pm$ are normalized eigenvectors only if the members are orthonormal, and the gradient
@@ -232,7 +255,10 @@ ModuleESolver::ESolver_LR<T, TR>::cal_grad_matrix_degenerate(const int ispin,
             const T* const xk = Xz.template data<T>() + static_cast<size_t>(k) * nloc_g;
             const T* const xl = Xz.template data<T>() + static_cast<size_t>(l) * nloc_g;
             T loc = static_cast<T>(0);
-            for (int i = 0; i < nloc_g; ++i) { loc += LR_Util::get_conj(xk[i]) * xl[i]; }
+            for (int i = 0; i < nloc_g; ++i)
+            {
+                loc += LR_Util::get_conj(xk[i]) * xl[i];
+            }
             Parallel_Reduce::reduce_all(loc);
             const double ref = (k == l) ? 1.0 : 0.0;
             max_ovlp_err = std::max(max_ovlp_err, std::abs(loc - ref));
@@ -301,7 +327,10 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_open
     // while the Z-vector gets every occupied-virtual rotation the AO basis supports.
     const ct::Tensor Xz = this->pad_X_to_z_(0, ist_begin_, nst_);
     std::vector<double> omega_(nst_);
-    for (int i = 0; i < nst_; ++i) { omega_[i] = this->pelec->ekb.c[ist_begin_ + i]; }
+    for (int i = 0; i < nst_; ++i)
+    {
+        omega_[i] = this->pelec->ekb.c[ist_begin_ + i];
+    }
     return this->cal_force_openshell_Xz(Xz, omega_, ist_begin_);
 }
 

@@ -13,10 +13,16 @@ namespace LR
     /// @brief  Exx part of A operator
     /// The single source of truth is `LR_Util::hybrid_xc_list` -- see there for what the list
     /// does and does not decide.
-    inline const std::set<std::string>& exx_kernel_list() { return LR_Util::hybrid_xc_list(); };
+inline const std::set<std::string>& exx_kernel_list()
+{
+    return LR_Util::hybrid_xc_list();
+};
 
     /// @brief does the GROUND STATE carry exact exchange, i.e. is `dft_functional` a hybrid?
-    inline bool gs_is_hybrid(const std::string& dft_functional) { return exx_kernel_list().count(LR_Util::tolower(dft_functional)) > 0; };
+inline bool gs_is_hybrid(const std::string& dft_functional)
+{
+    return exx_kernel_list().count(LR_Util::tolower(dft_functional)) > 0;
+};
 
     template<typename T = double>
     class OperatorLREXX : public hamilt::Operator<T, base_device::DEVICE_CPU>

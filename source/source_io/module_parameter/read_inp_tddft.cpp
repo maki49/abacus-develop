@@ -1102,7 +1102,8 @@ void ReadInput::item_lr_tddft()
             const bool forces = input.cal_force || input.calculation == "relax";
             if (lr && forces && !input.lr_init_xc_kernel.empty() && input.lr_init_xc_kernel[0] == "file")
             {
-                ModuleBase::WARNING_QUIT("ReadInput",
+                ModuleBase::WARNING_QUIT(
+                    "ReadInput",
                     "lr_init_xc_kernel=file supports spectra only; excited-state forces require kernel derivatives");
             }
         };
@@ -1180,7 +1181,8 @@ void ReadInput::item_lr_tddft()
         item.annotation = "the initial excited state for geometry relaxation (0-based)";
         item.category = "Linear Response TDDFT";
         item.type = "Integer";
-        item.description = R"(Initial excited-state index for `calculation = relax`, counted from 0 within the spin channel selected by `lr_target_spin`.
+        item.description
+            = R"(Initial excited-state index for `calculation = relax`, counted from 0 within the spin channel selected by `lr_target_spin`.
 
 The gradient of the followed state (or its degenerate multiplet selected by `lr_degen_mode`) is computed, since solving the Z-vector equation dominates the cost of an excited-state gradient. It also selects the state whose excitation energy is added to the ground-state total energy, which is the quantity the energy-based relaxation algorithms (`cg`, `bfgs`, `lbfgs`) line-search on.
 
@@ -1192,7 +1194,10 @@ Ignored outside `calculation = relax`: a single-point run solves and reports the
         item.check_value = [](const Input_Item& item, const Parameter& para) {
             // Both parameters only steer a relaxation. A single-point run solves and reports every
             // state, so they are dead there and must not be able to abort it.
-            if (para.input.calculation != "relax") { return; }
+            if (para.input.calculation != "relax")
+            {
+                return;
+            }
             if (para.input.lr_target_state < 0)
             {
                 ModuleBase::WARNING_QUIT("ReadInput", "lr_target_state must be >= 0");
@@ -1219,7 +1224,8 @@ Ignored outside `calculation = relax`: a single-point run solves and reports the
     }
     {
         Input_Item item("lr_degen_thr");
-        item.annotation = "max excitation-energy spread of a degenerate multiplet whose gradient matrix is computed (Ry); 0 disables";
+        item.annotation
+            = "max excitation-energy spread of a degenerate multiplet whose gradient matrix is computed (Ry); 0 disables";
         item.category = "Linear Response TDDFT";
         item.type = "Real";
         item.description = R"(Excited states whose excitation energies lie within this threshold of each other are treated as one degenerate multiplet, and the full gradient matrix $G^{(A\alpha)}_{kl}=\langle X_k|\partial A/\partial R_{A\alpha}|X_l\rangle$ is computed for it in addition to the per-state gradients. Zero (the default) disables this and leaves the per-state gradients as the only output.
@@ -1247,7 +1253,8 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.annotation = "what a relaxation follows when the target state is degenerate: state or average";
         item.category = "Linear Response TDDFT";
         item.type = "String";
-        item.description = R"(What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_degen_thr`. It has no effect when the target state is non-degenerate.
+        item.description
+            = R"(What `calculation = relax` follows when `lr_target_state` sits inside a degenerate multiplet, as identified by `lr_degen_thr`. It has no effect when the target state is non-degenerate.
 
 * state: follow the gradient of that one state, as returned by the eigensolver. This is the historical behaviour and is what reproduces earlier results, but inside a multiplet it is not a well-defined quantity: the per-state gradients are the diagonal of the subspace gradient matrix in whichever basis the eigensolver happened to return, so they depend on numerical details of the diagonalisation rather than on physics.
 * average: follow the multiplet average $\bar\Omega=\frac{1}{d}\sum_k\Omega_k$, whose gradient is $\operatorname{Tr}G/d$. For a fixed complete multiplet the average is basis-independent and its gradient respects the multiplet symmetry. Tracking allows groups to split or merge: split groups are not recombined to enforce symmetry, so changing group membership can change the average surface and lose geometric symmetry. Groups larger than three are tracked but use the selected single-state energy and force with a warning. Both the reported energy and the reported gradient switch to the average together, which the energy-based optimisers (`cg`, `bfgs`, `lbfgs`) require -- a gradient of one surface line-searched against the energy of another does not converge. This mode deliberately does NOT find the Jahn-Teller distortion, which is orthogonal to the totally symmetric average gradient.
@@ -1284,7 +1291,8 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
         item.annotation = "the linear solver of the Z-vector equation for LR-TDDFT gradients";
         item.category = "Linear Response TDDFT";
         item.type = "String";
-        item.description = R"(The method to solve the Z-vector (relaxed-density) equation $(A+B)Z=R$ in LR-TDDFT force and relaxation calculations, the linear-equation counterpart of `lr_solver`. Its dimension is $n_k n_{occ} n_{virt}$ summed over spin, where $n_{virt}$ counts every virtual band of the ground state, not only the `nvirt` window of the excitation.
+        item.description
+            = R"(The method to solve the Z-vector (relaxed-density) equation $(A+B)Z=R$ in LR-TDDFT force and relaxation calculations, the linear-equation counterpart of `lr_solver`. Its dimension is $n_k n_{occ} n_{virt}$ summed over spin, where $n_{virt}$ counts every virtual band of the ground state, not only the `nvirt` window of the excitation.
 * cg: Solve iteratively with the conjugate-gradient method, applying the orbital Hessian $A+B$ to a vector at each step. The matrix is never built.
 * lapack: Construct the full matrix and solve directly with LAPACK (LU). Every MPI process holds the whole matrix and solves the same system.
 * scalapack: Construct the matrix distributed over the MPI processes (2D block-cyclic) and solve with ScaLAPACK (LU).
@@ -1300,13 +1308,15 @@ The threshold proposes candidates; it cannot tell a true degeneracy from an acci
             const std::vector<std::string> solvers = { "cg", "lapack", "scalapack", "scalapack_chol" };
             if (std::find(solvers.begin(), solvers.end(), solver) == solvers.end())
             {
-                ModuleBase::WARNING_QUIT("ReadInput", "lr_grad_solver must be cg, lapack, scalapack or scalapack_chol; elpa has been removed");
+                ModuleBase::WARNING_QUIT(
+                    "ReadInput",
+                    "lr_grad_solver must be cg, lapack, scalapack or scalapack_chol; elpa has been removed");
             }
 #ifndef __MPI
             if (solver == "scalapack" || solver == "scalapack_chol")
             {
                 ModuleBase::WARNING_QUIT("ReadInput",
-                    "lr_grad_solver = " + solver + " needs an MPI build; use cg or lapack");
+                                         "lr_grad_solver = " + solver + " needs an MPI build; use cg or lapack");
             }
 #endif
 

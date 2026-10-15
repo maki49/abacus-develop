@@ -26,15 +26,30 @@ namespace LR
             { {1,3,4},{3,6,7},{4,7,8} },
             { {2,4,5},{4,7,8},{5,8,9} } };
         /// v3rho3 (4): (uuu,uud,udd,ddd) -- indexed by the number of d's
-        inline constexpr int r3(const int s0, const int s1, const int s2) { return s0 + s1 + s2; }
+        inline constexpr int r3(const int s0, const int s1, const int s2)
+        {
+            return s0 + s1 + s2;
+        }
         /// v2rho2 (3): (uu,ud,dd)
-        inline constexpr int r2(const int s0, const int s1) { return s0 + s1; }
+        inline constexpr int r2(const int s0, const int s1)
+        {
+            return s0 + s1;
+        }
         /// v2rhosigma (6): [rho u,d] x [sigma uu,ud,dd]
-        inline constexpr int rs(const int s, const int a) { return 3 * s + a; }
+        inline constexpr int rs(const int s, const int a)
+        {
+            return 3 * s + a;
+        }
         /// v3rho2sigma (9): [rho-pair uu,ud,dd] x [sigma uu,ud,dd]
-        inline constexpr int r2s(const int s0, const int s1, const int a) { return 3 * (s0 + s1) + a; }
+        inline constexpr int r2s(const int s0, const int s1, const int a)
+        {
+            return 3 * (s0 + s1) + a;
+        }
         /// v3rhosigma2 (12): [rho u,d] x [unordered sigma pair]
-        inline constexpr int rs2(const int s, const int a, const int b) { return 6 * s + p2[a][b]; }
+        inline constexpr int rs2(const int s, const int a, const int b)
+        {
+            return 6 * s + p2[a][b];
+        }
         /// $\partial\sigma_a/\partial\nabla\rho_\tau = \theta^\tau_a\,\nabla\rho_{c(\tau,a)}$
         /// tau=u: (uu -> 2 grad rho_u, ud -> 1 grad rho_d, dd -> 0)
         /// tau=d: (uu -> 0,            ud -> 1 grad rho_u, dd -> 2 grad rho_d)
@@ -63,9 +78,18 @@ namespace LR
         ~KernelXC() {}
 
         /// Metadata belongs to this coefficient set, independent of later global XC changes.
-        int nspin() const { return nspin_; }
-        int functional_type() const { return functional_type_; }
-        const std::string& name() const { return kernel_name_; }
+        int nspin() const
+        {
+            return nspin_;
+        }
+        int functional_type() const
+        {
+            return functional_type_;
+        }
+        const std::string& name() const
+        {
+            return kernel_name_;
+        }
 
         // const references
         CREF(vrho);CREF(vsigma); CREF(v2rho2); CREF(v2rhosigma); CREF(v2sigma2);
@@ -74,7 +98,10 @@ namespace LR
         CREF3(v2rhosigma_drho_uu); CREF3(v2rhosigma_drho_ud); CREF3(v2rhosigma_drho_du); CREF3(v2rhosigma_drho_dd);
         CREF3(v2sigma2_drho_uu_u); CREF3(v2sigma2_drho_uu_d); CREF3(v2sigma2_drho_ud_u); CREF3(v2sigma2_drho_ud_d);
         CREF3(v2sigma2_drho_du_u); CREF3(v2sigma2_drho_du_d); CREF3(v2sigma2_drho_dd_u); CREF3(v2sigma2_drho_dd_d);
-        CREF(v3rho3); CREF(v3rho2sigma); CREF(v3rhosigma2); CREF(v3sigma3);
+        CREF(v3rho3);
+        CREF(v3rho2sigma);
+        CREF(v3rhosigma2);
+        CREF(v3sigma3);
         /// @brief The coefficients of
         ///     $v^{(2)}(r)=\iint dr'dr''\,g^{xc}(r,r',r'')\rho^1(r')\rho^1(r'')$
         /// for ONE spin combination, stored exactly as they appear in the final formula:
@@ -93,9 +120,19 @@ namespace LR
         /// divergence, this factorization no longer holds and they must go back to `Vector3`.
         struct GxcCoef
         {
-            std::vector<double> a_s2, a_st, a_t2, a_q;  ///< the local part $A$
-            std::vector<double> c_s, c_t;               ///< the two $\nabla\rho^1$-weighted scalars
-            std::vector<double> e_s2, e_st, e_t2, e_q;  ///< under the divergence, all times $\nabla\rho^{gs}$
+            // Local part A.
+            std::vector<double> a_s2;
+            std::vector<double> a_st;
+            std::vector<double> a_t2;
+            std::vector<double> a_q;
+            // Scalars multiplying the transition-density gradient.
+            std::vector<double> c_s;
+            std::vector<double> c_t;
+            // Divergence coefficients, all multiplying the ground-state density gradient.
+            std::vector<double> e_s2;
+            std::vector<double> e_st;
+            std::vector<double> e_t2;
+            std::vector<double> e_q;
         };
         /// nspin=1 has no singlet/triplet distinction, so it always returns the one set that is built.
         /// Throws instead of handing back an empty set when the requested combination was not
@@ -105,7 +142,8 @@ namespace LR
             const GxcCoef& ret = (nspin_ == 1 || !triplet) ? gxc_s_ : gxc_t_;
             if (ret.a_s2.empty())
             {
-                throw std::runtime_error("KernelXC: the " + std::string(triplet ? "triplet" : "singlet")
+                throw std::runtime_error(
+                    "KernelXC: the " + std::string(triplet ? "triplet" : "singlet")
                     + " g^xc coefficients were not built; pass the matching `GxcSpin` flag to the constructor.");
             }
             return ret;
@@ -119,7 +157,11 @@ namespace LR
         /// was true at construction (see `f_xc_libxc`), so its emptiness is a reliable per-kernel
         /// proxy -- unlike the global `XC_Functional::get_func_type()`, which reflects the
         /// ground state's functional and disagrees with this kernel whenever the two differ.
-        bool is_gga() const { return !this->drho_gs_.empty(); }
+        bool is_gga() const
+        {
+            return !this->drho_gs_.empty();
+        }
+
     private:
 #ifdef __LIBXC
         /// @brief Calculate the XC kernel using libxc.

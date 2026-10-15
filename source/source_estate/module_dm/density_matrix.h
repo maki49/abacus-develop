@@ -340,10 +340,16 @@ class DensityMatrix
      * please make sure the size of TK* is correct
     */
     void set_dmk_ptr(const int ik, TK* DMK_in);
-    void set_DMK_vector(const int ik, const std::vector<TK>& v) { this->dmk[ik] = v; }
+    void set_DMK_vector(const int ik, const std::vector<TK>& v)
+    {
+        this->dmk[ik] = v;
+    }
 
     /// number of k-slots stored in `dmk` (spin_mult * _nk, flattened)
-    int get_DMK_nks() const { return static_cast<int>(this->dmk.size()); }
+    int get_DMK_nks() const
+    {
+        return static_cast<int>(this->dmk.size());
+    }
 
     /**
      * @brief calculate density matrix DMR from dm(k) using blas::axpy

@@ -25,7 +25,11 @@
 #include "source_lcao/module_ri/exx_lri.h"
 #include "source_hamilt/module_xc/exx_info.h" // for Exx_Info value member
 #endif
-namespace LR { template <typename T> struct GradientInputs; }
+namespace LR
+{
+template <typename T>
+struct GradientInputs;
+}
 namespace ModuleESolver
 {
     struct LRRuntime
@@ -85,11 +89,26 @@ namespace ModuleESolver
         Structure_Factor* sf_ptr_ = nullptr;
         pseudopot_cell_vl* locpp_ptr_ = nullptr;
 
-        Grid_Driver& gd() const { return *this->gd_ptr_; }
-        const TwoCenterBundle& tcb() const { return *this->tcb_ptr_; }
-        Parallel_Grid& pgrid() const { return *this->pgrid_ptr_; }
-        Structure_Factor& sfac() const { return *this->sf_ptr_; }
-        pseudopot_cell_vl& vloc() const { return *this->locpp_ptr_; }
+        Grid_Driver& gd() const
+        {
+            return *this->gd_ptr_;
+        }
+        const TwoCenterBundle& tcb() const
+        {
+            return *this->tcb_ptr_;
+        }
+        Parallel_Grid& pgrid() const
+        {
+            return *this->pgrid_ptr_;
+        }
+        Structure_Factor& sfac() const
+        {
+            return *this->sf_ptr_;
+        }
+        pseudopot_cell_vl& vloc() const
+        {
+            return *this->locpp_ptr_;
+        }
         /// bind the aliases above; `ks_` must already be set (or null for the `lr` path)
         void bind_ground_state_aliases_();
 
@@ -290,7 +309,10 @@ namespace ModuleESolver
             double omega_spread = 0.0;      ///< max - min over the members (Ry); 0 if exact
             /// G[k][l], symmetric, each a (nat, 3) force matrix -- i.e. the 3N matrices of d x d
             std::vector<std::vector<ModuleBase::matrix>> g;
-            int dim() const { return static_cast<int>(states.size()); }
+            int dim() const
+            {
+                return static_cast<int>(states.size());
+            }
             /// $\operatorname{Tr}G/d$: the one smooth, basis-independent 3N vector field the
             /// multiplet has. Following it preserves the symmetric configuration.
             ModuleBase::matrix average_force() const;
