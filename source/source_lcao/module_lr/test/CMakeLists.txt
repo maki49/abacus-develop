@@ -2,7 +2,7 @@ if(ENABLE_LIBXC)
   AddTest(
     TARGET MODULE_LR_pot_hxc_lrtd
     LIBS base parameter device container psi Libxc::xc
-    SOURCES test_pot_hxc_lrtd.cpp ../potentials/pot_hxc_lrtd.cpp ../kernel_pots.cpp
+    SOURCES test_pot_hxc_lrtd.cpp ../potentials/pot_hxc_lrtd.cpp ../kernel_pots.cpp ../potentials/pot_grad_xc.cpp
       ../potentials/xc_kernel.cpp ../potentials/xc_kxc.cpp ../utils/lr_util.cpp
       ../../../source_hamilt/module_xc/xc_functional.cpp
       ../../../source_hamilt/module_xc/libxc_setup.cpp
@@ -81,4 +81,14 @@ AddTest(
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_state_track.cpp ../state_track.cpp ../state_group.cpp ../grad_degen.cpp
           ../../../source_base/test/mpi_test_main.cpp ${root_overlap_test_sources}
+)
+
+set(cal_edm_test_sources test_cal_edm.cpp ../cal_edm.cpp ../utils/lr_util.cpp)
+if(ENABLE_MPI)
+  list(APPEND cal_edm_test_sources ../../../source_base/test/mpi_test_main.cpp)
+endif()
+AddTest(
+  TARGET MODULE_LR_cal_edm
+  LIBS base parameter ${math_libs} container device psi
+  SOURCES ${cal_edm_test_sources}
 )

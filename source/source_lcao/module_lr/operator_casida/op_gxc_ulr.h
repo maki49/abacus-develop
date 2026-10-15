@@ -48,7 +48,7 @@ namespace LR
             const T factor,
             const int& nspin,
             const std::string& ks_solver)
-            : pot_grad_(kxc, rho_basis, ucell, rho_basis.nrxx, /*triplet=*/false),
+            : pot_grad_(kxc, rho_basis, ucell, rho_basis.nrxx, nspin, /*triplet=*/false),
             ucell_(ucell), gd_(gd), kv_(kv), pmat_(pmat), pc_(pc), psi_ks_(psi_ks),
             nocc_(nocc), nvirt_(nvirt), naos_(naos), pX_(pX), pout_(pout),
             orb_cutoff_(orb_cutoff), mo_type_(mo_type), factor_(factor),

@@ -144,8 +144,10 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_Xz(c
     const ct::Tensor Z = this->solve_zvector_eqation(channel, nst, Xz);
     const auto dm_gs = this->cal_dm_gs();
     const LR::GradientInputs<T> inputs = this->gradient_inputs_();
+    const LR::ForceSettings force_settings{this->nspin, this->inp_->test_force,
+        this->inp_->vl_in_h, this->inp_->vh_in_h, this->inp_->dft_functional};
     LR_Force<T> force_terms(*this->ucell_, this->kv.kvec_d, this->paraMat_,
-        *this->pw_rhod, *this->pw_rho, this->vloc(), this->sfac(), this->gd(), this->tcb()
+        *this->pw_rhod, *this->pw_rho, this->vloc(), this->sfac(), this->gd(), this->tcb(), force_settings, this->ofs_running_
 #ifdef __EXX
         , inputs.exx_lri, inputs.hybrid_alpha
 #endif
@@ -313,8 +315,10 @@ std::vector<ModuleBase::matrix> ModuleESolver::ESolver_LR<T, TR>::cal_force_open
     const ct::Tensor Z = this->solve_zvector_eqation(channel, nst, Xz);
     const auto dm_gs = this->cal_dm_gs();
     const LR::GradientInputs<T> inputs = this->gradient_inputs_();
+    const LR::ForceSettings force_settings{this->nspin, this->inp_->test_force,
+        this->inp_->vl_in_h, this->inp_->vh_in_h, this->inp_->dft_functional};
     LR_Force<T> force_terms(*this->ucell_, this->kv.kvec_d, this->paraMat_,
-        *this->pw_rhod, *this->pw_rho, this->vloc(), this->sfac(), this->gd(), this->tcb()
+        *this->pw_rhod, *this->pw_rho, this->vloc(), this->sfac(), this->gd(), this->tcb(), force_settings, this->ofs_running_
 #ifdef __EXX
         , inputs.exx_lri, inputs.hybrid_alpha
 #endif
@@ -345,8 +349,10 @@ module_dm::DensityMatrix<T, double> ModuleESolver::ESolver_LR<T, TR>::cal_dm_gs(
 template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::test_force()
 {
+    const LR::ForceSettings force_settings{this->nspin, this->inp_->test_force,
+        this->inp_->vl_in_h, this->inp_->vh_in_h, this->inp_->dft_functional};
     LR_Force<T> lr_force((*this->ucell_), this->kv.kvec_d, this->paraMat_, *this->pw_rhod, *this->pw_rho,
-        this->vloc(), this->sfac(), this->gd(), this->tcb()
+        this->vloc(), this->sfac(), this->gd(), this->tcb(), force_settings, this->ofs_running_
 #ifdef __EXX
         , std::weak_ptr<Exx_LRI<T>>(this->exx_lri), this->exx_info.info_global.hybrid_alpha
 #endif

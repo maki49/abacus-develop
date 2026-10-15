@@ -35,10 +35,15 @@ namespace LR
 
     // constructor for exchange-correlation kernel
     PotGradXCLR::PotGradXCLR(const KernelXC& xc_kernel, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell,
-        const int& nrxx, const bool triplet)
+        const int& nrxx, const int nspin, const bool triplet)
         :xc_kernel_components_(xc_kernel), triplet_(triplet),
-        PotLRBase(rho_basis, LR_Util::kernel_nspin(), nrxx, ucell.tpiba)
-    {}
+        PotLRBase(rho_basis, nspin, nrxx, ucell.tpiba)
+    {
+        if (nspin != xc_kernel.nspin())
+        {
+            throw std::invalid_argument("PotGradXCLR: nspin does not match the XC kernel");
+        }
+    }
 
     /// $v^{(2)}(r)=\iint dr'dr''\,g^{xc}(r,r',r'')\rho^1(r')\rho^1(r'')$, i.e. the third functional
     /// derivative of $E_{xc}$ contracted twice with the transition density $\rho^1$ (no factor 1/2).

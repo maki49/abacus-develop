@@ -104,7 +104,7 @@ std::vector<ModuleBase::matrix> evaluate_open_shell_force(
             // The density dependence of K[D^X]D^X belongs to the LR functional.
             const std::shared_ptr<PotHxcLR>& pot_lr = inputs.pot[0];
             PotGradXCLR pot_grad(pot_lr->xc_kernel_components(), pot_lr->get_rho_basis(),
-                inputs.ucell, pot_lr->nrxx, /*triplet=*/false);
+                inputs.ucell, pot_lr->nrxx, inputs.nspin, /*triplet=*/false);
             ModuleBase::matrix force_gxc_dmtrans =
                 lr_force.cal_force_gxc_dmtrans_openshell(dm_trans_real, dm_gs, pot_grad);
             if (inputs.test_force)

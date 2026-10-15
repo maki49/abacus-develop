@@ -127,7 +127,7 @@ namespace LR
         const std::shared_ptr<PotHxcLR>& pot_lr = inputs.pot[ispin];
         std::shared_ptr<PotGradXCLR> pot_grad =
             std::make_shared<PotGradXCLR>(pot_lr->xc_kernel_components(), pot_lr->get_rho_basis(),
-                ucell, pot_lr->nrxx, triplet);
+                ucell, pot_lr->nrxx, nspin, triplet);
         OperatorLRHxc<T> op_gxc(nspin, naos, nocc, nvirt, psi_ks,
             DM_trans, pot_grad, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
             // Factor 1.0 according to the $W^c$ formula (`pot_grad` carries $2*g^{xc}$: uu+ud or uu-ud).

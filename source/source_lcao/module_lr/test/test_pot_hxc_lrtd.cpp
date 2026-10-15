@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "../kernel_pots.h"
+#include "../potentials/pot_grad_xc.h"
 #include "source_io/module_parameter/input_parameter.h"
 #include "../potentials/pot_hxc_lrtd.h"
 #include "source_hamilt/module_xc/xc_functional.h"
@@ -214,4 +215,15 @@ TEST_F(PotHxcLRTest, PotentialFactoryRetainsOpenShellKernelSharing)
     const auto gs = LR::prepare_gs_potential(input, input.dft_functional,
         basis, cell, charge, grid, 2, true, prepared);
     EXPECT_EQ(&gs->xc_kernel_components(), prepared.kernel.get());
+}
+
+TEST_F(PotHxcLRTest, GradientPotentialUsesExplicitKernelSpin)
+{
+    const auto polarized = build("lda", 2);
+    const auto unpolarized = build("lda", 1);
+    LR::PotGradXCLR gradient(*polarized, basis, cell, 1, 2, false);
+    EXPECT_EQ(gradient.nspin, 2);
+    LR::PotGradXCLR single(*unpolarized, basis, cell, 1, 1, false);
+    EXPECT_EQ(single.nspin, 1);
+    EXPECT_THROW(LR::PotGradXCLR(*polarized, basis, cell, 1, 1, false), std::invalid_argument);
 }

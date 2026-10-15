@@ -18,6 +18,16 @@ namespace LR
     /// must not apply it.
     inline double gs_dm_channel_factor(const int& nspin) { return (nspin == 1) ? 0.5 : 1.0; }
 
+    /// Force-term switches and functional name, owned by the caller's resolved INPUT.
+    struct ForceSettings
+    {
+        int nspin;
+        bool test_force;
+        bool vl_in_h;
+        bool vh_in_h;
+        std::string dft_functional;
+    };
+
     template<typename TK>
     class LR_Force
     {
@@ -30,7 +40,9 @@ namespace LR
             const pseudopot_cell_vl& locpp,
             const Structure_Factor& sf,
             const Grid_Driver& gd,
-            const TwoCenterBundle& two_center_bundle
+            const TwoCenterBundle& two_center_bundle,
+            const ForceSettings& settings,
+            std::ofstream& running_log
 #ifdef __EXX
             , std::weak_ptr<Exx_LRI<TK>> exx_lri_in,
             const double& alpha
@@ -42,6 +54,8 @@ namespace LR
 #ifdef __EXX
             , exx_lri_(exx_lri_in), alpha_(alpha)
 #endif
+            , ofs_running_(running_log), nspin_(settings.nspin), test_force_(settings.test_force),
+            vl_in_h_(settings.vl_in_h), vh_in_h_(settings.vh_in_h), dft_functional_(settings.dft_functional)
         {
         }
 
@@ -105,13 +119,13 @@ namespace LR
         std::weak_ptr<Exx_LRI<TK>> exx_lri_;
         const double alpha_;
 #endif
-        /// cached aliases, read once here instead of at every log/flag check below
-        std::ofstream& ofs_running_ = GlobalV::ofs_running;
-        const int nspin_ = PARAM.inp.nspin;
-        const bool test_force_ = PARAM.inp.test_force;
-        const bool vl_in_h_ = PARAM.inp.vl_in_h;
-        const bool vh_in_h_ = PARAM.inp.vh_in_h;
-        const std::string dft_functional_ = PARAM.inp.dft_functional;
+        /// Explicit configuration and log borrowed/passed at the ESolver wiring point.
+        std::ofstream& ofs_running_;
+        const int nspin_;
+        const bool test_force_;
+        const bool vl_in_h_;
+        const bool vh_in_h_;
+        const std::string dft_functional_;
 
         // PotXC borrows these buffers; they outlive every local potential created here.
         double etxc_ = 0.0;

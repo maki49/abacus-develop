@@ -14,7 +14,7 @@ namespace LR
         /// `triplet` selects which spin combination of $g^{xc}$ to use. It matters: 
         /// the triplet kernel $K^T_{xc}=f_{uu}-f_{ud}$ is NOT zero for a local functional.
         PotGradXCLR(const KernelXC& xc_kernel_in, const ModulePW::PW_Basis& rho_basis, const UnitCell& ucell,
-            const int& nrxx, const bool triplet = false);
+            const int& nrxx, const int nspin, const bool triplet);
         ~PotGradXCLR() {}
         virtual void cal_v_eff(double** rho, const UnitCell& ucell, ModuleBase::matrix& v_eff, const std::vector<int>& ispin_op = { 0,0 }) const override;
         /// @brief Open-shell (spin-unrestricted) $v^{(2)}_\tau$.

@@ -12,8 +12,17 @@ namespace LR_Util
 {
     int spin_population_difference(const ModuleBase::matrix& wg, const int kpar, const int rank_in_pool)
     {   // only for nspin=2
-        const int& nk = wg.nr / 2;
-        auto occ_sum_k = [&](const int& is, const int& ib)->double { double o = 0.0; for (int ik = 0;ik < nk;++ik) { o += wg(is * nk + ik, ib); } return o;};
+        const int nk = wg.nr / 2;
+        auto occ_sum_k = [&wg, nk](const int is, const int ib) -> double
+        {
+            double occupation = 0.0;
+            for (int ik = 0; ik < nk; ++ik)
+            {
+                const int spin_k = is * nk + ik;
+                occupation += wg(spin_k, ib);
+            }
+            return occupation;
+        };
         // Sum the occupations of each channel FIRST and round once, instead of rounding band by band
         // and summing the differences. A half-occupied degenerate frontier pair (OH's 2-Pi doublet
         // smears its odd electron as 0.5/0.5 over the two pi_down orbitals) otherwise makes the answer
@@ -21,7 +30,11 @@ namespace LR_Util
         // down, and which way they land is pure noise.
         double up = 0.0;
         double dn = 0.0;
-        for (int ib = 0;ib < wg.nc;++ib) { up += occ_sum_k(0, ib); dn += occ_sum_k(1, ib); }
+        for (int ib = 0; ib < wg.nc; ++ib)
+        {
+            up += occ_sum_k(0, ib);
+            dn += occ_sum_k(1, ib);
+        }
         // wg is replicated within a pool, but each pool holds different k points.
         if (kpar > 1)
         {
@@ -297,24 +310,21 @@ namespace LR_Util
         const int minus_one = -1;
         dsyev_(&jobz, &uplo, &n, mat, &n, eig, &work_tmp, &minus_one, &info);		// get best lwork
         const int lwork = work_tmp;
-        double* work2 = new double[lwork];
-        dsyev_(&jobz, &uplo, &n, mat, &n, eig, work2, &lwork, &info);
+        std::vector<double> work2(lwork);
+        dsyev_(&jobz, &uplo, &n, mat, &n, eig, work2.data(), &lwork, &info);
         if (info) { std::cout << "ERROR: Lapack solver, info=" << info << std::endl; }
-        delete[] work2;
     }
     template<>
     void diag_lapack<std::complex<double>>(const int& n, std::complex<double>* mat, double* eig)
     {
         ModuleBase::TITLE("LR_Util", "diag_lapack <std::complex<double>>");
         int lwork = 2 * n;
-        std::complex<double>* work2 = new std::complex<double>[lwork];
-        double* rwork = new double[3 * n - 2];
+        std::vector<std::complex<double>> work2(lwork);
+        std::vector<double> rwork(3 * n - 2);
         int info = 0;
         char jobz = 'V', uplo = 'U';
-        zheev_(&jobz, &uplo, &n, mat, &n, eig, work2, &lwork, rwork, &info);
+        zheev_(&jobz, &uplo, &n, mat, &n, eig, work2.data(), &lwork, rwork.data(), &info);
         if (info) { std::cout << "ERROR: Lapack solver, info=" << info << std::endl; }
-        delete[] rwork;
-        delete[] work2;
     }
     template<>
     void diag_lapack_nh<double>(const int& n, double* mat, std::complex<double>* eig)
@@ -364,11 +374,11 @@ namespace LR_Util
         // 2. LU decomposition: A->LU
         std::vector<int> ipiv(n);   // pivot indices
         int info = 0;
-        dgetrf_(&n, &n, A_copy.data(), &n, ipiv.data(), &info);
+        container::lapackConnector::getrf(n, n, A_copy.data(), n, ipiv.data(), info);
         if (info) { std::cout << "ERROR: Lapack solver dgetrf, info=" << info << std::endl; }
         // 3. Solve Ax=b
         const char trans = 'N';
-        dgetrs_(&trans, &n, &nrhs, A_copy.data(), &n, ipiv.data(), x, &n, &info);
+        container::lapackConnector::getrs(trans, n, nrhs, A_copy.data(), n, ipiv.data(), x, n, info);
         if (info) { std::cout << "ERROR: Lapack solver dgetrs, info=" << info << std::endl; }
         return info;
     }
@@ -384,11 +394,11 @@ namespace LR_Util
         // 2. LU decomposition: A->LU
         std::vector<int> ipiv(n);   // pivot indices, for
         int info = 0;
-        zgetrf_(&n, &n, A_copy.data(), &n, ipiv.data(), &info);
+        container::lapackConnector::getrf(n, n, A_copy.data(), n, ipiv.data(), info);
         if (info) { std::cout << "ERROR: Lapack solver zgetrf, info=" << info << std::endl; }
         // 3. Solve Ax=b
         const char trans = 'N';
-        zgetrs_(&trans, &n, &nrhs, A_copy.data(), &n, ipiv.data(), x, &n, &info);
+        container::lapackConnector::getrs(trans, n, nrhs, A_copy.data(), n, ipiv.data(), x, n, info);
         if (info) { std::cout << "ERROR: Lapack solver zgetrs, info=" << info << std::endl; }
         return info;
     }

@@ -136,3 +136,45 @@ TEST(LRSpinPopulation, SumKPointsBeforeRounding)
     occupations(3, 0) = 0.5;
     EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
 }
+
+namespace
+{
+template<typename T> void check_eigensystem(const std::vector<T>& original)
+{
+    const int n = 2;
+    std::vector<T> eigenvectors = original;
+    std::vector<double> eigenvalues(n);
+    LR_Util::diag_lapack(n, eigenvectors.data(), eigenvalues.data());
+    for (int band = 0; band < n; ++band)
+    {
+        for (int row = 0; row < n; ++row)
+        {
+            T product = T(0.0);
+            for (int col = 0; col < n; ++col)
+            {
+                product += original[col * n + row] * eigenvectors[band * n + col];
+            }
+            const T expected = eigenvalues[band] * eigenvectors[band * n + row];
+            EXPECT_NEAR(std::abs(product - expected), 0.0, 1e-12);
+        }
+    }
+    const double lower = (5.0 - std::sqrt(5.0)) / 2.0;
+    const double upper = (5.0 + std::sqrt(5.0)) / 2.0;
+    EXPECT_NEAR(eigenvalues[0], lower, 1e-12);
+    EXPECT_NEAR(eigenvalues[1], upper, 1e-12);
+}
+}
+
+TEST(LREigensolver, RealWorkspaceRetainsEigenpairs)
+{
+    const std::vector<double> matrix{2.0, 1.0, 1.0, 3.0};
+    check_eigensystem(matrix);
+}
+
+TEST(LREigensolver, ComplexWorkspaceRetainsEigenpairs)
+{
+    using Complex = std::complex<double>;
+    const std::vector<Complex> matrix{Complex(2.0, 0.0), Complex(0.0, 1.0),
+        Complex(0.0, -1.0), Complex(3.0, 0.0)};
+    check_eigensystem(matrix);
+}
