@@ -45,6 +45,13 @@ extern "C"
 int ilaenv_(const int* ispec, const char* name, const char* opts,
             const int* n1, const int* n2, const int* n3, const int* n4);
 
+// Symmetric/Hermitian eigenproblems (QR algorithm)
+void dsyev_(const char* jobz, const char* uplo, const int* n, double* a,
+            const int* lda, double* w, double* work, const int* lwork, int* info);
+void zheev_(const char* jobz, const char* uplo, const int* n, std::complex<double>* a,
+            const int* lda, double* w, std::complex<double>* work, const int* lwork,
+            double* rwork, int* info);
+
 // Generalized symmetric-definite eigenproblems (divide-and-conquer)
 void ssygvd_(const int* itype, const char* jobz, const char* uplo, const int* n,
              float* a, const int* lda,
@@ -339,6 +346,20 @@ void hegvx(const int itype, const char jobz, const char range, const char uplo, 
             work, &lwork, rwork, iwork, ifail, &info);
 }
 
+
+// Column-major symmetric/Hermitian eigenproblems; lwork=-1 queries the workspace.
+static inline
+void heev(const char jobz, const char uplo, const int n, double* a, const int lda,
+          double* w, double* work, const int lwork, int& info)
+{
+    dsyev_(&jobz, &uplo, &n, a, &lda, w, work, &lwork, &info);
+}
+static inline
+void heev(const char jobz, const char uplo, const int n, std::complex<double>* a, const int lda,
+          double* w, std::complex<double>* work, const int lwork, double* rwork, int& info)
+{
+    zheev_(&jobz, &uplo, &n, a, &lda, w, work, &lwork, rwork, &info);
+}
 
 // wrap function of fortran lapack routine zheevx.
 static inline

@@ -308,10 +308,10 @@ namespace LR_Util
         char jobz = 'V', uplo = 'U';
         double work_tmp = 0.0;
         const int minus_one = -1;
-        dsyev_(&jobz, &uplo, &n, mat, &n, eig, &work_tmp, &minus_one, &info);		// get best lwork
+        container::lapackConnector::heev(jobz, uplo, n, mat, n, eig, &work_tmp, minus_one, info);		// get best lwork
         const int lwork = work_tmp;
         std::vector<double> work2(lwork);
-        dsyev_(&jobz, &uplo, &n, mat, &n, eig, work2.data(), &lwork, &info);
+        container::lapackConnector::heev(jobz, uplo, n, mat, n, eig, work2.data(), lwork, info);
         if (info) { std::cout << "ERROR: Lapack solver, info=" << info << std::endl; }
     }
     template<>
@@ -323,7 +323,7 @@ namespace LR_Util
         std::vector<double> rwork(3 * n - 2);
         int info = 0;
         char jobz = 'V', uplo = 'U';
-        zheev_(&jobz, &uplo, &n, mat, &n, eig, work2.data(), &lwork, rwork.data(), &info);
+        container::lapackConnector::heev(jobz, uplo, n, mat, n, eig, work2.data(), lwork, rwork.data(), info);
         if (info) { std::cout << "ERROR: Lapack solver, info=" << info << std::endl; }
     }
     template<>
