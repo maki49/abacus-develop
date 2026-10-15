@@ -36,6 +36,63 @@ namespace LR
             // The legacy probe contraction conjugated the negative Bloch phase.
             return std::exp(ModuleBase::IMAG_UNIT * angle);
         }
+
+        template<typename T>
+        using AtomTensorMap = std::map<RI_2D_Comm::TA,
+                                       std::map<RI_2D_Comm::TAC, RI::Tensor<T>>>;
+
+        // Transform the current MO transition density into LibRI atom blocks.
+        // Borrow DM(k): copying it once per trial vector is unnecessary.
+        template<typename T>
+        AtomTensorMap<T> split_transition_density(const UnitCell& ucell,
+                                                  const K_Vectors& kv,
+                                                  const module_dm::DensityMatrix<T, T>& density,
+                                                  const Parallel_Orbitals& pmat,
+                                                  const int nk)
+        {
+            ModuleBase::timer::start("OperatorLREXX", "split_transition_density");
+            const std::vector<std::vector<T>>& dmk = density.get_dmk_vec();
+            std::vector<const std::vector<T>*> density_k(nk);
+            for (int ik = 0; ik < nk; ++ik)
+            {
+                density_k[ik] = &dmk[ik];
+            }
+            std::vector<AtomTensorMap<T>> density_r
+                = RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, density_k, pmat, 1);
+            ModuleBase::timer::end("OperatorLREXX", "split_transition_density");
+            return std::move(density_r[0]);
+        }
+
+        // Install one unscreened LR density without changing the SCF threshold.
+        template<typename T>
+        void set_transition_density(Exx_LRI<T>& lri, AtomTensorMap<T>&& density_r)
+        {
+            ModuleBase::timer::start("OperatorLREXX", "set_transition_density");
+            constexpr double density_threshold = 0.0;
+            lri.get().set_Ds(std::move(density_r), density_threshold);
+            ModuleBase::timer::end("OperatorLREXX", "set_transition_density");
+        }
+
+        // Apply the unchanged local-RI exchange contraction K[D] to atom blocks.
+        template<typename T>
+        void contract_transition_exchange(Exx_LRI<T>& lri)
+        {
+            ModuleBase::timer::start("OperatorLREXX", "contract_transition_exchange");
+            lri.get().cal_Hs();
+            ModuleBase::timer::end("OperatorLREXX", "contract_transition_exchange");
+        }
+
+        // Communicate K[D] blocks to the ranks owning their AO elements.
+        template<typename T>
+        void communicate_transition_exchange(Exx_LRI<T>& lri,
+                                             const std::tuple<std::set<int>, std::set<int>>& judge)
+        {
+            ModuleBase::timer::start("OperatorLREXX", "communicate_transition_exchange");
+            lri.Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
+                lri.get_mpi_comm(), std::move(lri.get().Hs), std::get<0>(judge), std::get<1>(judge));
+            lri.post_process_Hexx(lri.Hexxs[0]);
+            ModuleBase::timer::end("OperatorLREXX", "communicate_transition_exchange");
+        }
     }
 
     template<typename T>
@@ -168,33 +225,18 @@ namespace LR
     {
         ModuleBase::TITLE("OperatorLREXX", "cal_Hs");
         ModuleBase::timer::start("OperatorLREXX", "cal_Hs");
-        // convert parallel info to LibRI interfaces
-        std::vector<std::tuple<std::set<int>, std::set<int>>> judge = RI_2D_Comm::get_2D_judge(ucell,this->pmat);
-
-        // suppose Cs，Vs, have already been calculated in the ion-step of ground state
-        // and DM_trans has been calculated in hPsi() outside.
-
-        // 1. set_Ds (once)
-        // convert to vector<T*> for the interface of RI_2D_Comm::split_m2D_ktoR (interface will be unified to ct::Tensor)
-        std::vector<std::vector<T>> DMk_trans_vector = this->DM_trans.get_dmk_vec();
-        // assert(DMk_trans_vector.size() == nk);
-        std::vector<const std::vector<T>*> DMk_trans_pointer(nk);
-        for (int ik = 0;ik < nk;++ik) { DMk_trans_pointer[ik] = &DMk_trans_vector[ik]; }
-        // if multi-k, DM_trans(TR=double) -> Ds_trans(TR=T=complex<double>)
-        auto Ds_trans =
-            RI_2D_Comm::split_m2D_ktoR<T>(ucell,this->kv, DMk_trans_pointer, this->pmat, 1);
-        
-        // 2. cal_Hs
-        auto lri = this->exx_lri.lock();
-        // K[D] must stay linear for tiny Davidson/Z directions and Ritz rotations.
-        // A density-dependent cutoff would make K[aD] differ from aK[D].
-        // Pass zero locally; the KS workspace retains its configured SCF threshold.
-        constexpr double density_threshold = 0.0;
-        lri->exx_lri.set_Ds(std::move(Ds_trans[0]), density_threshold);
-        lri->exx_lri.cal_Hs();
-        lri->Hexxs[0] = RI::Communicate_Tensors_Map_Judge::comm_map2_first(
-            lri->mpi_comm, std::move(lri->exx_lri.Hs), std::get<0>(judge[0]), std::get<1>(judge[0]));
-        lri->post_process_Hexx(lri->Hexxs[0]);
+        // Cs and Vs are prepared for this geometry; DM_trans belongs to the current trial vector.
+        const std::vector<std::tuple<std::set<int>, std::set<int>>> judge
+            = RI_2D_Comm::get_2D_judge(ucell, pmat);
+        const std::shared_ptr<Exx_LRI<T>> lri = exx_lri.lock();
+        AtomTensorMap<T> density_r
+            = split_transition_density(ucell, kv, DM_trans, pmat, nk);
+        // All LR exchange contractions retain every input-density block. Screening
+        // small Krylov directions would break K[a D1 + b D2] = a K[D1] + b K[D2].
+        // The ground-state SCF keeps its configured threshold.
+        set_transition_density(*lri, std::move(density_r));
+        contract_transition_exchange(*lri);
+        communicate_transition_exchange(*lri, judge[0]);
         ModuleBase::timer::end("OperatorLREXX", "cal_Hs");
     }
 
