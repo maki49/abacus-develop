@@ -24,10 +24,25 @@ namespace LR
         char transb = 'N';
         const double alpha = 1.0;
         const double beta = 0;
-        pdgemm_(&transa, &transb, &naos, &nocc, &nvirt,
-            &alpha, C, &i1, &ivirt, pc.desc,
-            X, &i1, &i1, px.desc,
-            &beta, CvX, &i1, &i1, pcx.desc);
+        ScalapackConnector::gemm(transa,
+            transb,
+            naos,
+            nocc,
+            nvirt,
+            alpha,
+            C,
+            i1,
+            ivirt,
+            pc.desc,
+            X,
+            i1,
+            i1,
+            px.desc,
+            beta,
+            CvX,
+            i1,
+            i1,
+            pcx.desc);
     }
     void CvX(
         const std::complex<double>* C,
@@ -46,10 +61,25 @@ namespace LR
         char transb = 'N';
         const std::complex<double> alpha(1.0, 0.0);
         const std::complex<double> beta(0.0, 0.0);
-        pzgemm_(&transa, &transb, &naos, &nocc, &nvirt,
-            &alpha, C, &i1, &ivirt, pc.desc,
-            X, &i1, &i1, px.desc,
-            &beta, CvX, &i1, &i1, pcx.desc);
+        ScalapackConnector::gemm(transa,
+            transb,
+            naos,
+            nocc,
+            nvirt,
+            alpha,
+            C,
+            i1,
+            ivirt,
+            pc.desc,
+            X,
+            i1,
+            i1,
+            px.desc,
+            beta,
+            CvX,
+            i1,
+            i1,
+            pcx.desc);
     }
 
     void CoXT(
@@ -68,10 +98,25 @@ namespace LR
         char transb = 'T';
         const double alpha = 1.0;
         const double beta = 0;
-        pdgemm_(&transa, &transb, &naos, &nvirt, &nocc,
-            &alpha, C, &i1, &i1, pc.desc,
-            X, &i1, &i1, px.desc,
-            &beta, CoXT, &i1, &i1, pcxt.desc);
+        ScalapackConnector::gemm(transa,
+            transb,
+            naos,
+            nvirt,
+            nocc,
+            alpha,
+            C,
+            i1,
+            i1,
+            pc.desc,
+            X,
+            i1,
+            i1,
+            px.desc,
+            beta,
+            CoXT,
+            i1,
+            i1,
+            pcxt.desc);
     }
     void CoXT(
         const std::complex<double>* C,
@@ -89,10 +134,25 @@ namespace LR
         char transb = 'T';
         const std::complex<double> alpha(1.0, 0.0);
         const std::complex<double> beta(0.0, 0.0);
-        pzgemm_(&transa, &transb, &naos, &nvirt, &nocc,
-            &alpha, C, &i1, &i1, pc.desc,
-            X, &i1, &i1, px.desc,
-            &beta, CoXT, &i1, &i1, pcxt.desc);
+        ScalapackConnector::gemm(transa,
+            transb,
+            naos,
+            nvirt,
+            nocc,
+            alpha,
+            C,
+            i1,
+            i1,
+            pc.desc,
+            X,
+            i1,
+            i1,
+            px.desc,
+            beta,
+            CoXT,
+            i1,
+            i1,
+            pcxt.desc);
     }
 
     void AAT(
@@ -109,10 +169,25 @@ namespace LR
         char transa = 'N';
         char transb = 'T';
         const double beta = add ? 1.0 : 0.0;
-        pdgemm_(&transa, &transb, &nrow, &nrow, &ncol,
-            &alpha, A, &i1, &i1, pa.desc,
-            A, &i1, &i1, pa.desc,
-            &beta, C, &i1, &i1, pc.desc);
+        ScalapackConnector::gemm(transa,
+            transb,
+            nrow,
+            nrow,
+            ncol,
+            alpha,
+            A,
+            i1,
+            i1,
+            pa.desc,
+            A,
+            i1,
+            i1,
+            pa.desc,
+            beta,
+            C,
+            i1,
+            i1,
+            pc.desc);
     }
     void AAT(
         const std::complex<double>* A,
@@ -131,10 +206,25 @@ namespace LR
         // take conjugate of A
         std::vector<std::complex<double>> A_conj(pa.get_local_size());
         for (int i = 0;i < pa.get_local_size();++i) A_conj[i] = std::conj(A[i]);
-        pzgemm_(&transa, &transb, &nrow, &nrow, &ncol,
-            &alpha, A_conj.data(), &i1, &i1, pa.desc,
-            A, &i1, &i1, pa.desc,
-            &beta, C, &i1, &i1, pc.desc);
+        ScalapackConnector::gemm(transa,
+            transb,
+            nrow,
+            nrow,
+            ncol,
+            alpha,
+            A_conj.data(),
+            i1,
+            i1,
+            pa.desc,
+            A,
+            i1,
+            i1,
+            pa.desc,
+            beta,
+            C,
+            i1,
+            i1,
+            pc.desc);
     }
 
     //output: col first, consistent with blas

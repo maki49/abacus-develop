@@ -440,7 +440,7 @@ public:
     static inline
     void tranu(
         const int m, const int n,
-        const double alpha, double *a, const int ia, const int ja, const int *desca,
+        const double alpha, const double *a, const int ia, const int ja, const int *desca,
         const double beta, double *c, const int ic, const int jc, const int *descc)
     {
         pdtran_(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
@@ -448,7 +448,7 @@ public:
     static inline
     void tranu(
         const int m, const int n,
-        const std::complex<double> alpha, std::complex<double> *a, const int ia, const int ja, const int *desca,
+        const std::complex<double> alpha, const std::complex<double> *a, const int ia, const int ja, const int *desca,
         const std::complex<double> beta, std::complex<double> *c, const int ic, const int jc, const int *descc)
     {
         pztranu_(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
@@ -456,7 +456,7 @@ public:
     static inline
     void tranc(
         const int m, const int n,
-        const double alpha, double *a, const int ia, const int ja, const int *desca,
+        const double alpha, const double *a, const int ia, const int ja, const int *desca,
         const double beta, double *c, const int ic, const int jc, const int *descc)
     {
         pdtran_(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);
@@ -464,7 +464,7 @@ public:
     static inline
     void tranc(
         const int m, const int n,
-        const std::complex<double> alpha, std::complex<double> *a, const int ia, const int ja, const int *desca,
+        const std::complex<double> alpha, const std::complex<double> *a, const int ia, const int ja, const int *desca,
         const std::complex<double> beta, std::complex<double> *c, const int ic, const int jc, const int *descc)
     {
         pztranc_(&m, &n, &alpha, a, &ia, &ja, desca, &beta, c, &ic, &jc, descc);

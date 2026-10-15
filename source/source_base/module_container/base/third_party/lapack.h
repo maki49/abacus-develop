@@ -52,6 +52,15 @@ void zheev_(const char* jobz, const char* uplo, const int* n, std::complex<doubl
             const int* lda, double* w, std::complex<double>* work, const int* lwork,
             double* rwork, int* info);
 
+// General nonsymmetric eigenproblems
+void dgeev_(const char* jobvl, const char* jobvr, const int* n, double* a, const int* lda,
+            double* wr, double* wi, double* vl, const int* ldvl, double* vr,
+            const int* ldvr, double* work, const int* lwork, int* info);
+void zgeev_(const char* jobvl, const char* jobvr, const int* n, std::complex<double>* a,
+            const int* lda, std::complex<double>* w, std::complex<double>* vl, const int* ldvl,
+            std::complex<double>* vr, const int* ldvr, std::complex<double>* work,
+            const int* lwork, double* rwork, int* info);
+
 // Generalized symmetric-definite eigenproblems (divide-and-conquer)
 void ssygvd_(const int* itype, const char* jobz, const char* uplo, const int* n,
              float* a, const int* lda,
@@ -346,6 +355,23 @@ void hegvx(const int itype, const char jobz, const char range, const char uplo, 
             work, &lwork, rwork, iwork, ifail, &info);
 }
 
+
+// Column-major general eigenproblems; preserve the supplied workspace/query policy.
+static inline
+void geev(const char jobvl, const char jobvr, const int n, double* a, const int lda,
+          double* wr, double* wi, double* vl, const int ldvl, double* vr,
+          const int ldvr, double* work, const int lwork, int& info)
+{
+    dgeev_(&jobvl, &jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work, &lwork, &info);
+}
+static inline
+void geev(const char jobvl, const char jobvr, const int n, std::complex<double>* a, const int lda,
+          std::complex<double>* w, std::complex<double>* vl, const int ldvl,
+          std::complex<double>* vr, const int ldvr, std::complex<double>* work,
+          const int lwork, double* rwork, int& info)
+{
+    zgeev_(&jobvl, &jobvr, &n, a, &lda, w, vl, &ldvl, vr, &ldvr, work, &lwork, rwork, &info);
+}
 
 // Column-major symmetric/Hermitian eigenproblems; lwork=-1 queries the workspace.
 static inline

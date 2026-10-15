@@ -88,20 +88,51 @@ namespace LR
 
             // c^TV[nocc*naos]
             container::Tensor cv(DAT::DT_DOUBLE, DEV::CpuDevice, { naos, nocc });
-            dgemm_(&trans, &notrans, &nocc, &naos, &naos, &one,
-                c.get_pointer(), &naos, V_istate[isk].data<double>(), &naos, &zero,
-                cv.data<double>(), &nocc);
+            BlasConnector::gemm_cm(trans,
+                notrans,
+                nocc,
+                naos,
+                naos,
+                one,
+                c.get_pointer(),
+                naos,
+                V_istate[isk].data<double>(),
+                naos,
+                zero,
+                cv.data<double>(),
+                nocc);
 
             // cX^T[naos*nvirt]
             container::Tensor cx(DAT::DT_DOUBLE, DEV::CpuDevice, { nvirt, naos });
-            dgemm_(&notrans, &trans, &naos, &nvirt, &nocc, &one,
-                c.get_pointer(), &naos, X_istate + start, &nvirt, &zero,
-                cx.data<double>(), &naos);
+            BlasConnector::gemm_cm(notrans,
+                trans,
+                naos,
+                nvirt,
+                nocc,
+                one,
+                c.get_pointer(),
+                naos,
+                X_istate + start,
+                nvirt,
+                zero,
+                cx.data<double>(),
+                naos);
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
-            dgemm_(&trans, &trans, &nvirt, &nocc, &naos, &factor,
-                cx.data<double>(), &naos, cv.data<double>(), &nocc, add_on ? &one : &zero,
-                AX_istate + start, &nvirt);
+            const auto accumulation_beta_10 = add_on ? one : zero;
+            BlasConnector::gemm_cm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cx.data<double>(),
+                naos,
+                cv.data<double>(),
+                nocc,
+                accumulation_beta_10,
+                AX_istate + start,
+                nvirt);
         }
     }
 
@@ -134,20 +165,51 @@ namespace LR
 
             // c^TV[nocc*naos]
             container::Tensor cv(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { naos, nocc });
-            zgemm_(&dagger, &notrans, &nocc, &naos, &naos, &one,
-                c.get_pointer(), &naos, V_istate[isk].data<std::complex<double>>(), &naos, &zero,
-                cv.data<std::complex<double>>(), &nocc);
+            BlasConnector::gemm_cm(dagger,
+                notrans,
+                nocc,
+                naos,
+                naos,
+                one,
+                c.get_pointer(),
+                naos,
+                V_istate[isk].data<std::complex<double>>(),
+                naos,
+                zero,
+                cv.data<std::complex<double>>(),
+                nocc);
 
             // cX^T[naos*nvirt]
             container::Tensor cx(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nvirt, naos });
-            zgemm_(&notrans, &dagger, &naos, &nvirt, &nocc, &one,
-                c.get_pointer(), &naos, X_istate + start, &nvirt, &zero,
-                cx.data<std::complex<double>>(), &naos);
+            BlasConnector::gemm_cm(notrans,
+                dagger,
+                naos,
+                nvirt,
+                nocc,
+                one,
+                c.get_pointer(),
+                naos,
+                X_istate + start,
+                nvirt,
+                zero,
+                cx.data<std::complex<double>>(),
+                naos);
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
-            zgemm_(&trans, &trans, &nvirt, &nocc, &naos, &factor,
-                cx.data<std::complex<double>>(), &naos, cv.data<std::complex<double>>(), &nocc, add_on ? &one : &zero,
-                AX_istate + start, &nvirt);
+            const auto accumulation_beta_7 = add_on ? one : zero;
+            BlasConnector::gemm_cm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cx.data<std::complex<double>>(),
+                naos,
+                cv.data<std::complex<double>>(),
+                nocc,
+                accumulation_beta_7,
+                AX_istate + start,
+                nvirt);
         }
     }
 
@@ -236,20 +298,51 @@ namespace LR
 
             // VC[naos*nvirt]
             container::Tensor cv(DAT::DT_DOUBLE, DEV::CpuDevice, { nvirt, naos });
-            dgemm_(&notrans, &notrans, &naos, &nvirt, &naos, &one,
-                V_istate[isk].data<double>(), &naos, c.get_pointer(nocc), &naos, &zero,
-                cv.data<double>(), &naos);
+            BlasConnector::gemm_cm(notrans,
+                notrans,
+                naos,
+                nvirt,
+                naos,
+                one,
+                V_istate[isk].data<double>(),
+                naos,
+                c.get_pointer(nocc),
+                naos,
+                zero,
+                cv.data<double>(),
+                naos);
 
             // X^TC^T[nocc*naos]
             container::Tensor cx(DAT::DT_DOUBLE, DEV::CpuDevice, { naos, nocc });
-            dgemm_(&trans, &trans, &nocc, &naos, &nvirt, &one,
-                X_istate + start, &nvirt, c.get_pointer(nocc), &naos, &zero,
-                cx.data<double>(), &nocc);
+            BlasConnector::gemm_cm(trans,
+                trans,
+                nocc,
+                naos,
+                nvirt,
+                one,
+                X_istate + start,
+                nvirt,
+                c.get_pointer(nocc),
+                naos,
+                zero,
+                cx.data<double>(),
+                nocc);
 
             //AX_istate=[VC]^T[X^TC^T]^T (nvirt major)
-            dgemm_(&trans, &trans, &nvirt, &nocc, &naos, &factor,
-                cv.data<double>(), &naos, cx.data<double>(), &nocc, add_on ? &one : &zero,
-                AX_istate + start, &nvirt);
+            const auto accumulation_beta_4 = add_on ? one : zero;
+            BlasConnector::gemm_cm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cv.data<double>(),
+                naos,
+                cx.data<double>(),
+                nocc,
+                accumulation_beta_4,
+                AX_istate + start,
+                nvirt);
         }
     }
 
@@ -282,20 +375,51 @@ namespace LR
 
             // VC[naos*nvirt]
             container::Tensor cv(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { nvirt, naos });
-            zgemm_(&notrans, &notrans, &naos, &nvirt, &naos, &one,
-                V_istate[isk].data<std::complex<double>>(), &naos, c.get_pointer(nocc), &naos, &zero,
-                cv.data<std::complex<double>>(), &naos);
+            BlasConnector::gemm_cm(notrans,
+                notrans,
+                naos,
+                nvirt,
+                naos,
+                one,
+                V_istate[isk].data<std::complex<double>>(),
+                naos,
+                c.get_pointer(nocc),
+                naos,
+                zero,
+                cv.data<std::complex<double>>(),
+                naos);
 
             // X^TC^T[nocc*naos]
             container::Tensor cx(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { naos, nocc });
-            zgemm_(&dagger, &dagger, &nocc, &naos, &nvirt, &one,
-                X_istate+start, &nvirt, c.get_pointer(nocc), &naos, &zero,
-                cx.data<std::complex<double>>(), &nocc);
+            BlasConnector::gemm_cm(dagger,
+                dagger,
+                nocc,
+                naos,
+                nvirt,
+                one,
+                X_istate+start,
+                nvirt,
+                c.get_pointer(nocc),
+                naos,
+                zero,
+                cx.data<std::complex<double>>(),
+                nocc);
 
             //AX_istate=[VC]^T[X^TC^T]^T (nvirt major)
-            zgemm_(&trans, &trans, &nvirt, &nocc, &naos, &factor,
-                cv.data<std::complex<double>>(), &naos, cx.data<std::complex<double>>(), &nocc, add_on ? &one : &zero,
-                AX_istate+start, &nvirt);
+            const auto accumulation_beta_1 = add_on ? one : zero;
+            BlasConnector::gemm_cm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cv.data<std::complex<double>>(),
+                naos,
+                cx.data<std::complex<double>>(),
+                nocc,
+                accumulation_beta_1,
+                AX_istate+start,
+                nvirt);
         }
     }
 }

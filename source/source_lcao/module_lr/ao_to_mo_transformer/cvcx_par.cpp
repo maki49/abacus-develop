@@ -49,23 +49,69 @@ namespace LR
 
             // c^TV[nocc*naos]
             container::Tensor cv(DAT::DT_DOUBLE, DEV::CpuDevice, { pcv.get_col_size(), pcv.get_row_size() });
-            pdgemm_(&trans, &notrans, &nocc, &naos, &naos,
-                &one, c.get_pointer(), &i1, &i1, pc.desc,
-                V_istate[isk].data<double>(), &i1, &i1, pmat.desc,
-                &zero, cv.data<double>(), &i1, &i1, pcv.desc);
+            ScalapackConnector::gemm(trans,
+                notrans,
+                nocc,
+                naos,
+                naos,
+                one,
+                c.get_pointer(),
+                i1,
+                i1,
+                pc.desc,
+                V_istate[isk].data<double>(),
+                i1,
+                i1,
+                pmat.desc,
+                zero,
+                cv.data<double>(),
+                i1,
+                i1,
+                pcv.desc);
 
             // cX^T[naos*nvirt]
             container::Tensor cx(DAT::DT_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
-            pdgemm_(&notrans, &trans, &naos, &nvirt, &nocc,
-                &one, c.get_pointer(), &i1, &i1, pc.desc,
-                X_istate + start, &i1, &i1, px.desc,
-                &zero, cx.data<double>(), &i1, &i1, pcx.desc);
+            ScalapackConnector::gemm(notrans,
+                trans,
+                naos,
+                nvirt,
+                nocc,
+                one,
+                c.get_pointer(),
+                i1,
+                i1,
+                pc.desc,
+                X_istate + start,
+                i1,
+                i1,
+                px.desc,
+                zero,
+                cx.data<double>(),
+                i1,
+                i1,
+                pcx.desc);
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
-            pdgemm_(&trans, &trans, &nvirt, &nocc, &naos,
-                &factor, cx.data<double>(), &i1, &i1, pcx.desc,
-                cv.data<double>(), &i1, &i1, pcv.desc,
-                add_on ? &one : &zero, AX_istate + start, &i1, &i1, px.desc);
+            const auto accumulation_beta_10 = add_on ? one : zero;
+            ScalapackConnector::gemm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cx.data<double>(),
+                i1,
+                i1,
+                pcx.desc,
+                cv.data<double>(),
+                i1,
+                i1,
+                pcv.desc,
+                accumulation_beta_10,
+                AX_istate + start,
+                i1,
+                i1,
+                px.desc);
         }
     }
 
@@ -113,23 +159,69 @@ namespace LR
 
             // c^TV[nocc*naos]
             container::Tensor cv(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pcv.get_col_size(), pcv.get_row_size() });
-            pzgemm_(&dagger, &notrans, &nocc, &naos, &naos,
-                &one, c.get_pointer(), &i1, &i1, pc.desc,
-                V_istate[isk].data<std::complex<double>>(), &i1, &i1, pmat.desc,
-                &zero, cv.data<std::complex<double>>(), &i1, &i1, pcv.desc);
+            ScalapackConnector::gemm(dagger,
+                notrans,
+                nocc,
+                naos,
+                naos,
+                one,
+                c.get_pointer(),
+                i1,
+                i1,
+                pc.desc,
+                V_istate[isk].data<std::complex<double>>(),
+                i1,
+                i1,
+                pmat.desc,
+                zero,
+                cv.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcv.desc);
 
             // cX^T[naos*nvirt]
             container::Tensor cx(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
-            pzgemm_(&notrans, &dagger, &naos, &nvirt, &nocc,
-                &one, c.get_pointer(), &i1, &i1, pc.desc,
-                X_istate + start, &i1, &i1, px.desc,
-                &zero, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc);
+            ScalapackConnector::gemm(notrans,
+                dagger,
+                naos,
+                nvirt,
+                nocc,
+                one,
+                c.get_pointer(),
+                i1,
+                i1,
+                pc.desc,
+                X_istate + start,
+                i1,
+                i1,
+                px.desc,
+                zero,
+                cx.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcx.desc);
 
             //AX_istate=[cX^T]^T[c^TV]^T (nvirt major)
-            pzgemm_(&trans, &trans, &nvirt, &nocc, &naos,
-                &factor, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc,
-                cv.data<std::complex<double>>(), &i1, &i1, pcv.desc,
-                add_on ? &one : &zero, AX_istate + start, &i1, &i1, px.desc);
+            const auto accumulation_beta_7 = add_on ? one : zero;
+            ScalapackConnector::gemm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cx.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcx.desc,
+                cv.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcv.desc,
+                accumulation_beta_7,
+                AX_istate + start,
+                i1,
+                i1,
+                px.desc);
         }
     }
 
@@ -177,23 +269,69 @@ namespace LR
 
             // VC[naos*nvirt]
             container::Tensor cv(DAT::DT_DOUBLE, DEV::CpuDevice, { pcv.get_col_size(), pcv.get_row_size() });
-            pdgemm_(&notrans, &notrans, &naos, &nvirt, &naos,
-                &one, V_istate[isk].data<double>(), &i1, &i1, pmat.desc,
-                c.get_pointer(), &i1, &ivirt, pc.desc,
-                &zero, cv.data<double>(), &i1, &i1, pcv.desc);
+            ScalapackConnector::gemm(notrans,
+                notrans,
+                naos,
+                nvirt,
+                naos,
+                one,
+                V_istate[isk].data<double>(),
+                i1,
+                i1,
+                pmat.desc,
+                c.get_pointer(),
+                i1,
+                ivirt,
+                pc.desc,
+                zero,
+                cv.data<double>(),
+                i1,
+                i1,
+                pcv.desc);
 
             // X^TC^T[nocc*naos]
             container::Tensor cx(DAT::DT_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
-            pdgemm_(&dagger, &dagger, &nocc, &naos, &nvirt,
-                &one, X_istate + start, &i1, &i1, px.desc,
-                c.get_pointer(), &i1, &ivirt, pc.desc,
-                &zero, cx.data<double>(), &i1, &i1, pcx.desc);
+            ScalapackConnector::gemm(dagger,
+                dagger,
+                nocc,
+                naos,
+                nvirt,
+                one,
+                X_istate + start,
+                i1,
+                i1,
+                px.desc,
+                c.get_pointer(),
+                i1,
+                ivirt,
+                pc.desc,
+                zero,
+                cx.data<double>(),
+                i1,
+                i1,
+                pcx.desc);
 
             //AX_istate=[VC]^T[X^TC^T]^T (nvirt major)
-            pdgemm_(&trans, &trans, &nvirt, &nocc, &naos,
-                &factor, cv.data<double>(), &i1, &i1, pcv.desc,
-                cx.data<double>(), &i1, &i1, pcx.desc,
-                add_on ? &one : &zero, AX_istate + start, &i1, &i1, px.desc);
+            const auto accumulation_beta_4 = add_on ? one : zero;
+            ScalapackConnector::gemm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cv.data<double>(),
+                i1,
+                i1,
+                pcv.desc,
+                cx.data<double>(),
+                i1,
+                i1,
+                pcx.desc,
+                accumulation_beta_4,
+                AX_istate + start,
+                i1,
+                i1,
+                px.desc);
         }
     }
 
@@ -241,23 +379,69 @@ namespace LR
 
             // VC[naos*nvirt]
             container::Tensor cv(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pcv.get_col_size(), pcv.get_row_size() });
-            pzgemm_(&notrans, &notrans, &naos, &nvirt, &naos,
-                &one, V_istate[isk].data<std::complex<double>>(), &i1, &i1, pmat.desc,
-                c.get_pointer(), &i1, &ivirt, pc.desc,
-                &zero, cv.data<std::complex<double>>(), &i1, &i1, pcv.desc);
+            ScalapackConnector::gemm(notrans,
+                notrans,
+                naos,
+                nvirt,
+                naos,
+                one,
+                V_istate[isk].data<std::complex<double>>(),
+                i1,
+                i1,
+                pmat.desc,
+                c.get_pointer(),
+                i1,
+                ivirt,
+                pc.desc,
+                zero,
+                cv.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcv.desc);
 
             // X^TC^T[nocc*naos]
             container::Tensor cx(DAT::DT_COMPLEX_DOUBLE, DEV::CpuDevice, { pcx.get_col_size(), pcx.get_row_size() });
-            pzgemm_(&dagger, &dagger, &nocc, &naos, &nvirt,
-                &one, X_istate + start, &i1, &i1, px.desc,
-                c.get_pointer(), &i1, &ivirt, pc.desc,
-                &zero, cx.data<std::complex<double>>(), &i1, &i1, pcx.desc);
+            ScalapackConnector::gemm(dagger,
+                dagger,
+                nocc,
+                naos,
+                nvirt,
+                one,
+                X_istate + start,
+                i1,
+                i1,
+                px.desc,
+                c.get_pointer(),
+                i1,
+                ivirt,
+                pc.desc,
+                zero,
+                cx.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcx.desc);
 
             //AX_istate=[VC]^T[X^TC^T]^T (nvirt major)
-            pzgemm_(&trans, &trans, &nvirt, &nocc, &naos,
-                &factor, cv.data<std::complex<double>>(), &i1, &i1, pcv.desc,
-                cx.data<std::complex<double>>(), &i1, &i1, pcx.desc,
-                add_on ? &one : &zero, AX_istate + start, &i1, &i1, px.desc);
+            const auto accumulation_beta_1 = add_on ? one : zero;
+            ScalapackConnector::gemm(trans,
+                trans,
+                nvirt,
+                nocc,
+                naos,
+                factor,
+                cv.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcv.desc,
+                cx.data<std::complex<double>>(),
+                i1,
+                i1,
+                pcx.desc,
+                accumulation_beta_1,
+                AX_istate + start,
+                i1,
+                i1,
+                px.desc);
         }
     }
 }

@@ -28,10 +28,19 @@ namespace LR
         char transb = 'N';
         const double alpha = 1.0;
         const double beta = 0;
-        dgemm_(&transa, &transb, &naos, &nocc, &nvirt,
-            &alpha, C + nocc * naos, &naos,
-            X, &nvirt,
-            &beta, CvX, &naos);
+        BlasConnector::gemm_cm(transa,
+            transb,
+            naos,
+            nocc,
+            nvirt,
+            alpha,
+            C + nocc * naos,
+            naos,
+            X,
+            nvirt,
+            beta,
+            CvX,
+            naos);
     }
     void CvX(
         const std::complex<double>* C,
@@ -45,10 +54,19 @@ namespace LR
         char transb = 'N';
         const std::complex<double> alpha(1.0, 0.0);
         const std::complex<double> beta(0.0, 0.0);
-        zgemm_(&transa, &transb, &naos, &nocc, &nvirt,
-            &alpha, C + nocc * naos, &naos,
-            X, &nvirt,
-            &beta, CvX, &naos);
+        BlasConnector::gemm_cm(transa,
+            transb,
+            naos,
+            nocc,
+            nvirt,
+            alpha,
+            C + nocc * naos,
+            naos,
+            X,
+            nvirt,
+            beta,
+            CvX,
+            naos);
     }
 
     void CoXT(
@@ -63,10 +81,19 @@ namespace LR
         char transb = 'T';
         const double alpha = 1.0;
         const double beta = 0;
-        dgemm_(&transa, &transb, &naos, &nvirt, &nocc,
-            &alpha, C, &naos,
-            X, &nvirt,
-            &beta, CoXT, &naos);
+        BlasConnector::gemm_cm(transa,
+            transb,
+            naos,
+            nvirt,
+            nocc,
+            alpha,
+            C,
+            naos,
+            X,
+            nvirt,
+            beta,
+            CoXT,
+            naos);
     }
     void CoXT(
         const std::complex<double>* C,
@@ -80,10 +107,19 @@ namespace LR
         char transb = 'T';
         const std::complex<double> alpha(1.0, 0.0);
         const std::complex<double> beta(0.0, 0.0);
-        zgemm_(&transa, &transb, &naos, &nvirt, &nocc,
-            &alpha, C, &naos,
-            X, &nvirt,
-            &beta, CoXT, &naos);
+        BlasConnector::gemm_cm(transa,
+            transb,
+            naos,
+            nvirt,
+            nocc,
+            alpha,
+            C,
+            naos,
+            X,
+            nvirt,
+            beta,
+            CoXT,
+            naos);
     }
 
     void AAT(
@@ -97,10 +133,19 @@ namespace LR
         char transa = 'N';
         char transb = 'T';
         const double beta = add ? 1.0 : 0.0;
-        dgemm_(&transa, &transb, &nrow, &nrow, &ncol,
-            &alpha, A, &nrow,
-            A, &nrow,
-            &beta, C, &nrow);
+        BlasConnector::gemm_cm(transa,
+            transb,
+            nrow,
+            nrow,
+            ncol,
+            alpha,
+            A,
+            nrow,
+            A,
+            nrow,
+            beta,
+            C,
+            nrow);
     }
     void AAT(
         const std::complex<double>* A,
@@ -116,10 +161,19 @@ namespace LR
         // take conjugate of A
         std::vector<std::complex<double>> A_conj(nrow * ncol);
         for (int i = 0;i < A_conj.size();++i) A_conj[i] = std::conj(A[i]);
-        zgemm_(&transa, &transb, &nrow, &nrow, &ncol,
-            &alpha, A_conj.data(), &nrow,
-            A, &nrow,
-            &beta, C, &nrow);
+        BlasConnector::gemm_cm(transa,
+            transb,
+            nrow,
+            nrow,
+            ncol,
+            alpha,
+            A_conj.data(),
+            nrow,
+            A,
+            nrow,
+            beta,
+            C,
+            nrow);
     }
 
     //output: col first, consistent with blas

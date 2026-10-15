@@ -1,5 +1,5 @@
 #include "state_group.h"
-#include "source_base/module_external/lapack_connector.h"
+#include "source_base/module_container/base/third_party/lapack.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -86,8 +86,16 @@ GroupMatch match_state_group(const std::vector<std::complex<double>>& overlap,
     const char job = 'N';
     const char triangle = 'U';
     int info = 0;
-    zheev_(&job, &triangle, &rank, gram.data(), &rank, result.singular_values.data(),
-        work.data(), &lwork, real_work.data(), &info);
+    container::lapackConnector::heev(job,
+        triangle,
+        rank,
+        gram.data(),
+        rank,
+        result.singular_values.data(),
+        work.data(),
+        lwork,
+        real_work.data(),
+        info);
     if (info != 0) { throw std::runtime_error("LR group overlap: singular spectrum failed"); }
     for (double& value : result.singular_values) { value = std::sqrt(std::max(0.0, value)); }
     std::reverse(result.singular_values.begin(), result.singular_values.end());

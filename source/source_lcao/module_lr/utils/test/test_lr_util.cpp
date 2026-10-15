@@ -178,3 +178,29 @@ TEST(LREigensolver, ComplexWorkspaceRetainsEigenpairs)
         Complex(0.0, -1.0), Complex(3.0, 0.0)};
     check_eigensystem(matrix);
 }
+
+TEST(LREigensolver, RealGeneralEigenproblemKeepsComplexPair)
+{
+    const int n = 2;
+    std::vector<double> matrix{0.0, 1.0, -1.0, 0.0};
+    std::vector<std::complex<double>> eigenvalues(n);
+    LR_Util::diag_lapack_nh(n, matrix.data(), eigenvalues.data());
+    for (const auto& eigenvalue : eigenvalues)
+    {
+        EXPECT_NEAR(eigenvalue.real(), 0.0, 1e-12);
+        EXPECT_NEAR(std::abs(eigenvalue.imag()), 1.0, 1e-12);
+    }
+    EXPECT_NEAR(std::abs(eigenvalues[0] + eigenvalues[1]), 0.0, 1e-12);
+}
+
+TEST(LREigensolver, ComplexGeneralEigenproblemKeepsEigenvalues)
+{
+    using Complex = std::complex<double>;
+    const int n = 2;
+    std::vector<Complex> matrix{Complex(1.0, 2.0), Complex(0.0, 0.0),
+        Complex(0.7, -0.4), Complex(3.0, -1.0)};
+    std::vector<Complex> eigenvalues(n);
+    LR_Util::diag_lapack_nh(n, matrix.data(), eigenvalues.data());
+    EXPECT_NEAR(std::abs(eigenvalues[0] - Complex(1.0, 2.0)), 0.0, 1e-12);
+    EXPECT_NEAR(std::abs(eigenvalues[1] - Complex(3.0, -1.0)), 0.0, 1e-12);
+}

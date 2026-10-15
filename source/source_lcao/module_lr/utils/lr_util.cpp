@@ -5,9 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "source_base/module_external/lapack_connector.h"
-#include "source_base/module_external/scalapack_connector.h"
 #include "source_base/module_container/base/third_party/lapack.h"
+#include "source_base/module_external/scalapack_connector.h"
 namespace LR_Util
 {
     int spin_population_difference(const ModuleBase::matrix& wg, const int kpar, const int rank_in_pool)
@@ -192,7 +191,18 @@ namespace LR_Util
         std::copy(in, in + pmat.get_local_size(), out);
         const double alpha = 0.5, beta = 0.5;
         const int i1 = 1;
-        pdtran_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranu(n,
+            n,
+            alpha,
+            in,
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            out,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void matsym<double>(double* inout, const int n, const Parallel_2D& pmat)
@@ -201,7 +211,18 @@ namespace LR_Util
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
         const double alpha = 0.5, beta = 0.5;
         const int i1 = 1;
-        pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranu(n,
+            n,
+            alpha,
+            tmp.data(),
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            inout,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void matsym<std::complex<double>>(const std::complex<double>* in, const int n, const Parallel_2D& pmat, std::complex<double>* out)
@@ -209,7 +230,18 @@ namespace LR_Util
         std::copy(in, in + pmat.get_local_size(), out);
         const std::complex<double> alpha(0.5, 0.0), beta(0.5, 0.0);
         const int i1 = 1;
-        pztranc_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranc(n,
+            n,
+            alpha,
+            in,
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            out,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void matsym<std::complex<double>>(std::complex<double>* inout, const int n, const Parallel_2D& pmat)
@@ -218,7 +250,18 @@ namespace LR_Util
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
         const std::complex<double> alpha(0.5, 0.0), beta(0.5, 0.0);
         const int i1 = 1;
-        pztranc_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranc(n,
+            n,
+            alpha,
+            tmp.data(),
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            inout,
+            i1,
+            i1,
+            pmat.desc);
     }
 
     template<>
@@ -228,7 +271,18 @@ namespace LR_Util
         const double alpha = 1.0;
         const double beta = 0.0;
         const int i1 = 1;
-        pdtran_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranu(n,
+            n,
+            alpha,
+            in,
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            out,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void mattrans<double>(double* inout, const int n, const Parallel_2D& pmat)
@@ -238,7 +292,18 @@ namespace LR_Util
         const double alpha = 1.0;
         const double beta = 0.0;
         const int i1 = 1;
-        pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranu(n,
+            n,
+            alpha,
+            tmp.data(),
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            inout,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void mattrans<std::complex<double>>(const std::complex<double>* in, const int n, const Parallel_2D& pmat, std::complex<double>* out)
@@ -246,7 +311,18 @@ namespace LR_Util
         std::copy(in, in + pmat.get_local_size(), out);
         const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
         const int i1 = 1;
-        pztranc_(&n, &n, &alpha, in, &i1, &i1, pmat.desc, &beta, out, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranc(n,
+            n,
+            alpha,
+            in,
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            out,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void mattrans<std::complex<double>>(std::complex<double>* inout, const int n, const Parallel_2D& pmat)
@@ -255,7 +331,18 @@ namespace LR_Util
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
         const std::complex<double> alpha(1.0, 0.0), beta(0.0, 0.0);
         const int i1 = 1;
-        pztranc_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranc(n,
+            n,
+            alpha,
+            tmp.data(),
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            inout,
+            i1,
+            i1,
+            pmat.desc);
     }
 
 
@@ -267,7 +354,18 @@ namespace LR_Util
         const double alpha = -0.5;
         const double beta = 0.5;
         const int i1 = 1;
-        pdtran_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranu(n,
+            n,
+            alpha,
+            tmp.data(),
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            inout,
+            i1,
+            i1,
+            pmat.desc);
     }
     template<>
     void matantisym<std::complex<double>>(std::complex<double>* inout, const int n, const Parallel_2D& pmat)
@@ -276,7 +374,18 @@ namespace LR_Util
         std::copy(inout, inout + pmat.get_local_size(), tmp.begin());
         const std::complex<double> alpha(-0.5, 0.0), beta(0.5, 0.0);
         const int i1 = 1;
-        pztranc_(&n, &n, &alpha, tmp.data(), &i1, &i1, pmat.desc, &beta, inout, &i1, &i1, pmat.desc);
+        ScalapackConnector::tranc(n,
+            n,
+            alpha,
+            tmp.data(),
+            i1,
+            i1,
+            pmat.desc,
+            beta,
+            inout,
+            i1,
+            i1,
+            pmat.desc);
     }
 #endif
 
@@ -338,12 +447,10 @@ namespace LR_Util
         std::vector<double> eig_imag(n);
         const int ldvl = 1, ldvr = n;
         std::vector<double> vl(ldvl * n), vr(ldvr * n);
-        dgeev_(&jobvl, &jobvr, &n, mat, &n, eig_real.data(), eig_imag.data(),
-            vl.data(), &ldvl, vr.data(), &ldvr, &work_tmp, &minus_one /*lwork*/, &info);		// get best lwork
+        container::lapackConnector::geev(jobvl, jobvr, n, mat, n, eig_real.data(), eig_imag.data(), vl.data(), ldvl, vr.data(), ldvr, &work_tmp, minus_one /*lwork*/, info);		// get best lwork
         const int lwork = work_tmp;
         std::vector<double> work2(lwork);
-        dgeev_(&jobvl, &jobvr, &n, mat, &n, eig_real.data(), eig_imag.data(),
-            vl.data(), &ldvl, vr.data(), &ldvr, work2.data(), &lwork, &info);
+        container::lapackConnector::geev(jobvl, jobvr, n, mat, n, eig_real.data(), eig_imag.data(), vl.data(), ldvl, vr.data(), ldvr, work2.data(), lwork, info);
         if (info) { std::cout << "ERROR: Lapack solver dgeev, info=" << info << std::endl; }
         for (int i = 0;i < n;++i) { eig[i] = std::complex<double>(eig_real[i], eig_imag[i]); }
     }
@@ -358,8 +465,7 @@ namespace LR_Util
         char jobvl = 'N', jobvr = 'V';
         const int ldvl = 1, ldvr = n;
         std::vector<std::complex<double>> vl(ldvl * n), vr(ldvr * n);
-        zgeev_(&jobvl, &jobvr, &n, mat, &n, eig,
-            vl.data(), &ldvl, vr.data(), &ldvr, work2.data(), &lwork, rwork.data(), &info);
+        container::lapackConnector::geev(jobvl, jobvr, n, mat, n, eig, vl.data(), ldvl, vr.data(), ldvr, work2.data(), lwork, rwork.data(), info);
         if (info) { std::cout << "ERROR: Lapack solver zgeev, info=" << info << std::endl; }
     }
 
