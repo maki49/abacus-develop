@@ -12,6 +12,23 @@
 
 #include "source_lcao/module_lr/utils/lr_util.h"
 
+// Preserve the upstream review cases while adapting their two-buffer callbacks
+// to the explicit communicator and independent-RHS PCG interface.
+namespace LR
+{
+void solve_Z_CG(double* z, double* rhs, const int& ld, const int& nstates,
+    const std::function<void(const double*, double*)>& action, const bool test_force)
+{
+    const auto& world = ModuleBase::world_comm_domain();
+    const hsolver::diag_comm_info comm(MPI_COMM_WORLD, world.rank(), world.size());
+    const std::vector<double> diagonal;
+    const ZHessianAction batched_action =
+        [&action](const double* in, double* out, int, int) { action(in, out); };
+    const bool use_gpu = false;
+    solve_Z_CG(z, rhs, ld, nstates, batched_action, comm, use_gpu, diagonal);
+}
+}
+
 // The distributed Z-vector solvers are checked against the replicated LAPACK solve
 // (`LR_Util::lapack_linear_solver`) on matrices generated identically on every rank.
 namespace
