@@ -260,12 +260,14 @@ TEST_F(ZeqLinearSolverTest, SingularComplexFailsCollectively)
 
 TEST(ZeqCGReview, SolvesIdentityWithoutDumpingProductionVector)
 {
+    const hsolver::diag_comm_info comm(MPI_COMM_SELF, 0, 1);
+    const std::vector<double> diagonal;
     double rhs[] = {2.0, -3.0};
     double z[] = {0.0, 0.0};
-    const std::function<void(const double*, double*)> identity =
-        [](const double* x, double* y) { y[0] = x[0]; y[1] = x[1]; };
+    const std::function<void(const double*, double*, int, int)> identity =
+        [](const double* x, double* y, int, int) { y[0] = x[0]; y[1] = x[1]; };
     testing::internal::CaptureStdout();
-    LR::solve_Z_CG(z, rhs, 2, 1, identity, false);
+    LR::solve_Z_CG(z, rhs, 2, 1, identity, comm, false, diagonal);
     const std::string output = testing::internal::GetCapturedStdout();
     EXPECT_NEAR(z[0], rhs[0], 1e-12);
     EXPECT_NEAR(z[1], rhs[1], 1e-12);
@@ -274,22 +276,26 @@ TEST(ZeqCGReview, SolvesIdentityWithoutDumpingProductionVector)
 
 TEST(ZeqCGReview, ZeroRhsIsConverged)
 {
+    const hsolver::diag_comm_info comm(MPI_COMM_SELF, 0, 1);
+    const std::vector<double> diagonal;
     double rhs[] = {0.0, 0.0};
     double z[] = {9.0, -1.0};
-    const std::function<void(const double*, double*)> identity =
-        [](const double* x, double* y) { y[0] = x[0]; y[1] = x[1]; };
-    LR::solve_Z_CG(z, rhs, 2, 1, identity, false);
+    const std::function<void(const double*, double*, int, int)> identity =
+        [](const double* x, double* y, int, int) { y[0] = x[0]; y[1] = x[1]; };
+    LR::solve_Z_CG(z, rhs, 2, 1, identity, comm, false, diagonal);
     EXPECT_DOUBLE_EQ(z[0], 0.0);
     EXPECT_DOUBLE_EQ(z[1], 0.0);
 }
 
 TEST(ZeqCGReview, RejectsAnUnsolvableSystem)
 {
+    const hsolver::diag_comm_info comm(MPI_COMM_SELF, 0, 1);
+    const std::vector<double> diagonal;
     double rhs[] = {1.0, 2.0};
     double z[] = {0.0, 0.0};
-    const std::function<void(const double*, double*)> zero =
-        [](const double*, double* y) { y[0] = 0.0; y[1] = 0.0; };
-    EXPECT_THROW(LR::solve_Z_CG(z, rhs, 2, 1, zero, false), std::runtime_error);
+    const std::function<void(const double*, double*, int, int)> zero =
+        [](const double*, double* y, int, int) { y[0] = 0.0; y[1] = 0.0; };
+    EXPECT_THROW(LR::solve_Z_CG(z, rhs, 2, 1, zero, comm, false, diagonal), std::runtime_error);
 }
 
 int main(int argc, char** argv)
