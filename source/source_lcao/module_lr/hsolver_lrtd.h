@@ -3,12 +3,14 @@
 #include "source_base/parallel_2d.h"
 #include "source_base/macros.h"
 #include <complex>
+#include <functional>
 #include <string>
 #include <vector>
 namespace LR
 {
 template<typename T> class HamiltLR;
 template<typename T> class HamiltULR;
+struct OrbitalTransitionSpace;
 template<typename T> using Real = typename GetTypeReal<T>::type;
 namespace HSolver
 {
@@ -18,14 +20,14 @@ namespace HSolver
             T* psi,
             const int& dim, ///< local leading dimension (or nbasis)
             const int& nband,   ///< nstates in LR-TDDFT, not (nocc+nvirt)
-            const int& nk,
-            const std::vector<int>& nocc,
-            const std::vector<int>& nvirt,
-            const std::vector<Parallel_2D>& pX,
+            const OrbitalTransitionSpace& transitions,
             double* eig,
             const std::string method,
             const Real<T>& diag_ethr, ///< threshold for diagonalization
             const std::vector<Real<T>>& precondition,
+            const int preconditioner_block_size,
+            const std::function<void(const T*, T*)>& preconditioner_proxy,
+            const bool use_gpu,
             const bool hermitian);
 }
 }
