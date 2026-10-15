@@ -495,6 +495,7 @@ OBJS_HSOLVER=diago_cg.o\
     linear_bicgstab.o\
     linear_cgs.o\
     linear_gmres.o\
+    linear_pcg.o\
     linear_algebra.o\
     cn_subspace.o\
     linear_low_rank.o\
@@ -1090,7 +1091,7 @@ OBJS_TENSOR=tensor.o\
     init_helpers.o\
     hsolver_lrtd.o\
     zeq_solver.o\
-    zeq_cg.o\
+    zeq_cg_solver.o\
     hamilt_ulr.o\
     lr_density.o\
     spectrum_mo.o\

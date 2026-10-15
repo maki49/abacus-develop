@@ -83,7 +83,9 @@ if(ENABLE_MPI)
   AddTest(
     TARGET MODULE_LR_zeqlin_solv
     LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
-    SOURCES test_zeqlin_solv.cpp ${test_zeqlin_solv_main} ../zeq_cg.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+    SOURCES test_zeqlin_solv.cpp ${test_zeqlin_solv_main} ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
+      ../../../source_hsolver/linear_gmres.cpp ../../../source_hsolver/linear_algebra.cpp
+      ../../../source_hsolver/linear_workspace.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
   )
   add_test(
     NAME MODULE_LR_zeqlin_failure_mpi
