@@ -66,22 +66,22 @@ TEST(LR_XCSigma, PreservesAntiparallelSpinGradientsWithoutHSE)
     const std::vector<double> sigma{4.0, -2.0, 1.0};
     std::vector<double> hse_buffer;
     const bool is_hse06 = false;
-    const auto& input = LR_Util::prepare_xc_sigma(sigma, is_hse06, hse_buffer);
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, is_hse06, 2, hse_buffer);
     EXPECT_EQ(input.data(), sigma.data());
     EXPECT_EQ(input[1], -2.0);
     EXPECT_TRUE(hse_buffer.empty());
 }
 
-TEST(LR_XCSigma, RetainsExistingHSEStabilizationWithoutMutatingTheDensity)
+TEST(LR_XCSigma, WPBEHPreservesMixedSpinInvariant)
 {
     const std::vector<double> sigma{0.01, -0.008, 0.0064};
     std::vector<double> hse_buffer;
     const bool is_hse06 = true;
-    const auto& input = LR_Util::prepare_xc_sigma(sigma, is_hse06, hse_buffer);
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, is_hse06, 2, hse_buffer);
     EXPECT_NE(input.data(), sigma.data());
     EXPECT_EQ(sigma[1], -0.008);
     EXPECT_EQ(input[0], sigma[0]);
-    EXPECT_EQ(input[1], 1e-6);
+    EXPECT_EQ(input[1], sigma[1]);
     EXPECT_EQ(input[2], sigma[2]);
 }
 
@@ -109,4 +109,18 @@ TEST(LRForceWindow, EqualXAndZDoNotHideOccupiedOrBandTruncation)
     EXPECT_NE(occupied.find("occupied X window is truncated"), std::string::npos);
     const std::string bands = LR_Util::force_window_warning(17, 11, 0, virtuals, virtuals);
     EXPECT_NE(bands.find("ground-state band space is incomplete"), std::string::npos);
+}
+
+TEST(LR_XCSigma, WPBEHProtectsOnlyDiagonalInvariants)
+{
+    const std::vector<double> sigma{1e-20, -1e-20, 1e-20};
+    std::vector<double> buffer;
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, true, 2, buffer);
+    EXPECT_EQ(input[0], 1e-6);
+    EXPECT_EQ(input[1], -1e-20);
+    EXPECT_EQ(input[2], 1e-6);
+    const std::vector<double> unpolarized{1e-20, 1e-2};
+    const auto& single = LR_Util::prepare_xc_sigma(unpolarized, true, 1, buffer);
+    EXPECT_EQ(single[0], 1e-6);
+    EXPECT_EQ(single[1], 1e-2);
 }

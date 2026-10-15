@@ -1071,6 +1071,9 @@ void ReadInput::item_lr_tddft()
         item.category = "Linear Response TDDFT";
         item.type = "String";
         item.description = "The exchange-correlation kernel used in the calculation. Currently supported: RPA, LDA, PWLDA, PBE, and the hybrids HF, PBE0, HSE, B3LYP, CAM_PBEH, LC_PBE, LC_WPBE, LRC_WPBE, LRC_WPBEH. A hybrid kernel needs the ground state to use the same functional: the exact-exchange operator $[\\alpha+\\beta\\,\\mathrm{erfc}(\\mu r)]/r$ is built from exx_fock_alpha ($\\alpha$), exx_erfc_alpha ($\\beta$) and exx_erfc_omega ($\\mu$), which are keyed off dft_functional, not off this parameter.";
+        item.description += R"(
+
+[NOTE] For HSE06, the two initialized LibXC WPBEH exchange components retain an empirical floor on diagonal sigma at every derivative order. PBE correlation receives the original density-gradient invariants, including signed mixed-spin sigma. Independent PBE kernels do not use this floor. The exchange safeguard is not an energy/derivative-consistent regularization; HSE excitation energies and forces remain approximate and require convergence and finite-difference checks. HSE forces also require a LibXC runtime that supplies KXC for the initialized components.)";
         item.default_value = "LDA";
         item.unit = "";
         read_sync_string(input.xc_kernel);

@@ -1,5 +1,6 @@
 #include "xc_kernel.h"
 #include "xc_kxc.h"
+#include "xc_components.h"
 #include "source_hamilt/module_xc/xc_functional.h"
 #include "source_io/module_parameter/parameter.h"
 #include "source_base/timer.h"
@@ -204,8 +205,10 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
     }
     //MetaGGA ...
 
-    for (xc_func_type& func : funcs)
+    const auto components = kernel_components(funcs);
+    for (const auto& component : components)
     {
+        xc_func_type& func = *component.functional;
         // These used to be 1E-6 / 1E-10, the values the ground-state SCF uses. That is far too
         // aggressive for LR *gradients*: `cal_sgn` zeroes the kernel wherever rho < rho_threshold,
         // and in a molecule-in-a-big-box most of the grid is below 1E-6, while the exact derivative
@@ -228,10 +231,11 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         const double rho_threshold = 1E-14;
         const double grho_threshold = 1E-20;
 
+        xc_func_set_dens_threshold(component.cutoff_functional, rho_threshold);
         xc_func_set_dens_threshold(&func, rho_threshold);
 
         //cut off function
-        const std::vector<double> sgn = XC_Functional_Libxc::cal_sgn(rho_threshold, grho_threshold, func, nspin, nrxx, rho, sigma);
+        const std::vector<double> sgn = XC_Functional_Libxc::cal_sgn(rho_threshold, grho_threshold, *component.cutoff_functional, nspin, nrxx, rho, sigma);
 
         // Libxc interfaces overwrite (instead of add onto) the output arrays, so we need temporary copies
         std::vector<double> vrho_tmp(this->vrho_.size());
@@ -263,50 +267,14 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         case XC_FAMILY_GGA:
         case XC_FAMILY_HYB_GGA:
         {
-            // HSE06's short-range exchange (libxc's gga_x_wpbeh, folded into the single combined
-            // XC_HYB_GGA_XC_HSE06 functional evaluated here) has a closed-form whose derivatives
-            // are numerically unstable (catastrophic cancellation) near the reduced gradient s->0
-            // (a symmetry-forced grad-rho=0 node at otherwise ordinary density, e.g. rho=0.415 in
-            // 06_N2/hse). The true derivative is FINITE there (the functional is smooth in s^2);
-            // libxc just loses precision evaluating the closed form at that point. Clamping sigma
-            // from below before the libxc call evaluates the same closed form at a point just off
-            // the instability, borrowing smoothness instead of removing the cancellation
-            // algebraically. This existing HSE06 stabilization is retained here; it is not
-            // a derivative-consistent regularization and needs a separate numerical fix.
-            // Other functionals receive the original sigma, including the signed mixed-spin
-            // invariant grad(rho_up).grad(rho_down), which can be smaller than -1.
-            //
-            // `cal_sgn` returns all-ones for exchange functionals, so `cutoff_grid_data_spin2`
-            // below is a no-op for wpbeh; vsigma (1st order, read by the LR GGA kernel formula in
-            // pot_hxc_lrtd.cpp as the coefficient of the transition-density gradient) and v2*/v3*
-            // are therefore all equally unprotected and must ALL be clamped with the same
-            // sigma_cut -- clamping only a subset is not just insufficient, it can be WORSE
-            // (breaks whatever partial cancellation existed between the orders at the raw,
-            // unclamped point). Confirmed on 09_CH4/hse: with 1st-order vsigma left unclamped (as
-            // it originally was here), max|vsigma| reaches 3.9e7 at a vacuum grid point
-            // (rho~0, sigma~3.3e-19), which propagates into a ~1e4-magnitude AO-basis V_Hxc
-            // element on the carbon 2nd-zeta s/p shell and three ~-19404 Ry ghost eigenvalues in
-            // the full (lr_solver=lapack) Casida spectrum.
-            //
-            // Threshold choice (1e-6): g(sigma) is smooth at sigma=0, so g(sigma_cut) = g(0) +
-            // O(sigma_cut) -- any sigma_cut small enough stays a good approximation to the true
-            // sigma->0 limit. The lower bound on "small enough" was set empirically, not derived:
-            // scanning 1e-10/1e-4/1e-2 with only ONE of fxc/kxc clamped left the result completely
-            // flat (06_N2/hse state 5 pinned at +1.887e7 across 6 orders of magnitude for kxc-only)
-            // -- the textbook sign that the knob isn't touching the actual cancellation. Clamping
-            // BOTH together at 1e-6/1e-4/1e-2 instead gives a smoothly-varying, converging sequence
-            // (-0.302/-0.299/-0.257), the behavior a well-posed limit should show. 1e-6 sits deep in
-            // that well-posed plateau (tightening it to 1e-8 or 1e-10 moves the clamped answer by
-            // far less than scanning between 1e-6/1e-4/1e-2 already does) while staying far above
-            // the sigma range where the raw, unclamped evaluation is already visibly corrupted
-            // (1e7-1e39 noise at the diagnosed grid points). Checked against archived
-            // finite-difference references for 06_N2/hse, 09_CH4/hse and 08_BeH2/rpa_at_hse:
-            // MAE/|F| dropped to 0.015%-0.556%, Max/|F| to 0.029%-1.279%, matching the error level
-            // of functionals that were never broken; also confirmed to resolve 08_BeH2/hse (both
-            // its DZP and TZDP bases, all excited states).
-            const bool is_hse06 = func.info->number == XC_HYB_GGA_XC_HSE06;
+            // HSE06 is evaluated with its initialized WPBEH/PBE-c components and
+            // mixing weights. Only the two WPBEH exchange components retain the
+            // empirical sigma floor, consistently at every derivative order.
+            // PBE correlation sees the original sigma, including signed sigma_ud.
+            // This isolation does not make the exchange safeguard energy-consistent.
             std::vector<double> hse_sigma;
-            const std::vector<double>& sigma_input = LR_Util::prepare_xc_sigma(sigma, is_hse06, hse_sigma);
+            const std::vector<double>& sigma_input = LR_Util::prepare_xc_sigma(
+                sigma, component.stabilize_exchange, nspin, hse_sigma);
             xc_gga_vxc(&func, nrxx, rho.data(), sigma_input.data(), vrho_tmp.data(), vsigma_tmp.data());
             xc_gga_fxc(&func, nrxx, rho.data(), sigma_input.data(), v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
             // std::cout << "max element of v2sigma2_tmp: " << *std::max_element(v2sigma2_tmp.begin(), v2sigma2_tmp.end()) << std::endl;
@@ -337,6 +305,20 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
             throw std::domain_error("func.info->family =" + std::to_string(func.info->family)
                 + " unfinished in " + std::string(__FILE__) + " line " + std::to_string(__LINE__));
             break;
+        }
+        // LibXC child weights include the initialized hybrid fraction; do not
+        // reconstruct coefficients or screening parameters from the functional name.
+        if (component.weight != 1.0)
+        {
+            for (double& value : vrho_tmp) { value *= component.weight; }
+            for (double& value : v2rho2_tmp) { value *= component.weight; }
+            for (double& value : vsigma_tmp) { value *= component.weight; }
+            for (double& value : v2rhosigma_tmp) { value *= component.weight; }
+            for (double& value : v2sigma2_tmp) { value *= component.weight; }
+            for (double& value : v3rho3_tmp) { value *= component.weight; }
+            for (double& value : v3rho2sigma_tmp) { value *= component.weight; }
+            for (double& value : v3rhosigma2_tmp) { value *= component.weight; }
+            for (double& value : v3sigma3_tmp) { value *= component.weight; }
         }
         // add onto the total components
         // auto start = std::chrono::high_resolution_clock::now();

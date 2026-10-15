@@ -32,9 +32,9 @@ namespace LR_Util
     /// Reject unsupported NLCC force requests after pseudopotentials have been loaded.
     void check_force_pp(const UnitCell& cell, bool cal_force, const std::string& calculation);
 
-    /// Preserve signed sigma invariants except for the existing HSE06 stabilization.
+    /// Floor only WPBEH diagonal invariants; preserve mixed-spin sigma and all other inputs.
     const std::vector<double>& prepare_xc_sigma(const std::vector<double>& sigma,
-                                               bool is_hse06,
+                                               bool stabilize_exchange, int nspin,
                                                std::vector<double>& hse_buffer);
 
     /// =====================PHYSICS====================

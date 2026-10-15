@@ -54,14 +54,15 @@ namespace LR_Util
     }
 
     const std::vector<double>& prepare_xc_sigma(const std::vector<double>& sigma,
-                                               const bool is_hse06,
+                                               const bool stabilize_exchange, const int nspin,
                                                std::vector<double>& hse_buffer)
     {
-        if (!is_hse06) { return sigma; }
+        if (!stabilize_exchange) { return sigma; }
         hse_buffer.resize(sigma.size());
         for (std::size_t index = 0; index < sigma.size(); ++index)
         {
-            hse_buffer[index] = std::max(sigma[index], 1e-6);
+            const bool mixed_spin = nspin == 2 && index % 3 == 1;
+            hse_buffer[index] = mixed_spin ? sigma[index] : std::max(sigma[index], 1e-6);
         }
         return hse_buffer;
     }
