@@ -47,7 +47,8 @@ void Exx_NAO<TK>::before_runner(
         const LCAO_Orbitals &orb, // orbital info
         const Parallel_Orbitals &pv, // parallel orbitals
         const Input_para& inp,
-        Exx_Info& exx_info)
+        Exx_Info& exx_info,
+        std::ostream& log)
 {
 #ifdef __EXX
 #ifdef __CUDA
@@ -85,6 +86,19 @@ void Exx_NAO<TK>::before_runner(
                     orb,
                     use_gpu_tables);
                 this->exc->exx_before_all_runners(kv, ucell, pv.para_2d());
+            }
+            // Only the combined KS-LR workflow reuses C/V long enough to justify
+            // their device footprint during the ground-state SCF.
+            if (inp.esolver_type == "ks-lr" && inp.device == "gpu")
+            {
+                if (exx_info.info_ri.real_number)
+                {
+                    this->exd->exx_ptr->configure_execution(true, true, log);
+                }
+                else
+                {
+                    this->exc->exx_ptr->configure_execution(true, true, log);
+                }
             }
         }
     }

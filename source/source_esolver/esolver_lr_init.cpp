@@ -307,7 +307,7 @@ void ModuleESolver::ESolver_LR<T, TR>::refresh_from_ks_(UnitCell& ucell)
             else if (ks_sol.exx_nao.exc) { this->share_exx_lri(ks_sol.exx_nao.exc->exx_ptr); }
         }
         const bool use_gpu = this->inp_->device == "gpu";
-        this->exx_lri->configure_execution(use_gpu, this->ofs_running_);
+        this->exx_lri->configure_execution(use_gpu, use_gpu, this->ofs_running_);
         if (this->exx_owned_)
         {   // Cs/Vs follow the atoms, so they are rebuilt for every geometry
             this->exx_lri->cal_exx_ions(ucell, this->inp_->out_ri_cv);
@@ -489,7 +489,7 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
         this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
         this->exx_lri->init(MPI_COMM_WORLD, ucell,this->kv, orb);
         const bool use_gpu = this->inp_->device == "gpu";
-        this->exx_lri->configure_execution(use_gpu, this->ofs_running_);
+        this->exx_lri->configure_execution(use_gpu, use_gpu, this->ofs_running_);
         this->exx_lri->cal_exx_ions(ucell,this->inp_->out_ri_cv);
     }
     // else

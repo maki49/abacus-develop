@@ -33,13 +33,22 @@
 #endif
 
 template<typename Tdata>
-void Exx_LRI<Tdata>::configure_execution(const bool use_gpu, std::ostream& log)
+void Exx_LRI<Tdata>::configure_execution(const bool use_gpu, const bool resident_cv, std::ostream& log)
 {
     if (use_gpu)
     {
 #ifdef __GPU_RI
         this->exx_lri.lri.cal_mode = RI::LRI_Cal_Mode::GPU;
-        log << " LR exact-exchange contractions: DDLA/CUDA GPU" << std::endl;
+        if (resident_cv)
+        {
+            this->exx_lri.lri.set_gpu_resident_data_names({"Cs_", "Vs_"});
+        }
+        else
+        {
+            this->exx_lri.lri.set_gpu_resident_data_names({});
+        }
+        log << " Exact-exchange contractions: DDLA/CUDA GPU, C/V residency "
+            << (resident_cv ? "enabled" : "disabled") << std::endl;
 #else
         throw std::runtime_error("LR GPU exchange requires ENABLE_LIBRI_GPU=ON and a GPU-enabled LibRI/DDLA build");
 #endif
@@ -47,7 +56,10 @@ void Exx_LRI<Tdata>::configure_execution(const bool use_gpu, std::ostream& log)
     else
     {
         this->exx_lri.lri.cal_mode = RI::LRI_Cal_Mode::CPU;
-        log << " LR exact-exchange contractions: CPU" << std::endl;
+#ifdef __GPU_RI
+        this->exx_lri.lri.set_gpu_resident_data_names({});
+#endif
+        log << " Exact-exchange contractions: CPU" << std::endl;
     }
 }
 
