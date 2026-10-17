@@ -1,4 +1,4 @@
-#include "../exx_lr_ws.h"
+#include "../exx_workspace.h"
 #include "source_base/parallel_global.h"
 #include <RI/physics/Exx.h>
 #include <gtest/gtest.h>

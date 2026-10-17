@@ -860,7 +860,7 @@ OBJS_MODULE_RI=conv_coulomb_pot_k.o\
       symm_rot_out.o\
       gaussian_abfs.o\
       exx_lri_detail.o\
-      exx_lr_ws.o\
+      exx_workspace.o\
       ri_util.o\
       singular_value.o\
 

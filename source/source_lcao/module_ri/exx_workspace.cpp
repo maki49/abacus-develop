@@ -1,4 +1,4 @@
-#include "exx_lr_ws.h"
+#include "exx_workspace.h"
 #include "exx_lri.h"
 
 namespace

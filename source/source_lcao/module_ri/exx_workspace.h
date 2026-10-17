@@ -1,5 +1,5 @@
-#ifndef EXX_LR_WS_H
-#define EXX_LR_WS_H
+#ifndef EXX_WORKSPACE_H
+#define EXX_WORKSPACE_H
 
 #include <cstddef>
 
