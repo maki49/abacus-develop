@@ -186,7 +186,8 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
         return;
     }
 
-    const int start_band = this->nocc_max - *std::max_element(nocc.begin(), nocc.end());
+    const int max_occupied_bands = *std::max_element(nocc.begin(), nocc.end());
+    const int start_band = this->nocc_max - max_occupied_bands;
     // Every band the ground state solved, from the window start upward. `eig_ks_all` is the
     // authority on how many there are: on the ks-lr path it is the KS solver's `ekb`, on the
     // file path it was read with `skip_bands = 0`.

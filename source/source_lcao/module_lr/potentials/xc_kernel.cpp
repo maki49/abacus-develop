@@ -163,9 +163,16 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         hybrid_alpha,
         hse_omega);
     const int& nrxx = rho_basis_.nrxx;
-    const bool is_gga = std::any_of(funcs.begin(), funcs.end(), [](const xc_func_type& f) {
-        return f.info->family == XC_FAMILY_GGA || f.info->family == XC_FAMILY_HYB_GGA;
-    });
+    bool is_gga = false;
+    for (const xc_func_type& functional : funcs)
+    {
+        const int family = functional.info->family;
+        if (family == XC_FAMILY_GGA || family == XC_FAMILY_HYB_GGA)
+        {
+            is_gga = true;
+            break;
+        }
+    }
     // The third-order kernel exists for exactly one purpose: the $g^{xc}$ part of the LR
     // gradient. If none was requested, skip it. Open shell needs the RAW arrays (see below) --
     // `build_gxc_coef` is a closed-shell-only pre-contraction.

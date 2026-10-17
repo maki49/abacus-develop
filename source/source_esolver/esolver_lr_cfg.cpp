@@ -45,15 +45,13 @@ void ModuleESolver::ESolver_LR<T, TR>::set_dimension()
     if (this->inp_->ri_hartree_benchmark == "aims" || this->inp_->ri_hartree_benchmark == "aims-librpa"
         && !this->inp_->aims_nbasis.empty())
     {
-        // calculate total number of basis funcs, see https://en.cppreference.com/w/cpp/algorithm/inner_product
-        this->nbasis = std::inner_product(this->inp_->aims_nbasis.begin(), /* iterator1.begin */
-                                          this->inp_->aims_nbasis.end(),   /* iterator1.end */
-                                          this->ucell_->atoms,             /* iterator2.begin */
-                                          0,                               /* init value */
-                                          std::plus<int>(),                /* iter op1 */
-                                          [](const int& a, const Atom& b) {
-                                              return a * b.na;
-                                          }); /* iter op2 */
+        // Total basis size: sum the per-atom basis size times the atom count for each type.
+        int total_nbasis = 0;
+        for (std::size_t it = 0; it < this->inp_->aims_nbasis.size(); ++it)
+        {
+            total_nbasis += this->inp_->aims_nbasis[it] * this->ucell_->atoms[it].na;
+        }
+        this->nbasis = total_nbasis;
         std::cout << "nbasis from aims: " << this->nbasis << std::endl;
         for (int it = 0; it < this->ucell_->ntype; ++it)
         {

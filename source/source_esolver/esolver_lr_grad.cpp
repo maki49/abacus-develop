@@ -9,7 +9,6 @@
 #include "source_base/parallel_reduce.h"
 #include <algorithm>
 #include <complex>
-#include <numeric>
 #include "source_estate/module_dm/dm_from_psi.h"
 #include "source_io/module_output/output_log.h"
 
@@ -264,12 +263,17 @@ ModuleESolver::ESolver_LR<T, TR>::cal_grad_matrix_degenerate(const int ispin,
             max_ovlp_err = std::max(max_ovlp_err, std::abs(loc - ref));
         }
     }
-    const double omega_spread = *std::max_element(omega_member.begin(), omega_member.end())
-        - *std::min_element(omega_member.begin(), omega_member.end());
+    const double omega_max = *std::max_element(omega_member.begin(), omega_member.end());
+    const double omega_min = *std::min_element(omega_member.begin(), omega_member.end());
+    const double omega_spread = omega_max - omega_min;
     // one $\Omega$ for every combination: the members share it up to `omega_spread`, and the mean
     // is the neutral choice for a vector that belongs to no single member
-    const double omega_mean
-        = std::accumulate(omega_member.begin(), omega_member.end(), 0.0) / static_cast<double>(d);
+    double omega_sum = 0.0;
+    for (const double omega : omega_member)
+    {
+        omega_sum += omega;
+    }
+    const double omega_mean = omega_sum / static_cast<double>(d);
     ofs << " Degenerate multiplet of " << d << " states, Omega = " << omega_mean
         << " Ry, spread = " << omega_spread << " Ry, max |<X_k|X_l> - delta_kl| = " << max_ovlp_err
         << std::endl;
@@ -393,8 +397,11 @@ void ModuleESolver::ESolver_LR<T, TR>::test_force()
     // energy density matrix of the ground state
     module_dm::DensityMatrix<T, double> edm_gs(&this->paraMat_, this->nspin, this->kv.kvec_d, this->nk);   //DX
     ModuleBase::matrix wg_ekb_ks_all(nspin, this->inp_->nbands);
-    std::transform(this->wg_ks_all.c, this->wg_ks_all.c + nspin * this->inp_->nbands,
-        this->eig_ks_all.c, wg_ekb_ks_all.c, std::multiplies<double>());
+    const int occupation_count = nspin * this->inp_->nbands;
+    for (int index = 0; index < occupation_count; ++index)
+    {
+        wg_ekb_ks_all.c[index] = this->wg_ks_all.c[index] * this->eig_ks_all.c[index];
+    }
     // see `cal_dm_gs()`: `psi_ks_all_` is distributed per `this->ks_->pv` on the ks-lr path,
     // not `this->paraMat_all_`.
     const Parallel_Orbitals* const pv_all_edm = this->ks_ ? &this->ks_->pv : &this->paraMat_all_;

@@ -249,7 +249,8 @@ void ModuleESolver::ESolver_LR<T, TR>::refresh_from_ks_(UnitCell& ucell)
     this->psi_ks_all_ = ks_sol.psi;
     this->eig_ks_all = ks_sol.pelec->ekb;
     this->wg_ks_all = ks_sol.pelec->wg;
-    const int start_band = this->nocc_max - *std::max_element(nocc.begin(), nocc.end());
+    const int max_occupied_bands = *std::max_element(nocc.begin(), nocc.end());
+    const int start_band = this->nocc_max - max_occupied_bands;
 
     for (int ik = 0;ik < this->kv.get_nks();++ik)
     {

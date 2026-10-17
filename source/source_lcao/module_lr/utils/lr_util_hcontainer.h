@@ -2,7 +2,6 @@
 #define ABACUS_SOURCE_LCAO_MODULE_LR_UTILS_LR_UTIL_HCONTAINER_H
 
 #include "source_estate/module_dm/density_matrix.h"
-#include <numeric>
 #include  "source_base/parallel_reduce.h"
 #include "source_base/macros.h"
 #include <ATen/core/tensor.h>
@@ -208,11 +207,14 @@ namespace LR_Util
                 const auto& mat1 = ap1.get_HR_values(R.x, R.y, R.z);
                 const auto& mat2 = ap2->get_HR_values(R.x, R.y, R.z);
                 const int size = mat1.get_col_size() * mat1.get_row_size();
-                const TR1* begin = mat1.get_pointer();
-                const TR1* end = begin + size;
-                const TR2* values = mat2.get_pointer();
-                const TR1 zero = 0;
-                sum += std::inner_product(begin, end, values, zero);
+                const TR1* values1 = mat1.get_pointer();
+                const TR2* values2 = mat2.get_pointer();
+                TR1 block_sum = 0;
+                for (int index = 0; index < size; ++index)
+                {
+                    block_sum += values1[index] * values2[index];
+                }
+                sum += block_sum;
             }
         }
         // Parallel_Reduce::reduce_all(sum);  // not needed, since it will be reduced outside
@@ -407,13 +409,15 @@ namespace LR_Util
             std::vector<int> non_zero_counts(smat.size(), 0);   // number of Rs
             int i = 0;
             for (const auto& Rij : smat)
-                non_zero_counts[i++]
-                    = std::accumulate(Rij.second.begin(),
-                                      Rij.second.end(),
-                                      0,
-                                      [](int sum, const std::pair<const size_t, std::map<size_t, TR>>& line) {
-                                          return sum + line.second.size();
-                                      });
+            {
+                int non_zero_count = 0;
+                for (const auto& row : Rij.second)
+                {
+                    non_zero_count += row.second.size();
+                }
+                non_zero_counts[i] = non_zero_count;
+                ++i;
+            }
             Parallel_Reduce::reduce_all(non_zero_counts.data(), non_zero_counts.size());
 
 

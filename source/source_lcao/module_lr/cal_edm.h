@@ -78,12 +78,10 @@ namespace LR
             cal_X_ao_occ(X + idx_X, px, &c(ik, 0, 0), pc, X_ao_occ.data(), px_ao_occ);
             std::vector<double> eig_ks_plus_ext(nocc, 0.0);
             const int idx_eig_ks = ik * (nocc + nvirt);
-            std::transform(eig_ks + idx_eig_ks,
-                           eig_ks + idx_eig_ks + nocc,
-                           eig_ks_plus_ext.begin(),
-                           [eig_ext_istate](double x) {
-                               return x + eig_ext_istate;
-                           });
+            for (int occupied = 0; occupied < nocc; ++occupied)
+            {
+                eig_ks_plus_ext[occupied] = eig_ks[idx_eig_ks + occupied] + eig_ext_istate;
+            }
             edm[ik] = cal_edm_single_kpoint(X_ao_occ.data(), px_ao_occ, eig_ks_plus_ext.data(), pmat);
         }
         return edm;
@@ -128,14 +126,16 @@ namespace LR
         }
 #ifdef __MPI
         std::vector<ct::Tensor> cZc = cal_dm_trans_pblas(epsi_Z.data(), px, c, pc, naos, nocc, nvirt, pmat);
-        std::for_each(cZc.begin(), cZc.end(), [naos, &pmat](ct::Tensor& s) {
-            LR_Util::matsym(s.data<T>(), naos, pmat);
-        });
+        for (ct::Tensor& block : cZc)
+        {
+            LR_Util::matsym(block.data<T>(), naos, pmat);
+        }
 #else
         std::vector<ct::Tensor> cZc = cal_dm_trans_blas(epsi_Z.data(), c, nocc, nvirt);
-        std::for_each(cZc.begin(), cZc.end(), [naos](ct::Tensor& s) {
-            LR_Util::matsym(s.data<T>(), naos);
-        });
+        for (ct::Tensor& block : cZc)
+        {
+            LR_Util::matsym(block.data<T>(), naos);
+        }
 #endif
 
         //3. c * K_cvcx * c
@@ -144,14 +144,16 @@ namespace LR
         // `matsym` then supplies the 1/2 that turns $2\,X_\kappa K c_\lambda$ into the symmetric pair above. 
 #ifdef __MPI
         std::vector<ct::Tensor> cKc = cal_dm_trans_pblas(K_cvcx, px, c, pc, naos, nocc, nvirt, pmat, (T)1.0);
-        std::for_each(cKc.begin(), cKc.end(), [naos, &pmat](ct::Tensor& s) {
-            LR_Util::matsym(s.data<T>(), naos, pmat);
-        });
+        for (ct::Tensor& block : cKc)
+        {
+            LR_Util::matsym(block.data<T>(), naos, pmat);
+        }
 #else
         std::vector<ct::Tensor> cKc = cal_dm_trans_blas(K_cvcx, c, nocc, nvirt, (T)1.0);
-        std::for_each(cKc.begin(), cKc.end(), [naos](ct::Tensor& s) {
-            LR_Util::matsym(s.data<T>(), naos);
-        });
+        for (ct::Tensor& block : cKc)
+        {
+            LR_Util::matsym(block.data<T>(), naos);
+        }
 #endif
 
         // 4. $\sum_i (\Omega + \epsilon_i) \sum_{ab} C_{\mu a} X_{ia} C_{\nu b} X_{ib}$

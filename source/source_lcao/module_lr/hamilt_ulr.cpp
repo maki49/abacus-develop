@@ -33,7 +33,12 @@ HamiltULR<T>::HamiltULR(const std::string& xc_kernel,
 {
     nk = kv_in.get_nks() / nspin;
     ldim = nk * (pX[0].get_local_size() + pX[1].get_local_size());
-    gdim = nk * std::inner_product(nocc.begin(), nocc.end(), nvirt.begin(), 0);
+    int pairs_per_kpoint = 0;
+    for (std::size_t spin = 0; spin < nocc.size(); ++spin)
+    {
+        pairs_per_kpoint += nocc[spin] * nvirt[spin];
+    }
+    gdim = nk * pairs_per_kpoint;
     ModuleBase::TITLE("HamiltULR", "HamiltULR");
     this->DM_trans = LR_Util::make_unique<module_dm::DensityMatrix<T, T>>(&pmat_in, 1, kv_in.kvec_d, nk);
     LR_Util::initialize_DMR(*this->DM_trans, pmat_in, ucell_in, gd_in, orb_cutoff);
