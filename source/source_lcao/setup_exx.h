@@ -8,6 +8,7 @@
 #include "source_basis/module_ao/orb_read.h" // orb
 #include "source_estate/module_charge/chg_mix.h" // use charge mixing
 #include "source_hamilt/module_xc/exx_info.h" // for Exx_Info
+#include <iosfwd>
 
 // for EXX
 #ifdef __EXX
@@ -37,7 +38,8 @@ class Exx_NAO
             const LCAO_Orbitals &orb, // orbital info
             const Parallel_Orbitals &pv, // parallel orbitals
             const Input_para& inp,
-            Exx_Info& exx_info);
+            Exx_Info& exx_info,
+            std::ostream& log);
 
     void before_scf(
             const UnitCell &ucell, // unitcell
