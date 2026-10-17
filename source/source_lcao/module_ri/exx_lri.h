@@ -83,7 +83,8 @@ public:
     std::shared_ptr<Exx_LRI<Tdata>> make_lr_workspace(const UnitCell& ucell,
                                                    const K_Vectors& kv) const;
     /// Select the contraction backend at the owning solver's initialization boundary.
-    void configure_execution(const bool use_gpu, std::ostream& log);
+    /// Select the contraction backend and, for repeated LR work, retain geometry C/V on the GPU.
+    void configure_execution(const bool use_gpu, const bool resident_cv, std::ostream& log);
 
     void init(
         const MPI_Comm &mpi_comm_in,

@@ -112,13 +112,15 @@ void LCAO_domain::set_pot(
                        occmat_soc_layout);
     }
 
+    std::ofstream& log = GlobalV::ofs_running;
+
     //! 4) init exact exchange calculations
-    exx_nao.before_runner(ucell, kv, orb, pv, inp, exx_info);
+    exx_nao.before_runner(ucell, kv, orb, pv, inp, exx_info, log);
 
     //! 5) init deepks
     deepks.before_runner(ucell, kv.get_nks(), orb, pv, inp);
 
-    ModuleBase::GlobalFunc::DONE(GlobalV::ofs_running, "POTENTIALS");
+    ModuleBase::GlobalFunc::DONE(log, "POTENTIALS");
 
     return;
 }

@@ -44,13 +44,18 @@ Blocks tensors(int rank, double scale)
     return result;
 }
 
-void prepare(Kernel& kernel, RI::LRI_Cal_Mode mode)
+void prepare(Kernel& kernel, RI::LRI_Cal_Mode mode, bool resident_cv)
 {
     const std::map<int, Kernel::Tatom_pos> atoms = {{0, {{0.0, 0.0, 0.0}}}, {1, {{0.3, 0.2, 0.1}}}};
     const std::array<Kernel::Tatom_pos, 3> lattice = {{{{1.0, 0.0, 0.0}}, {{0.0, 1.0, 0.0}}, {{0.0, 0.0, 1.0}}}};
     const Kernel::TC period = {{1, 1, 1}};
     kernel.set_parallel(MPI_COMM_SELF, atoms, lattice, period);
     kernel.lri.cal_mode = mode;
+#ifdef __GPU_RI
+    if (resident_cv) { kernel.lri.set_gpu_resident_data_names({"Cs_", "Vs_"}); }
+#else
+    (void)resident_cv;
+#endif
     const Blocks cs = tensors(3, 0.7);
     const Blocks vs = tensors(2, 0.4);
     const Blocks ds = tensors(1, 0.3);
@@ -97,7 +102,7 @@ void compare_blocks(const Blocks& expected, const Blocks& actual)
 TEST(ExxForceTwoDM, SeparateLeftDensityScalesForce)
 {
     Kernel kernel;
-    prepare(kernel, RI::LRI_Cal_Mode::CPU);
+    prepare(kernel, RI::LRI_Cal_Mode::CPU, false);
     const std::array<std::string, 5> names = {{"", "", "", "", ""}};
     const Blocks left = tensors(1, 0.6);
     const Blocks negative_left = tensors(1, -0.3);
@@ -125,8 +130,8 @@ TEST(ExxForceTwoDM, GpuSignedAccumulationAndDerivativeForce)
     if (status != cudaSuccess || devices == 0) { GTEST_SKIP() << "No CUDA device available"; }
     Kernel cpu;
     Kernel gpu;
-    prepare(cpu, RI::LRI_Cal_Mode::CPU);
-    prepare(gpu, RI::LRI_Cal_Mode::GPU);
+    prepare(cpu, RI::LRI_Cal_Mode::CPU, false);
+    prepare(gpu, RI::LRI_Cal_Mode::GPU, false);
     compare_blocks(cpu.Hs, gpu.Hs);
     const std::vector<RI::Label::ab_ab> labels = {
         RI::Label::ab_ab::a0b0_a1b1, RI::Label::ab_ab::a0b0_a1b2,
@@ -155,5 +160,37 @@ TEST(ExxForceTwoDM, GpuSignedAccumulationAndDerivativeForce)
         }
     }
     EXPECT_GT(magnitude, 1e-5);
+}
+
+TEST(ExxForceTwoDM, GpuResidentCvTracksDensityAndGeometryChanges)
+{
+    int devices = 0;
+    const auto status = cudaGetDeviceCount(&devices);
+    if (status != cudaSuccess || devices == 0) { GTEST_SKIP() << "No CUDA device available"; }
+    Kernel cpu;
+    Kernel gpu;
+    prepare(cpu, RI::LRI_Cal_Mode::CPU, false);
+    prepare(gpu, RI::LRI_Cal_Mode::GPU, true);
+    compare_blocks(cpu.Hs, gpu.Hs);
+
+    // A changed D must be uploaded even when the same C/V device blocks remain.
+    Blocks changed_d = tensors(1, -0.23);
+    changed_d[0].erase(changed_d[0].begin());
+    cpu.set_Ds(changed_d, 0.0, "");
+    gpu.set_Ds(changed_d, 0.0, "");
+    cpu.cal_Hs();
+    gpu.cal_Hs();
+    compare_blocks(cpu.Hs, gpu.Hs);
+
+    // Replacing C/V with equal-shaped values must invalidate their device copies.
+    const Blocks changed_c = tensors(3, 0.36);
+    const Blocks changed_v = tensors(2, -0.17);
+    cpu.set_Cs(changed_c, 0.0, "");
+    gpu.set_Cs(changed_c, 0.0, "");
+    cpu.set_Vs(changed_v, 0.0, "");
+    gpu.set_Vs(changed_v, 0.0, "");
+    cpu.cal_Hs();
+    gpu.cal_Hs();
+    compare_blocks(cpu.Hs, gpu.Hs);
 }
 #endif
