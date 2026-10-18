@@ -4,6 +4,7 @@
 #include "source_lcao/pulay_fs.h"   // only for gint terms
 #include "source_hamilt/module_gint/gint_interface.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
+#include "source_hamilt/module_xc/xc_functional.h"
 // #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
 namespace LR
 {
@@ -49,6 +50,15 @@ namespace LR
     template<typename TK>
     std::unique_ptr<elecstate::Potential> LR_Force<TK>::dm_to_hxc_potential(const module_dm::DensityMatrix<TK, double>& dm)
     {
+        // Potential/PotXC still evaluate through process-wide XC selection, which LR kernel
+        // preparation may change. Select GS here and restore the exact incoming state on exit.
+        // A permanent fix needs explicit passing XC type through Potential -> PotXC -> XC evaluation,
+        // which is a large refactor beyond the scope of LR-force feature.
+        // The returned potential is consumed as cached values, not updated after this scope.
+        // INPUT may retain "default"; the resolved GS name then comes from the pseudopotential.
+        const std::string& gs_functional = this->dft_functional_ == "default"
+            ? this->ucell_.atoms[0].ncpp.xc_func : this->dft_functional_;
+        const XC_Functional::ScopedType gs_xc(gs_functional);
         std::unique_ptr<elecstate::Potential> pot(new elecstate::Potential(&this->rhodpw_, &this->rhopw_, &this->ucell_,
             &this->locpp_.vloc, const_cast<Structure_Factor*>(&this->sf_),
             nullptr/*surchem*/, &this->etxc_, &this->vtxc_));
@@ -118,6 +128,8 @@ namespace LR
         // ModuleBase::matrix fhxc_dphi = (fgs_dphi - fvl_dphi) * 0.5; // avoid double count of hxc Pulay term
         // method 2
         ModuleBase::matrix fhxc_dphi(this->ucell_.nat, 3);
+        // pot_hxc here is the *ground-state* v_Hxc, which is not equal to the
+        // GS-functional linear-response potential `pot_hxc_gs`=f_Hxc[rho^gs] * rho1 with rho1=rho_gs
         std::unique_ptr<elecstate::Potential> pot_hxc = this->dm_to_hxc_potential(dm_gs);
         // `cal_pulay_fs` calculates 1*Pulay-term.
         // For ground-state DFT, Pulay term = Hellmann-Feynman term, F = 1/2(Pulay + H-F) = Pulay, so directly call it once gives correct result.

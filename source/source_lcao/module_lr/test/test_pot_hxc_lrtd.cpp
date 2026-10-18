@@ -227,3 +227,91 @@ TEST_F(PotHxcLRTest, GradientPotentialUsesExplicitKernelSpin)
     EXPECT_EQ(single.nspin, 1);
     EXPECT_THROW(LR::PotGradXCLR(*polarized, basis, cell, 1, 1, false), std::invalid_argument);
 }
+
+TEST_F(PotHxcLRTest, ScopedGsTypeRestoresLrSelection)
+{
+    const XC_Functional::ScopedType baseline("pbe");
+    const auto ids = XC_Functional::get_func_id();
+    const int type = XC_Functional::get_func_type();
+    const std::string description = XC_Functional::output_info();
+    {
+        const XC_Functional::ScopedType gs("hf");
+        EXPECT_TRUE(XC_Functional::get_func_id().empty());
+        EXPECT_EQ(XC_Functional::get_func_type(), 4);
+        EXPECT_FALSE(XC_Functional::get_ked_flag());
+    }
+    EXPECT_EQ(XC_Functional::get_func_id(), ids);
+    EXPECT_EQ(XC_Functional::get_func_type(), type);
+    EXPECT_EQ(XC_Functional::output_info(), description);
+}
+
+TEST_F(PotHxcLRTest, ScopedGsTypeRestoresOnException)
+{
+    const XC_Functional::ScopedType baseline("pbe");
+    const auto ids = XC_Functional::get_func_id();
+    XC_Functional::set_hybrid_alpha(0.37);
+    XC_Functional::set_hse_omega(0.19);
+    XCFunctionalParameters parameters;
+    parameters.xc_temperature = 0.012;
+    parameters.exx_fock_alpha = {"0.37"};
+    parameters.exx_erfc_alpha = {"0.2"};
+    parameters.xc_exch_ext = {1.0, 2.0};
+    parameters.xc_corr_ext = {3.0, 4.0};
+    XC_Functional::set_runtime_parameters(parameters);
+    try
+    {
+        const XC_Functional::ScopedType gs("hf");
+        XC_Functional::set_hybrid_alpha(0.8);
+        XC_Functional::set_hse_omega(0.4);
+        const XCFunctionalParameters changed;
+        XC_Functional::set_runtime_parameters(changed);
+        throw std::runtime_error("potential evaluation failed");
+    }
+    catch (const std::runtime_error&)
+    {
+    }
+    EXPECT_EQ(XC_Functional::get_func_id(), ids);
+    EXPECT_EQ(XC_Functional::get_func_type(), 2);
+    EXPECT_FALSE(XC_Functional::get_ked_flag());
+    EXPECT_FALSE(XC_Functional::get_need_laplacian());
+    EXPECT_DOUBLE_EQ(XC_Functional::get_hybrid_alpha(), 0.37);
+    EXPECT_DOUBLE_EQ(XC_Functional::get_hse_omega(), 0.19);
+    const auto& restored = XC_Functional::get_runtime_parameters();
+    EXPECT_DOUBLE_EQ(restored.xc_temperature, parameters.xc_temperature);
+    EXPECT_EQ(restored.exx_fock_alpha, parameters.exx_fock_alpha);
+    EXPECT_EQ(restored.exx_erfc_alpha, parameters.exx_erfc_alpha);
+    EXPECT_EQ(restored.xc_exch_ext, parameters.xc_exch_ext);
+    EXPECT_EQ(restored.xc_corr_ext, parameters.xc_corr_ext);
+}
+
+TEST_F(PotHxcLRTest, ScopedGsTypesNestWithoutLosingEmptyHfSelection)
+{
+    const XC_Functional::ScopedType baseline("pbe");
+    const auto ids = XC_Functional::get_func_id();
+    {
+        const XC_Functional::ScopedType gs("hf");
+        {
+            const XC_Functional::ScopedType local("lda");
+            EXPECT_EQ(XC_Functional::get_func_type(), 1);
+            EXPECT_EQ(XC_Functional::get_func_id().size(), 2);
+        }
+        EXPECT_TRUE(XC_Functional::get_func_id().empty());
+        EXPECT_EQ(XC_Functional::get_func_type(), 4);
+    }
+    EXPECT_EQ(XC_Functional::get_func_id(), ids);
+    EXPECT_EQ(XC_Functional::get_func_type(), 2);
+}
+
+TEST_F(PotHxcLRTest, ScopedGsTypeRestoresLibxcBackend)
+{
+    const XC_Functional::ScopedType baseline("XC_LDA_X+XC_LDA_C_PZ");
+    const auto ids = XC_Functional::get_func_id();
+    const std::string description = XC_Functional::output_info();
+    ASSERT_NE(description.find("Libxc"), std::string::npos);
+    {
+        const XC_Functional::ScopedType builtin("pbe");
+        EXPECT_EQ(XC_Functional::output_info().find("Libxc"), std::string::npos);
+    }
+    EXPECT_EQ(XC_Functional::get_func_id(), ids);
+    EXPECT_EQ(XC_Functional::output_info(), description);
+}
