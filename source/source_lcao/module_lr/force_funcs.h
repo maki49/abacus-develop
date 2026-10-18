@@ -29,7 +29,10 @@ public:
         }
         ModuleBase::TITLE("Force_Stress_LCAO", "cal_force_pw");
         Forces<T> f_pw(ucell.nat);
-        ModuleBase::matrix fvl_dvl(ucell.nat, 3), fewalds(ucell.nat, 3), fcc(ucell.nat, 3), fscc(ucell.nat, 3);
+        ModuleBase::matrix fvl_dvl(ucell.nat, 3);
+        ModuleBase::matrix fewalds(ucell.nat, 3);
+        ModuleBase::matrix fcc(ucell.nat, 3);
+        ModuleBase::matrix fscc(ucell.nat, 3);
         //--------------------------------------------------------
         // local pseudopotential force:
         // use charge density; plane wave; local pseudopotential;
