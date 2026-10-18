@@ -99,3 +99,34 @@ AddTest(
   LIBS base parameter ${math_libs} container device psi
   SOURCES ${cal_edm_test_sources}
 )
+
+# LR/DM adapter regressions belong to LR; estate must not depend on this module.
+set(lr_dm_test_sources
+  test_lr_util.cpp ../utils/lr_util.cpp
+  ../../../source_estate/module_dm/density_matrix.cpp
+  ../../../source_estate/module_dm/dmr_gamma.cpp
+  ../../../source_estate/module_dm/dmr_init.cpp
+  ../../../source_estate/module_dm/dm_setter.cpp
+  ../../../source_estate/module_dm/dm_getter.cpp
+  ../../../source_estate/module_dm/dm_tools.cpp
+  ../../../source_estate/module_dm/dmr_k.cpp
+  ../../../source_estate/module_dm/dmr_td.cpp
+  ../../../source_estate/module_dm/dmr_full.cpp
+  ../../../source_estate/module_dm/unittests/tmp_mocks.cpp
+  ../../../source_hamilt/module_hcontainer/base_matrix.cpp
+  ../../../source_hamilt/module_hcontainer/hcontainer.cpp
+  ../../../source_hamilt/module_hcontainer/atom_pair.cpp
+  ../../../source_basis/module_ao/parallel_orbitals.cpp
+  ../../../source_cell/klist.cpp
+  ../../../source_cell/klist_io.cpp
+  ../../../source_cell/parallel_kpoints.cpp
+  ../../../source_cell/reciprocal_grid.cpp
+)
+if(ENABLE_MPI)
+  list(APPEND lr_dm_test_sources ../../../source_base/test/mpi_test_main.cpp)
+endif()
+AddTest(
+  TARGET MODULE_LR_dm_regressions
+  LIBS parameter base device symmetry container
+  SOURCES ${lr_dm_test_sources}
+)

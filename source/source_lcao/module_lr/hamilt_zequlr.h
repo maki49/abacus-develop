@@ -80,7 +80,7 @@ namespace LR
                             //         K_{ab,\sigma\sigma'}[D^X_{\sigma'}]+\dots$
                             // -- only $D^X$ carries the summed spin. `OperatorLRHxc`'s CXC branch
                             // says the same thing in code: it reads `psi_in` through `pX[sl]`, the
-                            // OUT channel's distribution. 
+                            // OUT channel's distribution.
                             const T* input = psi_in + offset_out;
                             T* output = hpsi + offset_out;
                             act_with_shared_density(node, ldim_is[is_out], input, output, density_cache);

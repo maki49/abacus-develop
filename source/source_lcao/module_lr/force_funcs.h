@@ -6,7 +6,7 @@
 #include "source_basis/module_nao/two_center_bundle.h"
 #include "source_io/module_output/output_log.h"
 
-// This file extracts out some terms from the ground state force code 
+// This file extracts out some terms from the ground state force code
 // to calculate the excited state force with a different density matrix.
 template<typename T>
 class ForcePWTerms

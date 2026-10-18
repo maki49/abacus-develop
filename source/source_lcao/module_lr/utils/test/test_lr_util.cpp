@@ -204,3 +204,22 @@ TEST(LREigensolver, ComplexGeneralEigenproblemKeepsEigenvalues)
     EXPECT_NEAR(std::abs(eigenvalues[0] - Complex(1.0, 2.0)), 0.0, 1e-12);
     EXPECT_NEAR(std::abs(eigenvalues[1] - Complex(3.0, -1.0)), 0.0, 1e-12);
 }
+
+TEST(LRLinearSolver, ReportsSingularRealFactorization)
+{
+    const double matrix[] = {1.0, 2.0, 2.0, 4.0};
+    const double rhs[] = {1.0, 1.0};
+    double result[] = {0.0, 0.0};
+    const int info = LR_Util::lapack_linear_solver(matrix, result, rhs, 2, 1);
+    EXPECT_GT(info, 0);
+}
+
+TEST(LRLinearSolver, ReportsSingularComplexFactorization)
+{
+    using Complex = std::complex<double>;
+    const Complex matrix[] = {Complex(1.0), Complex(2.0), Complex(2.0), Complex(4.0)};
+    const Complex rhs[] = {Complex(1.0), Complex(1.0)};
+    Complex result[] = {Complex(0.0), Complex(0.0)};
+    const int info = LR_Util::lapack_linear_solver(matrix, result, rhs, 2, 1);
+    EXPECT_GT(info, 0);
+}

@@ -115,7 +115,13 @@ namespace LR
 #endif
 
         // use lapack to solve the linear equation
-        LR_Util::lapack_linear_solver(hessian_full.data(), Z_full.data(), R_full.data(), n_global, nstates);
+        const int info = LR_Util::lapack_linear_solver(hessian_full.data(), Z_full.data(), R_full.data(), n_global, nstates);
+        if (info != 0)
+        {
+            ModuleBase::timer::end("Z_vector", "solve_Z_lapack");
+            throw std::runtime_error("LAPACK Z-vector solve failed (info=" + std::to_string(info)
+                                     + "); the response Hessian may be singular. Excited-state forces are not valid.");
+        }
 
         // test: print full Z
         if (test_force)

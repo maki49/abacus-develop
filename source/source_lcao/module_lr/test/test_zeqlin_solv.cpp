@@ -322,3 +322,63 @@ TEST(ZeqCGReview, RejectsAnUnsolvableSystem)
     };
     EXPECT_THROW(LR::solve_Z_CG(z, rhs, 2, 1, zero, false), std::runtime_error);
 }
+
+
+namespace
+{
+template <typename T>
+struct SingularZResponse
+{
+    int nk = 1;
+    std::vector<int> nocc;
+    std::vector<int> nvirt;
+    std::vector<Parallel_2D> pX;
+
+    SingularZResponse() : nocc(1, 2), nvirt(1, 2), pX(1)
+    {
+        pX[0].init(2, 2, 1, MPI_COMM_WORLD);
+    }
+
+    std::vector<T> matrix()
+    {
+        std::vector<T> values(16, T(0));
+        values[0] = T(1);
+        values[10] = T(1);
+        values[15] = T(1);
+        return values;
+    }
+};
+
+template <typename T>
+void check_failed_lapack_preserves_z()
+{
+    SingularZResponse<T> response;
+    const int ld = response.pX[0].get_local_size();
+    std::vector<T> rhs(ld, T(1));
+    std::vector<T> z(ld, T(7));
+    try
+    {
+        LR::solve_Z_lapack(z.data(), rhs.data(), ld, 1, response, 1, false);
+        FAIL() << "Singular response Hessian was accepted";
+    }
+    catch (const std::runtime_error& error)
+    {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("LAPACK Z-vector solve failed (info=2)"), std::string::npos);
+    }
+    for (const T& value : z)
+    {
+        EXPECT_EQ(value, T(7));
+    }
+}
+}
+
+TEST(ZeqLapackReview, SingularRealResponseDoesNotOverwriteZ)
+{
+    check_failed_lapack_preserves_z<double>();
+}
+
+TEST(ZeqLapackReview, SingularComplexResponseDoesNotOverwriteZ)
+{
+    check_failed_lapack_preserves_z<std::complex<double>>();
+}

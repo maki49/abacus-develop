@@ -41,7 +41,7 @@ namespace LR
         /// operator writes into the same output buffer from four chains: the diagonal block of
         /// the DOWN channel runs last and its assignment wipes the up->down contribution that
         /// the off-diagonal chain wrote earlier. Those callers pass `add_on = true` and zero the
-        /// output themselves. 
+        /// output themselves.
         virtual void  act(const int nbands,
             const int nbasis,
             const int npol,

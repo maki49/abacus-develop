@@ -134,7 +134,7 @@ namespace ModuleESolver
         ModuleBase::matrix wg_ks_all;   /// occupation number of all bands of ground state
 
 
-        // @brief only needed for force calculation 
+        // @brief only needed for force calculation
         std::unique_ptr<elecstate::Potential> pot_gs;
         std::unique_ptr<elecstate::Potential> pot_gs_hartree;   /// ground-state Hartree potential, only used for test_force
         double etxc_gs = 0.;
@@ -182,7 +182,7 @@ namespace ModuleESolver
         int target_is_ = 0;            ///< spin block of the relaxed state in `X` and `pelec->ekb`
         double etot_gs_ = 0.0;         ///< ground-state total energy of the current step (Ry)
         ModuleBase::matrix force_gs_;  ///< ground-state force of the current step (Ry/Bohr, F = -dE/dR)
-        /// The LR part of the excited-state force, -d(Omega)/dR (Ry/Bohr). 
+        /// The LR part of the excited-state force, -d(Omega)/dR (Ry/Bohr).
         ModuleBase::matrix lr_force_;
         /// The state currently being followed, as an index into `X` / `pelec->ekb`.
         /// Seeded from `lr_target_state` on the first ionic step, then re-chosen at every
@@ -218,7 +218,7 @@ namespace ModuleESolver
 
         // ---------------- the Z-vector (CPSCF) window ----------------
         // The Z-vector equation enforces the Brillouin condition in EVERY occupied-virtual
-        // rotation, so it must not be confined to the `nvirt` window X lives in. 
+        // rotation, so it must not be confined to the `nvirt` window X lives in.
         // It should be the whole AO virtual space.
         //
         // These mirror `psi_ks` / `eig_ks` / `paraC_` / `paraX_` / `nvirt` / `nloc_per_state`

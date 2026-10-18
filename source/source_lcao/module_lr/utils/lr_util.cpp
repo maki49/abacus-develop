@@ -505,6 +505,7 @@ namespace LR_Util
         if (info)
         {
             std::cout << "ERROR: Lapack solver dgetrf, info=" << info << std::endl;
+            return info;
         }
         // 3. Solve Ax=b
         const char trans = 'N';
@@ -531,6 +532,7 @@ namespace LR_Util
         if (info)
         {
             std::cout << "ERROR: Lapack solver zgetrf, info=" << info << std::endl;
+            return info;
         }
         // 3. Solve Ax=b
         const char trans = 'N';

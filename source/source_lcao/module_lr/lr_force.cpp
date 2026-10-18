@@ -110,16 +110,16 @@ namespace LR
         // core ABACUS always reduces right after it (see force_stress_lcao.cpp).
         Parallel_Reduce::reduce_pool(fvl_dphi.c, fvl_dphi.nr * fvl_dphi.nc);
 
-        // 3.2. Hartree + xc (Pulay) 
+        // 3.2. Hartree + xc (Pulay)
         //  method 1
         // ModuleBase::matrix fgs_dphi(this->ucell_.nat, 3);
         // PulayForceStress::cal_pulay_fs(relax_diff_dm.get_dmr_vec().size()/*nspin*/, fgs_dphi, stress_tmp,
         //     relax_diff_dm, this->ucell_, &pot_gs, true, false);
         // ModuleBase::matrix fhxc_dphi = (fgs_dphi - fvl_dphi) * 0.5; // avoid double count of hxc Pulay term
-        // method 2 
+        // method 2
         ModuleBase::matrix fhxc_dphi(this->ucell_.nat, 3);
         std::unique_ptr<elecstate::Potential> pot_hxc = this->dm_to_hxc_potential(dm_gs);
-        // `cal_pulay_fs` calculates 1*Pulay-term. 
+        // `cal_pulay_fs` calculates 1*Pulay-term.
         // For ground-state DFT, Pulay term = Hellmann-Feynman term, F = 1/2(Pulay + H-F) = Pulay, so directly call it once gives correct result.
         PulayForceStress::cal_pulay_fs(relax_diff_dm.get_dmr_vec().size()/*nspin*/, fhxc_dphi, stress_tmp,
             relax_diff_dm, this->ucell_, pot_hxc.get(), true, false);
@@ -220,7 +220,7 @@ namespace LR
         //
         // `cal_pulay_fs` returns 2 * sum_{mn} D_{mn} \int (d phi_m) v phi_n, where the factor 2 is
         // `cal_gint_fvl`'s internal m<->n doubling, i.e. it is exactly the *bra-pair* derivative (Pulay).
-        // The *ket-pair* derivative (Hellmann-Feynman) is equal to it (both slots hold the same D^X), 
+        // The *ket-pair* derivative (Hellmann-Feynman) is equal to it (both slots hold the same D^X),
         // so the total needs one more factor 2 (Pulay -> Pulay + Hellmann-Feynman).
         // Verified on H2/SZ against the analytic 4-center derivative: 4*sum D^sym P = 16.8653548
         // vs 2*d(ai|ia)/dz = 16.865355 eV/Ang (7 digits).
@@ -356,7 +356,7 @@ namespace LR
                 return dm_transpose;
             };
 
-        // `cal_force` calculates Pulay term. 
+        // `cal_force` calculates Pulay term.
         // If D_IJ = D_KL(H - F = Pulay), it caluclates 0.5 * d(ik | jl).
         // Multiply spin factor (outside) on it gives the final result.
         // The spin factor is not hard-coded in this function.
@@ -375,7 +375,7 @@ namespace LR
         lr_exx_kernel.cal_force(dm_gs_transpose, { "", "", spin_suffix , "", "" }); // using dm_gs as D_IJ
         add_force_from_kernel();
 
-        // move back 
+        // move back
         exx_lri_kernel = std::move(lr_exx_kernel);
 
         // -2 * 0.5 * alpha

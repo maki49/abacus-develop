@@ -62,7 +62,10 @@ void LR_Density<T>::cal_eh_density_single_state(const T* const X_istate, const i
     ModuleBase::TITLE("LR_Density", "cal_eh_density_single_state");
     ModuleBase::GlobalFunc::ZEROS(density[0], this->pgrid_.get_nrxx());
     // 1. calculate the density matrix in AO basis
-    auto c_spin = LR_Util::get_psi_spin(psi_ks_, ispin,nk_);
+    // Closed-shell singlet and triplet amplitudes both use the spin-up KS orbitals.
+    // ispin still selects the response window and the output label.
+    const int orbital_spin = this->openshell_ ? ispin : 0;
+    auto c_spin = LR_Util::get_psi_spin(psi_ks_, orbital_spin, nk_);
 #ifdef __MPI
     const std::vector<ct::Tensor> dm_diff_k =
         cal_dm_diff_pblas<T>(X_istate, pX_[ispin], c_spin, pc_, nao_, nocc_[ispin], nvirt_[ispin], pmat_);

@@ -480,7 +480,7 @@ void ESolver_BSE<T, TR>::after_all_runners(BaseCell& basecell)
         if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity" )
         {
             const int nspin_tmp = this->inp_->nspin == 2 ? 2 : 1;
-            this->velocity_mo = LR_Util::cal_velocity_mo(*this->ucell_, this->gd(), this->tcb(), 
+            this->velocity_mo = LR_Util::cal_velocity_mo(*this->ucell_, this->gd(), this->tcb(),
                                                         this->paraMat_, this->paraC_, this->kv, *this->psi_ks, 
                                                         this->nk, nspin_tmp, this->nbasis, this->nocc, this->nvirt);
         }

@@ -115,7 +115,7 @@ namespace LR
         /// singlet and triplet all run through the same code. For LDA only `a_s2` is filled.
         /// $v^{(2)} = A - \nabla\cdot E$
         ///
-        /// NOTE the four $e$ are *scalars*, with the common $\nabla\rho^{gs}$ factored out of the sum. 
+        /// NOTE the four $e$ are *scalars*, with the common $\nabla\rho^{gs}$ factored out of the sum.
         /// Should an open-shell version ever need $\nabla\rho_u\ne\nabla\rho_d$ under the same
         /// divergence, this factorization no longer holds and they must go back to `Vector3`.
         struct GxcCoef
@@ -166,7 +166,7 @@ namespace LR
 #ifdef __LIBXC
         /// @brief Calculate the XC kernel using libxc.
         void f_xc_libxc(const int& nspin, const double& omega, const double& tpiba, const double* const* const rho_gs, const double* const rho_core = nullptr);
-        /// calculate the input rho, grad rho, and sigma for libxc 
+        /// calculate the input rho, grad rho, and sigma for libxc
         void get_rho_drho_sigma(const int& nspin,
             const double& tpiba,
             const double* const* const rho_gs,

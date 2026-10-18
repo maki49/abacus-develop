@@ -5,7 +5,6 @@
 #include  "source_base/parallel_reduce.h"
 #include "source_base/macros.h"
 #include <ATen/core/tensor.h>
-#include "source_io/module_parameter/parameter.h"
 #include "source_io/module_hs/lat_r_csr.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #ifdef __EXX

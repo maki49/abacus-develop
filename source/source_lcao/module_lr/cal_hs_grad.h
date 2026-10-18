@@ -8,7 +8,7 @@
 #include "source_hamilt/module_hcontainer/hcontainer.h"
 
 inline void filter_adjs_by_rcut(const UnitCell& ucell,
-    const int iat0, 
+    const int iat0,
     AdjacentAtomInfo& adjs)
 {
     std::vector<bool> is_adj(adjs.adj_num + 1, false);
@@ -27,7 +27,7 @@ inline void filter_adjs_by_rcut(const UnitCell& ucell,
     filter_adjs(is_adj, adjs);
 }
 
-/// @brief Return a local Hamiltonian operator in type HContainer. 
+/// @brief Return a local Hamiltonian operator in type HContainer.
 /// It can replace OverlapNew::initialize_SR() and EkineticNew::initialize_HR().
 template<typename TR>
 hamilt::HContainer<TR> build_hcontainer_local_op(const UnitCell& ucell, const Grid_Driver& gd, const Parallel_Orbitals& pv)

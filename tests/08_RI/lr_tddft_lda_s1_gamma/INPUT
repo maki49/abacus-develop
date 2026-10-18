@@ -1,4 +1,4 @@
-INPUT_PARAMETERS 
+INPUT_PARAMETERS
 #Parameters (1.General)
 suffix            autotest
 pseudo_dir        ../../../tests/PP_ORB

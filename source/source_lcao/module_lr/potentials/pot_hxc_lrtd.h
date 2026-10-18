@@ -12,7 +12,7 @@ namespace LR
     {
     public:
         /// S1: the nspin=1 singlet LR kernel, 2*K^Hartree + 2*K^xc.
-        ///     The factor 2 on *both* terms is what makes it equal to S2_singlet. 
+        ///     The factor 2 on *both* terms is what makes it equal to S2_singlet.
         /// S1_gs: the nspin=1 counterpart of S2_gs, i.e. the *ground-state* Hxc kernel
         ///     K^Hartree + K^xc = S1 / 2. This is what `pot_hxc_gs` needs at nspin=1.
         /// S2_singlet: 2*K^Hartree + K^xc_{upup} + K^xc_{updown}

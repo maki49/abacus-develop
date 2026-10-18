@@ -33,7 +33,7 @@ namespace LR
 #ifdef __EXX
             std::weak_ptr<Exx_LRI<T>> exx_lri,
             const double& exx_alpha,
-#endif 
+#endif
             std::weak_ptr<PotLRBase> pot_hxc_gs,
             const K_Vectors& kv,
             const std::vector<Parallel_2D>& pX,
@@ -47,7 +47,7 @@ namespace LR
         {
             ModuleBase::TITLE("Z_vector_L", "Z_vector_L");
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
-            // Hessian (A+B) with GS XC kernel 
+            // Hessian (A+B) with GS XC kernel
             // 1. diag term in A
             this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0]);
             // 2. $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized.

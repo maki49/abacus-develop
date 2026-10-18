@@ -365,7 +365,9 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
     two_center_bundle_own_.to_LCAO_Orbitals(orb, inp.lcao_ecut, inp.lcao_dk, inp.lcao_dr, inp.lcao_rmax,
                                         inp.out_element_info, inp.cal_force);
     orb_cutoff_ = orb.cutoffs();
-    if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
+    const bool need_force_tables = this->inp_->cal_force || this->inp_->calculation == "relax";
+    const bool need_velocity_tables = LR_Util::tolower(this->inp_->abs_gauge) == "velocity";
+    if (need_force_tables || need_velocity_tables)
     {
         LR::setup_2center_table(this->two_center_bundle_own_, orb, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
     }

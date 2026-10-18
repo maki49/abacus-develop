@@ -41,7 +41,7 @@ void ModuleESolver::ESolver_LR<T, TR>::init_pot_groundstate(const Charge& chg_gs
         pot_register.push_back("hartree");
     }
     pot_register.push_back("xc");
-    
+
     // initialize the ground state potential
     this->pot_gs = LR_Util::make_unique<elecstate::Potential>(this->pw_rhod, this->pw_rho,
         &(*this->ucell_), &this->vloc().vloc, &this->sfac(), &this->solvent,

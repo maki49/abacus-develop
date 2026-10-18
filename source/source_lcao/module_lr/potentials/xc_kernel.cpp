@@ -150,7 +150,7 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
 
     // `hybrid_alpha` is neither $\alpha$ nor $\alpha+\beta$ of the range separation
     // $v_1(r)=[\alpha+\beta\,\mathrm{erfc}(\omega r)]/r$: `input_conv` sets it to
-    // $\max(|\alpha|,|\beta|)$, the factor it divided `coulomb_param` by. 
+    // $\max(|\alpha|,|\beta|)$, the factor it divided `coulomb_param` by.
     // A functional with both non-zero (CAM, LC, LRC) would get a meaningless
     // value from it -- and does not use it: `in_built_xc_func_ext_params` reads
     // $\alpha$ and $\beta$ for those straight from `exx_fock_alpha` / `exx_erfc_alpha`, and

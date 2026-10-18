@@ -63,6 +63,7 @@ namespace LR
                 message << "Z-vector CG did not converge after " << maxiter
                         << " iterations (residual=" << residual << ", tolerance=" << tol
                         << "). Excited-state forces are not valid.";
+                ModuleBase::timer::end("Z_vector", "solve_Z_CG");
                 throw std::runtime_error(message.str());
             }
         }

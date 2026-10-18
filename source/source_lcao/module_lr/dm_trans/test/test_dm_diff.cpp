@@ -165,7 +165,7 @@ TEST_F(DMDiffTest, DoubleParallel)
         for (int istate = 0;istate < nstate;++istate)
         {
             c.fix_k(0);
-            set_rand(c.get_pointer(), s.nks * pc.get_local_size()); // set c 
+            set_rand(c.get_pointer(), s.nks * pc.get_local_size()); // set c
 
             X.fix_b(istate);
             X_full.fix_b(istate);
@@ -231,7 +231,7 @@ TEST_F(DMDiffTest, ComplexParallel)
         for (int istate = 0;istate < nstate;++istate)
         {
             c.fix_k(0);
-            set_rand(c.get_pointer(), s.nks * pc.get_local_size()); // set c 
+            set_rand(c.get_pointer(), s.nks * pc.get_local_size()); // set c
 
             X.fix_b(istate);
             X_full.fix_b(istate);

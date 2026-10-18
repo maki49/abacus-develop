@@ -57,7 +57,7 @@ namespace LR
         const double* const eig_ks,     // gocc+gvirt
         const psi::Psi<T>& c,
         const Parallel_2D& px,
-        const Parallel_2D& pc, 
+        const Parallel_2D& pc,
         const Parallel_Orbitals& pmat)
     {
         const int& naos = pmat.get_global_row_size();
@@ -141,7 +141,7 @@ namespace LR
         //3. c * K_cvcx * c
         // $\sum_{kl}K_{kl}[D^X](c_{\kappa k}X_{\lambda l}+X_{\kappa k}c_{\lambda l})$.
         // `K_cvcx` already carries the factor 2 of $W^X_{ij}=2K_{ij}[D^X]$ (see `op_K_cvcx` above),
-        // `matsym` then supplies the 1/2 that turns $2\,X_\kappa K c_\lambda$ into the symmetric pair above. 
+        // `matsym` then supplies the 1/2 that turns $2\,X_\kappa K c_\lambda$ into the symmetric pair above.
 #ifdef __MPI
         std::vector<ct::Tensor> cKc = cal_dm_trans_pblas(K_cvcx, px, c, pc, naos, nocc, nvirt, pmat, (T)1.0);
         for (ct::Tensor& block : cKc)
@@ -203,7 +203,7 @@ namespace LR
         const bool test_force = inputs.test_force;
         const std::string xc_kernel = inputs.xc_kernel;
         const int nk = kv.get_nks() / nspin;
-        // 1. calculate W multiplier 
+        // 1. calculate W multiplier
         std::vector<Parallel_2D> p_occ_occ(nspin);
         for (int is = 0;is < nspin;++is)
         {

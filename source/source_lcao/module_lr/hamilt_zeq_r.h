@@ -34,7 +34,7 @@ namespace LR
 #ifdef __EXX
             std::weak_ptr<Exx_LRI<T>> exx_lri,
             const double& exx_alpha,
-#endif 
+#endif
             std::weak_ptr<PotHxcLR> pot,
             std::weak_ptr<PotHxcLR> pot_hxc_gs,
             const K_Vectors& kv,
@@ -109,7 +109,7 @@ namespace LR
                 assert(op_gxc != nullptr);
                 this->ops->add(op_gxc);
             }
-            // // test: op_ht only 
+            // // test: op_ht only
             // delete this->ops;
             // this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
             //     *this->DM_diff, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,

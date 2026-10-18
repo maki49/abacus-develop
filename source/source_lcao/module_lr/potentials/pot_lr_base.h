@@ -1,7 +1,16 @@
 #ifndef ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_LR_BASE_H
 #define ABACUS_SOURCE_LCAO_MODULE_LR_POTENTIALS_POT_LR_BASE_H
-#include "source_cell/unitcell.h"
-#include "source_basis/module_pw/pw_basis.h"
+#include <vector>
+
+class UnitCell;
+namespace ModulePW
+{
+class PW_Basis;
+}
+namespace ModuleBase
+{
+class matrix;
+}
 
 namespace LR
 {

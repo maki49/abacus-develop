@@ -193,7 +193,7 @@ std::vector<ModuleBase::matrix> evaluate_closed_shell_force(
             LR_Util::get_DMR_real_imag_part(diff_dm, diff_dm_real, 'R');
 
             inputs.ofs << "========== [TEST H_GS-(T) force (Z=0), non-EXX part] ===========" << std::endl;
-            ModuleBase::matrix force_hamiltgs_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(diff_dm_real, dm_gs);
+            ModuleBase::matrix force_hamiltgs_diff = lr_force.cal_force_hamilt_gs_dm_relaxed_diff(diff_dm_real, dm_gs, false, inputs.pot_hxc_gs.get());
             ModuleIO::print_force(inputs.ofs, inputs.ucell, "H_GS-T FORCE (without EXX) (eV/Angstrom)", force_hamiltgs_diff, false);
             inputs.ofs << "========== [\\TEST H_GS-(T) force (Z=0), non-EXX part] ===========" << std::endl;
         }
