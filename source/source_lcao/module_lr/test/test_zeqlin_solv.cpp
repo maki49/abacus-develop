@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "../zeq_solver.h"
 #include "source_base/parallel_cell.h"
+#include "source_base/parallel_reduce.h"
 #include "../zeqlin_solv.h"
 
 #include <algorithm>
