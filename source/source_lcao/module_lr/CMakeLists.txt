@@ -9,6 +9,7 @@ if(ENABLE_LCAO)
 
   list(APPEND objects
     utils/lr_util.cpp
+    utils/lr_sparse.cpp
     utils/lr_io.cpp
     utils/exciton_plotter.cpp
     ao_to_mo_transformer/ao_to_mo_parallel.cpp

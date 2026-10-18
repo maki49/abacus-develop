@@ -154,7 +154,13 @@ std::vector<ModuleBase::matrix> evaluate_closed_shell_force(
         // print edm_real (R)
         if (inputs.test_force)
         {
-            LR_Util::save_DMR(edm_real, "data-EDMR-sparse" + std::string(inputs.excited_relax ? "_state" + std::to_string(istate) : ""), inputs.pmat, inputs.out_dir, inputs.nbasis, inputs.my_rank);
+            std::string filename = "data-EDMR-sparse";
+            if (inputs.excited_relax)
+            {
+                filename += "_state" + std::to_string(istate);
+            }
+            const double threshold = 1e-10;
+            LR_Util::save_DMR(edm_real, filename, inputs.pmat, inputs.out_dir, threshold, inputs.ofs);
             // LR_Util::print_DMR(edm_real, "edm_real (R) of istate " + std::to_string(istate));
         }
 

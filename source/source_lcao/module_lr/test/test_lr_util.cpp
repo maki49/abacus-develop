@@ -6,6 +6,12 @@
 #include <complex>
 #include <map>
 #include <vector>
+#include <cstdio>
+#include <fstream>
+#include <sstream>
+#include <unistd.h>
+#include "source_base/parallel_common.h"
+#include "source_estate/module_pot/td_field_manager.h"
 
 namespace
 {
@@ -174,3 +180,99 @@ TEST_F(LRDMTest, LRExxAdapterIncludesBothSpinChannels)
     EXPECT_EQ(ds.size(), 2U);
 }
 #endif
+
+// The shared R-coordinate implementation also contains an unused TD cleanup path.
+int elecstate::TDFieldManager::gauge() const { return 0; }
+
+TEST_F(LRDMTest, SparseWriterKeepsSpinFilesAndDisjointRankKeys)
+{
+    const int rank = paraV->get_coord_row() * paraV->get_dim1() + paraV->get_coord_col();
+    const int process_count = paraV->get_dim0() * paraV->get_dim1();
+    const int active_ranks = std::max(1, process_count - 1);
+    GlobalV::DRANK = rank; // The common writer uses the existing diagonal-grid output rank.
+    hamilt::HContainer<double> structure(paraV);
+    const int zero_image = 99;
+    hamilt::AtomPair<double> zero(0, 0, zero_image, 0, 0, paraV);
+    structure.insert_pair(zero);
+    const int image = rank + 1;
+    if (rank < active_ranks)
+    {
+        hamilt::AtomPair<double> pair(0, 0, image, 0, 0, paraV);
+        structure.insert_pair(pair);
+    }
+    structure.allocate(nullptr, true);
+    const std::vector<ModuleBase::Vector3<double>> kvec(1);
+    module_dm::DensityMatrix<double, double> dm(paraV, 2, kvec, 1);
+    dm.init_dmr(structure);
+    ASSERT_EQ(dm.get_dmr_vec().size(), 2);
+    for (int spin = 0; spin < 2; ++spin)
+    {
+        if (rank < active_ranks)
+        {
+            auto& block = dm.get_dmr_vec()[spin]->find_pair(0, 0)->get_HR_values(image, 0, 0);
+            const int count = block.get_row_size() * block.get_col_size();
+            const double value = (spin + 1) * image;
+            std::fill(block.get_pointer(), block.get_pointer() + count, value);
+        }
+    }
+    std::string filename;
+    if (rank == 0)
+    {
+        filename = testing::TempDir() + "lr_sparse_spins_" + std::to_string(getpid());
+    }
+#ifdef __MPI
+    Parallel_Common::bcast_string(filename);
+#endif
+    const std::string out_dir;
+    const double threshold = 1e-10;
+    std::ostringstream running_log;
+    LR_Util::save_DMR(dm, filename, *paraV, out_dir, threshold, running_log);
+    if (rank == 0)
+    {
+        const int dimension = test_size * test_nw;
+        for (int spin = 0; spin < 2; ++spin)
+        {
+            const std::string spin_file = filename + "_s" + std::to_string(spin);
+            std::ifstream input(spin_file);
+            ASSERT_TRUE(input.is_open());
+            std::string line;
+            std::getline(input, line);
+            EXPECT_EQ(line, "STEP: 0");
+            std::getline(input, line);
+            EXPECT_EQ(line, "Matrix Dimension of EDM(R): " + std::to_string(dimension));
+            std::getline(input, line);
+            EXPECT_EQ(line, "Matrix number of EDM(R): " + std::to_string(active_ranks));
+            for (int expected_image = 1; expected_image <= active_ranks; ++expected_image)
+            {
+                int rx = 0;
+                int ry = 0;
+                int rz = 0;
+                int count = 0;
+                input >> rx >> ry >> rz >> count;
+                ASSERT_FALSE(input.fail());
+                EXPECT_EQ(rx, expected_image);
+                EXPECT_EQ(ry, 0);
+                EXPECT_EQ(rz, 0);
+                ASSERT_GT(count, 0);
+                for (int i = 0; i < count; ++i)
+                {
+                    double value = 0.0;
+                    input >> value;
+                    const double expected_value = (spin + 1) * expected_image;
+                    EXPECT_DOUBLE_EQ(value, expected_value);
+                }
+                int index = 0;
+                for (int i = 0; i < count + dimension + 1; ++i)
+                {
+                    input >> index;
+                }
+                ASSERT_FALSE(input.fail());
+            }
+            input >> std::ws;
+            EXPECT_TRUE(input.eof());
+            input.close();
+            std::remove(spin_file.c_str());
+            EXPECT_NE(running_log.str().find(spin_file), std::string::npos);
+        }
+    }
+}

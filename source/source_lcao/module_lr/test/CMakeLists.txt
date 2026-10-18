@@ -102,7 +102,10 @@ AddTest(
 
 # LR/DM adapter regressions belong to LR; estate must not depend on this module.
 set(lr_dm_test_sources
-  test_lr_util.cpp ../utils/lr_util.cpp
+  test_lr_util.cpp ../utils/lr_util.cpp ../utils/lr_sparse.cpp
+  ../../spar_hsr.cpp
+  ../../../source_io/module_hs/hs_sparse_io.cpp
+  ../../../source_io/module_hs/lat_r_csr.cpp
   ../../../source_estate/module_dm/density_matrix.cpp
   ../../../source_estate/module_dm/dmr_gamma.cpp
   ../../../source_estate/module_dm/dmr_init.cpp
@@ -130,3 +133,11 @@ AddTest(
   LIBS parameter base device symmetry container
   SOURCES ${lr_dm_test_sources}
 )
+
+if(ENABLE_MPI)
+  add_test(NAME MODULE_LR_sparse_rank_keys
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4
+      $<TARGET_FILE:MODULE_LR_dm_regressions>
+      --gtest_filter=LRDMTest.SparseWriterKeepsSpinFilesAndDisjointRankKeys)
+  set_tests_properties(MODULE_LR_sparse_rank_keys PROPERTIES PROCESSORS 4 TIMEOUT 60)
+endif()

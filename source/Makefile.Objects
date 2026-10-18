@@ -1076,6 +1076,7 @@ OBJS_TENSOR=tensor.o\
 
     OBJS_LR=lr_util.o\
     utils/lr_io.o\
+    utils/lr_sparse.o\
     utils/exciton_plotter.o\
     ao_to_mo_parallel.o\
     ao_to_mo_serial.o\
