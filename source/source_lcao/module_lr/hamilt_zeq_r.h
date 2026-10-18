@@ -58,7 +58,7 @@ namespace LR
             // kernel: excited state
             this->ops = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                { 0 }, T(-2.0), ATYPE::CXC);
+                { 0 }, T(-2.0), ATYPE::CXC, hamilt::calculation_type::lr_dmtrans_hxc);
 #ifdef __EXX
             if (exx_kernel_list().count(xc_kernel))
             {
@@ -239,8 +239,11 @@ namespace LR
             const Parallel_2D& pc,
             const Parallel_Orbitals& pmat,
             const std::string& ks_solver,
-            const std::string& dft_functional)
-            : ZeqULR<T>(nocc, nvirt, pX, kv.get_nks() / nspin),
+            const std::string& dft_functional,
+            const int nk,
+            const int local_dimension,
+            const int global_dimension)
+            : ZeqULR<T>(nocc, nvirt, pX, nk, local_dimension, global_dimension),
             naos_(naos), pc_(pc), pmat_(pmat), psi_ks_(psi_ks)
         {
             ModuleBase::TITLE("Z_vector_UR", "Z_vector_UR");
@@ -255,7 +258,7 @@ namespace LR
                 {
                     return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                         *this->DM_trans, pot, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                        { sl, sr }, T(-2.0), ATYPE::CXC);
+                        { sl, sr }, T(-2.0), ATYPE::CXC, hamilt::calculation_type::lr_dmtrans_hxc);
                 };
             this->ops[0] = newCXC(0, 0);
             this->ops[1] = newCXC(0, 1);

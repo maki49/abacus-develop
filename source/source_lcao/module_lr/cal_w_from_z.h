@@ -108,12 +108,12 @@ namespace LR
         // Note that K_Hxc(singlet) = 2* pot_hxc_gs, that's why there's factor 2 here.
         OperatorLRHxc<T> op_ht(nspin, naos, nocc, nvirt, psi_ks,
             DM_diff_relaxed, pot_hxc_gs, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
-            { 0 }, T(2.0), ATYPE::CC_oo);
+            { 0 }, T(2.0), ATYPE::CC_oo, hamilt::calculation_type::lr_dmtrans_hxc);
 #ifdef __EXX
         // cal_W_from_Z only runs on the force-calculation path, so cal_force is always true here.
         OperatorLREXX<T> op_ht_exx(nspin, naos, nocc[0], nvirt[0], ucell, psi_ks,
             DM_diff_relaxed, exx_lri, kv, p_occ_occ[0], pc, pmat,
-            /*cal_force=*/true, exx_alpha, ATYPE_EXX::CC_oo);
+            /*cal_force=*/true, exx_alpha, ATYPE_EXX::CC_oo, {}, hamilt::calculation_type::lr_dmtrans_exx);
 #endif
         // 2. $2\sum_{jb,kc} g^{xc}_{ia, jb, kc}X_{jb}X_{kc}$
         // use pointer here for polymorphism
@@ -133,7 +133,7 @@ namespace LR
             // Factor 1.0 according to the $W^c$ formula (`pot_grad` carries $2*g^{xc}$: uu+ud or uu-ud).
             // NOTE this factor is NOT shared with the Z-vector RHS `op_gxc` in `hamilt_zeq_right.h`:
             // that one is a different object and its original -2.0 is correct, as the formula and H2-DZP scan confirms.
-            { 0 }, T(1.0), ATYPE::CC_oo);
+            { 0 }, T(1.0), ATYPE::CC_oo, hamilt::calculation_type::lr_dmtrans_hxc);
 
         std::vector<ct::Tensor> dm_trans_2d;
         std::vector<ct::Tensor> dm_diff_2d;
@@ -270,7 +270,7 @@ namespace LR
             {
                 op_ht[(sl << 1) + sr] = LR_Util::make_unique<OperatorLRHxc<T>>(nspin, naos, nocc, nvirt, psi_ks,
                     DM_diff_relaxed, pot_hxc_gs, ucell, orb_cutoff, gd, kv, p_occ_occ, pc, pmat,
-                    std::vector<int>({ sl, sr }), T(1.0), ATYPE::CC_oo);
+                    std::vector<int>({ sl, sr }), T(1.0), ATYPE::CC_oo, hamilt::calculation_type::lr_dmtrans_hxc);
             }
         }
 #ifdef __EXX
@@ -279,6 +279,7 @@ namespace LR
         {
             psi_ks_spin.push_back(LR_Util::get_psi_spin(psi_ks, is, nk));
         }
+        const std::vector<int> no_aims_probe;
         std::vector<std::unique_ptr<OperatorLREXX<T>>> op_ht_exx(2);
         const bool with_exx = LR::gs_is_hybrid(dft_functional);
         if (with_exx)
@@ -287,7 +288,7 @@ namespace LR
             {
                 op_ht_exx[is] = LR_Util::make_unique<OperatorLREXX<T>>(nspin, naos, nocc[is], nvirt[is],
                     ucell, psi_ks_spin[is], DM_diff_relaxed, exx_lri, kv, p_occ_occ[is], pc, pmat,
-                    /*cal_force=*/true, exx_alpha, ATYPE_EXX::CC_oo);
+                    /*cal_force=*/true, exx_alpha, ATYPE_EXX::CC_oo, no_aims_probe, hamilt::calculation_type::lr_dmtrans_exx);
             }
         }
 #endif

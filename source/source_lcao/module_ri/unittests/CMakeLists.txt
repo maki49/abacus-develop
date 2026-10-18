@@ -3,9 +3,9 @@ abacus_disable_feature_definitions(__CUDA)
 abacus_disable_feature_definitions(__ROCM)
 if(ENABLE_LCAO)
   AddTest(
-    TARGET MODULE_RI_exx_lr_ws
+    TARGET MODULE_RI_exx_workspace
     LIBS base parameter device ${math_libs}
-    SOURCES test_exx_lr_ws.cpp ../exx_workspace.cpp ../../../source_basis/module_ao/orb_atomic_lm.cpp
+    SOURCES test_exx_workspace.cpp ../exx_workspace.cpp ../../../source_basis/module_ao/orb_atomic_lm.cpp
   )
 endif()
 AddTest(

@@ -2550,3 +2550,59 @@ TEST_F(InputTest, OutStru)
         }
     }
 }
+
+
+TEST_F(InputTest, LRExternalKernelSupportsSpectraOnly)
+{
+    ModuleIO::ReadInput readinput(0);
+    const auto it = find_label("lr_init_xc_kernel", readinput.input_lists);
+    for (const auto& solver : {"lr", "ks-lr"})
+    {
+        for (const auto& mode : {"file", "from_charge_file"})
+        {
+            Parameter param;
+            auto& input = TestParameters::input(param);
+            input.esolver_type = solver;
+            input.lr_init_xc_kernel = {mode, "external.cube"};
+            input.calculation = "scf";
+            input.cal_force = false;
+            it->second.check_value(it->second, param);
+            input.cal_force = true;
+            EXPECT_EXIT(it->second.check_value(it->second, param), testing::ExitedWithCode(1), "");
+            input.cal_force = false;
+            input.calculation = "relax";
+            EXPECT_EXIT(it->second.check_value(it->second, param), testing::ExitedWithCode(1), "");
+            input.lr_init_xc_kernel = {"default"};
+            it->second.check_value(it->second, param);
+            input.esolver_type = "ksdft";
+            input.lr_init_xc_kernel = {mode, "external.cube"};
+            it->second.check_value(it->second, param);
+        }
+    }
+}
+
+TEST_F(InputTest, LRFixedFieldRejectsForcesAndRelaxation)
+{
+    ModuleIO::ReadInput readinput(0);
+    const auto it = find_label("efield_flag", readinput.input_lists);
+    for (const auto& solver : {"lr", "ks-lr"})
+    {
+        Parameter param;
+        auto& input = TestParameters::input(param);
+        input.esolver_type = solver;
+        input.efield_flag = true;
+        input.calculation = "scf";
+        input.cal_force = false;
+        it->second.check_value(it->second, param);
+        input.cal_force = true;
+        EXPECT_EXIT(it->second.check_value(it->second, param), testing::ExitedWithCode(1), "");
+        input.cal_force = false;
+        input.calculation = "relax";
+        EXPECT_EXIT(it->second.check_value(it->second, param), testing::ExitedWithCode(1), "");
+        input.efield_flag = false;
+        it->second.check_value(it->second, param);
+        input.esolver_type = "ksdft";
+        input.efield_flag = true;
+        it->second.check_value(it->second, param);
+    }
+}

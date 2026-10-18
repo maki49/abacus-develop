@@ -35,6 +35,9 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
         /// CXC_o: MO = C_o^* X^* AO C_o
         enum class MO_TO_AO_TYPE { CC_vo, CC_oo, CXC, CXC_o };
 
+        // alpha is the exchange weight; dm_pq_in selects the MO contraction.
+        // aims_nbasis supplies benchmark AO probe indices, one per atom type; empty disables probing.
+        // cal_type_in identifies this node in the Hamiltonian operator chain.
         OperatorLREXX(const int& nspin,
             const int& naos,
             const int& nocc,
@@ -49,10 +52,10 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
             const Parallel_2D& pc_in,
             const Parallel_Orbitals& pmat_in,
             const bool cal_force,
-            const double& alpha = 1.0,
-            const MO_TO_AO_TYPE dm_pq_in = MO_TO_AO_TYPE::CC_vo,
-            const std::vector<int>& aims_nbasis = {},
-            const hamilt::calculation_type cal_type_in = hamilt::calculation_type::lr_dmtrans_exx)
+            const double& alpha,
+            const MO_TO_AO_TYPE dm_pq_in,
+            const std::vector<int>& aims_nbasis,
+            const hamilt::calculation_type cal_type_in)
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin),
             psi_ks(psi_ks_in), DM_trans(DM_trans_in), exx_lri(exx_lri_in), kv(kv_in),
             pX(pX_in), pc(pc_in), pmat(pmat_in), ucell(ucell_in), alpha(alpha), dm_pq_(dm_pq_in),

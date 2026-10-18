@@ -47,18 +47,20 @@ namespace LR
 
         if (openshell)
         {
+            // Concatenated spin-channel dimensions are prepared before operator construction.
+            const int global_dimension = nk * (nocc[0] * nvirt[0] + nocc[1] * nvirt[1]);
             Z_vector_UR<T> ops_R(xc_kernel, nspin, naos, nocc, nvirt,
                 ucell, orb_cutoff, gd, psi_ks, eig_ks,
 #ifdef __EXX
                 exx_lri, exx_alpha,
 #endif
-                pot, pot_hxc_gs, kv, px, pc, pmat, ks_solver, dft_functional);
+                pot, pot_hxc_gs, kv, px, pc, pmat, ks_solver, dft_functional, nk, nloc_per_band, global_dimension);
             Z_vector_UL<T> ops_L(xc_kernel, nspin, naos, nocc, nvirt,
                 ucell, orb_cutoff, gd, psi_ks, eig_ks,
 #ifdef __EXX
                 exx_lri, exx_alpha,
 #endif
-                pot_hxc_gs, kv, px, pc, pmat, dft_functional);
+                pot_hxc_gs, kv, px, pc, pmat, dft_functional, nk, nloc_per_band, global_dimension);
             build_and_solve_zeq(ops_R, ops_L, /*nspin_x=*/2, X, R, Z, nloc_per_band, nstates, zvec_solver, test_force);
         }
         else

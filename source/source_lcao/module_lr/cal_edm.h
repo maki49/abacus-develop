@@ -223,12 +223,12 @@ namespace LR
         // $2\sum_i X_{ai} K_{ij}[D_X]$ (D_X is symmetrized)
         OperatorLRHxc<T> op_K_cvcx(nspin, naos, nocc, nvirt, c,
             dm_trans, pot, ucell, orb_cutoff, gd, kv, px, pc, pmat,
-            { 0 }, T(2.0), OperatorLRHxc<T>::MO_TO_AO_TYPE::CXC_o);
+            { 0 }, T(2.0), OperatorLRHxc<T>::MO_TO_AO_TYPE::CXC_o, hamilt::calculation_type::lr_dmtrans_hxc);
 #ifdef __EXX
         // this EDM term only runs on the force-calculation path, so cal_force is always true here.
         OperatorLREXX<T> op_K_exx(nspin, naos, nocc[0], nvirt[0], ucell, c,
             dm_trans, exx_lri, kv, px[0], pc, pmat,
-            /*cal_force=*/true, 2.0 * exx_alpha, OperatorLREXX<T>::MO_TO_AO_TYPE::CXC_o);
+            /*cal_force=*/true, 2.0 * exx_alpha, OperatorLREXX<T>::MO_TO_AO_TYPE::CXC_o, {}, hamilt::calculation_type::lr_dmtrans_exx);
 #endif
         const int ld_vo = nk * px[0].get_local_size();
         std::vector<T> K_cvcx(ld_vo, 0.0);
@@ -316,7 +316,7 @@ namespace LR
             {
                 op_K[(sl << 1) + sr] = LR_Util::make_unique<OperatorLRHxc<T>>(nspin, naos, nocc, nvirt, psi_ks,
                     DM_trans, pot, ucell, orb_cutoff, gd, kv, px, pc, pmat,
-                    std::vector<int>({ sl, sr }), T(2.0), ATYPE::CXC_o);
+                    std::vector<int>({ sl, sr }), T(2.0), ATYPE::CXC_o, hamilt::calculation_type::lr_dmtrans_hxc);
             }
         }
         std::vector<psi::Psi<T>> psi_ks_spin;
@@ -325,6 +325,7 @@ namespace LR
             psi_ks_spin.push_back(LR_Util::get_psi_spin(psi_ks, is, nk));
         }
 #ifdef __EXX
+        const std::vector<int> no_aims_probe;
         std::vector<std::unique_ptr<OperatorLREXX<T>>> op_K_exx(2);
         const bool with_exx_lr = LR::exx_kernel_list().count(xc_kernel) > 0;
         if (with_exx_lr)
@@ -333,7 +334,7 @@ namespace LR
             {
                 op_K_exx[is] = LR_Util::make_unique<OperatorLREXX<T>>(nspin, naos, nocc[is], nvirt[is],
                     ucell, psi_ks_spin[is], DM_trans, exx_lri, kv, px[is], pc, pmat,
-                    /*cal_force=*/true, 2.0 * exx_alpha, ATYPE_EXX::CXC_o);
+                    /*cal_force=*/true, 2.0 * exx_alpha, ATYPE_EXX::CXC_o, no_aims_probe, hamilt::calculation_type::lr_dmtrans_exx);
             }
         }
 #endif

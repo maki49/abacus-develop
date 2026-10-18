@@ -23,6 +23,8 @@ namespace LR
         /// CXC_o: MO = C_o^* X^* AO C_o
         enum class MO_TO_AO_TYPE { CC_vo, CC_oo, CXC, CXC_o };
 
+        // factor_in scales the kernel action; dm_pq_in selects the MO contraction.
+        // cal_type_in identifies this node in the Hamiltonian operator chain.
         //when nspin=2, nks is 2 times of real number of k-points. else (nspin=1 or 4), nks is the real number of k-points
         OperatorLRHxc(const int& nspin,
             const int& naos,
@@ -38,10 +40,10 @@ namespace LR
             const std::vector<Parallel_2D>& pX_in,
             const Parallel_2D& pc_in,
             const Parallel_Orbitals& pmat_in,
-            const std::vector<int>& ispin_ks = { 0 },
-            const T factor_in = (T)1.0,
-            const MO_TO_AO_TYPE dm_pq_in = MO_TO_AO_TYPE::CC_vo,
-            const hamilt::calculation_type cal_type_in = hamilt::calculation_type::lr_dmtrans_hxc)
+            const std::vector<int>& ispin_ks,
+            const T factor_in,
+            const MO_TO_AO_TYPE dm_pq_in,
+            const hamilt::calculation_type cal_type_in)
             : nspin(nspin), naos(naos), nocc(nocc), nvirt(nvirt), nk(kv_in.get_nks() / nspin), psi_ks(psi_ks_in),
             DM_trans(DM_trans_in), pot(pot_in), ucell(ucell_in), orb_cutoff_(orb_cutoff), gd(gd_in),
             kv(kv_in), pX(pX_in), pc(pc_in), pmat(pmat_in), ispin_ks(ispin_ks),

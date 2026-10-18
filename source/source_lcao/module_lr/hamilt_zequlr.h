@@ -30,13 +30,16 @@ namespace LR
     class ZeqULR
     {
     public:
+        // Dimensions include all k points and both concatenated spin channels.
+        // The caller prepares them; construction only binds immutable layout data.
         ZeqULR(const std::vector<int>& nocc_in,
             const std::vector<int>& nvirt_in,
             const std::vector<Parallel_2D>& pX_in,
-            const int nk_in)
+            const int nk_in,
+            const int local_dimension,
+            const int global_dimension)
             : nocc(nocc_in), nvirt(nvirt_in), pX(pX_in), nk(nk_in),
-            ldim(nk_in* (pX_in[0].get_local_size() + pX_in[1].get_local_size())),
-            gdim(nk_in* (nocc_in[0] * nvirt_in[0] + nocc_in[1] * nvirt_in[1])),
+            ldim(local_dimension), gdim(global_dimension),
             ops(4, nullptr)
         {
         }

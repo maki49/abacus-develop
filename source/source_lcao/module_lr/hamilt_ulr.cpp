@@ -49,7 +49,7 @@ HamiltULR<T>::HamiltULR(const std::string& xc_kernel,
     this->ops[3] = new OperatorLRDiag<T>(eig_ks.c + nk * (nocc[0] + nvirt[0]), pX_in[1], nk, nocc[1], nvirt[1], /*add_on=*/true);
 
     auto newHxc = [this, &nspin, &naos, &nocc, &nvirt, &psi_ks_in, &pot_in, &ucell_in, &orb_cutoff, &gd_in, &kv_in, &pX_in, &pc_in, &pmat_in](const int& sl, const int& sr) { return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
-        *this->DM_trans, pot_in[sl], ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in, { sl,sr }); };
+        *this->DM_trans, pot_in[sl], ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in, { sl,sr }, T(1.0), OperatorLRHxc<T>::MO_TO_AO_TYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_hxc); };
     this->ops[0]->add(newHxc(0, 0));
     this->ops[1] = newHxc(0, 1);
     this->ops[2] = newHxc(1, 0);
@@ -66,7 +66,7 @@ HamiltULR<T>::HamiltULR(const std::string& xc_kernel,
             this->ops[(is << 1) + is]->add(new OperatorLREXX<T>(nspin, naos, nocc[is], nvirt[is], ucell_in, psi_ks_spin[is],
                 *this->DM_trans, exx_lri_in, kv_in, pX_in[is], pc_in, pmat_in,
                 /*cal_force=*/false,
-                (xc_kernel == "hf" ? 1.0 : exx_alpha)));
+                (xc_kernel == "hf" ? 1.0 : exx_alpha), OperatorLREXX<T>::MO_TO_AO_TYPE::CC_vo, {}, hamilt::calculation_type::lr_dmtrans_exx));
         }
     }
 #endif

@@ -1084,7 +1084,7 @@ void ReadInput::item_lr_tddft()
         item.description = R"(The method to initalize the xc kernel.
 * "default": Calculate xc kernel from the ground-state charge density.
 * "file": Read the xc kernel on grid from the provided files. The following words should be the paths of ".cube" files, where the first 1 (nspin==1) or 3 (nspin==2, namely spin-aa, spin-ab and spin-bb) will be read in. The parameter xc_kernel will be invalid. Now only LDA-type kernel is supported as the potential will be calculated by directly multiplying the transition density.
-[NOTE] The "file" mode supports spectra only: excited-state forces and relaxation require density and geometry derivatives that the supplied kernel files do not define.
+[NOTE] The "file" and "from_charge_file" modes support spectra only. Excited-state forces and relaxation require the consistent ground-state density and its response; externally supplied kernels or frozen densities do not provide these derivatives.
 * "from_charge_file": Calculate fxc from the charge density read from the provided files. The following words should be the paths of ".cube" files, where the first nspin files will be read in.)";
         item.default_value = "\"default\"";
         item.unit = "";
@@ -1100,11 +1100,13 @@ void ReadInput::item_lr_tddft()
             const auto& input = para.input;
             const bool lr = input.esolver_type == "lr" || input.esolver_type == "ks-lr";
             const bool forces = input.cal_force || input.calculation == "relax";
-            if (lr && forces && !input.lr_init_xc_kernel.empty() && input.lr_init_xc_kernel[0] == "file")
+            const bool external_kernel = !input.lr_init_xc_kernel.empty()
+                && (input.lr_init_xc_kernel[0] == "file" || input.lr_init_xc_kernel[0] == "from_charge_file");
+            if (lr && forces && external_kernel)
             {
-                ModuleBase::WARNING_QUIT(
-                    "ReadInput",
-                    "lr_init_xc_kernel=file supports spectra only; excited-state forces require kernel derivatives");
+                const std::string message = "lr_init_xc_kernel=" + input.lr_init_xc_kernel[0]
+                    + " supports spectra only; excited-state forces and relaxation are not supported";
+                ModuleBase::WARNING_QUIT("ReadInput", message);
             }
         };
         sync_stringvec(input.lr_init_xc_kernel, para.input.lr_init_xc_kernel.size(), "default");

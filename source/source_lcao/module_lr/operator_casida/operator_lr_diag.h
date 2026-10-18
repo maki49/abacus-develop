@@ -13,7 +13,7 @@ namespace LR
     {
     public:
         OperatorLRDiag(const double* eig_ks, const Parallel_2D& pX_in, const int& nk_in, const int& nocc_in, const int& nvirt_in,
-            const bool add_on = false)
+            const bool add_on)
             : pX(pX_in), nk(nk_in), nocc(nocc_in), nvirt(nvirt_in), add_on_(add_on)
         {   // calculate the difference of eigenvalues
             ModuleBase::TITLE("OperatorLRDiag", "OperatorLRDiag");

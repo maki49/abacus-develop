@@ -49,14 +49,14 @@ namespace LR
             LR_Util::initialize_DMR(*this->DM_trans, pmat, ucell, gd, orb_cutoff);
             // Hessian (A+B) with GS XC kernel
             // 1. diag term in A
-            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0]);
+            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], kv.get_nks() / nspin, nocc[0], nvirt[0], false);
             // 2. $H_{ia}[D^Z]$, equals to $2K_{ab}[D^Z]$ when $D^Z$ is symmetrized.
             // Factor 4 (not 2): the singlet kernel is $K^S_\text{Hxc}=2$`pot_hxc_gs` (not doubled),
             // while `pot` is the already-doubled singlet potential, so $H^S=2K^S$ here needs 4.
             // The EXX line below is already $2\alpha$ and is consistent.
             hamilt::Operator<T>* op_hz = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                 *this->DM_trans, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                { 0 }, 4.0, ATYPE::CC_vo);
+                { 0 }, 4.0, ATYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_hxc);
             this->ops->add(op_hz);
 #ifdef __EXX
             if (gs_is_hybrid(dft_functional))
@@ -66,7 +66,7 @@ namespace LR
                     *this->DM_trans, exx_lri, kv, pX[0], pc, pmat,
                     /*cal_force=*/true,
                     2.0 * exx_alpha, //alpha; H=2K when D is symmetrized
-                    ATYPE_EXX::CC_vo);
+                    ATYPE_EXX::CC_vo, {}, hamilt::calculation_type::lr_dmtrans_exx);
                 this->ops->add(op_hz_exx);
             }
 #endif
@@ -130,8 +130,11 @@ namespace LR
             const std::vector<Parallel_2D>& pX,
             const Parallel_2D& pc,
             const Parallel_Orbitals& pmat,
-            const std::string& dft_functional)
-            : ZeqULR<T>(nocc, nvirt, pX, kv.get_nks() / nspin),
+            const std::string& dft_functional,
+            const int nk,
+            const int local_dimension,
+            const int global_dimension)
+            : ZeqULR<T>(nocc, nvirt, pX, nk, local_dimension, global_dimension),
             naos_(naos), pc_(pc), pmat_(pmat), psi_ks_(psi_ks)
         {
             ModuleBase::TITLE("Z_vector_UL", "Z_vector_UL");
@@ -148,7 +151,7 @@ namespace LR
                 {
                     return new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks,
                         *this->DM_trans, pot_hxc_gs, ucell, orb_cutoff, gd, kv, pX, pc, pmat,
-                        { sl, sr }, T(2.0), ATYPE::CC_vo);
+                        { sl, sr }, T(2.0), ATYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_hxc);
                 };
             this->ops[0]->add(newHxc(0, 0));
             this->ops[1] = newHxc(0, 1);
@@ -169,7 +172,7 @@ namespace LR
                 {
                     this->ops[(is << 1) + is]->add(new OperatorLREXX<T>(nspin, naos, nocc[is], nvirt[is],
                         ucell, this->psi_ks_spin_[is], *this->DM_trans, exx_lri, kv, pX[is], pc, pmat,
-                        /*cal_force=*/true, 2.0 * exx_alpha, ATYPE_EXX::CC_vo));
+                        /*cal_force=*/true, 2.0 * exx_alpha, ATYPE_EXX::CC_vo, {}, hamilt::calculation_type::lr_dmtrans_exx));
                 }
             }
 #endif

@@ -741,7 +741,7 @@ TEST_F(InputParaTest, ExternalLRKernelRejectsForces)
     set(charge, "esolver_type", {"ks-lr"});
     set(charge, "calculation", {"relax"});
     set(charge, "lr_init_xc_kernel", {"from_charge_file", "rho.cube"});
-    item.check_value(item, charge);
+    EXPECT_EXIT(item.check_value(item, charge), testing::ExitedWithCode(1), "");
 }
 
 TEST_F(InputParaTest, RemovedElpaZSolverIsRejected)

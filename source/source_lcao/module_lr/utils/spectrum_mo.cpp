@@ -28,6 +28,7 @@ std::vector<std::complex<double>> cal_velocity_mo(const UnitCell& ucell,
                                                 const std::vector<int> nvirt)
 {
     ModuleBase::TITLE("LR_Util", "cal_velocity_mo");
+    const std::complex<double> unit_factor(1.0);
     ModuleBase::timer::start("LR_Util", "cal_velocity_mo");
     std::cout<<"Calculating velocity matrix in KS presentation..."<<std::endl;
     // get_velocity_matrix_R(ucell, gd_, pmat, two_center_bundle_);
@@ -90,12 +91,12 @@ std::vector<std::complex<double>> cal_velocity_mo(const UnitCell& ucell,
         LR::ao_to_mo_pblas(vk, pmat, c_psi_ks, pc, nbasis,
                         nocc[0], nvirt[0], pmo, v_mo.data(),
                         false, // add_on
-                        LR_Util::MO_TYPE::ALL);
+                        LR_Util::MO_TYPE::ALL, unit_factor);
 #else
         LR::ao_to_mo_blas(vk, c_psi_ks,
                         nocc[0], nvirt[0], v_mo.data(),
                         false , //add_on
-                        LR_Util::MO_TYPE::ALL);
+                        LR_Util::MO_TYPE::ALL, unit_factor);
 #endif
         // gather local vk to global velocity_mo
         for (int is = 0; is < nspin_tmp; ++is)

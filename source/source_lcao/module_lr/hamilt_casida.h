@@ -52,7 +52,7 @@ namespace LR
             // this->DM_trans->init_dmr(&gd_in, &ucell_in); // too large due to not restricted by orb_cutoff
 
             // 1.add the diag operator  (the first one)
-            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], nk, nocc[0], nvirt[0]);
+            this->ops = new OperatorLRDiag<T>(eig_ks.c, pX[0], nk, nocc[0], nvirt[0], false);
             // 2.add Hxc operator
 #ifdef __EXX
             using TAC = std::pair<int, std::array<int, 3>>;
@@ -110,7 +110,7 @@ namespace LR
 #endif
             {
                 hamilt::Operator<T>* lr_hxc = new OperatorLRHxc<T>(nspin, naos, nocc, nvirt, psi_ks_in,
-                    *this->DM_trans, pot_in, ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in);
+                    *this->DM_trans, pot_in, ucell_in, orb_cutoff, gd_in, kv_in, pX_in, pc_in, pmat_in, {0}, T(1.0), OperatorLRHxc<T>::MO_TO_AO_TYPE::CC_vo, hamilt::calculation_type::lr_dmtrans_hxc);
                 this->ops->add(lr_hxc);
             }
 #ifdef __EXX
@@ -129,7 +129,7 @@ namespace LR
                     /*cal_force=*/false,
                     (xc_kernel == "hf" ? 1.0 : exx_alpha), //alpha
                     OperatorLREXX<T>::MO_TO_AO_TYPE::CC_vo,
-                    aims_nbasis);
+                    aims_nbasis, hamilt::calculation_type::lr_dmtrans_exx);
                 this->ops->add(lr_exx);
             }
 #endif
