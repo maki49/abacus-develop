@@ -72,17 +72,18 @@ void Exx_NAO<TK>::before_runner(
                 this->exc->init(MPI_COMM_WORLD, ucell, kv, orb);
                 this->exc->exx_before_all_runners(kv, ucell, pv);
             }
-            // Only the combined KS-LR workflow reuses C/V long enough to justify
-            // their device footprint during the ground-state SCF.
-            if (inp.esolver_type == "ks-lr" && inp.device == "gpu")
+            // Ground-state GPU calculations use transient C/V buffers; only
+            // combined KS-LR workflows keep C/V resident on the device.
+            if (inp.device == "gpu")
             {
+                const bool resident_cv = inp.esolver_type == "ks-lr";
                 if (exx_info.info_ri.real_number)
                 {
-                    this->exd->exx_ptr->configure_execution(true, true, log);
+                    this->exd->exx_ptr->configure_execution(true, resident_cv, log);
                 }
                 else
                 {
-                    this->exc->exx_ptr->configure_execution(true, true, log);
+                    this->exc->exx_ptr->configure_execution(true, resident_cv, log);
                 }
             }
         }
