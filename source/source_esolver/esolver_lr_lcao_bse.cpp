@@ -10,6 +10,7 @@
 #include "source_lcao/module_lr/lr_spectrum.h"
 #include "source_lcao/module_lr/utils/exciton_plotter.h"
 #include "source_lcao/module_lr/utils/lr_io.h"
+#include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "source_lcao/module_lr/utils/lr_util.hpp"
 
 namespace ModuleESolver
@@ -45,9 +46,11 @@ void ESolver_BSE<T, TR>::before_all_runners(BaseCell& basecell, const Input_para
     this->two_center_bundle_own_.to_LCAO_Orbitals(this->orb_, inp.lcao_ecut, inp.lcao_dk, inp.lcao_dr, inp.lcao_rmax,
                                               inp.out_element_info, inp.cal_force);
     this->orb_cutoff_ = this->orb_.cutoffs();
+    // Neighbor search needs nonlocal-projector metadata even without optical output.
+    LR::setup_nonlocal_info(this->orb_, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
     if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
     {
-        LR::setup_2center_table(this->two_center_bundle_own_, this->orb_, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
+        LR::setup_2center_table(this->two_center_bundle_own_, ucell, *this->inp_);
     }
 
     this->set_dimension();
@@ -476,67 +479,92 @@ void ESolver_BSE<T, TR>::after_all_runners(BaseCell& basecell)
     }
     if (this->inp_->lr_solver == "spectrum" || this->inp_->lr_solver == "elpa")
     {
-        std::cout << "Calculating BSE optical absorption spectrum." << std::endl;
-        if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity" )
+        const std::string gauge = LR_Util::tolower(this->inp_->abs_gauge);
+        if (gauge == "none")
         {
-            const int nspin_tmp = this->inp_->nspin == 2 ? 2 : 1;
-            this->velocity_mo = LR_Util::cal_velocity_mo(*this->ucell_, this->gd(), this->tcb(),
-                                                        this->paraMat_, this->paraC_, this->kv, *this->psi_ks, 
-                                                        this->nk, nspin_tmp, this->nbasis, this->nocc, this->nvirt);
-        }
-        if (this->inp_->bse_tda == "both" || this->inp_->bse_tda == "tda")
-        {
-            for (int is = 0; is < this->X.size(); ++is)
+            if (this->inp_->bse_tda == "both" || this->inp_->bse_tda == "tda")
             {
-                LR::LR_Spectrum<T> spectrum(this->nspin, this->nbasis, this->nocc, this->nvirt, *this->pw_rho, *this->psi_ks,
-                                            *this->ucell_, this->kv, this->gd(), this->orb_cutoff_, this->tcb(),
-                                            this->paraX_, this->paraC_, this->paraMat_,
-                                            &this->tda_ene[is * this->nstates], this->eig_ks.c,
-                                            this->X[is].template data<T>(), this->nstates, false/*openshell*/,
-                                            LR_Util::tolower(this->inp_->abs_gauge), GlobalV::MY_RANK, output_dir);
-                if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
+                for (int is = 0; is < this->X.size(); ++is)
                 {
-                    spectrum.set_vmo(this->velocity_mo.data());
+                    const double* const energies = &this->tda_ene[is * this->nstates];
+                    const std::string channel = this->inp_->bse_spin_types[is] + "_tda";
+                    LR_Util::print_excitation_energies(this->ofs_running_, energies, this->nstates, channel);
                 }
-                spectrum.cal_spectrum();
-                spectrum.transition_analysis(this->inp_->bse_spin_types[is]+"_tda");              
-                if (this->inp_->bse_spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
+            }
+            if (this->inp_->bse_tda == "both" || this->inp_->bse_tda == "full")
+            {
+                for (int is = 0; is < this->full_X.size(); ++is)
                 {
-                    spectrum.write_transition_dipole(output_dir +
-                        "trans_dipole_" + this->inp_->bse_spin_types[is] + "_tda.dat");
-                    // ============================== for test ==============================
+                    const double* const energies = &this->full_ene[is * this->nstates];
+                    const std::string channel = this->inp_->bse_spin_types[is] + "_full";
+                    LR_Util::print_excitation_energies(this->ofs_running_, energies, this->nstates, channel);
+                }
+            }
+        }
+        else
+        {
+            std::cout << "Calculating BSE optical absorption spectrum." << std::endl;
+            if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity" )
+            {
+                const int nspin_tmp = this->inp_->nspin == 2 ? 2 : 1;
+                this->velocity_mo = LR_Util::cal_velocity_mo(*this->ucell_, this->gd(), this->tcb(),
+                                                            this->paraMat_, this->paraC_, this->kv, *this->psi_ks,
+                                                            this->nk, nspin_tmp, this->nbasis, this->nocc, this->nvirt);
+            }
+            if (this->inp_->bse_tda == "both" || this->inp_->bse_tda == "tda")
+            {
+                for (int is = 0; is < this->X.size(); ++is)
+                {
+                    LR::LR_Spectrum<T> spectrum(this->nspin, this->nbasis, this->nocc, this->nvirt, *this->pw_rho, *this->psi_ks,
+                                                *this->ucell_, this->kv, this->gd(), this->orb_cutoff_, this->tcb(),
+                                                this->paraX_, this->paraC_, this->paraMat_,
+                                                &this->tda_ene[is * this->nstates], this->eig_ks.c,
+                                                this->X[is].template data<T>(), this->nstates, false/*openshell*/,
+                                                LR_Util::tolower(this->inp_->abs_gauge), GlobalV::MY_RANK, output_dir);
                     if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
-                    {   //// TEST the formula v/omega rather than v/(e_a-e_i)
-                        // spectrum.test_transition_dipoles_velocity_omega();
-                        // spectrum.write_transition_dipole(out_dir + 
-                        //     "trans_dipole_" + spin_types[is] + "_vomega_tda.dat");
+                    {
+                        spectrum.set_vmo(this->velocity_mo.data());
                     }
-                    // ============================== for test ==============================
+                    spectrum.cal_spectrum();
+                    spectrum.transition_analysis(this->inp_->bse_spin_types[is]+"_tda");
+                    if (this->inp_->bse_spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
+                    {
+                        spectrum.write_transition_dipole(output_dir +
+                            "trans_dipole_" + this->inp_->bse_spin_types[is] + "_tda.dat");
+                        // ============================== for test ==============================
+                        if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
+                        {   //// TEST the formula v/omega rather than v/(e_a-e_i)
+                            // spectrum.test_transition_dipoles_velocity_omega();
+                            // spectrum.write_transition_dipole(out_dir +
+                            //     "trans_dipole_" + spin_types[is] + "_vomega_tda.dat");
+                        }
+                        // ============================== for test ==============================
+                    }
                 }
-            }        
-        }
-        if (this->inp_->bse_tda == "both" || this->inp_->bse_tda == "full")
-        {
-            for (int is = 0;is < this->full_X.size();++is)
+            }
+            if (this->inp_->bse_tda == "both" || this->inp_->bse_tda == "full")
             {
-                LR::LR_Spectrum<T> spectrum(this->nspin, this->nbasis, this->nocc, this->nvirt, *this->pw_rho, *this->psi_ks,
-                                            *this->ucell_, this->kv, this->gd(), this->orb_cutoff_, this->tcb(),
-                                            this->paraX_, this->paraC_, this->paraMat_,
-                                            &this->full_ene[is * this->nstates], this->eig_ks.c,
-                                            this->full_X[is].template data<T>(), this->nstates, false/*openshell*/,
-                                            LR_Util::tolower(this->inp_->abs_gauge), GlobalV::MY_RANK, output_dir);
-                if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
+                for (int is = 0;is < this->full_X.size();++is)
                 {
-                    spectrum.set_vmo(this->velocity_mo.data());
-                }
-                spectrum.set_Y(this->full_Y[is].template data<T>());
-                spectrum.set_full(true);
-                spectrum.cal_spectrum();
-                spectrum.transition_analysis(this->inp_->bse_spin_types[is]+"_full");
-                if (this->inp_->bse_spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
-                {
-                    spectrum.write_transition_dipole(output_dir +
-                        "trans_dipole_" + this->inp_->bse_spin_types[is] + "_full.dat");
+                    LR::LR_Spectrum<T> spectrum(this->nspin, this->nbasis, this->nocc, this->nvirt, *this->pw_rho, *this->psi_ks,
+                                                *this->ucell_, this->kv, this->gd(), this->orb_cutoff_, this->tcb(),
+                                                this->paraX_, this->paraC_, this->paraMat_,
+                                                &this->full_ene[is * this->nstates], this->eig_ks.c,
+                                                this->full_X[is].template data<T>(), this->nstates, false/*openshell*/,
+                                                LR_Util::tolower(this->inp_->abs_gauge), GlobalV::MY_RANK, output_dir);
+                    if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
+                    {
+                        spectrum.set_vmo(this->velocity_mo.data());
+                    }
+                    spectrum.set_Y(this->full_Y[is].template data<T>());
+                    spectrum.set_full(true);
+                    spectrum.cal_spectrum();
+                    spectrum.transition_analysis(this->inp_->bse_spin_types[is]+"_full");
+                    if (this->inp_->bse_spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
+                    {
+                        spectrum.write_transition_dipole(output_dir +
+                            "trans_dipole_" + this->inp_->bse_spin_types[is] + "_full.dat");
+                    }
                 }
             }
         }

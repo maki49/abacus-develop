@@ -1,6 +1,7 @@
 // LR execution flow and final spectrum/density output.
 #include "esolver_lr_lcao_tddft.h"
 #include "source_lcao/module_lr/utils/lr_io.h"
+#include "source_lcao/module_lr/utils/lr_util_print.h"
 #include "source_lcao/module_lr/utils/lr_util.h"
 #include "source_lcao/module_lr/hamilt_ulr.h"
 #include "source_lcao/module_lr/hsolver_lrtd.h"
@@ -285,6 +286,8 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
         }
     }
 
+    const std::string gauge = LR_Util::tolower(this->inp_->abs_gauge);
+    const bool calculate_spectrum = gauge != "none";
     //cal spectrum
     if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity" )
     {
@@ -293,41 +296,53 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
                                                     this->paraMat_, this->paraC_, this->kv, *this->psi_ks, 
                                                     this->nk, nspin_tmp, this->nbasis, this->nocc, this->nvirt);
     }
-    std::vector<double> freq(100);
-    std::vector<double> abs_wavelen_range({ 20, 200 });//default range
-    if (this->inp_->abs_wavelen_range.size() >= 2 && std::abs(this->inp_->abs_wavelen_range[1] - this->inp_->abs_wavelen_range[0]) > 0.02)
+    std::vector<double> freq;
+    if (calculate_spectrum)
     {
-        abs_wavelen_range = this->inp_->abs_wavelen_range;
+        freq.resize(100);
+        std::vector<double> abs_wavelen_range({ 20, 200 });//default range
+        if (this->inp_->abs_wavelen_range.size() >= 2 && std::abs(this->inp_->abs_wavelen_range[1] - this->inp_->abs_wavelen_range[0]) > 0.02)
+        {
+            abs_wavelen_range = this->inp_->abs_wavelen_range;
+        }
+        double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
+        double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
+        for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
     }
-    double lambda_diff = std::abs(abs_wavelen_range[1] - abs_wavelen_range[0]);
-    double lambda_min = std::min(abs_wavelen_range[1], abs_wavelen_range[0]);
-    for (int i = 0;i < freq.size();++i) { freq[i] = 91.126664 / (lambda_min + 0.01 * static_cast<double>(i + 1) * lambda_diff); }
     // auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
     // for (int is = 0;is < this->X.size() - 1;++is)
     for (int is = 0;is < this->X.size();++is)
     {
-        LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, *this->pw_rho, *this->psi_ks,
-            *this->ucell_, this->kv, this->gd(), this->orb_cutoff_, this->tcb(),
-            this->paraX_, this->paraC_, this->paraMat_,
-            &this->pelec->ekb.c[is * nstates], this->eig_ks.c, this->X[is].template data<T>(), nstates, openshell,
-            LR_Util::tolower(this->inp_->abs_gauge), this->my_rank_, this->out_dir);
-        if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity" ) {spectrum.set_vmo(this->velocity_mo.data());}
-        spectrum.cal_spectrum();
-        spectrum.transition_analysis(spin_types[is]+"_tda");
-        if (spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
+        if (!calculate_spectrum)
         {
-            spectrum.optical_absorption_method1(freq, this->inp_->abs_broadening);
-            spectrum.write_transition_dipole(this->out_dir +
-                "trans_dipole_" + spin_types[is] + "_tda.dat");
-            // =============================================== for test ====================================================
-            // spectrum.optical_absorption_method2(freq, this->inp_->abs_broadening);
-            // if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
-            // {   // TEST the formula v/omega rather than v/(e_a-e_i)
-            //     spectrum.test_transition_dipoles_velocity_omega();
-            //     spectrum.write_transition_dipole(this->out_dir +
-            //         "trans_dipole_" + spin_types[is] + "_vomega_tda.dat");
-            // }
-            // =============================================== for test ====================================================
+            const double* const energies = &this->pelec->ekb.c[is * nstates];
+            LR_Util::print_excitation_energies(this->ofs_running_, energies, nstates, spin_types[is]);
+        }
+        else
+        {
+            LR_Spectrum<T> spectrum(nspin, this->nbasis, this->nocc, this->nvirt, *this->pw_rho, *this->psi_ks,
+                *this->ucell_, this->kv, this->gd(), this->orb_cutoff_, this->tcb(),
+                this->paraX_, this->paraC_, this->paraMat_,
+                &this->pelec->ekb.c[is * nstates], this->eig_ks.c, this->X[is].template data<T>(), nstates, openshell,
+                LR_Util::tolower(this->inp_->abs_gauge), this->my_rank_, this->out_dir);
+            if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity" ) {spectrum.set_vmo(this->velocity_mo.data());}
+            spectrum.cal_spectrum();
+            spectrum.transition_analysis(spin_types[is]+"_tda");
+            if (spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
+            {
+                spectrum.optical_absorption_method1(freq, this->inp_->abs_broadening);
+                spectrum.write_transition_dipole(this->out_dir +
+                    "trans_dipole_" + spin_types[is] + "_tda.dat");
+                // =============================================== for test ====================================================
+                // spectrum.optical_absorption_method2(freq, this->inp_->abs_broadening);
+                // if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
+                // {   // TEST the formula v/omega rather than v/(e_a-e_i)
+                //     spectrum.test_transition_dipoles_velocity_omega();
+                //     spectrum.write_transition_dipole(this->out_dir +
+                //         "trans_dipole_" + spin_types[is] + "_vomega_tda.dat");
+                // }
+                // =============================================== for test ====================================================
+            }
         }
         if (this->inp_->cal_force && !this->excited_relax_)
         {

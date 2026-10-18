@@ -3,8 +3,9 @@ pseudo_dir ../../../tests/PP_ORB
 orbital_dir ../../../tests/PP_ORB
 symmetry                -1
 nspin                   2
-ecutwfc 20
-scf_thr                 1e-8
+# Coarse settings suffice for the state-following regression.
+ecutwfc 5
+scf_thr                 1e-6
 scf_nmax                200
 basis_type              lcao
 gamma_only              1
@@ -23,7 +24,7 @@ lr_thr                  1e-6
 lr_nstates              6
 nvirt                   29
 abs_wavelen_range       15 90
-abs_gauge               velocity
+abs_gauge               none
 cal_force               1
 
 relax_nmax 2

@@ -7,7 +7,7 @@
 #include <set>
 namespace LR
 {
-void setup_2center_table(TwoCenterBundle& two_center_bundle, LCAO_Orbitals& orb, UnitCell& ucell,
+void setup_nonlocal_info(LCAO_Orbitals& orb, UnitCell& ucell,
                          const Input_para& input, const int rank, std::ofstream& running_log)
 {
     if (input.vnl_in_h)
@@ -17,7 +17,15 @@ void setup_2center_table(TwoCenterBundle& two_center_bundle, LCAO_Orbitals& orb,
                                input.basis_type, input.out_element_info,
                                input.lspinorb, input.nspin, rank);
         ucell.infoNL.reset(lcao_nl);
-        two_center_bundle.build_beta(ucell.ntype, lcao_nl->get_nonlocal().get_Beta_data());
+    }
+}
+
+void setup_2center_table(TwoCenterBundle& two_center_bundle, UnitCell& ucell, const Input_para& input)
+{
+    if (input.vnl_in_h)
+    {
+        auto& lcao_nl = dynamic_cast<LCAONonlocalInfo&>(*ucell.infoNL);
+        two_center_bundle.build_beta(ucell.ntype, lcao_nl.get_nonlocal().get_Beta_data());
     }
     // NOTE: tabulate() must be called AFTER build_beta(), otherwise the
     // nonlocal (beta) two-center tables are left empty.
@@ -35,7 +43,7 @@ void check_lr_parameters(const Input_para& input, const std::string& xc_kernel, 
     // functional or a hybrid, both of which `LR_Util` enumerates. Listing the names a third
     // time here is what used to make a newly supported hybrid fail at input parsing.
     const std::set<std::string> kernel_less = { "rpa", "bse" };
-    const std::set<std::string> abs_gauge = { "velocity", "length" };
+    const std::set<std::string> abs_gauge = { "velocity", "length", "none" };
     if (lr_solvers.find(input.lr_solver) == lr_solvers.end()) {
         throw std::invalid_argument("ESolver_LR: unknown type of lr_solver");
     }

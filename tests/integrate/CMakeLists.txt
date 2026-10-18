@@ -25,4 +25,11 @@ if(LR_FORCE_TEST_PYTHON)
                 -p test_lr_force_check.py
     )
     set_tests_properties(lr_force_collector PROPERTIES TIMEOUT 30)
+    add_test(
+        NAME lr_energy_collector
+        COMMAND ${LR_FORCE_TEST_PYTHON} -m unittest discover
+                -s ${CMAKE_CURRENT_SOURCE_DIR}/validation_tools
+                -p test_props_ml.py
+    )
+    set_tests_properties(lr_energy_collector PROPERTIES TIMEOUT 30)
 endif()

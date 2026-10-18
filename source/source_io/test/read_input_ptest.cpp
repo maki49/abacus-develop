@@ -772,3 +772,26 @@ TEST_F(InputParaTest, RemovedElpaZSolverIsRejected)
     item.read_value(item, param);
     EXPECT_EXIT(item.check_value(item, param), testing::ExitedWithCode(1), "");
 }
+
+
+TEST_F(InputParaTest, OpticalGaugeCanDisableSpectrum)
+{
+    ModuleIO::ReadInput readinput(0);
+    std::map<std::string, ModuleIO::Input_Item> lists;
+    for (const auto& entry : readinput.get_input_lists())
+    {
+        lists.emplace(entry.first, entry.second);
+    }
+    ModuleIO::Input_Item item = lists.at("abs_gauge");
+    Parameter param;
+    for (const auto& gauge : {"velocity", "length", "none"})
+    {
+        item.str_values = {gauge};
+        item.read_value(item, param);
+        item.check_value(item, param);
+        EXPECT_EQ(param.inp.abs_gauge, gauge);
+    }
+    item.str_values = {"invalid"};
+    item.read_value(item, param);
+    EXPECT_EXIT(item.check_value(item, param), testing::ExitedWithCode(1), "");
+}

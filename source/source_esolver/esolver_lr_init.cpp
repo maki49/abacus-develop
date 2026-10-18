@@ -368,11 +368,13 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell& ucell
     two_center_bundle_own_.to_LCAO_Orbitals(orb, inp.lcao_ecut, inp.lcao_dk, inp.lcao_dr, inp.lcao_rmax,
                                         inp.out_element_info, inp.cal_force);
     orb_cutoff_ = orb.cutoffs();
+    // Standalone LR neighbor search needs projector metadata for every optical gauge.
+    LR::setup_nonlocal_info(orb, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
     const bool need_force_tables = this->inp_->cal_force || this->inp_->calculation == "relax";
     const bool need_velocity_tables = LR_Util::tolower(this->inp_->abs_gauge) == "velocity";
     if (need_force_tables || need_velocity_tables)
     {
-        LR::setup_2center_table(this->two_center_bundle_own_, orb, ucell, *this->inp_, this->my_rank_, this->ofs_running_);
+        LR::setup_2center_table(this->two_center_bundle_own_, ucell, *this->inp_);
     }
 
     this->set_dimension();

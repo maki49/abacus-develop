@@ -1388,13 +1388,21 @@ Ignored outside `calculation = relax`.)";
     }
     {
         Input_Item item("abs_gauge");
-        item.annotation = "whether to use length or velocity gauge to calculate the absorption spectrum in LR-TDDFT";
+        item.annotation = "optical gauge: length, velocity, or none to skip the spectrum";
         item.category = "Linear Response TDDFT";
         item.type = "String";
-        item.description = "Whether to use length or velocity gauge to calculate the absorption spectrum in LR-TDDFT.";
+        item.description = "Optical gauge for LR-TDDFT/BSE: length or velocity. Set none to skip transition dipoles, oscillator strengths, transition analysis and absorption spectra, while retaining excitation energies, requested charge output, and LR forces or relaxation.";
         item.default_value = "velocity";
         item.unit = "";
         read_sync_string(input.abs_gauge);
+        item.check_value = [](const Input_Item& item, const Parameter& para)
+        {
+            const std::vector<std::string> gauges = {"length", "velocity", "none"};
+            if (std::find(gauges.begin(), gauges.end(), para.input.abs_gauge) == gauges.end())
+            {
+                ModuleBase::WARNING_QUIT("ReadInput", "abs_gauge must be length, velocity or none");
+            }
+        };
         this->add_item(item);
     }
     {
