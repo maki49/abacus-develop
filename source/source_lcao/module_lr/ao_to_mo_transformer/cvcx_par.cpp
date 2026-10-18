@@ -26,7 +26,11 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0);
+
+        // Empty local blocks still participate in every collective PBLAS call.
+        double empty_block(0);
+        const double* const X_istate_data = X_istate == nullptr ? &empty_block : X_istate;
+        double* const AX_istate_data = AX_istate == nullptr ? &empty_block : AX_istate;
 
         const int nks = c.get_nk();
         assert(V_istate.size() == nks);
@@ -81,7 +85,7 @@ namespace LR
                 i1,
                 i1,
                 pc.desc,
-                X_istate + start,
+                X_istate_data + start,
                 i1,
                 i1,
                 px.desc,
@@ -108,7 +112,7 @@ namespace LR
                 i1,
                 pcv.desc,
                 accumulation_beta_10,
-                AX_istate + start,
+                AX_istate_data + start,
                 i1,
                 i1,
                 px.desc);
@@ -135,7 +139,11 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0);
+
+        // Empty local blocks still participate in every collective PBLAS call.
+        std::complex<double> empty_block(0);
+        const std::complex<double>* const X_istate_data = X_istate == nullptr ? &empty_block : X_istate;
+        std::complex<double>* const AX_istate_data = AX_istate == nullptr ? &empty_block : AX_istate;
 
         int nks = c.get_nk();
         assert(V_istate.size() == nks);
@@ -191,7 +199,7 @@ namespace LR
                 i1,
                 i1,
                 pc.desc,
-                X_istate + start,
+                X_istate_data + start,
                 i1,
                 i1,
                 px.desc,
@@ -218,7 +226,7 @@ namespace LR
                 i1,
                 pcv.desc,
                 accumulation_beta_7,
-                AX_istate + start,
+                AX_istate_data + start,
                 i1,
                 i1,
                 px.desc);
@@ -245,7 +253,11 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0);
+
+        // Empty local blocks still participate in every collective PBLAS call.
+        double empty_block(0);
+        const double* const X_istate_data = X_istate == nullptr ? &empty_block : X_istate;
+        double* const AX_istate_data = AX_istate == nullptr ? &empty_block : AX_istate;
 
         const int nks = c.get_nk();
         assert(V_istate.size() == nks);
@@ -297,7 +309,7 @@ namespace LR
                 naos,
                 nvirt,
                 one,
-                X_istate + start,
+                X_istate_data + start,
                 i1,
                 i1,
                 px.desc,
@@ -328,7 +340,7 @@ namespace LR
                 i1,
                 pcx.desc,
                 accumulation_beta_4,
-                AX_istate + start,
+                AX_istate_data + start,
                 i1,
                 i1,
                 px.desc);
@@ -355,7 +367,11 @@ namespace LR
         assert(pmat.comm() == px.comm());
         assert(pmat.blacs_ctxt == pc.blacs_ctxt);
         assert(pmat.blacs_ctxt == px.blacs_ctxt);
-        assert(px.get_local_size() > 0);
+
+        // Empty local blocks still participate in every collective PBLAS call.
+        std::complex<double> empty_block(0);
+        const std::complex<double>* const X_istate_data = X_istate == nullptr ? &empty_block : X_istate;
+        std::complex<double>* const AX_istate_data = AX_istate == nullptr ? &empty_block : AX_istate;
 
         const int nks = c.get_nk();
         assert(V_istate.size() == nks);
@@ -407,7 +423,7 @@ namespace LR
                 naos,
                 nvirt,
                 one,
-                X_istate + start,
+                X_istate_data + start,
                 i1,
                 i1,
                 px.desc,
@@ -438,7 +454,7 @@ namespace LR
                 i1,
                 pcx.desc,
                 accumulation_beta_1,
-                AX_istate + start,
+                AX_istate_data + start,
                 i1,
                 i1,
                 px.desc);
