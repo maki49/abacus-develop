@@ -13,8 +13,18 @@ template<typename T, typename TR>
 void ModuleESolver::ESolver_LR<T, TR>::set_parallel_orbitals_band(Parallel_Orbitals& pmat, const int nbands_in)
 {
 #ifdef __MPI
-    pmat.set_desc_wfc_Eij(this->nbasis, nbands_in, pmat.get_row_size());
-    int err = pmat.set_nloc_wfc_Eij(nbands_in, this->ofs_running_, this->ofs_warning_);
+    const int leading_dimension = std::max(pmat.get_row_size(), 1);
+    pmat.set_desc_wfc_Eij(this->nbasis, nbands_in, leading_dimension);
+    // The KS helper rejects empty band columns. LR windows may legitimately
+    // have fewer blocks than the inherited KS process grid has columns.
+    Parallel_2D bands;
+    const int block_size = pmat.get_block_size();
+    LR_Util::setup_2d_division(bands, block_size, this->nbasis, nbands_in, pmat.blacs_ctxt);
+    pmat.nbands = nbands_in;
+    pmat.nrow_bands = bands.get_row_size();
+    pmat.ncol_bands = bands.get_col_size();
+    pmat.nloc_wfc = bands.get_local_size();
+    pmat.nloc_Eij = pmat.ncol_bands * pmat.ncol_bands;
     // Skipped for the aims benchmark: with `aims_nbasis` the per-atom orbital counts behind
     // `iat2iwt` do not match `nbasis`, so the atomic trace would be wrong. The guard came from
     // d4fe3fe84 ("Support different basis number from aims"), and was silently undone by
@@ -239,8 +249,11 @@ void ModuleESolver::ESolver_LR<T, TR>::fill_z_window_(const int* desc_src)
     {
         // same redistribution `refresh_from_ks_` does for the X window, over more bands
 #ifdef __MPI
-        Cpxgemr2d(this->nbasis, this->nbands_z_, &(*this->psi_ks_all_)(ik, 0, 0), 1, start_band + 1,
-            const_cast<int*>(desc_src), &(*this->psi_ks_z_)(ik, 0, 0), 1, 1,
+        this->psi_ks_all_->fix_k(ik);
+        this->psi_ks_z_->fix_k(ik);
+        const int first_band = start_band + 1;
+        Cpxgemr2d(this->nbasis, this->nbands_z_, this->psi_ks_all_->get_pointer(), 1, first_band,
+            const_cast<int*>(desc_src), this->psi_ks_z_->get_pointer(), 1, 1,
             this->paraC_z_.desc, this->paraC_z_.blacs_ctxt);
 #else
         for (int ib = 0; ib < this->nbands_z_; ++ib)

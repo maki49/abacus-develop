@@ -70,7 +70,8 @@ inline bool gs_is_hybrid(const std::string& dft_functional)
             this->psi_ks_full.zero_out();
             for (int ik = 0;ik < nk;++ik)
             {
-                LR_Util::gather_2d_to_full(this->pc, &this->psi_ks(ik, 0, 0), &this->psi_ks_full(ik, 0, 0), false, this->naos, nocc + nvirt);
+                this->psi_ks.fix_k(ik);
+                LR_Util::gather_2d_to_full(this->pc, this->psi_ks.get_pointer(), &this->psi_ks_full(ik, 0, 0), false, this->naos, nocc + nvirt);
             }
             if (!this->exx_lri.expired())
             {

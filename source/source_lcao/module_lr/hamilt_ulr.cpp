@@ -160,7 +160,8 @@ std::vector<T> HamiltULR<T>::matrix()const
                 for (int b = 0;b < nv;++b)
                 {
                     const int gcol = goffset_bj + ik_bj * npairs[is_bj] + j * nv + b;//global
-                    std::vector<T> X_bj(this->ldim, T(0));
+                    const int storage_size = std::max(this->ldim, 1);
+                    std::vector<T> X_bj(storage_size, T(0));
                     const int lj = px.global2local_col(j);
                     const int lb = px.global2local_row(b);
                     const int lcol = loffset_bj + ik_bj * px.get_local_size() + lj * px.get_row_size() + lb;//local
@@ -169,7 +170,7 @@ std::vector<T> HamiltULR<T>::matrix()const
                         X_bj[lcol] = T(1);
                     }
                     this->cal_dm_trans(is_bj, X_bj.data() + loffset_bj);
-                    std::vector<T> Aloc_col(this->ldim, T(0)); // a col of A matrix (local)
+                    std::vector<T> Aloc_col(storage_size, T(0)); // a col of A matrix (local)
                     for (int is_ai : {0, 1})
                     {
                         const int goffset_ai = is_ai * gdim_is[0];

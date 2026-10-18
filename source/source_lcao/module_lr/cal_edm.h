@@ -75,7 +75,8 @@ namespace LR
         {
             const int idx_X = ik * px.get_local_size();
             std::vector<T> X_ao_occ(px_ao_occ.get_local_size());
-            cal_X_ao_occ(X + idx_X, px, &c(ik, 0, 0), pc, X_ao_occ.data(), px_ao_occ);
+            c.fix_k(ik);
+            cal_X_ao_occ(X + idx_X, px, c.get_pointer(), pc, X_ao_occ.data(), px_ao_occ);
             std::vector<double> eig_ks_plus_ext(nocc, 0.0);
             const int idx_eig_ks = ik * (nocc + nvirt);
             for (int occupied = 0; occupied < nocc; ++occupied)

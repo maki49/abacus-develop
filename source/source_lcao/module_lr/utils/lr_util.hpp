@@ -234,6 +234,12 @@ namespace LR_Util
     template<typename T>
     psi::Psi<T> get_psi_spin(const psi::Psi<T>& psi_in, const int& is, const int& nk)
     {
+        // Empty coefficient ranks have no (band=0, AO=0) element to address.
+        // The pointer is only a view; the PBLAS descriptors retain zero ownership.
+        if (psi_in.get_nbands() == 0 || psi_in.get_nbasis() == 0)
+        {
+            return psi::Psi<T>(psi_in.get_pointer(), nk, psi_in.get_nbands(), psi_in.get_nbasis(), true);
+        }
         return psi::Psi<T>(&psi_in(is * nk, 0, 0), 
                            nk, 
                            psi_in.get_nbands(),

@@ -103,19 +103,17 @@ namespace LR
                 // 3. set maxiter and the operator
                 const int maxiter = hsolver::DiagoIterAssist<T>::PW_DIAG_NMAX;
                 const LRHSOperator<T, THamilt> op(hm);
+                const int davidson_dimension = PARAM.inp.pw_diag_ndim;
 
                 if (method == "dav")
                 {
                     // Allow 5 tries at most. If ntry > ntry_max = 5, exit diag loop.
                     const int ntry_max = 5;
-                    // In non-self consistent calculation, do until totally converged. Else allow 5 eigenvecs to be NOT
-                    // converged.
-                    const int notconv_max = ("nscf" == PARAM.inp.calculation) ? 0 : 5;
                     // do diag and add davidson iteration counts up to avg_iter
                     hsolver::DiagoDavid<T> david(precondition.data(),
                                                  nband,
                                                  dim,
-                                                 PARAM.inp.pw_diag_ndim,
+                                                 davidson_dimension,
                                                  comm_info);
                     std::vector<double> ethr_band(nband, diag_ethr);
                     hsolver::DiagoIterAssist<T>::avg_iter += static_cast<double>(david.diag(op,
@@ -126,7 +124,7 @@ namespace LR
                     hsolver::Diago_DavSubspace<T> dav_subspace(precondition,
                         nband,
                         dim,
-                        PARAM.inp.pw_diag_ndim,
+                        davidson_dimension,
                         diag_ethr,
                         maxiter,
                         comm_info,

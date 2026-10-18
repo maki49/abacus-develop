@@ -3,6 +3,7 @@
 #include "source_base/parallel_cell.h"
 #include "../zeqlin_solv.h"
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <stdexcept>
@@ -381,4 +382,41 @@ TEST(ZeqLapackReview, SingularRealResponseDoesNotOverwriteZ)
 TEST(ZeqLapackReview, SingularComplexResponseDoesNotOverwriteZ)
 {
     check_failed_lapack_preserves_z<std::complex<double>>();
+}
+
+TEST(ZeqCGReview, EmptyBlocksJoinOperatorCollectives)
+{
+    const int rank = ModuleBase::world_comm_domain().rank();
+    const int local_size = rank == 0 ? 2 : 0;
+    const int storage_size = std::max(local_size, 1);
+    std::vector<double> rhs(storage_size, 0.0);
+    std::vector<double> z(storage_size, 999.0);
+    if (rank == 0)
+    {
+        rhs[0] = 1.0;
+        rhs[1] = -2.0;
+    }
+    int calls = 0;
+    const auto identity = [&calls, local_size](const double* x, double* hx)
+    {
+        ++calls;
+        double sum = 0.0;
+        for (int row = 0; row < local_size; ++row)
+        {
+            sum += x[row];
+            hx[row] = x[row];
+        }
+        Parallel_Reduce::reduce_all(sum);
+        EXPECT_TRUE(std::isfinite(sum));
+    };
+    LR::solve_Z_CG(z.data(), rhs.data(), local_size, 1, identity, false);
+    EXPECT_GT(calls, 0);
+    for (int row = 0; row < local_size; ++row)
+    {
+        EXPECT_NEAR(z[row], rhs[row], 1e-12);
+    }
+    if (local_size == 0)
+    {
+        EXPECT_EQ(z[0], 999.0);
+    }
 }

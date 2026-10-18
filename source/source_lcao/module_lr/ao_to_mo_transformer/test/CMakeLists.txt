@@ -17,8 +17,9 @@ if(ENABLE_MPI)
   AddTest(
     TARGET MODULE_LR_empty_blocks
     LIBS parameter base container device psi
-    SOURCES test_ao_to_mo.cpp ${test_cvcx_main} ../../utils/lr_util.cpp ../ao_to_mo_parallel.cpp
+    SOURCES test_ao_to_mo_parallel.cpp ${test_cvcx_main} ../../utils/lr_util.cpp ../ao_to_mo_parallel.cpp
       ../cvcx_par.cpp ../cvcx_serial.cpp ../../dm_trans/dm_trans_parallel.cpp ../../dm_trans/dm_trans_serial.cpp
+      ../../dm_trans/dm_diff_par.cpp ../../dm_trans/dm_diff_ser.cpp
   )
   add_test(NAME MODULE_LR_empty_blocks_mpi
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:MODULE_LR_empty_blocks>)

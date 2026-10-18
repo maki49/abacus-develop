@@ -1,5 +1,6 @@
 #include "zeq_solver.h"
 #include "source_base/opt_cg.h"
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 namespace LR
@@ -15,7 +16,7 @@ namespace LR
         const int size = nstates * ld;
         container::Tensor P = LR_Util::newTensor<double>({ nstates, ld });   // step length
         container::Tensor LP = LR_Util::newTensor<double>({ nstates, ld }); //f_LZ(P)
-        ModuleBase::zeros(Z, size);
+        std::fill_n(Z, size, 0.0);
 
         ModuleBase::Opt_CG cg;
         cg.allocate(size);

@@ -141,3 +141,11 @@ if(ENABLE_MPI)
       --gtest_filter=LRDMTest.SparseWriterKeepsSpinFilesAndDisjointRankKeys)
   set_tests_properties(MODULE_LR_sparse_rank_keys PROPERTIES PROCESSORS 4 TIMEOUT 60)
 endif()
+
+if(ENABLE_MPI)
+  add_test(NAME MODULE_LR_empty_z_mpi
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:MODULE_LR_zeqlin_solv>
+      --gtest_filter=ZeqCGReview.EmptyBlocksJoinOperatorCollectives)
+  set_tests_properties(MODULE_LR_empty_z_mpi PROPERTIES PROCESSORS 4 TIMEOUT 60
+    ENVIRONMENT "OMP_NUM_THREADS=1;MKL_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+endif()

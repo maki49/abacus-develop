@@ -247,6 +247,8 @@ namespace LR
         ModuleBase::TITLE("hamilt_lrtd", "cal_dm_diff_pblas");
         assert(px.comm() == pc.comm() && px.comm() == pmat.comm());
         assert(px.blacs_ctxt == pc.blacs_ctxt && px.blacs_ctxt == pmat.blacs_ctxt);
+        T empty_block(0);
+        const T* const x_data = X_istate == nullptr ? &empty_block : X_istate;
         const int nks = c.get_nk();
         const int nk = nks / nspin;
 
@@ -262,9 +264,9 @@ namespace LR
             c.fix_k(iks);
             const int start = iks * px.get_local_size();
             // 1. C_virt * X
-            CvX(c.get_pointer(), pc, X_istate + start, px, naos, nocc, nvirt, cvx.data<T>(), pcx);
+            CvX(c.get_pointer(), pc, x_data + start, px, naos, nocc, nvirt, cvx.data<T>(), pcx);
             // 2. C_occ * X^T
-            CoXT(c.get_pointer(), pc, X_istate + start, px, naos, nocc, nvirt, coxt.data<T>(), pcxt);
+            CoXT(c.get_pointer(), pc, x_data + start, px, naos, nocc, nvirt, coxt.data<T>(), pcxt);
             // print_colfirst(c.get_pointer(), "c_pblas", naos, nocc + nvirt);
             // print_colfirst(X_istate.get_pointer(), "X_pblas", nvirt, nocc);
             // print_colfirst(cvx.data<T>(), "cvx_pblas", naos, nocc);
