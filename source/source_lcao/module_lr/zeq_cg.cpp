@@ -12,7 +12,13 @@ namespace LR
         ModuleBase::timer::start("Z_vector", "solve_Z_CG");
         const int maxiter = 100;
         double tol = 1e-6;
-        double residual = 10.;
+        double residual_squared = 0.0;
+        for (int i = 0; i < nstates * ld; ++i)
+        {
+            residual_squared += R[i] * R[i];
+        }
+        Parallel_Reduce::reduce_all(residual_squared);
+        double residual = std::sqrt(residual_squared);
         const int size = nstates * ld;
         container::Tensor P = LR_Util::newTensor<double>({ nstates, ld });   // step length
         container::Tensor LP = LR_Util::newTensor<double>({ nstates, ld }); //f_LZ(P)
@@ -22,14 +28,16 @@ namespace LR
         cg.allocate(size);
         cg.init_b(R);
         std::cout << "Start solving Z-vector equaiton with CG method ..." << std::endl;
-        for (int iter = 0; iter < maxiter; ++iter)
+        int iterations = 0;
+        for (; iterations < maxiter; ++iterations)
         {
             if (residual < tol)
             {
                 break;
             }
             cg.next_direct(LP.data<double>(), 0, P.data<double>());
-            std::cout << "iter=" << iter << " residual=" << cg.get_residual() << std::endl;
+            residual = cg.get_residual();
+            std::cout << "iter=" << iterations << " residual=" << residual << std::endl;
             // std::cout << "Z=" << std::endl;
             // LR_Util::print_value(P.data<double>(), nstates, ld);
             // std::cout << "LZ before=" << std::endl;
@@ -46,27 +54,25 @@ namespace LR
             }
             residual = cg.get_residual();
         }
+        // Recursive convergence is insufficient: certify the vector actually returned.
+        f_LZ(Z, LP.data<double>());
+        residual_squared = 0.0;
+        for (int i = 0; i < size; ++i)
+        {
+            const double difference = LP.data<double>()[i] - R[i];
+            residual_squared += difference * difference;
+        }
+        Parallel_Reduce::reduce_all(residual_squared);
+        residual = std::sqrt(residual_squared);
+        std::cout << "Z-vector CG true residual=" << residual << " tolerance=" << tol << std::endl;
         if (!(residual < tol))
         {
-            // Opt_CG's residual precedes its last step; check the returned vector itself.
-            f_LZ(Z, LP.data<double>());
-            double residual_squared = 0.0;
-            for (int i = 0; i < size; ++i)
-            {
-                const double difference = LP.data<double>()[i] - R[i];
-                residual_squared += difference * difference;
-            }
-            Parallel_Reduce::reduce_all(residual_squared);
-            residual = std::sqrt(residual_squared);
-            if (!(residual < tol))
-            {
-                std::ostringstream message;
-                message << "Z-vector CG did not converge after " << maxiter
-                        << " iterations (residual=" << residual << ", tolerance=" << tol
-                        << "). Excited-state forces are not valid.";
-                ModuleBase::timer::end("Z_vector", "solve_Z_CG");
-                throw std::runtime_error(message.str());
-            }
+            std::ostringstream message;
+            message << "Z-vector CG did not converge after " << iterations
+                    << " iterations (true residual=" << residual << ", tolerance=" << tol
+                    << "). Excited-state forces are not valid.";
+            ModuleBase::timer::end("Z_vector", "solve_Z_CG");
+            throw std::runtime_error(message.str());
         }
         if (test_force)
         {

@@ -40,7 +40,7 @@ if(ENABLE_MPI)
     NAME MODULE_LR_zeqlin_failure_mpi
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
       $<TARGET_FILE:MODULE_LR_zeqlin_solv> ${MPIEXEC_POSTFLAGS}
-      --gtest_filter=ZeqLinearSolverTest.*FailsCollectively*
+      --gtest_filter=ZeqLinearSolverTest.*FailsCollectively*:ZeqCGReview.*
   )
   set_tests_properties(MODULE_LR_zeqlin_failure_mpi PROPERTIES
     PROCESSORS 4 TIMEOUT 60

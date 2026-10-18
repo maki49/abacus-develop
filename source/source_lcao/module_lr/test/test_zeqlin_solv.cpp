@@ -420,3 +420,50 @@ TEST(ZeqCGReview, EmptyBlocksJoinOperatorCollectives)
         EXPECT_EQ(z[0], 999.0);
     }
 }
+
+TEST(ZeqCGReview, RejectsFalseConvergenceOfScreenedOperator)
+{
+    const int rank = ModuleBase::world_comm_domain().rank();
+    double rhs[] = {0.0};
+    if (rank == 0)
+    {
+        rhs[0] = 1.0;
+    }
+    double z[] = {0.0};
+    // A(1)=2 but A(1/2)=1/2: the recurrence can report zero residual
+    // while the returned vector has ||A(Z)-R||=1/2.
+    const std::function<void(const double*, double*)> screened = [](const double* x, double* y) {
+        const double factor = std::abs(x[0]) > 0.75 ? 2.0 : 1.0;
+        y[0] = factor * x[0];
+    };
+    EXPECT_THROW(LR::solve_Z_CG(z, rhs, 1, 1, screened, false), std::runtime_error);
+}
+
+TEST(ZeqCGReview, ChecksZeroRhsAgainstTheActualOperator)
+{
+    double rhs[] = {0.0};
+    double z[] = {7.0};
+    const std::function<void(const double*, double*)> inconsistent = [](const double*, double* y) {
+        y[0] = 1.0;
+    };
+    EXPECT_THROW(LR::solve_Z_CG(z, rhs, 1, 1, inconsistent, false), std::runtime_error);
+}
+
+TEST(ZeqCGReview, SmallRhsDoesNotTakeAnUnnecessaryStep)
+{
+    const int rank = ModuleBase::world_comm_domain().rank();
+    double rhs[] = {0.0, 0.0};
+    if (rank == 0)
+    {
+        rhs[0] = 5e-7;
+        rhs[1] = 5e-8;
+    }
+    double z[] = {7.0, 7.0};
+    const std::function<void(const double*, double*)> diagonal = [](const double* x, double* y) {
+        y[0] = x[0];
+        y[1] = 100.0 * x[1];
+    };
+    LR::solve_Z_CG(z, rhs, 2, 1, diagonal, false);
+    EXPECT_DOUBLE_EQ(z[0], 0.0);
+    EXPECT_DOUBLE_EQ(z[1], 0.0);
+}
