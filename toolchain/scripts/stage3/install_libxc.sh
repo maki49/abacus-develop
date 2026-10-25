@@ -66,12 +66,13 @@ case "$with_libxc" in
             cmake \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=${pkg_install_dir} \
-                -DBUILD_SHARED_LIBS=ON \
+                -DBUILD_SHARED_LIBS=OFF \
                 -DCMAKE_INSTALL_LIBDIR=lib \
                 -DCMAKE_VERBOSE_MAKEFILE=ON \
                 -DENABLE_FORTRAN=ON \
                 -DENABLE_PYTHON=OFF \
-                -DBUILD_TESTING=OFF .. \
+                -DBUILD_TESTING=OFF \
+                -DMAXORDER=3 .. \
                 > configure.log 2>&1 || tail -n ${LOG_LINES} configure.log
             make -j $(get_nprocs) > make.log 2>&1 || tail -n ${LOG_LINES} make.log
             make install > install.log 2>&1 || tail -n ${LOG_LINES} install.log
