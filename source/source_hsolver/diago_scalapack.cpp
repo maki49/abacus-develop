@@ -153,7 +153,8 @@ int blacs_grid_size(const int* const desc)
                                  + std::to_string(__LINE__));
 }
 
-    lwork = work[0];
+    // Reserve extra workspace for reorthogonalizing clustered eigenvectors on retries.
+    lwork = work[0] + this->degeneracy_max * this->nlocal;
     work.resize(std::max(lwork,3), 0);
     liwork = iwork[0];
     iwork.resize(liwork, 0);
