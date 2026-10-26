@@ -75,9 +75,6 @@ set(_abacus_feature_definitions
 if(ABACUS_COMMIT_INFO_INCLUDE_DIR)
   list(APPEND _abacus_feature_definitions COMMIT_INFO)
 endif()
-if(ENABLE_LIBRI_GPU)
-  list(APPEND _abacus_feature_libs DDLA::DDLA)
-endif()
 
 if(DEFINED DeePMD_DIR)
   list(APPEND _abacus_feature_definitions __DPMD HIGH_PREC)
@@ -299,6 +296,10 @@ set(_abacus_feature_libs
     $<$<BOOL:${ENABLE_LIBRI}>:cereal::cereal>
     $<$<BOOL:${ENABLE_LIBXC}>:Libxc::xc>
     $<$<BOOL:${ENABLE_PLUMED}>:PLUMED::plumed>)
+
+if(ENABLE_LIBRI_GPU)
+  list(APPEND _abacus_feature_libs DDLA::DDLA)
+endif()
 set(_abacus_feature_include_dirs)
 set(_abacus_feature_compile_options)
 
