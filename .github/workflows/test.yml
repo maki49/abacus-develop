@@ -84,6 +84,9 @@ jobs:
           ./scripts/stage4/install_stage4.sh
           cd ..
 
+      - name: Test LR excited-state tracking checker
+        run: python3 tests/integrate/validation_tools/test_es_check.py
+
       - name: Configure
         run: |
           source toolchain/install/setup
