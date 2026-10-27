@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <map>
 #include <vector>
+#include <utility>
 
 namespace LRI_CV_Tools
 {
@@ -29,6 +30,16 @@ extern std::vector<std::vector<RI::Tensor<Tdata>>> cal_I(const std::vector<std::
                                                          const typename Inverse_Matrix<Tdata>::Method method
                                                          = Inverse_Matrix<Tdata>::Method::potrf,
                                                          const double& threshold_condition_number = 0.);
+
+template <typename T>
+using RIBlockMatrix = std::vector<std::vector<RI::Tensor<T>>>;
+
+template <typename T>
+std::pair<RIBlockMatrix<T>, std::array<RIBlockMatrix<T>, 3>> cal_I_dI(
+    const RIBlockMatrix<T>& metric,
+    const std::array<RI::Tensor<T>, 3>& derivative01,
+    const std::array<RI::Tensor<T>, 3>& derivative10,
+    const double threshold);
 
 template <typename Tdata>
 inline RI::Tensor<Tdata> transform_Rm(const RI::Tensor<Tdata>& V);
