@@ -64,7 +64,8 @@ LRI_CV_Tools::cal_I_dI(const RIBlockMatrix<T>& metric,
         pack.input(responses[axis]);
         block_responses[axis] = pack.output(sizes, sizes);
     }
-    return std::make_pair(inverse.output(sizes, sizes), block_responses);
+    auto inverse_blocks = inverse.output(sizes, sizes);
+    return std::make_pair(inverse_blocks, block_responses);
 }
 
 template <typename Tdata>

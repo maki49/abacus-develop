@@ -411,7 +411,8 @@ LRI_CV<Tdata>::DPcal_C_dC(
             if (cs_inv_thr > 0 && !flag_finish_dC)
             {
                 const auto derivative01 = DPcal_dV(it0, it1, R, flags);
-                const auto derivative10 = LRI_CV_Tools::negative(DPcal_dV(it1, it0, Rm, flags));
+                const auto reverse_derivative = DPcal_dV(it1, it0, Rm, flags);
+                const auto derivative10 = LRI_CV_Tools::negative(reverse_derivative);
                 auto inverse = LRI_CV_Tools::cal_I_dI(V, derivative01, derivative10, cs_inv_thr);
                 L = std::move(inverse.first);
                 dL = std::move(inverse.second);
@@ -469,7 +470,8 @@ LRI_CV<Tdata>::DPcal_C_dC(
                 else
                 {
                     const auto dV_01 = DPcal_dV(it0, it1, R, flags);
-                    const auto dV_10 = LRI_CV_Tools::negative(DPcal_dV(it1, it0, Rm, flags));
+                    const auto reverse_derivative = DPcal_dV(it1, it0, Rm, flags);
+                    const auto dV_10 = LRI_CV_Tools::negative(reverse_derivative);
                     dC_tmp = LRI_CV_Tools::mul2(
                             L,
                             LRI_CV_Tools::change_order( LRI_CV_Tools::minus(
