@@ -1,4 +1,5 @@
 #include "lr_spectrum.h"
+#include "utils/spectrum_weights.h"
 #include "source_base/global_variable.h"
 #include "source_lcao/module_lr/dm_trans/dm_trans.h"
 #include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
@@ -161,7 +162,10 @@ namespace LR
                     const int goffset_v_ds = (is * 3 + id) * nk * nbands * nbands;
                     for (int ik = 0; ik < nk; ++ik)
                     {
-                        const double wk = this->kv.wk[ik] * nk; // k-point weight, normalized as sum = nk
+                        // Remove KS spin degeneracy before applying the singlet factor below.
+                        const int spin_k = is * nk + ik;
+                        const double spatial_weight = LR_Util::spatial_k_weight(this->kv.wk[spin_k], nspin_global);
+                        const double wk = spatial_weight * nk;
                         const std::size_t loffset_X = loffset_X_bs + ik * pX[is].get_local_size();
                         const int goffset_v = goffset_v_ds + ik * nbands * nbands;
                         for (int io = 0; io < pX[is].get_col_size(); ++io)    // nocc_local

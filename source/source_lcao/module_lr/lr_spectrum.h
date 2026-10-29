@@ -22,7 +22,7 @@ namespace LR
             const std::vector<Parallel_2D>& pX_in, const Parallel_2D& pc_in, const Parallel_Orbitals& pmat_in,
             const double* omega, const double* eig_ks, const T* X, const int& nstate, const bool& openshell,
             const std::string& gauge, const int my_rank, const std::string& out_dir) :
-            my_rank(my_rank), nspin_x(openshell ? 2 : 1), naos(naos), nocc(nocc), nvirt(nvirt),
+            my_rank(my_rank), nspin_global(nspin_global), nspin_x(openshell ? 2 : 1), naos(naos), nocc(nocc), nvirt(nvirt),
             nk(nspin_global == 2 ? kv_in.get_nks() / 2 : kv_in.get_nks()),
             rho_basis(rho_basis), ucell(ucell), kv(kv_in), gd_(gd),
             orb_cutoff_(orb_cutoff), two_center_bundle_(two_center_bundle_),
@@ -77,6 +77,7 @@ namespace LR
         module_dm::DensityMatrix<T, T> cal_transition_density_matrix(const int istate, const T* X_in = nullptr, const bool need_R = true);
 
         const int my_rank;
+        const int nspin_global; ///< KS spin setting, distinct from the response spin channels
         const int nspin_x = 1;   ///< 1 for singlet/triplet, 2 for updown(openshell)
         const int naos = 1;
         const std::vector<int>& nocc;

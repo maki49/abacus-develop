@@ -355,3 +355,8 @@ if(ENABLE_MPI)
   set_tests_properties(MODULE_LR_block_preconditioner_parallel PROPERTIES
     PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()
+
+AddTest(
+  TARGET MODULE_LR_spectrum_weights
+  SOURCES test_spectrum_weights.cpp
+)
