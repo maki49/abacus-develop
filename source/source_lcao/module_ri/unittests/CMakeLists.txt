@@ -13,7 +13,12 @@ if(ENABLE_LCAO)
     SOURCES
     test_exx_workspace.cpp
     ../exx_workspace.cpp
+    ../lri_cv.cpp
     ../../../source_basis/module_ao/orb_atomic_lm.cpp)
+  # Link the compiled LRI lifecycle while keeping unrelated integral assembly out
+  # of this focused geometry-sharing test.
+  target_compile_options(MODULE_RI_exx_workspace PRIVATE -ffunction-sections -fdata-sections)
+  target_link_options(MODULE_RI_exx_workspace PRIVATE -Wl,--gc-sections)
 endif()
 addtest(
   TARGET
