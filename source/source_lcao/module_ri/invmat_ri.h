@@ -42,6 +42,5 @@ class Inverse_Matrix
     RI::Tensor<Tdata> A;
 };
 
-#include "invmat_ri.hpp"
 
 #endif // ABACUS_SOURCE_LCAO_MODULE_RI_INVMAT_RI_H

@@ -41,7 +41,8 @@ abacus_copy_test_files(support)
 addtest(
   TARGET MODULE_RI_invmat_ri
   LIBS parameter base device ${math_libs}
-  SOURCES test_invmat_ri.cpp ../abfs_construct_pca.cpp
+  SOURCES test_invmat_ri.cpp ../invmat_ri.cpp ../lri_cv_tools.cpp
+          ../abfs_construct_pca.cpp
           ../../../source_basis/module_ao/orb_atomic_lm.cpp)
 # Keep only the tensor eigensolver from the PCA translation unit in this focused test.
 target_compile_options(MODULE_RI_invmat_ri PRIVATE -ffunction-sections -fdata-sections)

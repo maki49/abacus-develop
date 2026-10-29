@@ -3,8 +3,6 @@
 // DATE :   2022-08-17
 //=======================
 
-#ifndef INVERSE_MATRIX_HPP
-#define INVERSE_MATRIX_HPP
 
 #include "invmat_ri.h"
 #include "source_base/module_external/lapack_connector.h"
@@ -103,7 +101,7 @@ struct InverseMatrixTraits<std::complex<float>>
 };
 
 template <typename T>
-inline void Inverse_Matrix<T>::using_syev(const double& threshold_condition_number)
+void Inverse_Matrix<T>::using_syev(const double& threshold_condition_number)
 {
     using traits = InverseMatrixTraits<T>;
     using val_t = typename traits::value_type;
@@ -324,4 +322,6 @@ void Inverse_Matrix<Tdata>::copy_down_triangle()
             A(i0, i1) = A(i1, i0);
 }
 
-#endif
+// Supported real and complex double-precision RI backends.
+template class Inverse_Matrix<double>;
+template class Inverse_Matrix<std::complex<double>>;

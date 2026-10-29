@@ -3,8 +3,6 @@
 // DATE :   2022-08-17
 //=======================
 
-#ifndef LRI_CV_HPP
-#define LRI_CV_HPP
 
 #include "lri_cv.h"
 #include "lri_cv_tools.h"
@@ -495,5 +493,6 @@ LRI_CV<Tdata>::DPcal_C_dC(
     } // end else (!(C_read && flag_finish_dC))
 }
 
-
-#endif
+// Supported real and complex double-precision RI backends.
+template class LRI_CV<double>;
+template class LRI_CV<std::complex<double>>;
