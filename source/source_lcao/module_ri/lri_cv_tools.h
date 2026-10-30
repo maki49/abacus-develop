@@ -7,6 +7,7 @@
 #define LRI_CV_TOOLS_H
 
 #include "invmat_ri.h"
+#include "source_cell/unitcell.h"
 #include "abfs_vector3_order.h"
 #include "source_lcao/module_ri/abfs.h"
 

@@ -7,7 +7,6 @@
 #define ABACUS_SOURCE_LCAO_MODULE_RI_INVMAT_RI_H
 
 
-#include "abfs_construct_pca.h"
 
 #include <RI/global/Tensor.h>
 #include <vector>
