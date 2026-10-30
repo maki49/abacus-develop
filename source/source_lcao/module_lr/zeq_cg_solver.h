@@ -1,7 +1,7 @@
 #ifndef ABACUS_LR_ZEQ_CG_SOLVER_H
 #define ABACUS_LR_ZEQ_CG_SOLVER_H
 
-#include "source_hsolver/linear_solver_types.h"
+#include "source_hsolver/module_linalg/linear_solver_types.h"
 
 #include <complex>
 #include <functional>

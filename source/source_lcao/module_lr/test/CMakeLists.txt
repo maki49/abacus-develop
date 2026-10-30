@@ -70,8 +70,8 @@ AddTest(
   TARGET MODULE_LR_zeq_cg_solver
   LIBS base parameter ${math_libs} container device
   SOURCES test_zeq_cg_solver.cpp ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
-    ../../../source_hsolver/linear_gmres.cpp ../../../source_hsolver/linear_algebra.cpp
-    ../../../source_hsolver/linear_workspace.cpp
+    ../../../source_hsolver/module_linalg/linear_gmres.cpp ../../../source_hsolver/module_linalg/linear_algebra.cpp
+    ../../../source_hsolver/module_linalg/linear_workspace.cpp
 )
 if(ENABLE_MPI)
   target_sources(MODULE_LR_zeq_cg_solver PRIVATE ../../../source_base/test/mpi_test_main.cpp)
@@ -115,8 +115,8 @@ if(ENABLE_MPI)
     TARGET MODULE_LR_zeqlin_solv
     LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
     SOURCES test_zeqlin_solv.cpp ${test_zeqlin_solv_main} ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
-      ../../../source_hsolver/linear_gmres.cpp ../../../source_hsolver/linear_algebra.cpp
-      ../../../source_hsolver/linear_workspace.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
+      ../../../source_hsolver/module_linalg/linear_gmres.cpp ../../../source_hsolver/module_linalg/linear_algebra.cpp
+      ../../../source_hsolver/module_linalg/linear_workspace.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
   )
   add_test(
     NAME MODULE_LR_zeqlin_failure_mpi

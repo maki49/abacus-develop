@@ -3,10 +3,10 @@
 #include "source_base/timer.h"
 #include "source_base/module_device/memory_op.h"
 #include "source_hsolver/linear_pcg.h"
-#include "source_hsolver/linear_gmres.h"
+#include "source_hsolver/module_linalg/linear_gmres.h"
 #include "source_base/kernels/math_kernel_op.h"
 #include "source_base/parallel_device.h"
-#include "source_hsolver/linear_algebra.h"
+#include "source_hsolver/module_linalg/linear_algebra.h"
 
 #include <algorithm>
 #include <cmath>
@@ -255,12 +255,13 @@ hsolver::LinearSolveResult solve_Z_GMRES(double* z, const double* rhs, int ld, i
         }
         const double absolute_tolerance = 1e-6;
         const double tolerance = absolute_tolerance / rhs_scale;
-        hsolver::LinearSolveOptions options;
-        options.restart = 20;
-        options.max_iterations = 100;
-        const hsolver::LinearSolveControl control{options.max_iterations, false};
-        hsolver::LinearGMRES<double, base_device::DEVICE_CPU> solver(tolerance, options, comm);
-        const auto result = solver.solve(hessian, inverse, ld, states, ld, z, rhs, nullptr, true, control);
+        const int restart = 20;
+        const int max_iterations = 100;
+        const bool force_check = true;
+        const bool reconstruct = false;
+        hsolver::LinearGMRES<double, base_device::DEVICE_CPU> solver(tolerance, restart, max_iterations, comm);
+        const auto result = solver.solve(hessian, inverse, ld, states, ld, z, rhs, nullptr,
+                                         force_check, max_iterations, reconstruct);
         std::cout << "Z-vector GMRES backend=CPU: iterations=" << result.iterations
                   << " true residual=" << result.max_residual
                   << " operator calls=" << result.operator_calls << std::endl;
