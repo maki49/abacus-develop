@@ -87,39 +87,40 @@ void DFPT_PW::Impl::init_submodules(const DFPT_PW_InitContext& ctx,
     // Coulomb stiffness 4pi/G^2; measured lambda ~ -2.2 on {111}/{200}
     // for the diamond smoke case), so the coefficient must stay below
     // 2 / (1 + |lambda_min|); the INPUT default 0.4 keeps margin up to
-    // |lambda| ~ 3; the alternative is mix_type = "kerker", the screen
-    // f_g = |G+q|^2 / (|G+q|^2 + a^2) in 1/lat0^2 units (a^2 via
-    // DFPT_KERKER_A2), which stabilizes those shells at beta up to 1;
-    // the env knobs are design-phase calibration aids
-    double mix_beta = mix_beta_;
-    if (const char* env_beta = getenv("DFPT_MIX_BETA"))
+    // |lambda| ~ 3; the alternative is dfpt_mix_type = "rho_kerker", the
+    // screen f_g = |G+q|^2 / (|G+q|^2 + a^2) in 1/lat0^2 units (a^2 via
+    // dfpt_kerker_a2), which stabilizes those shells at beta up to 1;
+    // both arrive through the INPUT setters (dfpt_mix_beta /
+    // dfpt_mix_type / dfpt_kerker_a2)
+    const double mix_beta = mix_beta_;
+    const std::string mix_type = mix_type_;
+    const double kerker_a2 = kerker_a2_;
+    // DFPT_Rho handles density mixing only (the E-field loop in
+    // dfpt_pw_q0.cpp always mixes the density, while the v_sc modes do
+    // their own potential mixing in solve_displacement), so pass the
+    // density-space counterpart: v_sc_plain -> rho_plain, v_sc_broyden
+    // -> rho_broyden (the E-field solve must not silently fall back to
+    // the plain beta mix when the INPUT selects a Broyden scheme)
+    std::string rho_mix_type = mix_type;
+    if (mix_type == "v_sc_plain")
     {
-        const double parsed = atof(env_beta);
-        if (parsed > 0.0 && parsed <= 1.0)
-        {
-            mix_beta = parsed;
-        }
+        rho_mix_type = "rho_plain";
     }
-    std::string mix_type = "plain";
-    if (const char* env_type = getenv("DFPT_MIX_TYPE"))
+    else if (mix_type == "v_sc_broyden")
     {
-        const std::string parsed = env_type;
-        if (parsed == "plain" || parsed == "kerker")
-        {
-            mix_type = parsed;
-        }
+        rho_mix_type = "rho_broyden";
     }
-    double kerker_a2 = 1.0;
-    if (const char* env_a2 = getenv("DFPT_KERKER_A2"))
-    {
-        const double parsed = atof(env_a2);
-        if (parsed > 0.0)
-        {
-            kerker_a2 = parsed;
-        }
-    }
-    rho_.init({nspin, nrxx, ctx.pw_rho, ctx.pw_wfc, ctx.ucell->G, mix_type, mix_beta, kerker_a2});
+    rho_.init({nspin, nrxx, ctx.pw_rho, ctx.pw_wfc, ctx.ucell->G, rho_mix_type, mix_beta, kerker_a2, broyden_ndim_});
     phon_.init(*ctx.ucell, ctx.pw_rho, &pert_);
+    // nlcc direct-term providers (QE dynmat_nlcc + dynmatcc equivalents):
+    // the pure core-response builder and the ground-state XC potential
+    phon_.set_rho(&rho_);
+    // the Impl-owned copy: the context pointer refers to caller stack
+    // state that dies when the esolver init returns
+    // always pass the pointer (never nullptr): a rank with an empty
+    // local field must still enter accum_nlcc_diag's collective
+    // participation; the size checks inside gate only the local work
+    phon_.set_vxc_r(&vxc_r_);
     q0_.init(*ctx.ucell, ctx.pw_rho, ctx.pw_wfc, &pert_);
     hamilt_.reset(new DFPT_HamiltShift(*ctx.ucell, ctx.pw_rho, ctx.pw_wfc, *ctx.veff_r, &pert_));
     data_.init(&qlist_, nk, nbands, npw_max, nrxx, nspin, nat, ctx.dftu);
@@ -145,6 +146,11 @@ void DFPT_PW::init(const DFPT_PW_InitContext& ctx)
     pimpl_->pw_wfc_ = pw_wfc;
     pimpl_->sf_ = sf;
     pimpl_->veff_r_ = *ctx.veff_r;
+    pimpl_->vxc_r_.clear();
+    if (ctx.vxc_r != nullptr)
+    {
+        pimpl_->vxc_r_ = *ctx.vxc_r;
+    }
     pimpl_->wg_ = *ctx.wg;
     pimpl_->eig_ = *ctx.eig;
     pimpl_->xc_ = ctx.xc;
