@@ -156,7 +156,7 @@ namespace LR
             else
             {
                 // 3. set maxiter and the operator
-                const int maxiter = hsolver::DiagoIterAssist<T>::PW_DIAG_NMAX;
+                const int maxiter = PARAM.inp.pw_diag_nmax;
                 const LRHSOperator<T, THamilt> op(hm);
                 const int davidson_dimension = PARAM.inp.pw_diag_ndim;
 
@@ -181,6 +181,8 @@ namespace LR
                     // Keep that total budget, but restart within one continuous
                     // residual-controlled solve so candidate roots are retained.
                     const int iteration_budget = 6 * maxiter;
+                    std::cout << "LR Davidson maximum iterations=" << iteration_budget
+                              << " (6 * pw_diag_nmax=" << maxiter << ")\n";
                     const DavidsonSolveSettings settings{nband, dim, subspace_multiplier, diag_ethr,
                         iteration_budget, PARAM.inp.diag_subspace, PARAM.inp.nb2d};
                     // A - omega I is approximated by the signed orbital gaps.
