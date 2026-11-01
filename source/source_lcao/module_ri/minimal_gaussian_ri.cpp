@@ -2,6 +2,7 @@
 
 #include "exx_abfs_ctor_orbs.h"
 #include "lri_cv.h"
+#include "lri_cv_tools.h"
 #include "minimal_gaussian_basis.h"
 #include <RI/distribute/Distribute_Equally.h>
 #include <cmath>
