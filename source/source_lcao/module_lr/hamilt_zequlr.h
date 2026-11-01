@@ -54,14 +54,23 @@ namespace LR
 
         void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband)
         {
-            this->apply(psi_in, hpsi, ld_psi, nband, false);
+            this->apply(psi_in, hpsi, ld_psi, nband, false, nullptr);
+        }
+
+        // The nonlinear RHS may supply one additive AO density per state/spin/k.
+        void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int nband,
+                  const std::vector<std::vector<ct::Tensor>>& window_density)
+        {
+            assert(window_density.empty() || window_density.size() == nband);
+            this->apply(psi_in, hpsi, ld_psi, nband, false, &window_density);
         }
 
     protected:
         // Only the linear VO Hessian opts into spin fusion. The nonlinear
         // right-hand side retains its CXC/OO actions and per-band extra terms.
         void apply(const T* const psi_in, T* const hpsi, const int ld_psi,
-                   const int nband, const bool fuse_spin)
+                   const int nband, const bool fuse_spin,
+                   const std::vector<std::vector<ct::Tensor>>* window_density)
         {
             assert(ld_psi == this->ldim);
             const std::vector<int> ldim_is = { static_cast<int>(nk * pX[0].get_local_size()), static_cast<int>(nk * pX[1].get_local_size()) };
@@ -73,6 +82,8 @@ namespace LR
             for (int ib = 0;ib < nband;++ib)
             {
                 const int offset_band = ib * ld_psi;
+                const auto* density_add = window_density == nullptr || window_density->empty()
+                    ? nullptr : &window_density->at(ib);
                 HxcSpinAccumulator spin_potential[2]; // Fresh grid sums for this vector.
                 // All four spin blocks accumulate into this band's output, and the diagonal
                 // `OperatorLRDiag`s now add rather than assign (see `operator_lr_diag.h`), so the
@@ -85,7 +96,7 @@ namespace LR
                 for (int is_in : {0, 1})
                 {
                     const int offset_in = offset_band + is_in * ldim_is[0];
-                    this->set_dm(is_in, psi_in + offset_in);
+                    this->set_dm(is_in, psi_in + offset_in, density_add);
                     typename OperatorLRHxc<T>::TransitionDensityCache density_cache;
                     for (int is_out : {0, 1})
                     {
@@ -157,7 +168,7 @@ namespace LR
                             {
                                 X_col[loffset_in + ik_in * px.get_local_size() + lj * px.get_row_size() + lb] = T(1);
                             }
-                            this->set_dm(is_in, X_col.data() + loffset_in);
+                            this->set_dm(is_in, X_col.data() + loffset_in, nullptr);
                             std::vector<T> col(this->ldim, T(0));
                             for (int is_out : {0, 1})
                             {
@@ -201,7 +212,8 @@ namespace LR
 
     protected:
         /// @brief rebuild the density matrices the operators read, from the `is` block of X
-        virtual void set_dm(const int is, const T* const X) = 0;
+        virtual void set_dm(const int is, const T* const X,
+                            const std::vector<ct::Tensor>* density_add) = 0;
         /// @brief optional per-band contribution that does not fit the 2x2 block structure.
         /// NOTE `matrix()` deliberately does NOT call this: it exists for the right-hand side,
         /// which is not a linear operator, while `matrix()` is only ever used for the LHS.
