@@ -129,7 +129,7 @@ namespace LR
     public:
         void hPsi(const T* const psi_in, T* const hpsi, const int ld_psi, const int nband)
         {
-            this->apply(psi_in, hpsi, ld_psi, nband, true);
+            this->apply(psi_in, hpsi, ld_psi, nband, true, nullptr);
         }
 
         /// Concatenate the two diagonal spin blocks in the same layout as hPsi.
@@ -220,8 +220,10 @@ namespace LR
         }
 
     protected:
-        void set_dm(const int is, const T* const X) override
+        void set_dm(const int is, const T* const X,
+                    const std::vector<ct::Tensor>* density_add) override
         {
+            assert(density_add == nullptr); // The linear Hessian reads only its input Z.
             const auto psi_ks_is = LR_Util::get_psi_spin(this->psi_ks_, is, this->nk);
 #ifdef __MPI
             this->dm_buf_ = cal_dm_trans_pblas(X, this->pX[is], psi_ks_is, this->pc_,
