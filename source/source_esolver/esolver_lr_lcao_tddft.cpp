@@ -351,6 +351,12 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     // HSolver has checked the true residual with the full LR operator. Cache all
     // roots/channels before target tracking selects the state used for the force.
     if (reuse_initial_guesses) { this->save_excitation_guesses_(); }
+    if (this->ks_ && this->inp_->cal_force && !this->excited_relax_)
+    {
+        // Single-point LR forces contain only -dOmega/dR. Report the KS part once,
+        // shared by all excited states, using the same KS force path as relaxation.
+        this->ks_->cal_force(ucell, this->force_gs_, "GROUND-STATE FORCE (eV/Angstrom)");
+    }
     if (this->excited_relax_)
     {
         // Re-select which root to follow BEFORE taking the gradient, so the force belongs to
@@ -359,7 +365,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
 
         // The LR terms only carry the Omega part of the force; the ground-state part is separate
         // and comes straight from the KS solver.
-        this->ks_->cal_force(ucell, this->force_gs_);
+        this->ks_->cal_force(ucell, this->force_gs_, "GROUND-STATE FORCE (eV/Angstrom)");
         this->lr_force_ = this->cal_lr_force_relax_(this->ofs_running_);
 
         // One line per ionic step with the two halves of the energy and of the gradient. Without
