@@ -76,7 +76,7 @@ ShiftedInverseResult apply_shifted_inverse(
     {
         T* correction = corrections.data() + j * stride;
         std::copy_n(basis.data() + j * stride, dim, correction);
-        apply_orbital_gap_preconditioner(correction, &shift, dim, 1, gaps, settings.denominator_floor);
+        apply_orbital_gap_preconditioner(correction, &shift, dim, 1, gaps, settings.denominator_floor, GapInverseSign::Signed);
         proxy(correction, image.data());
         ++result.operator_vectors;
         for (int i = 0; i < dim; ++i) { image[i] -= shift * correction[i]; }
@@ -132,7 +132,7 @@ ShiftedInverseResult apply_shifted_inverse(
     result.used_gap_fallback = !std::isfinite(result.relative_residual) || result.relative_residual >= 1.0;
     if (result.used_gap_fallback)
     {
-        apply_orbital_gap_preconditioner(rhs, &shift, dim, 1, gaps, settings.denominator_floor);
+        apply_orbital_gap_preconditioner(rhs, &shift, dim, 1, gaps, settings.denominator_floor, GapInverseSign::Signed);
     }
     else { std::copy_n(solution.data(), dim, rhs); }
     return result;

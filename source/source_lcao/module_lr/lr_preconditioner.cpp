@@ -229,7 +229,7 @@ int initialize_orbital_gap_candidates(T* vectors, int minimum_vectors, int capac
 template<typename T>
 void apply_orbital_gap_preconditioner(T* residuals, const double* ritz_values,
                                      int dim, int nvec, const std::vector<double>& gaps,
-                                     double denominator_floor)
+                                     double denominator_floor, GapInverseSign sign)
 {
     if (dim < 0 || nvec < 0 || gaps.size() != static_cast<std::size_t>(dim)
         || !std::isfinite(denominator_floor) || denominator_floor <= 0.0)
@@ -247,7 +247,11 @@ void apply_orbital_gap_preconditioner(T* residuals, const double* ritz_values,
             }
             const double magnitude = std::abs(difference);
             const double bounded_magnitude = std::max(magnitude, denominator_floor);
-            const double denominator = std::copysign(bounded_magnitude, difference);
+            // Positive mode avoids cancellation across the Ritz shift. Keep
+            // signed poles available to the explicit block/GMRES inverses.
+            const double denominator = sign == GapInverseSign::Positive
+                                           ? bounded_magnitude
+                                           : std::copysign(bounded_magnitude, difference);
             const std::size_t index = static_cast<std::size_t>(n) * dim + j;
             residuals[index] /= denominator;
         }
@@ -255,7 +259,7 @@ void apply_orbital_gap_preconditioner(T* residuals, const double* ritz_values,
 }
 
 template void apply_orbital_gap_preconditioner<double>(double*, const double*, int, int,
-                                                       const std::vector<double>&, double);
+                                                       const std::vector<double>&, double, GapInverseSign);
 template int initialize_orbital_gap_candidates<double>(double*, int, int, const OrbitalTransitionSpace&);
 template int initialize_orbital_gap_candidates<std::complex<double>>(
     std::complex<double>*, int, int, const OrbitalTransitionSpace&);
@@ -264,7 +268,7 @@ template DavidsonInitialSpace<double> make_davidson_initial_space(
 template DavidsonInitialSpace<std::complex<double>> make_davidson_initial_space(
     const std::complex<double>*, int, int, int, const OrbitalTransitionSpace&);
 template void apply_orbital_gap_preconditioner<std::complex<double>>(
-    std::complex<double>*, const double*, int, int, const std::vector<double>&, double);
+    std::complex<double>*, const double*, int, int, const std::vector<double>&, double, GapInverseSign);
 template void initialize_orbital_gap_vectors<double>(double*, int, const double*,
     const std::vector<Parallel_2D>&, int, const std::vector<int>&, const std::vector<int>&, bool);
 template void initialize_orbital_gap_vectors<std::complex<double>>(std::complex<double>*, int, const double*,
