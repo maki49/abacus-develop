@@ -163,7 +163,7 @@ void apply_low_energy_preconditioner(T* residuals, const double* shifts, int dim
         for (int n = 0; n < nvec; ++n) { selected_residuals[n * count + j] = residuals[n * dim + index]; }
     }
     sum_selected_entries(selected_residuals, comm);
-    apply_orbital_gap_preconditioner(residuals, shifts, dim, nvec, gaps, denominator_floor);
+    apply_orbital_gap_preconditioner(residuals, shifts, dim, nvec, gaps, denominator_floor, GapInverseSign::Signed);
     std::vector<T> spectral_residuals(selected_size, T(0));
     for (int n = 0; n < nvec; ++n)
     {
@@ -179,7 +179,7 @@ void apply_low_energy_preconditioner(T* residuals, const double* shifts, int dim
     // Reuse precisely the same signed pole regularization in the block's
     // eigenbasis; diagonal and block limits therefore agree, including poles.
     apply_orbital_gap_preconditioner(spectral_residuals.data(), shifts, count, nvec,
-                                     block.eigenvalues, denominator_floor);
+                                     block.eigenvalues, denominator_floor, GapInverseSign::Signed);
     for (int j = 0; j < count; ++j)
     {
         const int index = block.local_indices[j];

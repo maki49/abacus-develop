@@ -84,15 +84,27 @@ TEST(LRPreconditioner, InitialVectorsSeparateDegenerateKAndSpinTransitions)
                  std::invalid_argument);
 }
 
-TEST(LRPreconditioner, SignedShiftedGapsAndZeroFloor)
+TEST(LRPreconditioner, PositiveShiftedGapsAndZeroFloor)
 {
     const std::vector<double> gaps = {0.3, 0.6, 0.9};
     const double shifts[] = {0.6, 0.8};
     std::vector<double> residuals = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     const auto input = residuals;
-    LR::apply_orbital_gap_preconditioner(residuals.data(), shifts, 3, 2, gaps, 1e-4);
-    const double denominators[] = {-0.3, 1e-4, 0.3, -0.5, -0.2, 0.1};
+    LR::apply_orbital_gap_preconditioner(residuals.data(), shifts, 3, 2, gaps, 1e-4, LR::GapInverseSign::Positive);
+    const double denominators[] = {0.3, 1e-4, 0.3, 0.5, 0.2, 0.1};
     for (int j = 0; j < 6; ++j) { EXPECT_NEAR(residuals[j], input[j] / denominators[j], 1e-10); }
+}
+
+TEST(LRPreconditioner, ExplicitShiftedInverseRetainsSignedPoles)
+{
+    const std::vector<double> gaps = {0.3, 0.6, 0.9};
+    const double shift = 0.6;
+    std::vector<double> residuals(3, 1.0);
+    LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 3, 1, gaps,
+                                        1e-4, LR::GapInverseSign::Signed);
+    EXPECT_NEAR(residuals[0], -1.0 / 0.3, 1e-12);
+    EXPECT_DOUBLE_EQ(residuals[1], 1e4);
+    EXPECT_NEAR(residuals[2], 1.0 / 0.3, 1e-12);
 }
 
 TEST(LRPreconditioner, CandidateBoundaryIncludesDegenerateKPartners)
@@ -129,14 +141,14 @@ TEST(LRPreconditioner, AugmentedGammaSpacePreservesSuppliedGuesses)
     EXPECT_THROW(LR::make_davidson_initial_space(guesses.data(), 2, 1, 3, layout), std::invalid_argument);
 }
 
-TEST(LRPreconditioner, ComplexResidualsAndNearResonantSigns)
+TEST(LRPreconditioner, ComplexResidualsPreservePhaseAcrossResonance)
 {
     const std::vector<double> gaps = {1.0 - 1e-8, 1.0 + 1e-8, 1.0};
     const double shift = 1.0;
     const std::complex<double> value(0.3, -0.4);
     std::vector<std::complex<double>> residuals(3, value);
-    LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 3, 1, gaps, 1e-4);
-    EXPECT_NEAR(std::abs(residuals[0] + value * 1e4), 0.0, 1e-10);
+    LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 3, 1, gaps, 1e-4, LR::GapInverseSign::Positive);
+    EXPECT_NEAR(std::abs(residuals[0] - value * 1e4), 0.0, 1e-10);
     EXPECT_NEAR(std::abs(residuals[1] - value * 1e4), 0.0, 1e-10);
     EXPECT_NEAR(std::abs(residuals[2] - value * 1e4), 0.0, 1e-10);
 }
@@ -146,15 +158,15 @@ TEST(LRPreconditioner, RejectsInvalidLayoutAndFloor)
     std::vector<double> residuals(1, 1.0);
     std::vector<double> gaps(1, 1.0);
     const double shift = 0.5;
-    EXPECT_THROW(LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 1, 1, gaps, 0.0),
+    EXPECT_THROW(LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 1, 1, gaps, 0.0, LR::GapInverseSign::Positive),
                  std::invalid_argument);
-    EXPECT_THROW(LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 2, 1, gaps, 1e-4),
+    EXPECT_THROW(LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 2, 1, gaps, 1e-4, LR::GapInverseSign::Positive),
                  std::invalid_argument);
     gaps[0] = std::numeric_limits<double>::quiet_NaN();
-    EXPECT_THROW(LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 1, 1, gaps, 1e-4),
+    EXPECT_THROW(LR::apply_orbital_gap_preconditioner(residuals.data(), &shift, 1, 1, gaps, 1e-4, LR::GapInverseSign::Positive),
                  std::invalid_argument);
     const std::vector<double> empty;
-    LR::apply_orbital_gap_preconditioner<double>(nullptr, &shift, 0, 1, empty, 1e-4);
+    LR::apply_orbital_gap_preconditioner<double>(nullptr, &shift, 0, 1, empty, 1e-4, LR::GapInverseSign::Positive);
 }
 
 TEST(LRPreconditioner, LowEnergyBlockCompletesSpinAndKDegeneracy)

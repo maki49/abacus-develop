@@ -185,7 +185,7 @@ namespace LR
                               << " (6 * pw_diag_nmax=" << maxiter << ")\n";
                     const DavidsonSolveSettings settings{nband, dim, subspace_multiplier, diag_ethr,
                         iteration_budget, PARAM.inp.diag_subspace, PARAM.inp.nb2d};
-                    // A - omega I is approximated by the signed orbital gaps.
+                    // Use the magnitude of shifted orbital gaps for a positive inverse.
                     // Cap only near-resonant denominators (1e-4 Ry = 1.36 meV).
                     const double denominator_floor = 1e-4;
                     typename hsolver::Diago_DavSubspace<T>::Preconditioner inverse =
@@ -193,7 +193,7 @@ namespace LR
                                                            int local_dim, int nvec)
                     {
                         apply_orbital_gap_preconditioner(residuals, shifts, local_dim, nvec,
-                                                         precondition, denominator_floor);
+                                                         precondition, denominator_floor, GapInverseSign::Positive);
                     };
                     LowEnergyPreconditioner<T> low_energy_block;
                     int inner_solves = 0;
@@ -248,7 +248,7 @@ namespace LR
                     }
                     else
                     {
-                        std::cout << "LR Davidson preconditioner=signed-orbital-gap floor="
+                        std::cout << "LR Davidson preconditioner=positive-shifted-orbital-gap floor="
                                   << denominator_floor << " Ry\n";
                     }
                     // Keep lr_thr as an energy-change tolerance. The independent

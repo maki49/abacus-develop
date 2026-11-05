@@ -27,10 +27,13 @@ AddTest(
   SOURCES test_lr_preconditioner.cpp ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
 )
 
+abacus_copy_test_files(support/n2_davidson_stagnation.dat)
+
 AddTest(
   TARGET MODULE_LR_davidson
   LIBS base parameter ${math_libs} container device psi
-  SOURCES test_lr_davidson.cpp ../lr_davidson.cpp
+  SOURCES test_lr_davidson.cpp ../lr_davidson.cpp ../lr_preconditioner.cpp
+    ../../../source_hamilt/operator.cpp
     ../../../source_hsolver/diago_dav_subspace.cpp
     ../../../source_hsolver/diago_dav_subspace_residual.cpp
     ../../../source_hsolver/diag_const_nums.cpp

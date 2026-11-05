@@ -64,13 +64,18 @@ void initialize_orbital_gap_vectors(T* vectors, int nvec, const double* eigenval
                                    int nk, const std::vector<int>& nocc,
                                    const std::vector<int>& nvirt, bool unrestricted);
 
-/// Apply the signed inverse gap to a CPU residual block, in place:
-/// r_{j,n} /= sign(D_j-omega_n) * max(|D_j-omega_n|, denominator_floor).
-/// The floor is in Ry; signed zero is regularized too. dim is both row count and stride.
+/// Default Davidson expansion uses a positive inverse; explicit shifted block
+/// and GMRES inverse policies retain their signed denominators.
+enum class GapInverseSign { Positive, Signed };
+
+/// Apply a shifted-gap inverse to a CPU residual block, in place.
+/// Positive: r /= max(|D-omega|, floor); Signed additionally retains sign(D-omega).
+/// The positive mode avoids indefinite expansion directions. The floor is in Ry;
+/// dim is both row count and stride. Callers choose the sign policy explicitly.
 template<typename T>
 void apply_orbital_gap_preconditioner(T* residuals, const double* ritz_values,
                                      int dim, int nvec, const std::vector<double>& gaps,
-                                     double denominator_floor);
+                                     double denominator_floor, GapInverseSign sign);
 }
 
 #endif // ABACUS_SOURCE_LCAO_MODULE_LR_PRECONDITIONER_H

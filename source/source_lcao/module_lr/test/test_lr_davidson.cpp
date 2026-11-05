@@ -1,4 +1,5 @@
 #include "../lr_davidson.h"
+#include "../lr_preconditioner.h"
 
 #include "source_base/parallel_device.h"
 #include "source_base/parallel_global.h"
@@ -8,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <fstream>
 #include <vector>
 #ifdef __CUDA
 #include <cuda_runtime.h>
@@ -211,6 +213,124 @@ TEST_F(LRDavidsonGpu, ComplexCoupled) { check_eigenpairs<std::complex<double>>(t
 TEST_F(LRDavidsonGpu, ExactInitial) { check_eigenpairs<std::complex<double>>(true, true, false); }
 TEST_F(LRDavidsonGpu, ZeroInverseFallback) { check_eigenpairs<double>(true, false, true); }
 #endif
+
+
+namespace
+{
+// Frozen 50-transition N2/LDA operator, gaps and guesses from a failing run.
+// Keeping the physical matrix fixed separates solver stagnation from SCF/OMP
+// changes of the degenerate orbital basis. The last three values are LAPACK roots.
+template<typename T>
+class FrozenCasida final : public hsolver::HSOperator<T>
+{
+public:
+    FrozenCasida(const std::vector<double>& matrix, int dim) : matrix_(matrix), dim_(dim) {}
+    void update_k(int) override {}
+    void hpsi(const T* x, T* hx, int ld, int columns) const override
+    {
+        for (int column = 0; column < columns; ++column)
+        {
+            for (int row = 0; row < dim_; ++row)
+            {
+                T value = T(0);
+                for (int j = 0; j < dim_; ++j)
+                {
+                    value += matrix_[j * dim_ + row] * phase<T>(row)
+                             / phase<T>(j) * x[column * ld + j];
+                }
+                hx[column * ld + row] = value;
+            }
+        }
+    }
+    void spsi(const T* x, T* sx, int ld, int columns) const override
+    {
+        const int count = ld * columns;
+        std::copy_n(x, count, sx);
+    }
+private:
+    const std::vector<double>& matrix_;
+    int dim_;
+};
+
+template<typename T>
+void check_frozen_degenerate_roots()
+{
+    std::ifstream input("support/n2_davidson_stagnation.dat");
+    ASSERT_TRUE(input.is_open());
+    int dim = 0;
+    int count = 0;
+    int initial = 0;
+    input >> dim >> count >> initial;
+    ASSERT_TRUE(input.good());
+    ASSERT_EQ(dim, 50);
+    ASSERT_EQ(count, 3);
+    ASSERT_EQ(initial, 5);
+    std::vector<double> gaps(dim);
+    std::vector<T> vectors(dim * initial);
+    std::vector<double> matrix(dim * dim);
+    std::vector<double> expected(count);
+    for (double& value : gaps) { input >> value; }
+    for (int i = 0; i < dim * initial; ++i)
+    {
+        double value = 0.0;
+        input >> value;
+        vectors[i] = value * phase<T>(i % dim);
+    }
+    for (double& value : matrix) { input >> value; }
+    for (double& value : expected) { input >> value; }
+    ASSERT_FALSE(input.fail());
+    const FrozenCasida<T> op(matrix, dim);
+#ifdef __MPI
+    const hsolver::diag_comm_info comm(MPI_COMM_SELF, 0, 1);
+#else
+    const hsolver::diag_comm_info comm(0, 1);
+#endif
+    std::vector<double> eigenvalues(count);
+    hsolver::DavidsonOptions options;
+    options.initial_vectors = initial;
+    options.retained_vectors = initial;
+    const LR::DavidsonSolveSettings settings{count, dim, 4, 1e-6, 300, 0, 0};
+    const typename hsolver::Diago_DavSubspace<T>::Preconditioner inverse =
+        [&gaps](T* residuals, const double* shifts, int ld, int columns)
+        {
+            LR::apply_orbital_gap_preconditioner(residuals, shifts, ld, columns, gaps, 1e-4, LR::GapInverseSign::Positive);
+        };
+    const auto result = LR::solve_davidson<T>(op, vectors.data(), eigenvalues.data(), gaps,
+                                             inverse, options, settings, comm, false);
+    ASSERT_EQ(result.status, hsolver::DavidsonStatus::converged);
+    std::vector<T> images(dim * count);
+    op.hpsi(vectors.data(), images.data(), dim, count);
+    for (int i = 0; i < count; ++i)
+    {
+        // Residuals alone cannot detect a missed lower root.
+        EXPECT_NEAR(eigenvalues[i], expected[i], 1e-10);
+        double squared_residual = 0.0;
+        for (int j = 0; j < dim; ++j)
+        {
+            const int index = i * dim + j;
+            const T residual = images[index] - eigenvalues[i] * vectors[index];
+            squared_residual += std::norm(residual);
+        }
+        EXPECT_LE(std::sqrt(squared_residual), options.residual_tolerance);
+        for (int j = 0; j < count; ++j)
+        {
+            std::complex<double> overlap(0.0, 0.0);
+            for (int row = 0; row < dim; ++row)
+            {
+                overlap += std::conj(vectors[i * dim + row]) * vectors[j * dim + row];
+            }
+            const double target = i == j ? 1.0 : 0.0;
+            EXPECT_NEAR(std::abs(overlap - target), 0.0, 1e-10);
+        }
+    }
+}
+} // namespace
+
+TEST(LRDavidsonCpu, DegenerateCasidaLowestRootsReal) { check_frozen_degenerate_roots<double>(); }
+TEST(LRDavidsonCpu, DegenerateCasidaLowestRootsComplex)
+{
+    check_frozen_degenerate_roots<std::complex<double>>();
+}
 
 int main(int argc, char** argv)
 {
