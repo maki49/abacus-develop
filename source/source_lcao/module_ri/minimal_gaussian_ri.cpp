@@ -111,7 +111,7 @@ template<typename T> RIFittingTensors<T> fit_gaussian_products(
     LRI_CV<T> integrals;
     integrals.set_info_ri(&fitting_info);
     integrals.set_orbitals(input.cell, input.orbitals, input.atomic_orbitals, auxiliary,
-                          convolved, input.settings.kmesh_multiplier, input.gaunt, true);
+                          convolved, input.settings.kmesh_multiplier, input.gaunt, true, /*use_gpu=*/false);
 
     std::vector<int> atoms(input.cell.nat);
     for (int a = 0; a < input.cell.nat; ++a) { atoms[a] = a; }
