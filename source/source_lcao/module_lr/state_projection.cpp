@@ -79,9 +79,9 @@ void project_transition_vectors(const TransitionBasisView<T>& inputs, const Orbi
         // Only oo/vv are needed; construct each once and reuse across references.
         const int occupied_start = 0;
         const auto occupied = mo_overlap_dist(old.coefficients[spin], typed_ao,
-            current.coefficients[spin], inputs.pc, inputs.pmat, pi, occupied_start);
+            current.coefficients[spin], inputs.pc, inputs.pmat.para_2d(), pi, occupied_start);
         const auto virtuals = mo_overlap_dist(old.coefficients[spin], typed_ao,
-            current.coefficients[spin], inputs.pc, inputs.pmat, pv, no);
+            current.coefficients[spin], inputs.pc, inputs.pmat.para_2d(), pv, no);
         for (auto* reference : references)
         {
             std::vector<T> local_reference(local_count);

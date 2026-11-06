@@ -25,6 +25,7 @@ if(ENABLE_MPI)
   if(ENABLE_ELPA)
     list(APPEND DAV_SUBSPACE_TEST_SOURCES ../diago_elpa.cpp)
     list(APPEND DAV_SUBSPACE_TEST_LIBS genelpa ELPA::ELPA)
+    target_link_libraries(MODULE_HSOLVER_dav_callback PRIVATE genelpa ELPA::ELPA)
   endif()
 endif()
 AddTest(

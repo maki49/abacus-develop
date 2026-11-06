@@ -17,7 +17,8 @@ void check_spin_projection(T phase)
 {
     const int bands = 4;
     const int block_size = 1;
-    Parallel_Orbitals pc;
+    Parallel_Orbitals orbital_layout;
+    Parallel_2D& pc = orbital_layout.para_2d();
 #ifdef __MPI
     pc.init(bands, bands, block_size, MPI_COMM_WORLD);
 #else
@@ -56,7 +57,7 @@ void check_spin_projection(T phase)
     TwoCenterIntegrator integrator;
     psi::Psi<T> orbitals;
     const std::vector<double> cutoffs;
-    const LR::TransitionBasisView<T> view{cell, cutoffs, integrator, orbitals, pc, pc,
+    const LR::TransitionBasisView<T> view{cell, cutoffs, integrator, orbitals, pc, orbital_layout,
         px, occupied, virtuals, true, 0};
     const int local_dimension = px[0].get_local_size() + px[1].get_local_size();
     std::vector<std::vector<T>> vectors(3, std::vector<T>(local_dimension));
