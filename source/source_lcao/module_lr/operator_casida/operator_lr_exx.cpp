@@ -58,7 +58,7 @@ namespace LR
                 density_k[ik] = &dmk[ik];
             }
             std::vector<AtomTensorMap<T>> density_r
-                = RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, density_k, pmat, 1);
+                = RI_2D_Comm::split_m2D_ktoR<T>(ucell, kv, density_k, pmat.para_2d(), 1);
             ModuleBase::timer::end("OperatorLREXX", "split_transition_density");
             return std::move(density_r[0]);
         }

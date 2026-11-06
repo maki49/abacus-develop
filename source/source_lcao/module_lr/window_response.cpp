@@ -19,10 +19,10 @@ std::vector<container::Tensor> transform_window_matrix(const GradientInputs<doub
 {
 #ifdef __MPI
     auto result = cal_dm_trans_pblas(matrix, pm, c, inputs.pc, inputs.nbasis,
-        inputs.nocc[spin], inputs.nvirt[spin], inputs.pmat, 1.0, type);
+        inputs.nocc[spin], inputs.nvirt[spin], inputs.pmat.para_2d(), 1.0, type);
     for (auto& tensor : result)
     {
-        LR_Util::matsym(tensor.data<double>(), inputs.nbasis, inputs.pmat);
+        LR_Util::matsym(tensor.data<double>(), inputs.nbasis, inputs.pmat.para_2d());
     }
 #else
     auto result = cal_dm_trans_blas(matrix, c, inputs.nocc[spin], inputs.nvirt[spin], 1.0, type);
