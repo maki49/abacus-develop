@@ -52,7 +52,11 @@ void prepare(Kernel& kernel, RI::LRI_Cal_Mode mode, bool resident_cv)
     kernel.set_parallel(MPI_COMM_SELF, atoms, lattice, period);
     kernel.lri.cal_mode = mode;
 #ifdef __GPU_RI
-    if (resident_cv) { kernel.lri.set_gpu_resident_data_names({"Cs_", "Vs_"}); }
+    RI::GPU_Resident_Options resident_options;
+    resident_options.enabled = resident_cv;
+    resident_options.data_names = {"Cs_", "Vs_"};
+    resident_options.budget_gib = 0.0;
+    kernel.lri.set_gpu_resident_options(resident_options);
 #else
     (void)resident_cv;
 #endif

@@ -37,18 +37,18 @@
 template<typename Tdata>
 void Exx_LRI<Tdata>::configure_execution(const bool use_gpu, const bool resident_cv, std::ostream& log)
 {
+#ifdef __GPU_RI
+    RI::GPU_Resident_Options resident_options;
+    resident_options.enabled = use_gpu && resident_cv;
+    resident_options.data_names = {"Cs_", "Vs_"};
+    // Retain the automatic budget: one third of free device memory, capped at 4 GiB.
+    resident_options.budget_gib = 0.0;
+    this->exx_lri.lri.set_gpu_resident_options(resident_options);
+#endif
     if (use_gpu)
     {
 #ifdef __GPU_RI
         this->exx_lri.lri.cal_mode = RI::LRI_Cal_Mode::GPU;
-        if (resident_cv)
-        {
-            this->exx_lri.lri.set_gpu_resident_data_names({"Cs_", "Vs_"});
-        }
-        else
-        {
-            this->exx_lri.lri.set_gpu_resident_data_names({});
-        }
         log << " Exact-exchange contractions: DDLA/CUDA GPU, C/V residency "
             << (resident_cv ? "enabled" : "disabled") << std::endl;
 #else
@@ -58,9 +58,6 @@ void Exx_LRI<Tdata>::configure_execution(const bool use_gpu, const bool resident
     else
     {
         this->exx_lri.lri.cal_mode = RI::LRI_Cal_Mode::CPU;
-#ifdef __GPU_RI
-        this->exx_lri.lri.set_gpu_resident_data_names({});
-#endif
         log << " Exact-exchange contractions: CPU" << std::endl;
     }
 }
