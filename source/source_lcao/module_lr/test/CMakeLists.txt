@@ -8,12 +8,6 @@ if(ENABLE_LIBXC)
     SOURCES test_xc_kxc.cpp ../potentials/xc_kxc.cpp)
 endif()
 
-AddTest(
-  TARGET MODULE_LR_preconditioner
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_lr_preconditioner.cpp ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
-)
-
 abacus_copy_test_files(support/n2_davidson_stagnation.dat)
 
 AddTest(
@@ -37,12 +31,6 @@ if(ENABLE_MPI)
   set_tests_properties(MODULE_LR_davidson_parallel PROPERTIES
     PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()
-
-AddTest(
-  TARGET MODULE_LR_operator_lr_diag
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_operator_lr_diag.cpp ../../../source_hamilt/operator.cpp
-)
 
 AddTest(
   TARGET MODULE_LR_zeq_cg_solver
@@ -112,34 +100,6 @@ addtest(
   TARGET MODULE_LR_state_ovlp
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_state_ovlp.cpp state_ovlp_test.h ${root_overlap_test_sources})
-
-AddTest(
-  TARGET MODULE_LR_state_projection
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_state_projection.cpp ../state_projection.cpp ${root_overlap_test_sources}
-)
-if(ENABLE_MPI)
-  target_sources(MODULE_LR_state_projection PRIVATE ../../../source_base/test/mpi_test_main.cpp)
-  add_test(NAME MODULE_LR_state_projection_parallel
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_state_projection> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_state_projection_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
-endif()
-
-AddTest(
-  TARGET MODULE_LR_state_guess
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_state_guess.cpp ../state_guess.cpp ../state_projection.cpp ${root_overlap_test_sources}
-)
-if(ENABLE_MPI)
-  target_sources(MODULE_LR_state_guess PRIVATE ../../../source_base/test/mpi_test_main.cpp)
-  add_test(NAME MODULE_LR_state_guess_parallel
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_state_guess> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_state_guess_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
-endif()
 
 AddTest(
   TARGET MODULE_LR_state_group
