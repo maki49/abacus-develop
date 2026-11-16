@@ -25,7 +25,7 @@ namespace LR
         {
             const OperatorLRDiag<T>* diagonal = static_cast<const OperatorLRDiag<T>*>(this->ops);
             const ModuleBase::matrix& gaps = diagonal->energy_differences();
-            const int size = this->nk * this->pX[0].get_local_size();
+            const int size = this->nk * this->pX[0].size();
             std::vector<double> result(size);
             if (size > 0)
             {
@@ -141,7 +141,7 @@ namespace LR
                 const int block = 3 * spin;
                 const OperatorLRDiag<T>* diagonal = static_cast<const OperatorLRDiag<T>*>(this->ops[block]);
                 const ModuleBase::matrix& gaps = diagonal->energy_differences();
-                const int size = this->nk * this->pX[spin].get_local_size();
+                const int size = this->nk * this->pX[spin].size();
                 if (size > 0)
                 {
                     const double* begin = gaps.c;

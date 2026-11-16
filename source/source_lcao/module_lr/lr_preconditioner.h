@@ -3,7 +3,7 @@
 
 #include <vector>
 
-class Parallel_2D;
+class Parallel_Blkcyclic;
 
 namespace LR
 {
@@ -13,7 +13,7 @@ namespace LR
 struct OrbitalTransitionSpace
 {
     const double* eigenvalues;
-    const std::vector<Parallel_2D>& pair_distribution;
+    const std::vector<Parallel_Blkcyclic>& pair_distribution;
     int nk;
     const std::vector<int>& nocc;
     const std::vector<int>& nvirt;
@@ -50,7 +50,7 @@ int initialize_orbital_gap_candidates(T* vectors, int minimum_vectors, int capac
 /// Construct epsilon_a - epsilon_i in local [spin][k][occupied][virtual] order.
 /// KS eigenvalues contain contiguous spin blocks, each with nk * (nocc[0]+nvirt[0]) entries.
 std::vector<double> orbital_energy_gaps(const double* eigenvalues,
-                                      const std::vector<Parallel_2D>& pair_distribution,
+                                      const std::vector<Parallel_Blkcyclic>& pair_distribution,
                                       int nk, const std::vector<int>& nocc,
                                       const std::vector<int>& nvirt, bool unrestricted);
 
@@ -60,7 +60,7 @@ std::vector<double> orbital_energy_gaps(const double* eigenvalues,
 /// exact invariant starting subspaces. Output is local contiguous [nvec][dim].
 template<typename T>
 void initialize_orbital_gap_vectors(T* vectors, int nvec, const double* eigenvalues,
-                                   const std::vector<Parallel_2D>& pair_distribution,
+                                   const std::vector<Parallel_Blkcyclic>& pair_distribution,
                                    int nk, const std::vector<int>& nocc,
                                    const std::vector<int>& nvirt, bool unrestricted);
 

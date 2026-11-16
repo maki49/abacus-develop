@@ -5,7 +5,7 @@
 #include <vector>
 
 class UnitCell;
-class Parallel_2D;
+class Parallel_Blkcyclic;
 class Parallel_Orbitals;
 class TwoCenterIntegrator;
 namespace base_device { struct DEVICE_CPU; }
@@ -38,9 +38,9 @@ struct TransitionBasisView
     const std::vector<double>& cutoff;
     const TwoCenterIntegrator& integrator;
     const psi::Psi<T, base_device::DEVICE_CPU>& orbitals;
-    const Parallel_2D& pc;
+    const Parallel_Blkcyclic& pc;
     const Parallel_Orbitals& pmat;
-    const std::vector<Parallel_2D>& px;
+    const std::vector<Parallel_Blkcyclic>& px;
     const std::vector<int>& nocc;
     const std::vector<int>& nvirt;
     bool openshell;

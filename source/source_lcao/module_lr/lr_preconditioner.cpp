@@ -39,7 +39,7 @@ std::vector<Transition> ordered_transitions(const OrbitalTransitionSpace& layout
     {
         const int spin_offset = local_dim;
         const auto& pairs = pair_distribution[spin];
-        local_dim += nk * pairs.get_local_size();
+        local_dim += nk * pairs.size();
         for (int k = 0; k < nk; ++k)
         {
             const double* energies = eigenvalues + (spin * nk + k) * ks_bands;
@@ -50,8 +50,8 @@ std::vector<Transition> ordered_transitions(const OrbitalTransitionSpace& layout
                     int local_index = -1;
                     if (pairs.in_this_processor(a, i))
                     {
-                        local_index = spin_offset + k * pairs.get_local_size()
-                                      + pairs.global2local_col(i) * pairs.get_row_size() + pairs.global2local_row(a);
+                        local_index = spin_offset + k * pairs.size()
+                                      + pairs.icloc(i) * pairs.nrloc() + pairs.irloc(a);
                     }
                     const double gap = energies[nocc[spin] + a] - energies[i];
                     if (!std::isfinite(gap)) { throw std::invalid_argument("Nonfinite LR orbital gap"); }
@@ -113,7 +113,7 @@ DavidsonInitialSpace<T> make_davidson_initial_space(const T* guesses, int dim, i
     int expected_dim = 0;
     for (int spin = 0; spin < spin_count; ++spin)
     {
-        expected_dim += layout.nk * layout.pair_distribution[spin].get_local_size();
+        expected_dim += layout.nk * layout.pair_distribution[spin].size();
     }
     if (dim != expected_dim) { throw std::invalid_argument("LR initial-space dimension does not match its transition layout"); }
     DavidsonInitialSpace<T> result;
@@ -145,7 +145,7 @@ DavidsonInitialSpace<T> make_davidson_initial_space(const T* guesses, int dim, i
 }
 
 std::vector<double> orbital_energy_gaps(const double* eigenvalues,
-                                      const std::vector<Parallel_2D>& pair_distribution,
+                                      const std::vector<Parallel_Blkcyclic>& pair_distribution,
                                       int nk, const std::vector<int>& nocc,
                                       const std::vector<int>& nvirt, bool unrestricted)
 {
@@ -173,7 +173,7 @@ std::vector<double> orbital_energy_gaps(const double* eigenvalues,
 
 template<typename T>
 void initialize_orbital_gap_vectors(T* vectors, int nvec, const double* eigenvalues,
-                                   const std::vector<Parallel_2D>& pair_distribution,
+                                   const std::vector<Parallel_Blkcyclic>& pair_distribution,
                                    int nk, const std::vector<int>& nocc,
                                    const std::vector<int>& nvirt, bool unrestricted)
 {
@@ -196,7 +196,7 @@ int initialize_orbital_gap_candidates(T* vectors, int minimum_vectors, int capac
     int local_dim = 0;
     for (int spin = 0; spin < spin_count; ++spin)
     {
-        local_dim += layout.nk * layout.pair_distribution[spin].get_local_size();
+        local_dim += layout.nk * layout.pair_distribution[spin].size();
     }
     const std::size_t size = static_cast<std::size_t>(nvec) * local_dim;
     if (size > 0) { std::fill(vectors, vectors + size, T(0)); }
@@ -270,7 +270,7 @@ template DavidsonInitialSpace<std::complex<double>> make_davidson_initial_space(
 template void apply_orbital_gap_preconditioner<std::complex<double>>(
     std::complex<double>*, const double*, int, int, const std::vector<double>&, double, GapInverseSign);
 template void initialize_orbital_gap_vectors<double>(double*, int, const double*,
-    const std::vector<Parallel_2D>&, int, const std::vector<int>&, const std::vector<int>&, bool);
+    const std::vector<Parallel_Blkcyclic>&, int, const std::vector<int>&, const std::vector<int>&, bool);
 template void initialize_orbital_gap_vectors<std::complex<double>>(std::complex<double>*, int, const double*,
-    const std::vector<Parallel_2D>&, int, const std::vector<int>&, const std::vector<int>&, bool);
+    const std::vector<Parallel_Blkcyclic>&, int, const std::vector<int>&, const std::vector<int>&, bool);
 }

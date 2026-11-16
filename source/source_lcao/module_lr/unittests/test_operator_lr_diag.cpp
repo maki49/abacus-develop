@@ -1,5 +1,5 @@
 #include "../operator_casida/operator_lr_diag.h"
-#include "source_base/parallel_2d.h"
+#include "source_base/parallel_blkcyc.h"
 
 #include <gtest/gtest.h>
 #include <vector>
@@ -9,7 +9,7 @@ TEST(OperatorLRDiag, ExposesLocalGapsForEveryKPoint)
     // Two occupied, three virtual bands per k; [k][occupied][virtual] local layout.
     const std::vector<double> eigenvalues = {-2.0, -1.0, 1.0, 3.0, 5.0,
                                             -3.0, -0.5, 0.5, 2.0, 4.0};
-    Parallel_2D pairs;
+    Parallel_Blkcyclic pairs;
     pairs.set_serial(3, 2);
     const LR::OperatorLRDiag<double> diagonal(eigenvalues.data(), pairs, 2, 2, 3, false);
     const auto& gaps = diagonal.energy_differences();
