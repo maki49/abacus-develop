@@ -14,7 +14,7 @@ namespace LR
 namespace
 {
 std::vector<container::Tensor> transform_window_matrix(const GradientInputs<double>& inputs,
-    const psi::Psi<double>& c, const Parallel_2D& pm, const double* matrix,
+    const psi::Psi<double>& c, const Parallel_Blkcyclic& pm, const double* matrix,
     const LR_Util::MO_TYPE type, const int spin)
 {
 #ifdef __MPI
@@ -54,11 +54,11 @@ WindowResponse<double> build_window_response(const GradientInputs<double>& input
         throw std::runtime_error("Window response currently requires real Gamma orbitals");
     }
     const auto c = LR_Util::get_psi_spin(inputs.psi_ks, 0, inputs.nk);
-    const Parallel_2D& px = inputs.px[0];
-    Parallel_2D pvv;
-    LR_Util::setup_2d_division(pvv, px.get_block_size(), nv, nv
+    const Parallel_Blkcyclic& px = inputs.px[0];
+    Parallel_Blkcyclic pvv;
+    LR_Util::setup_2d_division(pvv, px.nb(), nv, nv
 #ifdef __MPI
-        , px.blacs_ctxt
+        , px.ictxt()
 #endif
     );
     std::weak_ptr<PotLRBase> pot_lr = inputs.pot[ispin];
@@ -78,7 +78,7 @@ WindowResponse<double> build_window_response(const GradientInputs<double>& input
     full_casida.hPsi(x_data, AX.data(), inputs.nloc, nstates);
 
     const int pairs = nv * no;
-    const int vv_storage = std::max<int>(pvv.get_local_size(), 1);
+    const int vv_storage = std::max<int>(pvv.size(), 1);
     const double* const virtual_energies = inputs.eig_ks.c + no;
     for (int state = 0; state < nstates; ++state)
     {
@@ -100,13 +100,13 @@ WindowResponse<double> build_window_response(const GradientInputs<double>& input
             x_full.data(), ax_full.data());
         std::vector<double> w_local(vv_storage, 0.0);
         std::vector<double> ew_local(w_local.size(), 0.0);
-        for (int col = 0; col < pvv.get_col_size(); ++col)
+        for (int col = 0; col < pvv.ncloc(); ++col)
         {
-            const int a = pvv.local2global_col(col);
-            for (int row = 0; row < pvv.get_row_size(); ++row)
+            const int a = pvv.icglb(col);
+            for (int row = 0; row < pvv.nrloc(); ++row)
             {
-                const int r = pvv.local2global_row(row);
-                const int index = col * pvv.get_row_size() + row;
+                const int r = pvv.irglb(row);
+                const int index = col * pvv.nrloc() + row;
                 w_local[index] = W[a * nv + r];
                 ew_local[index] = virtual_energies[a] * w_local[index];
             }
@@ -149,17 +149,17 @@ WindowResponse<double> build_open_shell_window_response(const GradientInputs<dou
         throw std::runtime_error("Open-shell window response requires two spins and real Gamma orbitals");
     }
     std::vector<psi::Psi<double>> c;
-    std::vector<Parallel_2D> pvv(2);
+    std::vector<Parallel_Blkcyclic> pvv(2);
     std::vector<int> local_size(2);
     for (int spin = 0; spin < 2; ++spin)
     {
         c.push_back(LR_Util::get_psi_spin(inputs.psi_ks, spin, inputs.nk));
-        const Parallel_2D& px = inputs.px[spin];
-        local_size[spin] = px.get_local_size();
-        LR_Util::setup_2d_division(pvv[spin], px.get_block_size(),
+        const Parallel_Blkcyclic& px = inputs.px[spin];
+        local_size[spin] = px.size();
+        LR_Util::setup_2d_division(pvv[spin], px.nb(),
             inputs.nvirt[spin], inputs.nvirt[spin]
 #ifdef __MPI
-            , px.blacs_ctxt
+            , px.ictxt()
 #endif
         );
     }
@@ -192,7 +192,7 @@ WindowResponse<double> build_open_shell_window_response(const GradientInputs<dou
             const int offset = state_offset + spin_offset[spin];
             const double* const x = x_data + offset;
             const double* const ax = AX.data() + offset;
-            const Parallel_2D& px = inputs.px[spin];
+            const Parallel_Blkcyclic& px = inputs.px[spin];
             std::vector<double> x_full(pairs, 0.0);
             std::vector<double> ax_full(pairs, 0.0);
 #ifdef __MPI
@@ -207,17 +207,17 @@ WindowResponse<double> build_open_shell_window_response(const GradientInputs<dou
             const double* const virtual_energies = inputs.eig_ks.c + spin * inputs.eig_ks.nc + no;
             const auto W = window_multipliers(no, nv, nactive[spin], virtual_energies,
                 x_full.data(), ax_full.data());
-            const Parallel_2D& pv = pvv[spin];
-            const int vv_storage = std::max<int>(pv.get_local_size(), 1);
+            const Parallel_Blkcyclic& pv = pvv[spin];
+            const int vv_storage = std::max<int>(pv.size(), 1);
             std::vector<double> w_local(vv_storage, 0.0);
             std::vector<double> ew_local(vv_storage, 0.0);
-            for (int col = 0; col < pv.get_col_size(); ++col)
+            for (int col = 0; col < pv.ncloc(); ++col)
             {
-                const int a = pv.local2global_col(col);
-                for (int row = 0; row < pv.get_row_size(); ++row)
+                const int a = pv.icglb(col);
+                for (int row = 0; row < pv.nrloc(); ++row)
                 {
-                    const int r = pv.local2global_row(row);
-                    const int index = col * pv.get_row_size() + row;
+                    const int r = pv.irglb(row);
+                    const int index = col * pv.nrloc() + row;
                     w_local[index] = W[a * nv + r];
                     ew_local[index] = virtual_energies[a] * w_local[index];
                 }

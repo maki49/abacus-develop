@@ -280,8 +280,8 @@ namespace LR
         {
 #ifdef __MPI
             const auto& pairs = ops_L.pX[0];
-            const int rank = pairs.get_coord_row() * pairs.get_dim1() + pairs.get_coord_col();
-            const int nproc = pairs.get_dim0() * pairs.get_dim1();
+            const int rank = pairs.irproc() * pairs.ncproc() + pairs.icproc();
+            const int nproc = pairs.nrproc() * pairs.ncproc();
             const auto pair_comm = pairs.comm();
             const hsolver::diag_comm_info comm(pair_comm, rank, nproc);
 #else

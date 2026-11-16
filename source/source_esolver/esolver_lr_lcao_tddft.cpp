@@ -31,7 +31,7 @@ namespace
 // The approximate operator owns this snapshot; neither the physical Hamiltonian
 // nor the ground-state EXX workspace participates in the inner iterations.
 template<typename T>
-RITransitionBasis<T> ri_transition_basis(const psi::Psi<T>& coefficients, const Parallel_2D& distribution,
+RITransitionBasis<T> ri_transition_basis(const psi::Psi<T>& coefficients, const Parallel_Blkcyclic& distribution,
     const OrbitalTransitionSpace& transitions, const K_Vectors& kv, int naos)
 {
     RITransitionBasis<T> basis;
@@ -61,12 +61,12 @@ RITransitionBasis<T> ri_transition_basis(const psi::Psi<T>& coefficients, const 
             const T* source = &coefficients(isk, 0, 0);
             T* target = full.data() + k * bands * naos;
             LR_Util::gather_2d_to_full(distribution, source, target, false, naos, bands);
-            for (int i = 0; i < pairs.get_col_size(); ++i)
+            for (int i = 0; i < pairs.ncloc(); ++i)
             {
-                const int occupied = pairs.local2global_col(i);
-                for (int a = 0; a < pairs.get_row_size(); ++a)
+                const int occupied = pairs.icglb(i);
+                for (int a = 0; a < pairs.nrloc(); ++a)
                 {
-                    const int virtual_index = pairs.local2global_row(a);
+                    const int virtual_index = pairs.irglb(a);
                     const int index = spin_offset + k * no * nv + occupied * nv + virtual_index;
                     basis.local_to_global.push_back(index);
                 }

@@ -1,5 +1,5 @@
 #include "source_lcao/module_lr/state_guess.h"
-#include "source_base/parallel_2d.h"
+#include "source_base/parallel_blkcyc.h"
 #include "source_basis/module_ao/parallel_orbitals.h"
 #include "source_basis/module_nao/two_center_integrator.h"
 #include "source_cell/unitcell.h"
@@ -15,7 +15,7 @@ namespace
 class StateGuess : public testing::Test
 {
   protected:
-    Parallel_2D distribution;
+    Parallel_Blkcyclic distribution;
     void SetUp() override
     {
         // A single distributed column deliberately leaves empty ranks in the 2x2 grid.
@@ -23,7 +23,7 @@ class StateGuess : public testing::Test
         const int columns = 1;
         const int block_size = 1;
 #ifdef __MPI
-        distribution.init(rows, columns, block_size, MPI_COMM_WORLD);
+        distribution.init(rows, columns, block_size, MPI_COMM_WORLD, false);
 #else
         distribution.set_serial(rows, columns);
 #endif
@@ -32,10 +32,10 @@ class StateGuess : public testing::Test
     template <typename T>
     std::vector<T> local(const std::vector<T>& global) const
     {
-        std::vector<T> result(distribution.get_local_size());
-        for (int row = 0; row < distribution.get_row_size() && !result.empty(); ++row)
+        std::vector<T> result(distribution.size());
+        for (int row = 0; row < distribution.nrloc() && !result.empty(); ++row)
         {
-            const int global_row = distribution.local2global_row(row);
+            const int global_row = distribution.irglb(row);
             result[row] = global[global_row];
         }
         return result;
@@ -66,7 +66,7 @@ TEST_F(StateGuess, ReusesAllRotatedComplexRoots)
         {C(0), C(1), C(0), C(0)}, {C(0), C(0), C(1), C(0)}};
     auto guesses = pack(cold);
     C* data = guesses.data();
-    const int dimension = distribution.get_local_size();
+    const int dimension = distribution.size();
     const int count = 3;
     const int reused = LR::select_projected_guesses(projected, data, dimension, count);
     EXPECT_EQ(reused, count);
@@ -86,7 +86,7 @@ TEST_F(StateGuess, FillsLostAndDependentDirectionsFromColdSeeds)
     const std::vector<std::vector<double>> cold{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}};
     auto guesses = pack(cold);
     double* data = guesses.data();
-    const int dimension = distribution.get_local_size();
+    const int dimension = distribution.size();
     const int count = 3;
     const int reused = LR::select_projected_guesses(projected, data, dimension, count);
     EXPECT_EQ(reused, 1);
@@ -104,7 +104,7 @@ TEST_F(StateGuess, LeavesColdBlockIntactWhenFullRankCannotBeRecovered)
     auto guesses = pack(cold);
     const auto original = guesses;
     double* data = guesses.data();
-    const int dimension = distribution.get_local_size();
+    const int dimension = distribution.size();
     const int count = 2;
     const int reused = LR::select_projected_guesses(projected, data, dimension, count);
     EXPECT_EQ(reused, 0);
@@ -120,7 +120,7 @@ TEST_F(StateGuess, RejectsNonfiniteAndInconsistentDistributedData)
     auto guesses = pack(cold);
     const auto original = guesses;
     double* data = guesses.data();
-    const int dimension = distribution.get_local_size();
+    const int dimension = distribution.size();
     const int count = 1;
     int reused = LR::select_projected_guesses(projected, data, dimension, count);
     EXPECT_EQ(reused, 0);
@@ -134,11 +134,12 @@ TEST_F(StateGuess, RejectsNonfiniteAndInconsistentDistributedData)
 
 TEST(StateGuessSnapshot, OwnsBothChannelsAndAllRootsAfterScfBuffersChange)
 {
-    Parallel_Orbitals pc;
+    Parallel_Orbitals orbital_layout;
+    Parallel_Blkcyclic& pc = orbital_layout.para_2d();
     const int bands = 4;
     const int block_size = 1;
 #ifdef __MPI
-    pc.init(bands, bands, block_size, MPI_COMM_WORLD);
+    pc.init(bands, bands, block_size, MPI_COMM_WORLD, false);
 #else
     pc.set_serial(bands, bands);
 #endif
@@ -146,8 +147,8 @@ TEST(StateGuessSnapshot, OwnsBothChannelsAndAllRootsAfterScfBuffersChange)
     cell.nat = 0;
     TwoCenterIntegrator integrator;
     const int spins = 2;
-    const int columns = pc.get_col_size();
-    const int rows = pc.get_row_size();
+    const int columns = pc.ncloc();
+    const int rows = pc.nrloc();
     const std::vector<int> grid_sizes;
     psi::Psi<double> orbitals(spins, columns, rows, grid_sizes, true);
     for (int spin = 0; spin < spins; ++spin)
@@ -158,11 +159,11 @@ TEST(StateGuessSnapshot, OwnsBothChannelsAndAllRootsAfterScfBuffersChange)
         }
     }
     const std::vector<double> cutoff;
-    const std::vector<Parallel_2D> px;
+    const std::vector<Parallel_Blkcyclic> px;
     const std::vector<int> occupied{1, 1};
     const std::vector<int> virtuals{3, 3};
     const LR::TransitionBasisView<double> basis{cell, cutoff, integrator, orbitals,
-        pc, pc, px, occupied, virtuals, false, 0};
+        pc, orbital_layout, px, occupied, virtuals, false, 0};
     std::vector<double> singlet{1, 2, 3, 4, 5, 6};
     std::vector<double> triplet{7, 8, 9, 10, 11, 12};
     const std::vector<const double*> amplitudes{singlet.data(), triplet.data()};

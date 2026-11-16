@@ -2,7 +2,7 @@
 #define ABACUS_SOURCE_LCAO_MODULE_LR_OPERATOR_CASIDA_OPERATOR_LR_DIAG_H
 
 #include "source_base/matrix.h"
-#include "source_base/parallel_2d.h"
+#include "source_base/parallel_blkcyc.h"
 #include "source_base/timer.h"
 #include "source_base/tool_title.h"
 #include "source_base/kernels/math_kernel_op.h"

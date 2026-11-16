@@ -1,5 +1,5 @@
 #include "../lr_preconditioner.h"
-#include "source_base/parallel_2d.h"
+#include "source_base/parallel_blkcyc.h"
 
 #include <gtest/gtest.h>
 #include <complex>
@@ -13,7 +13,7 @@ TEST(LRPreconditioner, PacksUnequalSpinBlocksAcrossKPoints)
                                             -3.0, -0.5, 1.0, 4.0,
                                             -2.5, 0.2, 0.8, 3.0,
                                             -1.5, 0.1, 2.0, 5.0};
-    std::vector<Parallel_2D> pairs(2);
+    std::vector<Parallel_Blkcyclic> pairs(2);
     pairs[0].set_serial(2, 2);
     pairs[1].set_serial(3, 1);
     const std::vector<int> occupied = {2, 1};
@@ -31,7 +31,7 @@ TEST(LRPreconditioner, PacksUnequalSpinBlocksAcrossKPoints)
 TEST(LRPreconditioner, GammaPacking)
 {
     const std::vector<double> eigenvalues = {-2.0, -1.0, 0.5, 2.0, -2.5, 0.2, 0.8, 3.0};
-    std::vector<Parallel_2D> pairs(2);
+    std::vector<Parallel_Blkcyclic> pairs(2);
     pairs[0].set_serial(2, 2);
     pairs[1].set_serial(3, 1);
     const std::vector<int> occupied = {2, 1};
@@ -48,7 +48,7 @@ TEST(LRPreconditioner, InitialVectorsSeparateDegenerateKAndSpinTransitions)
                                             -3.0, -0.5, 1.0, 4.0,
                                             -2.5, 0.2, 0.8, 3.0,
                                             -1.5, 0.1, 2.0, 5.0};
-    std::vector<Parallel_2D> pairs(2);
+    std::vector<Parallel_Blkcyclic> pairs(2);
     pairs[0].set_serial(2, 2);
     pairs[1].set_serial(3, 1);
     const std::vector<int> occupied = {2, 1};
@@ -110,7 +110,7 @@ TEST(LRPreconditioner, ExplicitShiftedInverseRetainsSignedPoles)
 TEST(LRPreconditioner, CandidateBoundaryIncludesDegenerateKPartners)
 {
     const std::vector<double> eigenvalues = {-1.0, 0.0, 2.0, -1.0, 0.0, 2.0};
-    std::vector<Parallel_2D> pairs(1);
+    std::vector<Parallel_Blkcyclic> pairs(1);
     pairs[0].set_serial(2, 1);
     const std::vector<int> occupied = {1};
     const std::vector<int> virtuals = {2};
@@ -127,7 +127,7 @@ TEST(LRPreconditioner, CandidateBoundaryIncludesDegenerateKPartners)
 TEST(LRPreconditioner, AugmentedGammaSpacePreservesSuppliedGuesses)
 {
     const std::vector<double> eigenvalues = {-1.0, 0.0, 0.0, 2.0};
-    std::vector<Parallel_2D> pairs(1);
+    std::vector<Parallel_Blkcyclic> pairs(1);
     pairs[0].set_serial(3, 1);
     const std::vector<int> occupied = {1};
     const std::vector<int> virtuals = {3};
@@ -173,7 +173,7 @@ TEST(LRPreconditioner, LowEnergyBlockCompletesSpinAndKDegeneracy)
 {
     const std::vector<double> eigenvalues = {-1.0, 0.0, 2.0, -1.0, 0.0, 2.0,
                                             -1.0, 0.0, 2.0, -1.0, 0.0, 2.0};
-    std::vector<Parallel_2D> pairs(2);
+    std::vector<Parallel_Blkcyclic> pairs(2);
     pairs[0].set_serial(2, 1);
     pairs[1].set_serial(2, 1);
     const std::vector<int> occupied = {1, 1};
