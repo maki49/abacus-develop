@@ -107,6 +107,14 @@ out_app_flag 0
 
 Place `hrs1_nao.csr` and `sr_nao.csr` in the LR `read_file_dir` alongside the matching wavefunctions. For `nspin 2`, also place `hrs2_nao.csr` there. ABACUS calculates the position integrals internally. The single `nspin 1` Hamiltonian block is used at its original scale, with spin degeneracy included in the singlet transition amplitude.
 
+For finite differences of LR-TDDFT excitation energies, set
+[`lr_energy_precision 17`](../input_files/input-main.md#lr_energy_precision).
+The number refers to significant digits in the excitation-energy output.
+Set `abs_gauge none` to report energies without evaluating optical matrix
+elements. The precision setting works independently of `out_band` and
+`out_wfc_lr`. The default is eight significant digits. Set
+`lr_energy_precision 0` to use the legacy output formats.
+
 ### Native Binary CSR Format
 
 Set `out_hsr 2` to write the same H(R) and S(R) matrix sets with a `.dat` suffix. For example, an `nspin = 2` calculation writes `hrs1_nao.dat`, `hrs2_nao.dat`, and `sr_nao.dat`. When `out_app_flag` is 2, the one-based ionic step is included before `_nao`, for example `hrs1g1_nao.dat` and `srg1_nao.dat`.

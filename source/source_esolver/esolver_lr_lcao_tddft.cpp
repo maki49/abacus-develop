@@ -182,14 +182,25 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
     }
     else if (this->inp_->lr_solver != "spectrum")
     {
-        auto write_states = [this, &efile_out, &vfile_out](const std::string& label,
-                                const Real<T>* e, const T* v, const int& dim,
-                                const int& nst, const int& prec = 8) -> void {
+        const int energy_precision = this->inp_->lr_energy_precision;
+        auto write_states = [this, &efile_out, &vfile_out, energy_precision](const std::string& label,
+                                const Real<T>* e, const T* v, const int dim, const int nst) {
             if (this->my_rank_ == 0)
             {
-                assert(nst == LR_Util::write_value(efile_out(label), prec, e, nst));
+                const std::string energy_file = efile_out(label);
+                if (!LR_Util::write_excitation_energy_file(energy_file, e, nst, energy_precision))
+                {
+                    ModuleBase::WARNING_QUIT("ESolver_LR", "Failed to write " + energy_file);
+                }
+                this->ofs_running_ << " Write LR excitation energies to " << energy_file << '\n';
             }
-            assert(nst * dim == LR_Util::write_value(vfile_out(label), prec, v, nst, dim));
+            const std::string amplitude_file = vfile_out(label);
+            const int amplitude_digits = 8;
+            if (LR_Util::write_value(amplitude_file, amplitude_digits, v, nst, dim) != nst * dim)
+            {
+                ModuleBase::WARNING_QUIT("ESolver_LR", "Failed to write " + amplitude_file);
+            }
+            this->ofs_running_ << " Write LR excitation amplitudes to " << amplitude_file << '\n';
         };
         std::vector<double> precondition;
         // Both spin branches use the same explicit transition-space view for
@@ -273,7 +284,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
             LR::HSolver::solve(hulr, this->X[0].template data<T>(), nloc_per_state, nstates,
                                transitions,
                                this->pelec->ekb.c, this->inp_->lr_solver,
-                               this->inp_->lr_thr, precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, use_gpu, true);
+                               this->inp_->lr_thr, precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, use_gpu, true, energy_precision);
             if (this->inp_->out_wfc_lr) { write_states("openshell", this->pelec->ekb.c, this->X[0].template data<T>(), nloc_per_state, nstates); }
         }
         else
@@ -319,7 +330,7 @@ void ModuleESolver::ESolver_LR<T, TR>::runner(BaseCell& basecell, const int iste
                                    this->pelec->ekb.c + is * nstates,
                                    this->inp_->lr_solver,
                                    this->inp_->lr_thr,
-                                   precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, use_gpu, true);
+                                   precondition, this->inp_->lr_preconditioner_block_size, preconditioner_proxy, use_gpu, true, energy_precision);
                 if (this->inp_->out_wfc_lr) { write_states(spin_types[is], this->pelec->ekb.c + is * nstates, this->X[is].template data<T>(), nloc_per_state, nstates); }
             }
         }
@@ -498,12 +509,13 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
     }
     // auto spin_types = (nspin == 2 && !openshell) ? std::vector<std::string>({ "singlet", "triplet" }) : std::vector<std::string>({ "updown" });
     // for (int is = 0;is < this->X.size() - 1;++is)
+    const int energy_precision = this->inp_->lr_energy_precision;
     for (int is = 0;is < this->X.size();++is)
     {
         if (!calculate_spectrum)
         {
             const double* const energies = &this->pelec->ekb.c[is * nstates];
-            LR_Util::print_excitation_energies(this->ofs_running_, energies, nstates, spin_types[is]);
+            LR_Util::print_excitation_energies(this->ofs_running_, energies, nstates, spin_types[is], energy_precision);
         }
         else
         {
@@ -514,12 +526,13 @@ void ModuleESolver::ESolver_LR<T, TR>::after_all_runners(BaseCell& basecell)
                 gauge, this->my_rank_, this->out_dir);
             if (use_velocity) { spectrum.set_vmo(this->velocity_mo.data()); }
             spectrum.cal_spectrum();
-            spectrum.transition_analysis(spin_types[is]+"_tda");
+            const std::string channel = spin_types[is] + "_tda";
+            spectrum.transition_analysis(channel, energy_precision);
             if (spin_types[is] != "triplet")        // triplets has no transition dipole and no contribution to the spectrum
             {
                 spectrum.optical_absorption_method1(freq, this->inp_->abs_broadening);
-                spectrum.write_transition_dipole(this->out_dir +
-                    "trans_dipole_" + spin_types[is] + "_tda.dat");
+                const std::string dipole_filename = this->out_dir + "trans_dipole_" + channel + ".dat";
+                spectrum.write_transition_dipole(dipole_filename, energy_precision);
                 // =============================================== for test ====================================================
                 // spectrum.optical_absorption_method2(freq, this->inp_->abs_broadening);
                 // if (LR_Util::tolower(this->inp_->abs_gauge) == "velocity")
