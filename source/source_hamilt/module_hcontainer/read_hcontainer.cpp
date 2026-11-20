@@ -1,5 +1,6 @@
 #include "read_hcontainer.h"
 
+#include "source_base/tool_quit.h"
 #include "hcontainer_funcs.h"
 #include "source_base/module_out/csr_reader.h"
 #include "source_base/module_out/sparse_matrix.h"
@@ -56,8 +57,12 @@ void Read_HContainer<T>::read()
     {
 #endif
         ModuleIO::csrFileReader<T> csr(this->_filename);
-        int step = csr.getStep();
-        int matrix_dimension = csr.getMatrixDimension();
+        const int matrix_dimension = csr.getMatrixDimension();
+        if (matrix_dimension != this->_nlocal)
+        {
+            ModuleBase::WARNING_QUIT("Read_HContainer::read",
+                "Matrix dimension in " + this->_filename + " does not match the number of basis functions.");
+        }
         int r_number = csr.getNumberOfR();
 
         // construct serial hcontainer firstly
