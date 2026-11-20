@@ -28,7 +28,8 @@ namespace HSolver
             const int preconditioner_block_size,
             const std::function<void(const T*, T*)>& preconditioner_proxy,
             const bool use_gpu,
-            const bool hermitian);
+            const bool hermitian,
+            const int energy_precision);
 }
 }
 #endif
