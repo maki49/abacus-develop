@@ -361,63 +361,25 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         case XC_FAMILY_GGA:
         case XC_FAMILY_HYB_GGA:
         {
-            // HSE06's short-range exchange (libxc's gga_x_wpbeh, folded into the single combined
-            // XC_HYB_GGA_XC_HSE06 functional evaluated here) has a closed-form whose derivatives
-            // are numerically unstable (catastrophic cancellation) near the reduced gradient s->0
-            // (a symmetry-forced grad-rho=0 node at otherwise ordinary density, e.g. rho=0.415 in
-            // 06_N2/hse). The true derivative is FINITE there (the functional is smooth in s^2);
-            // libxc just loses precision evaluating the closed form at that point. Clamping sigma
-            // from below before the libxc call evaluates the same closed form at a point just off
-            // the instability, borrowing smoothness instead of removing the cancellation
-            // algebraically. This existing HSE06 stabilization is retained here; it is not
-            // a derivative-consistent regularization and needs a separate numerical fix.
-            // Other functionals receive the original sigma, including the signed mixed-spin
-            // invariant grad(rho_up).grad(rho_down), which can be smaller than -1.
-            //
-            // `cal_sgn` returns all-ones for exchange functionals, so `cutoff_grid_data_spin2`
-            // below is a no-op for wpbeh; vsigma (1st order, read by the LR GGA kernel formula in
-            // pot_hxc_lrtd.cpp as the coefficient of the transition-density gradient) and v2*/v3*
-            // are therefore all equally unprotected and must ALL be clamped with the same
-            // sigma_cut -- clamping only a subset is not just insufficient, it can be WORSE
-            // (breaks whatever partial cancellation existed between the orders at the raw,
-            // unclamped point). Confirmed on 09_CH4/hse: with 1st-order vsigma left unclamped (as
-            // it originally was here), max|vsigma| reaches 3.9e7 at a vacuum grid point
-            // (rho~0, sigma~3.3e-19), which propagates into a ~1e4-magnitude AO-basis V_Hxc
-            // element on the carbon 2nd-zeta s/p shell and three ~-19404 Ry ghost eigenvalues in
-            // the full (lr_solver=lapack) Casida spectrum.
-            //
-            // Threshold choice (1e-6): g(sigma) is smooth at sigma=0, so g(sigma_cut) = g(0) +
-            // O(sigma_cut) -- any sigma_cut small enough stays a good approximation to the true
-            // sigma->0 limit. The lower bound on "small enough" was set empirically, not derived:
-            // scanning 1e-10/1e-4/1e-2 with only ONE of fxc/kxc clamped left the result completely
-            // flat (06_N2/hse state 5 pinned at +1.887e7 across 6 orders of magnitude for kxc-only)
-            // -- the textbook sign that the knob isn't touching the actual cancellation. Clamping
-            // BOTH together at 1e-6/1e-4/1e-2 instead gives a smoothly-varying, converging sequence
-            // (-0.302/-0.299/-0.257), the behavior a well-posed limit should show. 1e-6 sits deep in
-            // that well-posed plateau (tightening it to 1e-8 or 1e-10 moves the clamped answer by
-            // far less than scanning between 1e-6/1e-4/1e-2 already does) while staying far above
-            // the sigma range where the raw, unclamped evaluation is already visibly corrupted
-            // (1e7-1e39 noise at the diagnosed grid points). Checked against archived
-            // finite-difference references for 06_N2/hse, 09_CH4/hse and 08_BeH2/rpa_at_hse:
-            // MAE/|F| dropped to 0.015%-0.556%, Max/|F| to 0.029%-1.279%, matching the error level
-            // of functionals that were never broken; also confirmed to resolve 08_BeH2/hse (both
-            // its DZP and TZDP bases, all excited states).
+            // Evaluate e_sigma, FXC, and KXC with the same prepared sigma.
+            // The force includes the Jacobian for the implicit coefficient dependence.
             const bool is_hse06 = func.info->number == XC_HYB_GGA_XC_HSE06;
             // SCF does not use the LR floor. Try raw GS coefficients first; only
             // non-finite HSE response coefficients permit the approximate fallback below.
-            const bool stabilize_hse = is_hse06 && purpose_ == Purpose::LinearResponse;
+            const bool stabilize_xc = purpose_ == Purpose::LinearResponse
+                && LR_Util::uses_xc_sigma_floor(kernel_name_);
             std::vector<double> hse_sigma;
             // Differentiate the LR matrix actually used: only implicit dependence on
             // max(sigma, sigma_cut) carries its Jacobian, not explicit gradient factors.
             const std::vector<double>* sigma_input_ptr = nullptr;
             if (need_kxc)
             {
-                sigma_input_ptr = &LR_Util::prepare_xc_sigma(sigma, stabilize_hse,
+                sigma_input_ptr = &LR_Util::prepare_xc_sigma(sigma, stabilize_xc,
                     hse_sigma, sigma_jacobian_);
             }
             else
             {
-                sigma_input_ptr = &LR_Util::prepare_xc_sigma(sigma, stabilize_hse, hse_sigma);
+                sigma_input_ptr = &LR_Util::prepare_xc_sigma(sigma, stabilize_xc, hse_sigma);
             }
             const std::vector<double>& sigma_input = *sigma_input_ptr;
             xc_gga_vxc(&func, nrxx, rho.data(), sigma_input.data(), vrho_tmp.data(), vsigma_tmp.data());

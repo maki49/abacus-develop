@@ -340,6 +340,50 @@ TEST_F(KernelXCTest, SigmaFloorJacobianPreservesOtherFunctionals)
 }
 
 
+#ifdef __EXX
+TEST_F(KernelXCTest, LcKernelsUseSameFloorForEnergiesAndForces)
+{
+    basis.nrxx = 1;
+    basis.npw = 1;
+    basis.nmaxgr = 1;
+    charge.nrxx = 1;
+    cell.tpiba = 0.001;
+    const double original_omega = XC_Functional::get_hse_omega();
+    const XCFunctionalParameters original = XC_Functional::get_runtime_parameters();
+    XCFunctionalParameters parameters = original;
+    parameters.exx_fock_alpha = {"1"};
+    parameters.exx_erfc_alpha = {"-1"};
+    XC_Functional::set_runtime_parameters(parameters);
+    const std::vector<std::string> initialization = {"default"};
+    for (const std::string name : {"lc_pbe", "lc_wpbe"})
+    {
+        const double omega = name == "lc_pbe" ? 0.33 : 0.4;
+        XC_Functional::set_hse_omega(omega);
+        const auto energy = build(name, 1, LR::KernelXC::NoGxc);
+        const auto ground = LR::build_gs_xc_kernel(
+            name, basis, cell, charge, grid, 1, false, initialization);
+        EXPECT_FALSE(ground->gs_sigma_fallback_used());
+        EXPECT_NE(ground->vsigma[0], energy->vsigma[0]);
+
+        auto functionals = XC_Functional_Libxc::init_func(
+            XC_Functional::get_func_id(), XC_UNPOLARIZED, 1.0, omega);
+        const bool has_kxc = (functionals[0].info->flags & XC_FLAGS_HAVE_KXC) != 0;
+        XC_Functional_Libxc::finish_func(functionals);
+        if (has_kxc)
+        {
+            const auto force = build(name, 1, LR::KernelXC::Singlet);
+            EXPECT_EQ(energy->vsigma, force->vsigma);
+            EXPECT_EQ(energy->v2rho2, force->v2rho2);
+            EXPECT_EQ(energy->v2rhosigma, force->v2rhosigma);
+            EXPECT_EQ(energy->v2sigma2, force->v2sigma2);
+            EXPECT_EQ(force->sigma_jacobian(), (std::vector<double>{0.}));
+        }
+    }
+    XC_Functional::set_hse_omega(original_omega);
+    XC_Functional::set_runtime_parameters(original);
+}
+#endif
+
 TEST_F(KernelXCTest, HseClippedKernelGradientMatchesIndependentFiniteDifference)
 {
     if (!hse_has_kxc(1))

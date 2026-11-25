@@ -29,8 +29,11 @@ template <> struct ToComplex<std::complex<float>> { using type = std::complex<fl
 
 namespace LR_Util
 {
-    /// Existing HSE sigma floor (bohr^-8), shared by LR and the GS fallback.
+    /// Existing LR sigma floor (bohr^-8), shared by LR and the GS fallback.
     double hse_sigma_floor();
+
+    /// Apply the LR sigma floor to kernels with validated small-gradient sensitivity.
+    bool uses_xc_sigma_floor(const std::string& kernel_name);
 
     /// Sum k-point spin populations before rounding; count each pool only once.
     int spin_population_difference(const ModuleBase::matrix& wg, int kpar, int rank_in_pool);

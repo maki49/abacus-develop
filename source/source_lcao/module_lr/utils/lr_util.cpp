@@ -10,6 +10,12 @@
 namespace LR_Util
 {
     double hse_sigma_floor() { return 1e-6; }
+
+    bool uses_xc_sigma_floor(const std::string& kernel_name)
+    {
+        // HSE and LC-WPBE use WPBEH exchange. LC-PBE uses ITYH-PBE exchange and OP-PBE correlation.
+        return kernel_name == "hse" || kernel_name == "lc_wpbe" || kernel_name == "lc_pbe";
+    }
     int spin_population_difference(const ModuleBase::matrix& wg, const int kpar, const int rank_in_pool)
     {   // only for nspin=2
         const int nk = wg.nr / 2;

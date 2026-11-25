@@ -81,14 +81,13 @@ std::shared_ptr<PotHxcLR> prepare_gs_potential(const Input_para& input, const st
     // contribution to W and the force use the corresponding LR potential instead.
     const int gxc_gs = (!LR_Util::has_local_xc(xc_kernel) || !LR_Util::has_local_xc(xc_kernel_gs)) ? GX::NoGxc
         : ((nspin == 1) ? GX::Singlet : GX::BothSpins);
-    // HSE GS response starts raw and reports an approximate fallback only for non-finite coefficients.
-    // Other matching functionals retain sharing when spin layouts and derivative orders agree.
-    // Legacy GS/LR low-density cutoffs remain different; this fixes only the sigma-floor mismatch.
-    const bool separate_hse_response = xc_kernel_gs == "hse";
-    const bool share_lr = !separate_hse_response && prepared.kernel->nspin() == nspin
+    // Keep the GS response at the original invariants for a stabilized LR functional.
+    // The separate GS path retries nonfinite HSE coefficients with the LR floor.
+    const bool separate_gs_response = LR_Util::uses_xc_sigma_floor(xc_kernel_gs);
+    const bool share_lr = !separate_gs_response && prepared.kernel->nspin() == nspin
         && xc_kernel_gs == xc_kernel && ((prepared.gxc & gxc_gs) == gxc_gs);
     std::shared_ptr<const LR::KernelXC> kernel_gs;
-    if (separate_hse_response)
+    if (separate_gs_response)
     {
         kernel_gs = LR::build_gs_xc_kernel(xc_kernel_gs, rho_basis, ucell, chg_gs,
             grid, nspin, oshell, input.lr_init_xc_kernel);
