@@ -29,10 +29,10 @@ template <> struct ToComplex<std::complex<float>> { using type = std::complex<fl
 
 namespace LR_Util
 {
-    /// Existing LR sigma floor (bohr^-8), shared by LR and the GS fallback.
-    double hse_sigma_floor();
+    /// Empirical same-spin sigma floor (bohr^-8) for selected LR kernels.
+    double xc_sigma_floor();
 
-    /// Apply the LR sigma floor to kernels with validated small-gradient sensitivity.
+    /// LR kernels validated with sigma stabilization, independent of their Fock range.
     bool uses_xc_sigma_floor(const std::string& kernel_name);
 
     /// Sum k-point spin populations before rounding; count each pool only once.
@@ -41,26 +41,13 @@ namespace LR_Util
     /// Reject unsupported NLCC force requests after pseudopotentials have been loaded.
     void check_force_pp(const UnitCell& cell, bool cal_force, const std::string& calculation);
 
-    /// Preserve signed sigma invariants except for the existing HSE06 stabilization.
+    /// Apply the floor to scalar or same-spin sigma and leave mixed-spin sigma unchanged.
+    /// The optional Jacobian is empty for the identity map and zero at a clipping junction.
     const std::vector<double>& prepare_xc_sigma(const std::vector<double>& sigma,
-                                               bool is_hse06,
-                                               std::vector<double>& hse_buffer);
-
-    /**
-     * @brief Prepare stabilized sigma and its componentwise derivative.
-     * @param[in] sigma LibXC sigma invariants, in bohr^-8, in native spin layout.
-     * @param[in] is_hse06 Whether to apply the existing HSE LR stabilization.
-     * @param[out] hse_buffer Owned stabilized values; unused for other kernels.
-     * @param[out] jacobian Derivatives of stabilized values with respect to raw
-     * sigma. Empty means identity; the clipped branch uses zero, including the
-     * nondifferentiable junction itself.
-     * @return A borrowed reference to sigma or hse_buffer, valid while its owner lives.
-     */
-    const std::vector<double> &prepare_xc_sigma(
-        const std::vector<double> &sigma,
-        bool is_hse06,
-        std::vector<double> &hse_buffer,
-        std::vector<double> &jacobian);
+                                              int nspin,
+                                              bool stabilize,
+                                              std::vector<double>& buffer,
+                                              std::vector<double>* jacobian);
 
     /// =====================PHYSICS====================
     /// @brief the xc kernels that carry an exact-exchange (EXX) term

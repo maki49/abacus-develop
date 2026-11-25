@@ -298,48 +298,6 @@ TEST_F(KernelXCTest, HseGroundResponseRetryFailsCollectivelyIfStillNonfinite)
         "hse", basis, cell, charge, grid, 1, false, initialization), std::runtime_error);
 }
 
-TEST_F(KernelXCTest, SigmaFloorJacobianPreservesOtherFunctionals)
-{
-    const std::vector<double> sigma = {-2.0,
-        0.5e-6,
-        1e-6,
-        2e-6};
-    std::vector<double> buffer;
-    std::vector<double> jacobian;
-    const auto &original = LR_Util::prepare_xc_sigma(
-        sigma,
-        false,
-        buffer,
-        jacobian);
-    EXPECT_EQ(&original, &sigma);
-    EXPECT_TRUE(jacobian.empty());
-    const auto &stabilized = LR_Util::prepare_xc_sigma(
-        sigma,
-        true,
-        buffer,
-        jacobian);
-    EXPECT_EQ(
-        stabilized, (std::vector<double>{1e-6,
-                        1e-6,
-                        1e-6,
-                        2e-6}));
-    EXPECT_EQ(
-        jacobian, (std::vector<double>{0.0,
-                      0.0,
-                      0.0,
-                      1.0}));
-    const std::vector<double> empty;
-    EXPECT_TRUE(
-        LR_Util::prepare_xc_sigma(
-            empty,
-            true,
-            buffer,
-            jacobian)
-            .empty());
-    EXPECT_TRUE(jacobian.empty());
-}
-
-
 #ifdef __EXX
 TEST_F(KernelXCTest, LcKernelsUseSameFloorForEnergiesAndForces)
 {
@@ -441,13 +399,17 @@ TEST_F(KernelXCTest, PolarizedHseClippingMasksOnlyImplicitSigmaDerivatives)
     charge.nrxx = 1;
     cell.tpiba = 0.001;
     const auto kernel = build("hse", 2, LR::KernelXC::BothSpins);
+    EXPECT_EQ(kernel->sigma_jacobian(), (std::vector<double>{0., 1., 0.}));
+    const auto& rho2sigma = kernel->v3rho2sigma;
+    const auto& sigma2 = kernel->v2sigma2;
     for (const bool triplet : {false, true})
     {
-        const auto &coefficients = kernel->gxc(triplet);
-        EXPECT_DOUBLE_EQ(coefficients.e_s2[0], 0.0);
-        EXPECT_DOUBLE_EQ(coefficients.e_st[0], 0.0);
-        EXPECT_DOUBLE_EQ(coefficients.e_t2[0], 0.0);
-        EXPECT_DOUBLE_EQ(coefficients.e_q[0], 0.0);
+        const double sign = triplet ? -1. : 1.;
+        const double expected_e_s2 = rho2sigma[1] + 2. * sign * rho2sigma[4] + rho2sigma[7];
+        const double expected_e_q = 2. * (sigma2[1] + sign * sigma2[3] + sigma2[4]);
+        const auto& coefficients = kernel->gxc(triplet);
+        EXPECT_DOUBLE_EQ(coefficients.e_s2[0], expected_e_s2);
+        EXPECT_DOUBLE_EQ(coefficients.e_q[0], expected_e_q);
         EXPECT_NE(kernel->closed_shell_gga(triplet).rho_sigma[0], 0.0);
     }
     const auto pbe = build("pbe", 2, LR::KernelXC::BothSpins);

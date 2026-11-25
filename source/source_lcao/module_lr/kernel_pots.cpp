@@ -82,7 +82,7 @@ std::shared_ptr<PotHxcLR> prepare_gs_potential(const Input_para& input, const st
     const int gxc_gs = (!LR_Util::has_local_xc(xc_kernel) || !LR_Util::has_local_xc(xc_kernel_gs)) ? GX::NoGxc
         : ((nspin == 1) ? GX::Singlet : GX::BothSpins);
     // Keep the GS response at the original invariants for a stabilized LR functional.
-    // The separate GS path retries nonfinite HSE coefficients with the LR floor.
+    // The separate GS path retries nonfinite HSE coefficients with the same-spin floor.
     const bool separate_gs_response = LR_Util::uses_xc_sigma_floor(xc_kernel_gs);
     const bool share_lr = !separate_gs_response && prepared.kernel->nspin() == nspin
         && xc_kernel_gs == xc_kernel && ((prepared.gxc & gxc_gs) == gxc_gs);

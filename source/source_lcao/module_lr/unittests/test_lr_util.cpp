@@ -1,279 +1,241 @@
-#include "source_lcao/module_lr/utils/lr_util_hcontainer.h"
-#include "source_cell/klist.h"
+#include "../utils/lr_util.h"
 #include "source_cell/unitcell.h"
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <complex>
-#include <map>
 #include <vector>
-#include <cstdio>
-#include <fstream>
-#include <sstream>
-#include <unistd.h>
-#include "source_base/parallel_common.h"
-#include "source_estate/module_pot/td_field_manager.h"
+
+TEST(LRForcePP, AllowsForcesAndRelaxationWithoutNLCC)
+{
+    UnitCell cell;
+    cell.ntype = 1;
+    cell.atoms = new Atom[1];
+    cell.set_atom_flag = true;
+    EXPECT_NO_THROW(LR_Util::check_force_pp(cell, true, "scf"));
+    EXPECT_NO_THROW(LR_Util::check_force_pp(cell, true, "relax"));
+}
+
+TEST(LRForcePP, AllowsNLCCTDDFTSpectra)
+{
+    UnitCell cell;
+    cell.ntype = 2;
+    cell.atoms = new Atom[2];
+    cell.set_atom_flag = true;
+    cell.pseudo_fn = {"H.upf", "Si_NLCC.upf"};
+    cell.atoms[1].ncpp.nlcc = true;
+    EXPECT_NO_THROW(LR_Util::check_force_pp(cell, false, "scf"));
+    EXPECT_NO_THROW(LR_Util::check_force_pp(cell, false, "nscf"));
+}
+
+TEST(LRForcePP, RejectsNLCCForcesAndIdentifiesThePseudopotential)
+{
+    UnitCell cell;
+    cell.ntype = 2;
+    cell.atoms = new Atom[2];
+    cell.set_atom_flag = true;
+    cell.pseudo_fn = {"H.upf", "Si_NLCC.upf"};
+    cell.atoms[1].ncpp.nlcc = true;
+    cell.atoms[1].label = "Si";
+    try
+    {
+        LR_Util::check_force_pp(cell, true, "scf");
+        FAIL() << "NLCC forces were accepted";
+    }
+    catch (const std::invalid_argument& error)
+    {
+        const std::string message = error.what();
+        EXPECT_NE(message.find("element Si"), std::string::npos);
+        EXPECT_NE(message.find("Si_NLCC.upf"), std::string::npos);
+        EXPECT_NE(message.find("not implemented"), std::string::npos);
+    }
+}
+
+TEST(LRForcePP, RejectsNLCCRelaxationEvenWithoutExplicitForceFlag)
+{
+    UnitCell cell;
+    cell.ntype = 2;
+    cell.atoms = new Atom[2];
+    cell.set_atom_flag = true;
+    cell.pseudo_fn = {"H.upf", "Si_NLCC.upf"};
+    cell.atoms[1].ncpp.nlcc = true;
+    EXPECT_THROW(LR_Util::check_force_pp(cell, false, "relax"), std::invalid_argument);
+    EXPECT_THROW(LR_Util::check_force_pp(cell, true, "relax"), std::invalid_argument);
+}
+
+TEST(LR_XCSigma, TargetsValidatedLibxcKernels)
+{
+    EXPECT_TRUE(LR_Util::uses_xc_sigma_floor("hse"));
+    EXPECT_TRUE(LR_Util::uses_xc_sigma_floor("lc_pbe"));
+    EXPECT_TRUE(LR_Util::uses_xc_sigma_floor("lc_wpbe"));
+    EXPECT_FALSE(LR_Util::uses_xc_sigma_floor("lrc_wpbe"));
+    EXPECT_FALSE(LR_Util::uses_xc_sigma_floor("lrc_wpbeh"));
+    EXPECT_FALSE(LR_Util::uses_xc_sigma_floor("cam_pbeh"));
+    EXPECT_FALSE(LR_Util::uses_xc_sigma_floor("pbe"));
+}
+
+TEST(LR_XCSigma, OnlyFloorsSameSpinAndRetainsSignedMixedDerivative)
+{
+    const std::vector<double> sigma{4., -2., 1., 0.5e-6, 0.2e-6, 2e-6};
+    std::vector<double> buffer;
+    std::vector<double> jacobian;
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, 2, true, buffer, &jacobian);
+    EXPECT_EQ(input, (std::vector<double>{4., -2., 1., 1e-6, 0.2e-6, 2e-6}));
+    EXPECT_EQ(jacobian, (std::vector<double>{1., 1., 1., 0., 1., 1.}));
+    EXPECT_EQ(sigma[3], 0.5e-6);
+
+    const auto& original = LR_Util::prepare_xc_sigma(sigma, 2, false, buffer, &jacobian);
+    EXPECT_EQ(&original, &sigma);
+    EXPECT_TRUE(jacobian.empty());
+}
+
+TEST(LR_XCSigma, FloorsScalarSigmaWithZeroDerivativeAtTheJunction)
+{
+    const std::vector<double> sigma{0.5e-6, 1e-6, 2e-6};
+    std::vector<double> buffer;
+    std::vector<double> jacobian;
+    const auto& input = LR_Util::prepare_xc_sigma(sigma, 1, true, buffer, &jacobian);
+    EXPECT_EQ(input, (std::vector<double>{1e-6, 1e-6, 2e-6}));
+    EXPECT_EQ(jacobian, (std::vector<double>{0., 0., 1.}));
+
+    const std::vector<double> empty;
+    const auto& empty_result = LR_Util::prepare_xc_sigma(empty, 1, true, buffer, &jacobian);
+    EXPECT_TRUE(empty_result.empty());
+    EXPECT_TRUE(jacobian.empty());
+}
+
+TEST(LRForceWindow, CompleteSpinResolvedWindowsNeedNoWarning)
+{
+    const std::vector<int> virtuals{11, 13};
+    EXPECT_TRUE(LR_Util::force_window_warning(17, 17, 0, virtuals, virtuals).empty());
+}
+
+TEST(LRForceWindow, ReportsVirtualTruncationAndForceLimitation)
+{
+    const std::vector<int> x{1, 3};
+    const std::vector<int> z{14, 16};
+    const std::string message = LR_Util::force_window_warning(17, 17, 0, x, z);
+    EXPECT_NE(message.find("virtual X window is truncated"), std::string::npos);
+    EXPECT_EQ(message.find("occupied X window is truncated"), std::string::npos);
+    EXPECT_NE(message.find("finite differences"), std::string::npos);
+    EXPECT_NE(message.find("nbands = NLOCAL (17)"), std::string::npos);
+}
+
+TEST(LRForceWindow, EqualXAndZDoNotHideOccupiedOrBandTruncation)
+{
+    const std::vector<int> virtuals{8};
+    const std::string occupied = LR_Util::force_window_warning(17, 17, 2, virtuals, virtuals);
+    EXPECT_NE(occupied.find("occupied X window is truncated"), std::string::npos);
+    const std::string bands = LR_Util::force_window_warning(17, 11, 0, virtuals, virtuals);
+    EXPECT_NE(bands.find("ground-state band space is incomplete"), std::string::npos);
+}
+
+TEST(LRSpinPopulation, RoundAfterSummingFractionalOccupations)
+{
+    ModuleBase::matrix occupations(2, 3);
+    occupations(0, 0) = 1.0;
+    occupations(0, 1) = 1.0;
+    occupations(0, 2) = 1.0;
+    occupations(1, 0) = 1.0;
+    occupations(1, 1) = 0.5000000052;
+    occupations(1, 2) = 0.4999999947;
+    EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
+    std::swap(occupations(1, 1), occupations(1, 2));
+    EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
+}
+
+TEST(LRSpinPopulation, SumKPointsBeforeRounding)
+{
+    ModuleBase::matrix occupations(4, 2);
+    occupations(0, 0) = 0.5;
+    occupations(1, 0) = 0.5;
+    occupations(0, 1) = 0.5;
+    occupations(1, 1) = 0.5;
+    occupations(2, 0) = 0.5;
+    occupations(3, 0) = 0.5;
+    EXPECT_EQ(LR_Util::spin_population_difference(occupations, 1, 0), 1);
+}
 
 namespace
 {
-const int test_size = 10;
-const int test_nw = 10;
-class LRDMTest : public testing::Test
+template<typename T> void check_eigensystem(const std::vector<T>& original)
 {
-protected:
-    std::vector<Atom> atoms;
-    UnitCell ucell;
-    Parallel_Orbitals distribution;
-    Parallel_Orbitals* paraV = nullptr;
-
-    void SetUp() override
+    const int n = 2;
+    std::vector<T> eigenvectors = original;
+    std::vector<double> eigenvalues(n);
+    LR_Util::diag_lapack(n, eigenvectors.data(), eigenvalues.data());
+    for (int band = 0; band < n; ++band)
     {
-        atoms.resize(1);
-        ucell.atoms = atoms.data(); // Borrowed by the mock UnitCell; vector owns the atoms.
-        ucell.ntype = 1;
-        ucell.nat = test_size;
-        ucell.iat2it.assign(test_size, 0);
-        ucell.iat2ia.resize(test_size);
-        atoms[0].na = test_size;
-        atoms[0].nw = test_nw;
-        atoms[0].tau.resize(test_size);
-        atoms[0].iw2l.assign(test_nw, 0);
-        atoms[0].iw2m.assign(test_nw, 0);
-        atoms[0].iw2n.assign(test_nw, 0);
-        for (int atom = 0; atom < test_size; ++atom)
+        for (int row = 0; row < n; ++row)
         {
-            ucell.iat2ia[atom] = atom;
-        }
-        ucell.set_iat2iwt(1);
-        const int dimension = test_size * test_nw;
-#ifdef __MPI
-        distribution.para_2d().init(dimension, dimension, 2, MPI_COMM_WORLD, false);
-#else
-        distribution.para_2d().set_serial(dimension, dimension);
-#endif
-        distribution.set_atomic_trace(ucell.get_iat2iwt(), test_size, dimension);
-        paraV = &distribution;
-    }
-};
-}
-
-TEST_F(LRDMTest, LRDotRCountsEachImageOnce)
-{
-    hamilt::HContainer<double> h1(paraV);
-    hamilt::HContainer<double> h2(paraV);
-    for (int r = -1; r <= 1; ++r)
-    {
-        hamilt::AtomPair<double> a(0, 1, r, 0, 0, paraV);
-        const int opposite_r = -r;
-        hamilt::AtomPair<double> b(0, 1, opposite_r, 0, 0, paraV);
-        h1.insert_pair(a);
-        h2.insert_pair(b);
-    }
-    h1.allocate(nullptr, true);
-    h2.allocate(nullptr, true);
-    double expected = 0.0;
-    for (int r = -1; r <= 1; ++r)
-    {
-        hamilt::BaseMatrix<double>& a = h1.find_pair(0, 1)->get_HR_values(r, 0, 0);
-        hamilt::BaseMatrix<double>& b = h2.find_pair(0, 1)->get_HR_values(r, 0, 0);
-        const int size = a.get_row_size() * a.get_col_size();
-        for (int i = 0; i < size; ++i)
-        {
-            const double x = r + 2.0;
-            const double y = i + 1.0;
-            a.get_pointer()[i] = x;
-            b.get_pointer()[i] = y;
-            expected += x * y;
-        }
-    }
-    EXPECT_DOUBLE_EQ(LR_Util::dot_R_matrix(h1, h2), expected);
-}
-
-TEST_F(LRDMTest, LRTransposePreservesAtomIndices)
-{
-    const int n = test_size * test_nw;
-    const std::vector<ModuleBase::Vector3<double>> kvec(1);
-    module_dm::DensityMatrix<double, double> dm(paraV, 1, kvec, 1);
-    hamilt::HContainer<double> hr(paraV);
-    for (int ia = 0; ia < test_size; ++ia)
-    {
-        for (int ja = 0; ja < test_size; ++ja)
-        {
-            hamilt::AtomPair<double> pair(ia, ja, paraV);
-            hr.insert_pair(pair);
-        }
-    }
-    hr.allocate(nullptr, true);
-    hr.fix_gamma();
-    dm.init_dmr(hr);
-    std::vector<double>& dk = dm.get_dmk_vec()[0];
-    for (int j = 0; j < paraV->para_2d().ncloc(); ++j)
-    {
-        for (int i = 0; i < paraV->para_2d().nrloc(); ++i)
-        {
-            const int mu = paraV->para_2d().irglb(i);
-            const int nu = paraV->para_2d().icglb(j);
-            dk[j * paraV->para_2d().nrloc() + i] = mu * n + nu;
-        }
-    }
-    dm.cal_dmr(-1);
-    const int passes = 2;
-    for (int pass = 0; pass < passes; ++pass)
-    {
-        for (int ip = 0; ip < dm.get_dmr_ptr(1)->size_atom_pairs(); ++ip)
-        {
-            const hamilt::AtomPair<double>& pair = dm.get_dmr_ptr(1)->get_atom_pair(ip);
-            double const* values = pair.get_HR_values(0).get_pointer();
-            for (int i = 0; i < pair.get_row_size(); ++i)
+            T product = T(0.0);
+            for (int col = 0; col < n; ++col)
             {
-                for (int j = 0; j < pair.get_col_size(); ++j)
-                {
-                    const int mu = paraV->para_2d().irglb(pair.get_begin_row() + i);
-                    const int nu = paraV->para_2d().icglb(pair.get_begin_col() + j);
-                    const double expected = pass == 0 ? mu * n + nu : nu * n + mu;
-                    EXPECT_DOUBLE_EQ(values[i * pair.get_col_size() + j], expected);
-                }
+                product += original[col * n + row] * eigenvectors[band * n + col];
             }
-        }
-        if (pass == 0)
-        {
-            LR_Util::transpose_DMR(dm, *paraV);
+            const T expected = eigenvalues[band] * eigenvectors[band * n + row];
+            EXPECT_NEAR(std::abs(product - expected), 0.0, 1e-12);
         }
     }
-}
-
-#ifdef __EXX
-namespace RI_2D_Comm
-{
-// Observe the adapter's spin/k input before the expensive RI redistribution.
-template <>
-std::vector<std::map<TA, std::map<TAC, RI::Tensor<double>>>>
-split_m2D_ktoR<double, std::vector<double>>(
-    const UnitCell&, const K_Vectors&, const std::vector<const std::vector<double>*>& mks,
-    const Parallel_Blkcyclic&, const int nspin, const bool)
-{
-    EXPECT_EQ(nspin, 2);
-    EXPECT_EQ(mks.size(), 4U);
-    for (std::size_t ik = 0; ik < mks.size(); ++ik)
-    {
-        EXPECT_DOUBLE_EQ(mks[ik]->front(), ik + 1.0);
-    }
-    return std::vector<std::map<TA, std::map<TAC, RI::Tensor<double>>>>(nspin);
+    const double lower = (5.0 - std::sqrt(5.0)) / 2.0;
+    const double upper = (5.0 + std::sqrt(5.0)) / 2.0;
+    EXPECT_NEAR(eigenvalues[0], lower, 1e-12);
+    EXPECT_NEAR(eigenvalues[1], upper, 1e-12);
 }
 }
 
-TEST_F(LRDMTest, LRExxAdapterIncludesBothSpinChannels)
+TEST(LREigensolver, RealWorkspaceRetainsEigenpairs)
 {
-    K_Vectors kv;
-    kv.set_nks(4);
-    kv.kvec_d.resize(4);
-    module_dm::DensityMatrix<double, double> dm(paraV, 2, kv.kvec_d, 2);
-    hamilt::HContainer<double> hr(paraV);
-    hr.allocate(nullptr, true);
-    dm.init_dmr(hr);
-    std::vector<std::vector<double>>& dmk = dm.get_dmk_vec();
-    ASSERT_EQ(dmk.size(), 4U);
-    for (std::size_t ik = 0; ik < dmk.size(); ++ik)
-    {
-        std::fill(dmk[ik].begin(), dmk[ik].end(), ik + 1.0);
-    }
-    const auto ds = LR_Util::get_exx_Ds_gs(dm, ucell, kv, *paraV);
-    EXPECT_EQ(ds.size(), 2U);
+    const std::vector<double> matrix{2.0, 1.0, 1.0, 3.0};
+    check_eigensystem(matrix);
 }
-#endif
 
-// The shared R-coordinate implementation also contains an unused TD cleanup path.
-int elecstate::TDFieldManager::gauge() const { return 0; }
-
-TEST_F(LRDMTest, SparseWriterKeepsSpinFilesAndDisjointRankKeys)
+TEST(LREigensolver, ComplexWorkspaceRetainsEigenpairs)
 {
-    const int rank = paraV->para_2d().irproc() * paraV->para_2d().ncproc() + paraV->para_2d().icproc();
-    const int process_count = paraV->para_2d().nrproc() * paraV->para_2d().ncproc();
-    const int active_ranks = std::max(1, process_count - 1);
-    GlobalV::DRANK = rank; // The common writer uses the existing diagonal-grid output rank.
-    hamilt::HContainer<double> structure(paraV);
-    const int zero_image = 99;
-    hamilt::AtomPair<double> zero(0, 0, zero_image, 0, 0, paraV);
-    structure.insert_pair(zero);
-    const int image = rank + 1;
-    if (rank < active_ranks)
+    using Complex = std::complex<double>;
+    const std::vector<Complex> matrix{Complex(2.0, 0.0), Complex(0.0, 1.0),
+        Complex(0.0, -1.0), Complex(3.0, 0.0)};
+    check_eigensystem(matrix);
+}
+
+TEST(LREigensolver, RealGeneralEigenproblemKeepsComplexPair)
+{
+    const int n = 2;
+    std::vector<double> matrix{0.0, 1.0, -1.0, 0.0};
+    std::vector<std::complex<double>> eigenvalues(n);
+    LR_Util::diag_lapack_nh(n, matrix.data(), eigenvalues.data());
+    for (const auto& eigenvalue : eigenvalues)
     {
-        hamilt::AtomPair<double> pair(0, 0, image, 0, 0, paraV);
-        structure.insert_pair(pair);
+        EXPECT_NEAR(eigenvalue.real(), 0.0, 1e-12);
+        EXPECT_NEAR(std::abs(eigenvalue.imag()), 1.0, 1e-12);
     }
-    structure.allocate(nullptr, true);
-    const std::vector<ModuleBase::Vector3<double>> kvec(1);
-    module_dm::DensityMatrix<double, double> dm(paraV, 2, kvec, 1);
-    dm.init_dmr(structure);
-    ASSERT_EQ(dm.get_dmr_vec().size(), 2);
-    for (int spin = 0; spin < 2; ++spin)
-    {
-        if (rank < active_ranks)
-        {
-            hamilt::BaseMatrix<double>& block = dm.get_dmr_vec()[spin]->find_pair(0, 0)->get_HR_values(image, 0, 0);
-            const int count = block.get_row_size() * block.get_col_size();
-            const double value = (spin + 1) * image;
-            std::fill(block.get_pointer(), block.get_pointer() + count, value);
-        }
-    }
-    std::string filename;
-    if (rank == 0)
-    {
-        filename = testing::TempDir() + "lr_sparse_spins_" + std::to_string(getpid());
-    }
-#ifdef __MPI
-    Parallel_Common::bcast_string(filename);
-#endif
-    const std::string out_dir;
-    const double threshold = 1e-10;
-    std::ostringstream running_log;
-    LR_Util::save_DMR(dm, filename, *paraV, out_dir, threshold, running_log);
-    if (rank == 0)
-    {
-        const int dimension = test_size * test_nw;
-        for (int spin = 0; spin < 2; ++spin)
-        {
-            const std::string spin_file = filename + "_s" + std::to_string(spin);
-            std::ifstream input(spin_file);
-            ASSERT_TRUE(input.is_open());
-            std::string line;
-            std::getline(input, line);
-            // Header step is one-based per governance rule 22 (writer receives istep = 0).
-            EXPECT_EQ(line.compare(0, 12, "Ionic_Step 1"), 0);
-            std::getline(input, line);
-            EXPECT_EQ(line, "Matrix Dimension of EDM(R): " + std::to_string(dimension));
-            std::getline(input, line);
-            EXPECT_EQ(line, "Matrix number of EDM(R): " + std::to_string(active_ranks));
-            for (int expected_image = 1; expected_image <= active_ranks; ++expected_image)
-            {
-                int rx = 0;
-                int ry = 0;
-                int rz = 0;
-                int count = 0;
-                input >> rx >> ry >> rz >> count;
-                ASSERT_FALSE(input.fail());
-                EXPECT_EQ(rx, expected_image);
-                EXPECT_EQ(ry, 0);
-                EXPECT_EQ(rz, 0);
-                ASSERT_GT(count, 0);
-                for (int i = 0; i < count; ++i)
-                {
-                    double value = 0.0;
-                    input >> value;
-                    const double expected_value = (spin + 1) * expected_image;
-                    EXPECT_DOUBLE_EQ(value, expected_value);
-                }
-                int index = 0;
-                for (int i = 0; i < count + dimension + 1; ++i)
-                {
-                    input >> index;
-                }
-                ASSERT_FALSE(input.fail());
-            }
-            input >> std::ws;
-            EXPECT_TRUE(input.eof());
-            input.close();
-            std::remove(spin_file.c_str());
-            EXPECT_NE(running_log.str().find(spin_file), std::string::npos);
-        }
-    }
+    EXPECT_NEAR(std::abs(eigenvalues[0] + eigenvalues[1]), 0.0, 1e-12);
+}
+
+TEST(LREigensolver, ComplexGeneralEigenproblemKeepsEigenvalues)
+{
+    using Complex = std::complex<double>;
+    const int n = 2;
+    std::vector<Complex> matrix{Complex(1.0, 2.0), Complex(0.0, 0.0),
+        Complex(0.7, -0.4), Complex(3.0, -1.0)};
+    std::vector<Complex> eigenvalues(n);
+    LR_Util::diag_lapack_nh(n, matrix.data(), eigenvalues.data());
+    EXPECT_NEAR(std::abs(eigenvalues[0] - Complex(1.0, 2.0)), 0.0, 1e-12);
+    EXPECT_NEAR(std::abs(eigenvalues[1] - Complex(3.0, -1.0)), 0.0, 1e-12);
+}
+
+TEST(LRLinearSolver, ReportsSingularRealFactorization)
+{
+    const double matrix[] = {1.0, 2.0, 2.0, 4.0};
+    const double rhs[] = {1.0, 1.0};
+    double result[] = {0.0, 0.0};
+    const int info = LR_Util::lapack_linear_solver(matrix, result, rhs, 2, 1);
+    EXPECT_GT(info, 0);
+}
+
+TEST(LRLinearSolver, ReportsSingularComplexFactorization)
+{
+    using Complex = std::complex<double>;
+    const Complex matrix[] = {Complex(1.0), Complex(2.0), Complex(2.0), Complex(4.0)};
+    const Complex rhs[] = {Complex(1.0), Complex(1.0)};
+    Complex result[] = {Complex(0.0), Complex(0.0)};
+    const int info = LR_Util::lapack_linear_solver(matrix, result, rhs, 2, 1);
+    EXPECT_GT(info, 0);
 }

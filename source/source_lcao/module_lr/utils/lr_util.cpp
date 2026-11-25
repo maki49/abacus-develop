@@ -9,13 +9,14 @@
 #include "source_base/module_external/scalapack_connector.h"
 namespace LR_Util
 {
-    double hse_sigma_floor() { return 1e-6; }
+    double xc_sigma_floor() { return 1e-6; }
 
     bool uses_xc_sigma_floor(const std::string& kernel_name)
     {
         // HSE and LC-WPBE use WPBEH exchange. LC-PBE uses ITYH-PBE exchange and OP-PBE correlation.
         return kernel_name == "hse" || kernel_name == "lc_wpbe" || kernel_name == "lc_pbe";
     }
+
     int spin_population_difference(const ModuleBase::matrix& wg, const int kpar, const int rank_in_pool)
     {   // only for nspin=2
         const int nk = wg.nr / 2;
@@ -115,40 +116,36 @@ namespace LR_Util
     }
 
     const std::vector<double>& prepare_xc_sigma(const std::vector<double>& sigma,
-                                               const bool is_hse06,
-                                               std::vector<double>& hse_buffer)
+                                              const int nspin,
+                                              const bool stabilize,
+                                              std::vector<double>& buffer,
+                                              std::vector<double>* jacobian)
     {
-        if (!is_hse06)
+        if (jacobian != nullptr)
+        {
+            jacobian->clear();
+        }
+        if (!stabilize)
         {
             return sigma;
         }
-        hse_buffer.resize(sigma.size());
-        const double sigma_floor = hse_sigma_floor();
+
+        buffer.resize(sigma.size());
+        if (jacobian != nullptr)
+        {
+            jacobian->resize(sigma.size());
+        }
+        const double floor = xc_sigma_floor();
         for (std::size_t index = 0; index < sigma.size(); ++index)
         {
-            hse_buffer[index] = std::max(sigma[index], sigma_floor);
-        }
-        return hse_buffer;
-    }
-
-    const std::vector<double> &prepare_xc_sigma(
-        const std::vector<double> &sigma,
-        const bool is_hse06,
-        std::vector<double> &hse_buffer,
-        std::vector<double> &jacobian)
-    {
-        const std::vector<double> &prepared = prepare_xc_sigma(sigma, is_hse06, hse_buffer);
-        jacobian.clear();
-        if (is_hse06)
-        {
-            jacobian.resize(sigma.size());
-            const double sigma_floor = hse_sigma_floor();
-            for (std::size_t index = 0; index < sigma.size(); ++index)
+            const bool mixed_spin = nspin == 2 && index % 3 == 1;
+            buffer[index] = mixed_spin ? sigma[index] : std::max(sigma[index], floor);
+            if (jacobian != nullptr)
             {
-                jacobian[index] = sigma[index] > sigma_floor ? 1.0 : 0.0;
+                (*jacobian)[index] = (mixed_spin || sigma[index] > floor) ? 1.0 : 0.0;
             }
         }
-        return prepared;
+        return buffer;
     }
 
     /// =================PHYSICS====================

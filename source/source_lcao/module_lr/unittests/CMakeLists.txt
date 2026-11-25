@@ -1,6 +1,19 @@
 if(ENABLE_MPI)
   set(test_zeqlin_solv_main ../../../source_base/test/mpi_test_main.cpp)
 endif()
+
+addtest(
+  TARGET MODULE_LR_lr_util_pp
+  LIBS parameter
+       base
+       device
+       container
+       planewave
+       cell_info
+       symmetry
+       psi
+  SOURCES test_lr_util.cpp ../utils/lr_util.cpp ../../../source_cell/magnetism.cpp)
+
 if(ENABLE_LIBXC)
   addtest(
     TARGET MODULE_LR_xc_kxc
@@ -170,7 +183,7 @@ addtest(
 
 # LR/DM adapter regressions belong to LR; estate must not depend on this module.
 set(lr_dm_test_sources
-    test_lr_util.cpp
+    test_lr_util_hcontainer.cpp
     ../utils/lr_util.cpp
     ../utils/lr_sparse.cpp
     ../../spar_hsr.cpp

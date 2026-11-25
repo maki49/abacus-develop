@@ -361,27 +361,14 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
         case XC_FAMILY_GGA:
         case XC_FAMILY_HYB_GGA:
         {
-            // Evaluate e_sigma, FXC, and KXC with the same prepared sigma.
-            // The force includes the Jacobian for the implicit coefficient dependence.
-            const bool is_hse06 = func.info->number == XC_HYB_GGA_XC_HSE06;
-            // SCF does not use the LR floor. Try raw GS coefficients first; only
-            // non-finite HSE response coefficients permit the approximate fallback below.
-            const bool stabilize_xc = purpose_ == Purpose::LinearResponse
+            // Use the same prepared arguments for e_sigma, FXC, and KXC. The force
+            // differentiates this LR kernel: only implicit sigma dependence carries J.
+            const bool stabilize = purpose_ == Purpose::LinearResponse
                 && LR_Util::uses_xc_sigma_floor(kernel_name_);
-            std::vector<double> hse_sigma;
-            // Differentiate the LR matrix actually used: only implicit dependence on
-            // max(sigma, sigma_cut) carries its Jacobian, not explicit gradient factors.
-            const std::vector<double>* sigma_input_ptr = nullptr;
-            if (need_kxc)
-            {
-                sigma_input_ptr = &LR_Util::prepare_xc_sigma(sigma, stabilize_xc,
-                    hse_sigma, sigma_jacobian_);
-            }
-            else
-            {
-                sigma_input_ptr = &LR_Util::prepare_xc_sigma(sigma, stabilize_xc, hse_sigma);
-            }
-            const std::vector<double>& sigma_input = *sigma_input_ptr;
+            const bool is_hse06 = func.info->number == XC_HYB_GGA_XC_HSE06;
+            std::vector<double> sigma_buffer;
+            auto* jacobian = need_kxc ? &sigma_jacobian_ : nullptr;
+            const auto& sigma_input = LR_Util::prepare_xc_sigma(sigma, nspin, stabilize, sigma_buffer, jacobian);
             xc_gga_vxc(&func, nrxx, rho.data(), sigma_input.data(), vrho_tmp.data(), vsigma_tmp.data());
             xc_gga_fxc(&func, nrxx, rho.data(), sigma_input.data(), v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
             if (is_hse06 && purpose_ == Purpose::GroundStateResponse)
@@ -392,7 +379,7 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
                 {
                     // Recompute the complete GGA response on every rank, not just its NaNs.
                     // Keep e_sigma and all FXC blocks at the same evaluation point.
-                    const std::vector<double>& fallback_sigma = LR_Util::prepare_xc_sigma(sigma, true, hse_sigma);
+                    const auto& fallback_sigma = LR_Util::prepare_xc_sigma(sigma, nspin, true, sigma_buffer, nullptr);
                     xc_gga_vxc(&func, nrxx, rho.data(), fallback_sigma.data(), vrho_tmp.data(), vsigma_tmp.data());
                     xc_gga_fxc(&func, nrxx, rho.data(), fallback_sigma.data(),
                         v2rho2_tmp.data(), v2rhosigma_tmp.data(), v2sigma2_tmp.data());
@@ -410,8 +397,8 @@ void LR::KernelXC::f_xc_libxc(const int& nspin, const double& omega, const doubl
                     message << "Non-finite HSE GS response: e_sigma=" << invalid[0]
                         << ", e_rhorho=" << invalid[1] << ", e_rhosigma=" << invalid[2]
                         << ", e_sigmasigma=" << invalid[3]
-                        << ". Recomputed e_sigma and all FXC on every rank at sigma >= "
-                        << LR_Util::hse_sigma_floor() << " a0^-8. Using an approximate GS orbital Hessian; "
+                        << ". Recomputed e_sigma and all FXC on every rank with a same-spin sigma floor of "
+                        << LR_Util::xc_sigma_floor() << " a0^-8. Using an approximate GS orbital Hessian; "
                         "the SCF potential is unchanged and gradients are not guaranteed to match finite differences.";
                     const std::string warning = message.str();
                     ModuleBase::WARNING("KernelXC::GroundStateResponse", warning);
