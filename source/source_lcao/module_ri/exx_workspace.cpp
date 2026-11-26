@@ -1,6 +1,8 @@
 #include "exx_workspace.h"
 #include "exx_lri.h"
 
+#include <stdexcept>
+
 namespace
 {
 template<typename Tdata>
@@ -63,10 +65,32 @@ void share_exx_geometry(const RI::Exx<int, int, 3, Tdata>& source,
 }
 
 template<typename Tdata>
+void Exx_LRI<Tdata>::configure_lr_contractions(const bool use_gpu)
+{
+#ifdef __GPU_RI
+    RI::GPU_Resident_Options options;
+    options.enabled = use_gpu;
+    if (use_gpu)
+    {
+        options.data_names = {"Cs_", "Vs_"};
+    }
+    this->exx_lri.lri.set_gpu_resident_options(options);
+    this->exx_lri.lri.cal_mode = use_gpu ? RI::LRI_Cal_Mode::GPU : RI::LRI_Cal_Mode::CPU;
+#else
+    if (use_gpu)
+    {
+        throw std::invalid_argument("LR GPU contractions require ENABLE_LIBRI_GPU=ON");
+    }
+#endif
+}
+
+template<typename Tdata>
 std::shared_ptr<Exx_LRI<Tdata>> Exx_LRI<Tdata>::make_lr_workspace(const UnitCell& ucell,
-                                                              const K_Vectors& kv) const
+                                                                const K_Vectors& kv,
+                                                                const bool use_gpu) const
 {
     std::shared_ptr<Exx_LRI<Tdata>> workspace = std::make_shared<Exx_LRI<Tdata>>(this->info);
+    workspace->configure_lr_contractions(use_gpu);
     workspace->mpi_comm = this->mpi_comm;
     workspace->p_kv = &kv;
     workspace->abfs_Lmax_ = this->abfs_Lmax_;
@@ -90,7 +114,10 @@ template void share_exx_geometry(const RI::Exx<int, int, 3, double>&,
                                 RI::Exx<int, int, 3, double>&);
 template void share_exx_geometry(const RI::Exx<int, int, 3, std::complex<double>>&,
                                 RI::Exx<int, int, 3, std::complex<double>>&);
+template void Exx_LRI<double>::configure_lr_contractions(bool);
+template void Exx_LRI<std::complex<double>>::configure_lr_contractions(bool);
 template std::shared_ptr<Exx_LRI<double>> Exx_LRI<double>::make_lr_workspace(const UnitCell&,
-                                                                         const K_Vectors&) const;
+                                                                           const K_Vectors&,
+                                                                           bool) const;
 template std::shared_ptr<Exx_LRI<std::complex<double>>>
-Exx_LRI<std::complex<double>>::make_lr_workspace(const UnitCell&, const K_Vectors&) const;
+Exx_LRI<std::complex<double>>::make_lr_workspace(const UnitCell&, const K_Vectors&, bool) const;

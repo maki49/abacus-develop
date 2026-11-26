@@ -54,6 +54,8 @@ if(LibRI_FOUND AND NOT TARGET LibRI::LibRI)
 
   if(ENABLE_LIBRI_GPU)
     find_package(LibDDLA 0.0.7 CONFIG REQUIRED HINTS "${DDLA_ROOT}")
+    # LibRI's resident workspace uses std::pmr for GPU batch metadata.
+    target_compile_features(LibRI::LibRI INTERFACE cxx_std_17)
     target_compile_definitions(LibRI::LibRI INTERFACE __GPU_RI __DDLA_RI)
     target_link_libraries(LibRI::LibRI INTERFACE ddla::ddla)
 
@@ -78,6 +80,10 @@ if(LibRI_FOUND AND NOT TARGET LibRI::LibRI)
             {
                 RI::LRI<int, int, 3, T> lri;
                 lri.cal_mode = RI::LRI_Cal_Mode::GPU;
+                RI::GPU_Resident_Options options;
+                options.enabled = true;
+                options.data_names = {"Cs_", "Vs_"};
+                lri.set_gpu_resident_options(options);
                 std::map<int, std::map<std::pair<int, std::array<int, 3>>, RI::Tensor<T>>> result;
                 lri.cal_loop3({}, result, 1.0);
             }
@@ -92,9 +98,13 @@ if(LibRI_FOUND AND NOT TARGET LibRI::LibRI)
     if(NOT LIBRI_GPU_API_WORKS)
       message(
         FATAL_ERROR
-          "LibRI/DDLA GPU compile/link check failed. Supply compatible "
-          "LibRI v0.3.0.0 or newer and CUDA DDLA v0.0.7 or newer; see docs/advanced/install.md "
+          "LibRI/DDLA GPU compile/link check failed. Supply LibRI with GPU C/V residency "
+          "(lr-gpu-batch-plan) and CUDA DDLA v0.0.7 or newer; see docs/advanced/install.md "
           "and the CMake configure log.")
+    endif()
+    # The configure probe above enables only CXX in its scratch project.
+    if(CMAKE_CUDA_COMPILER_LOADED)
+      target_compile_features(LibRI::LibRI INTERFACE cuda_std_17)
     endif()
   endif()
 endif()

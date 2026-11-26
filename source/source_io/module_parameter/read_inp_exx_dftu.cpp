@@ -242,11 +242,10 @@ void ReadInput::item_exx()
         item.annotation = "computing device for LCAO EXX tensor contractions";
         item.category = "Exact Exchange (LCAO)";
         item.type = "String";
-        item.description = R"(Selects the LibRI tensor-contraction device for LCAO Kohn-Sham exact exchange.
+        item.description = R"(Selects the LibRI tensor-contraction device for LCAO Kohn-Sham and LR exact exchange.
 * cpu: retain CPU contractions, including when device=gpu.
 * gpu: use the experimental GPU backend; requires ENABLE_LIBRI_GPU=ON and device=gpu.
-LR and RDMFT exchange engines retain CPU contractions, including when LR reuses
-Kohn-Sham exchange geometry.
+LR workspaces retain geometry C/V tensors across GPU contractions. RDMFT uses CPU contractions.
 For GPU contractions, all MPI ranks on a node must see the same allocated GPU
 list, with at least as many visible GPUs as local ranks; per-rank single-GPU
 masking is unsupported.)";

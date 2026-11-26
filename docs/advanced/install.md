@@ -90,7 +90,7 @@ The new EXX implementation directly depends on [LibRI](https://github.com/abacus
 ```
 
 Experimental LCAO GPU contractions additionally require `ENABLE_LIBRI_GPU=ON`
-(default OFF), `USE_CUDA=ON`, LibRI v0.3.0.0 or newer, and a CUDA
+(default OFF), `USE_CUDA=ON`, a LibRI checkout with GPU C/V residency, and a CUDA
 build of DDLA v0.0.7 or newer. Like other dependent
 options, GPU RI is disabled when its LibRI/CUDA prerequisites are disabled.
 INPUT `device_exx` defaults to `cpu`, retaining CPU contractions even with
@@ -99,9 +99,9 @@ The latter requires GPU RI to be compiled in. GPU contractions support
 `symmetry 1`, including real-space EXX reduction with
 `exx_symmetry_realspace 1`.
 
-The selector applies to the LCAO Kohn-Sham exchange engine. LR and RDMFT exchange
-engines retain CPU contractions, including when LR reuses Kohn-Sham exchange
-geometry.
+The selector applies to LCAO Kohn-Sham and LR exchange. On GPU, the LR workspace
+retains C/V geometry tensors across contractions, including when it shares the
+Kohn-Sham geometry. RDMFT exchange uses CPU contractions.
 
 All MPI ranks on a node must see the same allocated
 GPU list, with at least as many visible GPUs as local ranks. Giving each rank its
@@ -112,17 +112,15 @@ multiple ranks share a node. For example, on one node allocated GPUs 0 and 1:
 CUDA_VISIBLE_DEVICES=0,1 mpirun -np 2 abacus
 ```
 
-[LibRI v0.3.0.0](https://github.com/abacusmodeling/LibRI/releases/tag/v0.3.0.0)
-is the minimum GPU release. Use the release tagged at
-`589f6f8c6df3916575a1ba41e840de919d40d345` or a newer compatible release;
-it includes the GPU symmetry, accumulation, OpenMP, atom-list and DDLA adapter
-fixes. Earlier LibRI versions remain usable for CPU RI.
+For GPU RI, use the LibRI `lr-gpu-batch-plan` branch at `da2758c` or a compatible
+revision. It combines the v0.3.0.0 GPU API with `set_gpu_resident_options`.
+Earlier LibRI versions remain usable for CPU RI.
 
 Use [DDLA v0.0.7](https://github.com/userchba/LibDDLA/releases/tag/v0.0.7)
 or a newer compatible release, built with CUDA support. ABACUS consumes its
 installed `LibDDLAConfig.cmake` package, `ddla::ddla` target and public
-`DDLA_HAS_GPU` capability. Building DDLA itself requires C++17; ABACUS with
-either CPU or GPU RI requires C++14.
+`DDLA_HAS_GPU` capability. Building DDLA and using the resident LibRI GPU backend
+require C++17. CPU LibRI builds use C++14.
 GPU mode requires an explicitly supplied, compatible LibRI installation;
 the default CPU dependency download is unchanged.
 

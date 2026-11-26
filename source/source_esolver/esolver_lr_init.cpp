@@ -60,14 +60,16 @@ template <>
 void ModuleESolver::ESolver_LR<double>::share_exx_lri(std::shared_ptr<Exx_LRI<double>> &exx_ks)
 {
     ModuleBase::TITLE("ESolver_LR<double>", "share_exx_lri");
-    this->exx_lri = exx_ks->make_lr_workspace(*this->ucell_, this->kv);
+    const bool use_gpu = this->inp_->device_exx == "gpu";
+    this->exx_lri = exx_ks->make_lr_workspace(*this->ucell_, this->kv, use_gpu);
 }
 template <>
 void ModuleESolver::ESolver_LR<std::complex<double>>::share_exx_lri(
     std::shared_ptr<Exx_LRI<std::complex<double>>> &exx_ks)
 {
     ModuleBase::TITLE("ESolver_LR<complex>", "share_exx_lri");
-    this->exx_lri = exx_ks->make_lr_workspace(*this->ucell_, this->kv);
+    const bool use_gpu = this->inp_->device_exx == "gpu";
+    this->exx_lri = exx_ks->make_lr_workspace(*this->ucell_, this->kv, use_gpu);
 }
 template <>
 void ModuleESolver::ESolver_LR<std::complex<double>>::share_exx_lri(std::shared_ptr<Exx_LRI<double>> &exx_ks)
@@ -237,6 +239,8 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_ks_(UnitCell &ucell, cons
             exx_info.info_opt_abfs.files_abfs = ucell.abfs_orbital_files;
             exx_info.info_opt_abfs.files_jles = ucell.jle_orbital_files;
             this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
+            const bool use_gpu = inp.device_exx == "gpu";
+            this->exx_lri->configure_lr_contractions(use_gpu);
             this->exx_lri->init(MPI_COMM_WORLD, ucell, this->kv, ks_sol.orb_);
             this->exx_owned_ = true; // the position-dependent `cal_exx_ions` is left to `refresh_from_ks_`
         }
@@ -471,6 +475,8 @@ void ModuleESolver::ESolver_LR<T, TR>::initialize_from_unitcell_(UnitCell &ucell
         exx_info.info_opt_abfs.files_abfs = ucell.abfs_orbital_files;
         exx_info.info_opt_abfs.files_jles = ucell.jle_orbital_files;
         this->exx_lri = std::make_shared<Exx_LRI<T>>(exx_info.info_ri);
+        const bool use_gpu = inp.device_exx == "gpu";
+        this->exx_lri->configure_lr_contractions(use_gpu);
         this->exx_lri->init(MPI_COMM_WORLD, ucell, this->kv, orb);
         this->exx_lri->cal_exx_ions(ucell, this->inp_->out_ri_cv);
     }

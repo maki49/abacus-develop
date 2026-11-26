@@ -82,7 +82,11 @@ public:
 
     // Share read-only geometry tensors, but keep all electronic work buffers independent.
     std::shared_ptr<Exx_LRI<Tdata>> make_lr_workspace(const UnitCell& ucell,
-                                                   const K_Vectors& kv) const;
+                                                   const K_Vectors& kv,
+                                                   const bool use_gpu) const;
+
+    /// Select LR contractions and retain the geometry C/V packs across GPU calls.
+    void configure_lr_contractions(const bool use_gpu);
 
     void init(
         const MPI_Comm &mpi_comm_in,

@@ -1,7 +1,9 @@
 #include "../exx_workspace.h"
+#include "../exx_lri.h"
 #include "source_base/parallel_global.h"
 #include <RI/physics/Exx.h>
 #include <gtest/gtest.h>
+#include <stdexcept>
 
 namespace
 {
@@ -143,6 +145,23 @@ TEST(ExxLRWorkspace, RealGeometryAndElectronicIsolation)
 TEST(ExxLRWorkspace, ComplexGeometryAndElectronicIsolation)
 {
     check_workspace<std::complex<double>>();
+}
+
+TEST(ExxLRWorkspace, LrBackendConfigurationIsLocal)
+{
+    const Exx_Info_RI info{};
+    Exx_LRI<double> ground_state(info);
+    Exx_LRI<double> response(info);
+    const bool use_gpu = true;
+#ifdef __GPU_RI
+    response.configure_lr_contractions(use_gpu);
+    EXPECT_EQ(response.get().lri.cal_mode, RI::LRI_Cal_Mode::GPU);
+    EXPECT_EQ(ground_state.get().lri.cal_mode, RI::LRI_Cal_Mode::CPU);
+#else
+    const bool use_cpu = false;
+    EXPECT_NO_THROW(ground_state.configure_lr_contractions(use_cpu));
+    EXPECT_THROW(response.configure_lr_contractions(use_gpu), std::invalid_argument);
+#endif
 }
 
 int main(int argc, char** argv)

@@ -298,9 +298,11 @@ addtest(TARGET MODULE_LR_window_response SOURCES test_window_response_math.cpp
                                                  ../window_response_math.cpp)
 
 if(ENABLE_MPI AND ENABLE_LIBRI)
+  add_library(module_lr_libri_usage INTERFACE)
+  target_link_libraries(module_lr_libri_usage INTERFACE LibRI::LibRI)
   AddTest(
     TARGET MODULE_LR_ri_response
-    LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
+    LIBS base parameter ${math_libs} container device psi module_lr_libri_usage
     SOURCES test_lr_ri_response.cpp ../lr_ri_response.cpp ../exx_proj.cpp
       ../dm_trans/dm_trans_serial.cpp ../../module_ri/ri_hartree_fock.cpp
       ../../../source_hamilt/operator.cpp ../../../source_base/test/mpi_test_main.cpp
@@ -310,12 +312,9 @@ if(ENABLE_MPI AND ENABLE_LIBRI)
       $<TARGET_FILE:MODULE_LR_ri_response> ${MPIEXEC_POSTFLAGS})
   set_tests_properties(MODULE_LR_ri_response_parallel PROPERTIES
     PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
-  if(ENABLE_LIBRI_GPU)
-    target_link_libraries(MODULE_LR_ri_response PRIVATE DDLA::DDLA)
-  endif()
   AddTest(
     TARGET MODULE_LR_exx_force_dm
-    LIBS base parameter container device LibRI::LibRI
+    LIBS base parameter container device module_lr_libri_usage
     SOURCES test_exx_force_dm.cpp ../../../source_base/test/mpi_test_main.cpp)
 endif()
 
