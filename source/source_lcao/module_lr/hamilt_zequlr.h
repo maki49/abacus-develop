@@ -58,7 +58,7 @@ namespace LR
         }
 
         // The nonlinear RHS may supply one additive AO density per state/spin/k.
-        void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int nband, const bool fuse_spin,
+        void hPsi(const T* psi_in, T* hpsi, const int ld_psi, const int nband,
                   const std::vector<std::vector<ct::Tensor>>& window_density)
         {
             assert(window_density.empty() || window_density.size() == nband);

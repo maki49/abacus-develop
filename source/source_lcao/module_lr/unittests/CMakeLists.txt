@@ -12,7 +12,8 @@ addtest(
        cell_info
        symmetry
        psi
-  SOURCES test_lr_util.cpp ../utils/lr_util.cpp ../../../source_cell/magnetism.cpp)
+  SOURCES test_lr_util.cpp ../utils/lr_util.cpp
+          ../../../source_cell/magnetism.cpp)
 
 if(ENABLE_LIBXC)
   addtest(
@@ -21,56 +22,63 @@ if(ENABLE_LIBXC)
     SOURCES ../unittests/test_xc_kxc.cpp ../potentials/xc_kxc.cpp)
 endif()
 
-AddTest(
+addtest(
   TARGET MODULE_LR_preconditioner
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_lr_preconditioner.cpp ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
-)
+  LIBS base parameter container device psi
+  SOURCES test_lr_preconditioner.cpp ../lr_preconditioner.cpp
+          ../../../source_hamilt/operator.cpp)
 
 abacus_copy_test_files(support/n2_davidson_stagnation.dat)
 
-AddTest(
+addtest(
   TARGET MODULE_LR_davidson
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_lr_davidson.cpp ../lr_davidson.cpp ../lr_preconditioner.cpp
-    ../../../source_hamilt/operator.cpp
-    ../../../source_hsolver/diago_dav_subspace.cpp
-    ../../../source_hsolver/diago_dav_subspace_residual.cpp
-    ../../../source_hsolver/diag_const_nums.cpp
-    ../../../source_hsolver/diag_hs_para.cpp
-    ../../../source_hsolver/diago_pxxxgvx.cpp
-)
+  LIBS base parameter container device psi
+  SOURCES test_lr_davidson.cpp
+          ../lr_davidson.cpp
+          ../lr_preconditioner.cpp
+          ../../../source_hamilt/operator.cpp
+          ../../../source_hsolver/diago_dav_subspace.cpp
+          ../../../source_hsolver/diago_dav_subspace_residual.cpp
+          ../../../source_hsolver/diag_const_nums.cpp
+          ../../../source_hsolver/diag_hs_para.cpp
+          ../../../source_hsolver/diago_pxxxgvx.cpp)
 if(TARGET ELPA::ELPA)
   target_link_libraries(MODULE_LR_davidson PRIVATE ELPA::ELPA genelpa)
 endif()
 if(ENABLE_MPI)
-  add_test(NAME MODULE_LR_davidson_parallel
+  add_test(
+    NAME MODULE_LR_davidson_parallel
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_davidson> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_davidson_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+            $<TARGET_FILE:MODULE_LR_davidson> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(
+    MODULE_LR_davidson_parallel PROPERTIES PROCESSORS 4 TIMEOUT 120 ENVIRONMENT
+                                           "OMP_NUM_THREADS=1")
 endif()
 
-AddTest(
+addtest(
   TARGET MODULE_LR_operator_lr_diag
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_operator_lr_diag.cpp ../../../source_hamilt/operator.cpp
-)
+  LIBS base parameter container device psi
+  SOURCES test_operator_lr_diag.cpp ../../../source_hamilt/operator.cpp)
 
-AddTest(
+addtest(
   TARGET MODULE_LR_zeq_cg_solver
-  LIBS base parameter ${math_libs} container device
-  SOURCES test_zeq_cg_solver.cpp ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
-    ../../../source_hsolver/module_linalg/linear_gmres.cpp ../../../source_hsolver/module_linalg/linear_algebra.cpp
-    ../../../source_hsolver/module_linalg/linear_workspace.cpp
-)
+  LIBS base parameter container device
+  SOURCES test_zeq_cg_solver.cpp
+          ../zeq_cg_solver.cpp
+          ../../../source_hsolver/linear_pcg.cpp
+          ../../../source_hsolver/module_linalg/linear_gmres.cpp
+          ../../../source_hsolver/module_linalg/linear_algebra.cpp
+          ../../../source_hsolver/module_linalg/linear_workspace.cpp)
 if(ENABLE_MPI)
-  target_sources(MODULE_LR_zeq_cg_solver PRIVATE ../../../source_base/test/mpi_test_main.cpp)
-  add_test(NAME MODULE_LR_zeq_cg_solver_parallel
+  target_sources(MODULE_LR_zeq_cg_solver
+                 PRIVATE ../../../source_base/test/mpi_test_main.cpp)
+  add_test(
+    NAME MODULE_LR_zeq_cg_solver_parallel
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_zeq_cg_solver> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_zeq_cg_solver_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+            $<TARGET_FILE:MODULE_LR_zeq_cg_solver> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(
+    MODULE_LR_zeq_cg_solver_parallel PROPERTIES PROCESSORS 4 TIMEOUT 120
+                                                ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()
 
 addtest(
@@ -84,13 +92,18 @@ addtest(
   SOURCES test_grad_degen.cpp test_grad_jt.cpp ../grad_degen.cpp ../grad_jt.cpp)
 
 if(ENABLE_MPI)
-  AddTest(
+  addtest(
     TARGET MODULE_LR_zeqlin_solv
-    LIBS base parameter ${math_libs} container device psi MPI::MPI_CXX
-    SOURCES test_zeqlin_solv.cpp ${test_zeqlin_solv_main} ../zeq_cg_solver.cpp ../../../source_hsolver/linear_pcg.cpp
-      ../../../source_hsolver/module_linalg/linear_gmres.cpp ../../../source_hsolver/module_linalg/linear_algebra.cpp
-      ../../../source_hsolver/module_linalg/linear_workspace.cpp ../zeqlin_solv.cpp ../utils/lr_util.cpp
-  )
+    LIBS base parameter container device psi MPI::MPI_CXX
+    SOURCES test_zeqlin_solv.cpp
+            ${test_zeqlin_solv_main}
+            ../zeq_cg_solver.cpp
+            ../../../source_hsolver/linear_pcg.cpp
+            ../../../source_hsolver/module_linalg/linear_gmres.cpp
+            ../../../source_hsolver/module_linalg/linear_algebra.cpp
+            ../../../source_hsolver/module_linalg/linear_workspace.cpp
+            ../zeqlin_solv.cpp
+            ../utils/lr_util.cpp)
   add_test(
     NAME MODULE_LR_zeqlin_failure_mpi
     COMMAND
@@ -126,39 +139,44 @@ addtest(
   LIBS base parameter ${math_libs} container device psi
   SOURCES test_state_ovlp.cpp state_ovlp_test.h ${root_overlap_test_sources})
 
-AddTest(
+addtest(
   TARGET MODULE_LR_state_projection
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_state_projection.cpp ../state_projection.cpp ${root_overlap_test_sources}
-)
+  LIBS base parameter container device psi
+  SOURCES test_state_projection.cpp ../state_projection.cpp
+          ${root_overlap_test_sources})
 if(ENABLE_MPI)
-  target_sources(MODULE_LR_state_projection PRIVATE ../../../source_base/test/mpi_test_main.cpp)
-  add_test(NAME MODULE_LR_state_projection_parallel
+  target_sources(MODULE_LR_state_projection
+                 PRIVATE ../../../source_base/test/mpi_test_main.cpp)
+  add_test(
+    NAME MODULE_LR_state_projection_parallel
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_state_projection> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_state_projection_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+            $<TARGET_FILE:MODULE_LR_state_projection> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(
+    MODULE_LR_state_projection_parallel
+    PROPERTIES PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()
 
-AddTest(
+addtest(
   TARGET MODULE_LR_state_guess
-  LIBS base parameter ${math_libs} container device psi
-  SOURCES test_state_guess.cpp ../state_guess.cpp ../state_projection.cpp ${root_overlap_test_sources}
-)
+  LIBS base parameter container device psi
+  SOURCES test_state_guess.cpp ../state_guess.cpp ../state_projection.cpp
+          ${root_overlap_test_sources})
 if(ENABLE_MPI)
-  target_sources(MODULE_LR_state_guess PRIVATE ../../../source_base/test/mpi_test_main.cpp)
-  add_test(NAME MODULE_LR_state_guess_parallel
+  target_sources(MODULE_LR_state_guess
+                 PRIVATE ../../../source_base/test/mpi_test_main.cpp)
+  add_test(
+    NAME MODULE_LR_state_guess_parallel
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_state_guess> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_state_guess_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+            $<TARGET_FILE:MODULE_LR_state_guess> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(
+    MODULE_LR_state_guess_parallel PROPERTIES PROCESSORS 4 TIMEOUT 120
+                                              ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()
 
-AddTest(
+addtest(
   TARGET MODULE_LR_state_group
   LIBS base parameter ${math_libs} container device
-  SOURCES test_state_group.cpp ../state_group.cpp
-)
+  SOURCES test_state_group.cpp ../state_group.cpp)
 
 set(state_track_test_sources
     test_state_track.cpp ../state_track.cpp ../state_group.cpp
@@ -300,44 +318,49 @@ addtest(TARGET MODULE_LR_window_response SOURCES test_window_response_math.cpp
 if(ENABLE_MPI AND ENABLE_LIBRI)
   add_library(module_lr_libri_usage INTERFACE)
   target_link_libraries(module_lr_libri_usage INTERFACE LibRI::LibRI)
-  AddTest(
+  addtest(
     TARGET MODULE_LR_ri_response
-    LIBS base parameter ${math_libs} container device psi module_lr_libri_usage
-    SOURCES test_lr_ri_response.cpp ../lr_ri_response.cpp ../exx_proj.cpp
-      ../dm_trans/dm_trans_serial.cpp ../../module_ri/ri_hartree_fock.cpp
-      ../../../source_hamilt/operator.cpp ../../../source_base/test/mpi_test_main.cpp
-  )
-  add_test(NAME MODULE_LR_ri_response_parallel
+    LIBS base parameter container device psi module_lr_libri_usage
+    SOURCES test_lr_ri_response.cpp
+            ../lr_ri_response.cpp
+            ../exx_proj.cpp
+            ../dm_trans/dm_trans_serial.cpp
+            ../../module_ri/ri_hartree_fock.cpp
+            ../../../source_hamilt/operator.cpp
+            ../../../source_base/test/mpi_test_main.cpp)
+  add_test(
+    NAME MODULE_LR_ri_response_parallel
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
-      $<TARGET_FILE:MODULE_LR_ri_response> ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(MODULE_LR_ri_response_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
-  AddTest(
+            $<TARGET_FILE:MODULE_LR_ri_response> ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(
+    MODULE_LR_ri_response_parallel PROPERTIES PROCESSORS 4 TIMEOUT 120
+                                              ENVIRONMENT "OMP_NUM_THREADS=1")
+  addtest(
     TARGET MODULE_LR_exx_force_dm
     LIBS base parameter container device module_lr_libri_usage
     SOURCES test_exx_force_dm.cpp ../../../source_base/test/mpi_test_main.cpp)
 endif()
 
-AddTest(
+addtest(
   TARGET MODULE_LR_block_preconditioner
-  LIBS base parameter ${math_libs} container device psi
+  LIBS base parameter container device psi
   SOURCES test_lr_block_preconditioner.cpp ../lr_block_preconditioner.cpp
-    ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
-)
+          ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp)
 
-AddTest(
+addtest(
   TARGET MODULE_LR_shifted_inverse
-  LIBS base parameter ${math_libs} container device psi
+  LIBS base parameter container device psi
   SOURCES test_lr_shifted_inverse.cpp ../lr_shifted_inverse.cpp
-    ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp
-)
+          ../lr_preconditioner.cpp ../../../source_hamilt/operator.cpp)
 if(ENABLE_MPI)
   add_test(
     NAME MODULE_LR_block_preconditioner_parallel
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+    COMMAND
+      ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
       $<TARGET_FILE:MODULE_LR_block_preconditioner>
-      --gtest_filter=LRBlockPreconditioner.DistributedBlockIncludingEmptyRanks ${MPIEXEC_POSTFLAGS}
-  )
-  set_tests_properties(MODULE_LR_block_preconditioner_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+      --gtest_filter=LRBlockPreconditioner.DistributedBlockIncludingEmptyRanks
+      ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(
+    MODULE_LR_block_preconditioner_parallel
+    PROPERTIES PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()

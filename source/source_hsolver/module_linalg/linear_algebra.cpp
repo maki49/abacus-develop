@@ -622,7 +622,7 @@ const T* LinearAlgebra<T, Device>::prepare_coefficients(const Wide* coefficients
     {
         const ct::DataType type = ct::DataTypeToEnum<T>::value;
         ct::Tensor narrow(type, ct::DeviceType::CpuDevice, {count});
-        std::copy_n(coefficients, count, narrow.data<T>());
+        std::transform(coefficients, coefficients + count, narrow.data<T>(), linear_coefficient<T>);
         base_device::memory::synchronize_memory_op<T, Device, base_device::DEVICE_CPU>()(
             coeff, narrow.data<T>(), count);
     }

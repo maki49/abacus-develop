@@ -2,20 +2,22 @@ abacus_disable_feature_definitions(__CUDA)
 abacus_disable_feature_definitions(__ROCM)
 abacus_disable_feature_definitions(__EXX)
 
-AddTest(
+addtest(
   TARGET MODULE_HSOLVER_dav_callback
   LIBS parameter base device container psi
   SOURCES test_dav_callback.cpp ../diago_dav_subspace.cpp
           ../diago_dav_subspace_residual.cpp ../diag_const_nums.cpp
-          ../diago_pxxxgvx.cpp ../diag_hs_para.cpp
-)
+          ../diago_pxxxgvx.cpp ../diag_hs_para.cpp)
 if(ENABLE_MPI)
-  add_test(NAME MODULE_HSOLVER_dav_callback_parallel
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4
+  add_test(
+    NAME MODULE_HSOLVER_dav_callback_parallel
+    COMMAND
+      ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4
       $<TARGET_FILE:MODULE_HSOLVER_dav_callback>
       --gtest_filter=DavSubspace.DistributedResidualCompaction)
-  set_tests_properties(MODULE_HSOLVER_dav_callback_parallel PROPERTIES
-    PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
+  set_tests_properties(
+    MODULE_HSOLVER_dav_callback_parallel
+    PROPERTIES PROCESSORS 4 TIMEOUT 120 ENVIRONMENT "OMP_NUM_THREADS=1")
 endif()
 
 set(DAV_SUBSPACE_TEST_SOURCES test_diago_dav_subspace.cpp
@@ -27,7 +29,8 @@ if(ENABLE_MPI)
   if(ENABLE_ELPA)
     list(APPEND DAV_SUBSPACE_TEST_SOURCES ../diago_elpa.cpp)
     list(APPEND DAV_SUBSPACE_TEST_LIBS genelpa ELPA::ELPA)
-    target_link_libraries(MODULE_HSOLVER_dav_callback PRIVATE genelpa ELPA::ELPA)
+    target_link_libraries(MODULE_HSOLVER_dav_callback PRIVATE genelpa
+                                                              ELPA::ELPA)
   endif()
 endif()
 addtest(
@@ -44,20 +47,17 @@ if(ENABLE_MPI)
   set_tests_properties(MODULE_HSOLVER_dav_subspace_parallel
                        PROPERTIES PROCESSORS 2 TIMEOUT 120)
 endif()
-AddTest(
+addtest(
   TARGET MODULE_HSOLVER_linear_pcg
   LIBS parameter base device container
-  SOURCES test_linear_pcg.cpp ../linear_pcg.cpp
-)
+  SOURCES test_linear_pcg.cpp ../linear_pcg.cpp)
 if(USE_CUDA)
-  AddTest(
+  addtest(
     TARGET MODULE_HSOLVER_linear_pcg_gpu
     KEEP_FEATURE_DEFINITIONS __CUDA
     LIBS parameter base device container
-    SOURCES test_linear_pcg.cpp ../linear_pcg.cpp
-  )
+    SOURCES test_linear_pcg.cpp ../linear_pcg.cpp)
 endif()
-
 
 set(LOBPCG_TEST_SOURCES
     ../diago_lobpcg.cpp ../lobpcg_subspace.cpp ../lobpcg_recovery.cpp
