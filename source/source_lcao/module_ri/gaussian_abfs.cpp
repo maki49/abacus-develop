@@ -9,7 +9,7 @@
 #include "gaussian_abfs.h"
 
 #include <algorithm>
-// #include <chrono>
+#include <numeric>
 
 #include "lri_cv_tools.h"
 #include "source_base/global_variable.h"
@@ -378,45 +378,42 @@ auto Gaussian_Abfs::DPcal_lattice_sum(
     std::vector<Tresult> result(total_lm, Tresult{});
     const int total_cells = this->n_cells[ik];
 
-#pragma omp declare reduction(vec_plus : std::vector<Tresult> : std::transform(omp_out.begin(),                        \
-                                                                                   omp_out.end(),                      \
-                                                                                   omp_in.begin(),                     \
-                                                                                   omp_out.begin(),                    \
-                                                                                   LRI_CV_Tools::plus<Tresult>()))     \
-    initializer(omp_priv = decltype(omp_orig)(omp_orig.size()))
-//     // auto start0 = std::chrono::system_clock::now();
-#pragma omp parallel for reduction(vec_plus : result)
-    for (int idx = 0; idx < total_cells; ++idx)
+    // Use ordinary local vectors so their storage has a single owner on BiSheng.
+#pragma omp parallel
     {
-        if (exclude_Gamma && this->check_gamma[ik][idx])
-            continue;
-
-        ModuleBase::Vector3<double> vec = this->qGvecs[ik][idx];
-        const double vec_sq = vec.norm2() * tpiba * tpiba;
-        const double vec_abs = std::sqrt(vec_sq);
-
-        const double val_s = std::exp(-exponent * vec_sq) * std::pow(vec_abs, power);
-
-        Tresult phase = func_DPcal_phase(vec);
-        for (int L = 0; L != lmax + 1; ++L)
+        std::vector<Tresult> local_sum(total_lm, Tresult{});
+#pragma omp for nowait
+        for (int idx = 0; idx < total_cells; ++idx)
         {
-            const double val_l = val_s * std::pow(vec_abs, L);
-            for (int m = 0; m != 2 * L + 1; ++m)
+            if (exclude_Gamma && this->check_gamma[ik][idx])
+                continue;
+
+            const ModuleBase::Vector3<double>& vec = this->qGvecs[ik][idx];
+            const double vec_sq = vec.norm2() * tpiba * tpiba;
+            const double vec_abs = std::sqrt(vec_sq);
+
+            const double val_s = std::exp(-exponent * vec_sq) * std::pow(vec_abs, power);
+
+            const Tresult phase = func_DPcal_phase(vec);
+            for (int L = 0; L != lmax + 1; ++L)
             {
-                const int lm = L * L + m;
-                const double val_lm = val_l * this->ylm[ik](lm, idx);
-                result[lm] = result[lm] + RI::Global_Func::convert<std::complex<double>>(val_lm) * phase;
+                const double val_l = val_s * std::pow(vec_abs, L);
+                for (int m = 0; m != 2 * L + 1; ++m)
+                {
+                    const int lm = L * L + m;
+                    const double val_lm = val_l * this->ylm[ik](lm, idx);
+                    local_sum[lm] = local_sum[lm] + RI::Global_Func::convert<std::complex<double>>(val_lm) * phase;
+                }
+            }
+        }
+#pragma omp critical(Gaussian_Abfs_lattice_sum)
+        {
+            for (int lm = 0; lm < total_lm; ++lm)
+            {
+                result[lm] = result[lm] + local_sum[lm];
             }
         }
     }
-    // auto end0 = std::chrono::system_clock::now();
-    // auto duration0 =
-    // std::chrono::duration_cast<std::chrono::microseconds>(end0 - start0);
-    // std::cout << "lattice Time: "
-    //           << double(duration0.count()) *
-    //           std::chrono::microseconds::period::num
-    //                  / std::chrono::microseconds::period::den
-    //           << " s" << std::endl;
 
     return result;
 }
